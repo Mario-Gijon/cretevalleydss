@@ -50,7 +50,6 @@ const createScenarioFixture = async ({
   name = "Scenario A",
   targetModelId = null,
   domainType = "numeric",
-  status = "done",
   parameterOverrides = { alpha: 0.8 },
   requestSnapshot = {
     modelParameters: { alpha: 1 },
@@ -77,8 +76,6 @@ const createScenarioFixture = async ({
     requestSnapshot,
     result,
     execution: {
-      status,
-      error: null,
       startedAt: new Date("2026-01-01T10:00:00.000Z"),
       completedAt: new Date("2026-01-01T10:01:00.000Z"),
     },
@@ -120,13 +117,18 @@ describe("issue scenarios access and payloads", () => {
       name: "Owner scenario",
       targetModel: { id: expect.any(String), name: "Scenario Model" },
       source: { domainType: "numeric" },
-      execution: { status: "done" },
+      execution: {
+        startedAt: expect.any(Date),
+        completedAt: expect.any(Date),
+      },
       createdAt: expect.any(Date),
       createdBy: {
         email: "owner@example.com",
         name: "Owner User",
       },
     });
+    expect(result.scenarios[0].execution).not.toHaveProperty("status");
+    expect(result.scenarios[0].execution).not.toHaveProperty("error");
   });
 
   it("accepted participant can list scenarios for their issue", async () => {
@@ -235,7 +237,10 @@ describe("issue scenarios access and payloads", () => {
       name: "Detailed scenario",
       targetModel: { id: expect.any(String), name: "Scenario Model" },
       source: { consensusPhase: 0, domainType: "numeric" },
-      execution: { status: "done" },
+      execution: {
+        startedAt: expect.any(Date),
+        completedAt: expect.any(Date),
+      },
       config: expect.any(Object),
       requestSnapshot: expect.any(Object),
       result: expect.any(Object),
@@ -244,6 +249,8 @@ describe("issue scenarios access and payloads", () => {
         name: "Owner User",
       },
     });
+    expect(result.scenario.execution).not.toHaveProperty("status");
+    expect(result.scenario.execution).not.toHaveProperty("error");
   });
 
   it("accepted participant can read scenario detail", async () => {

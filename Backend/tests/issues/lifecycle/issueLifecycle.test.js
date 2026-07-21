@@ -136,7 +136,7 @@ const createCascadeFixture = async () => {
     name: "Scenario A",
     targetModel: targetModelId,
     source: { consensusPhase: 0, stageResult: null, domainType: "numeric" },
-    execution: { status: "done", error: null, startedAt: new Date(), completedAt: new Date() },
+    execution: { startedAt: new Date(), completedAt: new Date() },
   });
 
   return {

@@ -44,10 +44,7 @@ const FinishedIssueDialogHeader = () => {
 
   const issue = dialog.payload?.issue || selectedIssue || {};
   const [executionMenuAnchor, setExecutionMenuAnchor] = useState(null);
-  const runLabel = (option) =>
-    `${option.label} · ${option.modelName || "—"}${
-      option.status === "error" ? " · Failed" : ""
-    }`;
+  const runLabel = (option) => `${option.label} · ${option.modelName || "—"}`;
   const activeExecution =
     header.executionOptions.find(
       (option) => option.key === header.selectedExecutionKey
@@ -81,9 +78,9 @@ const FinishedIssueDialogHeader = () => {
                 icon={activeExecution?.type === "base" ? <LayersRoundedIcon /> : <ScienceRoundedIcon />}
                 clickable
                 onClick={(event) => setExecutionMenuAnchor(event.currentTarget)}
-                color={activeExecution?.status === "error" ? "error" : "secondary"}
+                color="secondary"
                 variant="outlined"
-                sx={finishedIssueHeaderChipSx(activeExecution?.status === "error")}
+                sx={finishedIssueHeaderChipSx(false)}
                 aria-label="Select execution"
               />
               <Menu
@@ -104,7 +101,7 @@ const FinishedIssueDialogHeader = () => {
                     {option.type === "base" ? <LayersRoundedIcon fontSize="small" /> : <ScienceRoundedIcon fontSize="small" />}
                     <Box sx={{ ml: 1, minWidth: 0 }}>
                       <Typography variant="subtitle2" noWrap title={runLabel(option)}>{option.label}</Typography>
-                      <Typography variant="caption" noWrap sx={{ color: "text.secondary" }}>{option.modelName}{option.status === "error" ? " · Failed" : ""}</Typography>
+                      <Typography variant="caption" noWrap sx={{ color: "text.secondary" }}>{option.modelName}</Typography>
                     </Box>
                   </MenuItem>
                 ))}

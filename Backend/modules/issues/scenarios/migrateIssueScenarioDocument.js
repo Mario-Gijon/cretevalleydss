@@ -28,13 +28,15 @@ const readConsensusPhase = (scenario) => {
 };
 
 const readExecution = (scenario) => {
-  const status = scenario?.status === "error" ? "error" : "done";
-  const completedAt = scenario?.updatedAt ?? scenario?.createdAt ?? null;
+  const completedAt =
+    scenario?.execution?.completedAt ??
+    scenario?.updatedAt ??
+    scenario?.createdAt ??
+    null;
 
   return {
-    status,
-    error: status === "error" ? scenario?.error ?? null : null,
-    startedAt: scenario?.createdAt ?? completedAt,
+    startedAt:
+      scenario?.execution?.startedAt ?? scenario?.createdAt ?? completedAt,
     completedAt,
   };
 };
@@ -45,7 +47,9 @@ export const isIssueScenarioMigrated = (scenario) =>
       scenario?.config?.parameterOverrides !== undefined &&
       scenario?.requestSnapshot &&
       scenario?.result &&
-      scenario?.execution
+      scenario?.execution &&
+      scenario.execution.status === undefined &&
+      scenario.execution.error === undefined
   );
 
 /**
@@ -53,31 +57,50 @@ export const isIssueScenarioMigrated = (scenario) =>
  * persistence contract. This intentionally returns only new fields; callers
  * must unset legacy fields in the same update.
  */
-export const buildMigratedIssueScenarioFields = (scenario) => ({
-  source: {
-    consensusPhase: readConsensusPhase(scenario),
-    stageResult: readStageResultId(scenario),
-    domainType: scenario?.domainType ?? null,
-  },
-  config: {
-    parameterOverrides: {},
-  },
-  requestSnapshot: {
-    modelParameters: cloneJsonCompatible(
-      scenario?.config?.normalizedModelParameters ??
-        scenario?.config?.modelParameters,
-      {}
-    ),
-    evaluations: cloneJsonCompatible(scenario?.inputs?.evaluationPayloads, []),
-    context: cloneJsonCompatible(scenario?.inputs?.context, {}),
-  },
-  result: {
-    standardResult: cloneJsonCompatible(scenario?.outputs?.standardResult, {}),
-    modelExecution: cloneJsonCompatible(scenario?.outputs?.modelExecution, {}),
-    rawOutput: cloneJsonCompatible(scenario?.outputs?.rawOutput, {}),
-  },
-  execution: readExecution(scenario),
-});
+export const buildMigratedIssueScenarioFields = (scenario) => {
+  const hasCurrentContract = Boolean(
+    scenario?.source &&
+      scenario?.config?.parameterOverrides !== undefined &&
+      scenario?.requestSnapshot &&
+      scenario?.result
+  );
+
+  if (hasCurrentContract) {
+    return {
+      source: scenario.source,
+      config: scenario.config,
+      requestSnapshot: scenario.requestSnapshot,
+      result: scenario.result,
+      execution: readExecution(scenario),
+    };
+  }
+
+  return {
+    source: {
+      consensusPhase: readConsensusPhase(scenario),
+      stageResult: readStageResultId(scenario),
+      domainType: scenario?.domainType ?? null,
+    },
+    config: {
+      parameterOverrides: {},
+    },
+    requestSnapshot: {
+      modelParameters: cloneJsonCompatible(
+        scenario?.config?.normalizedModelParameters ??
+          scenario?.config?.modelParameters,
+        {}
+      ),
+      evaluations: cloneJsonCompatible(scenario?.inputs?.evaluationPayloads, []),
+      context: cloneJsonCompatible(scenario?.inputs?.context, {}),
+    },
+    result: {
+      standardResult: cloneJsonCompatible(scenario?.outputs?.standardResult, {}),
+      modelExecution: cloneJsonCompatible(scenario?.outputs?.modelExecution, {}),
+      rawOutput: cloneJsonCompatible(scenario?.outputs?.rawOutput, {}),
+    },
+    execution: readExecution(scenario),
+  };
+};
 
 export const LEGACY_ISSUE_SCENARIO_FIELDS = [
   "targetModelName",

@@ -67,16 +67,12 @@ export const buildFinishedIssueExecutionOptions = (payload) => [
     type: "base",
     label: "Base",
     modelName: payload?.models?.base?.name || "—",
-    status: "completed",
-    error: null,
   },
   ...asArray(payload?.scenarios).map((scenario) => ({
     key: scenario?.id,
     type: "scenario",
     label: nonEmpty(scenario?.name) || scenario?.targetModel?.name || "Scenario",
     modelName: scenario?.targetModel?.name || "—",
-    status: scenario?.execution?.status || "unknown",
-    error: scenario?.execution?.error ?? null,
   })).filter((option) => Boolean(option.key)),
 ];
 

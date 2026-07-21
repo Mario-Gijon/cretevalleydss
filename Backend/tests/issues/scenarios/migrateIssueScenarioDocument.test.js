@@ -51,11 +51,27 @@ describe("IssueScenario legacy migration", () => {
         rawOutput: { trace: "raw" },
       },
       execution: {
-        status: "done",
-        error: null,
         startedAt: createdAt,
         completedAt: updatedAt,
       },
+    });
+  });
+
+  it("cleans asynchronous fields from an otherwise migrated scenario", () => {
+    const startedAt = new Date("2026-01-02T09:00:00.000Z");
+    const completedAt = new Date("2026-01-02T09:01:00.000Z");
+    const scenario = {
+      source: { consensusPhase: 0, stageResult: null, domainType: "numeric" },
+      config: { parameterOverrides: {} },
+      requestSnapshot: { modelParameters: {}, evaluations: [], context: {} },
+      result: { standardResult: {}, modelExecution: {}, rawOutput: {} },
+      execution: { status: "done", error: null, startedAt, completedAt },
+    };
+
+    expect(isIssueScenarioMigrated(scenario)).toBe(false);
+    expect(buildMigratedIssueScenarioFields(scenario).execution).toEqual({
+      startedAt,
+      completedAt,
     });
   });
 });

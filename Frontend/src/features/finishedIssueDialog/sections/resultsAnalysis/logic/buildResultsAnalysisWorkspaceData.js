@@ -31,9 +31,6 @@ const normalizeRanking = ({ payload, execution }) => {
 };
 
 const getUnavailableReason = (execution, ranking) => {
-  if (execution?.type === "scenario" && execution?.scenario?.execution?.status === "error") {
-    return execution.scenario.execution.error || "Scenario execution failed.";
-  }
   return ranking.length ? null : "This execution does not contain a standardized ranking.";
 };
 

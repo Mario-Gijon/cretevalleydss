@@ -65,8 +65,6 @@ export const buildModelsCardsData = ({ payload, selectedExecution, executionOpti
         : scenario?.execution?.completedAt ?? scenario?.createdAt ??
           null,
       paperUrl: resolvePaperUrl(model),
-      failed: scenario?.execution?.status === "error",
-      error: scenario?.execution?.error ?? null,
     };
   });
   const selectedModel = selectedExecution?.type === "scenario"

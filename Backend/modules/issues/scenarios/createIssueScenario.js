@@ -169,8 +169,6 @@ export const createIssueScenario = async ({
       rawOutput: cloneJsonCompatibleOrThrow(rawOutput, "rawOutput"),
     },
     execution: {
-      status: "done",
-      error: null,
       startedAt,
       completedAt,
     },

@@ -20,9 +20,7 @@ export const buildResultsAnalysisData = ({ payload, selectedExecution, selectedP
     return { id: entry?.alternativeId || `ranking-${index}`, name: alternative?.name || entry?.name || "—", description: alternative?.description || "", score: entry?.score ?? null, formattedScore: formatScore(entry?.score), position: Number.isInteger(entry?.rank) ? entry.rank : index + 1 };
   });
   const normalizedPlots = normalizePlotsGraphic(standard?.plotsGraphic);
-  const unavailableReason = execution.type === "scenario" && execution?.scenario?.execution?.status === "error"
-    ? execution.scenario.execution.error || "Scenario execution failed."
-    : execution.type === "scenario" && !normalizedRanking.length
+  const unavailableReason = execution.type === "scenario" && !normalizedRanking.length
       ? "Scenario output does not contain a standardized ranking."
       : execution.type === "base" && !result
         ? "No stored result is available for the selected phase."

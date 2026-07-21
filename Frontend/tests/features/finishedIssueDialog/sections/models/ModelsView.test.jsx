@@ -197,7 +197,7 @@ describe("ModelsView", () => {
     expect(capacityForExecutionGallery({ mobile: false, tablet: false })).toBe(3);
     expect(executionGalleryGridSx({ executionCount: 1, carousel: false }).gridTemplateColumns.lg).toBe("repeat(2, minmax(260px, 1fr))");
     expect(executionGalleryGridSx({ executionCount: 3, carousel: false }).gridTemplateColumns.lg).toBe("repeat(4, minmax(260px, 1fr))");
-    expect(executionCardSx(false, false).minHeight).toEqual({ xs: 250, md: 290 });
+    expect(executionCardSx(false).minHeight).toEqual({ xs: 250, md: 290 });
     expect(addModelCardSx().minHeight).toEqual({ xs: 250, md: 290 });
     expect(addModelCardSx().minWidth).toEqual({ xs: 0, sm: 260 });
     expect(addModelCardSx({ carousel: true })).toMatchObject({ width: "100%", minWidth: 0, height: "100%" });

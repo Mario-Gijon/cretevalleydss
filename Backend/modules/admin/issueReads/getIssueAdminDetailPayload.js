@@ -161,7 +161,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     IssueScenario.find({ issue: issueId })
       .sort({ createdAt: -1 })
       .select(
-        "_id name targetModel source.domainType execution.status createdAt createdBy"
+        "_id name targetModel source.domainType execution.startedAt execution.completedAt createdAt createdBy"
       )
       .populate("targetModel", "name")
       .populate("createdBy", "name email")
@@ -442,7 +442,12 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
             }
           : null,
         source: { domainType: scenario.source?.domainType ?? null },
-        execution: { status: scenario.execution?.status ?? null },
+        execution: scenario.execution
+          ? {
+              startedAt: scenario.execution.startedAt ?? null,
+              completedAt: scenario.execution.completedAt ?? null,
+            }
+          : null,
         createdAt: scenario.createdAt,
         createdBy: scenario.createdBy
           ? {

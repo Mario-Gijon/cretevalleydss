@@ -81,12 +81,12 @@ export const executionCarouselControlSx = {
   },
 };
 
-export const executionCardSx = (selected, failed) => ({
+export const executionCardSx = (selected) => ({
   minWidth: { xs: 0, sm: 260 },
   minHeight: { xs: 250, md: 290 },
   p: { xs: 1.5, md: 2 },
   borderRadius: 3,
-  border: selected ? "1px solid rgba(64, 224, 224, 0.95)" : failed ? "1px solid rgba(239, 83, 80, 0.48)" : "1px solid rgba(255,255,255,0.11)",
+  border: selected ? "1px solid rgba(64, 224, 224, 0.95)" : "1px solid rgba(255,255,255,0.11)",
   bgcolor: "rgba(8, 18, 29, 0.93)",
   background: selected ? "linear-gradient(145deg, rgba(19, 126, 145, 0.30), rgba(8, 18, 29, 0.97) 66%)" : "linear-gradient(145deg, rgba(24, 82, 104, 0.14), rgba(8, 18, 29, 0.97) 66%)",
   color: "text.primary",

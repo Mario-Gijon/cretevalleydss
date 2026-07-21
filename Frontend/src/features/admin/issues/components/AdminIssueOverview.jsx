@@ -300,7 +300,7 @@ export default function AdminIssueOverview({
                       {scenario?.name || scenario?.targetModel?.name || "Scenario"}
                     </Typography>
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                      {scenario?.targetModel?.name || "—"} · {scenario?.execution?.status || "—"}
+                      {scenario?.targetModel?.name || "—"}
                     </Typography>
                   </Stack>
 

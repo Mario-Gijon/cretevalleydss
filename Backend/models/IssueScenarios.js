@@ -88,22 +88,13 @@ const issueScenarioSchema = new Schema(
     },
 
     execution: {
-      status: {
-        type: String,
-        enum: ["queued", "running", "done", "error"],
-        required: true,
-      },
-      error: {
-        type: Schema.Types.Mixed,
-        default: null,
-      },
       startedAt: {
         type: Date,
-        default: null,
+        required: true,
       },
       completedAt: {
         type: Date,
-        default: null,
+        required: true,
       },
     },
   },

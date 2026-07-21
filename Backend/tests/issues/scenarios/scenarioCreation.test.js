@@ -190,13 +190,39 @@ describe("createIssueScenario input normalization", () => {
         modelExecution: { ok: true },
         rawOutput: { raw: true },
       },
-      execution: { status: "done", error: null },
+      execution: expect.objectContaining({
+        startedAt: expect.any(Date),
+        completedAt: expect.any(Date),
+      }),
     });
     expect(scenario.execution.startedAt).toBeInstanceOf(Date);
     expect(scenario.execution.completedAt).toBeInstanceOf(Date);
+    expect(scenario.execution).not.toHaveProperty("status");
+    expect(scenario.execution).not.toHaveProperty("error");
     expect(scenario).not.toHaveProperty("inputs");
     expect(scenario).not.toHaveProperty("outputs");
     expect(scenario).not.toHaveProperty("targetModelName");
+  });
+
+  it("does not persist a scenario when model execution fails", async () => {
+    const context = buildMockExecutionContext();
+    scenarioExecutionState.buildScenarioExecutionContext.mockResolvedValue(context);
+    scenarioExecutionState.executeScenarioModel.mockRejectedValue(
+      new Error("Decision model unavailable")
+    );
+
+    await expect(
+      createIssueScenario({
+        userId: new mongoose.Types.ObjectId(),
+        issueId: String(context.issue._id),
+        targetModelId: "target-model-id",
+        scenarioName: "Unpersisted failure",
+        scenarioDescription: "Execution failure preserves synchronous semantics.",
+      })
+    ).rejects.toThrow("Decision model unavailable");
+
+    const { IssueScenario } = await import("../../../models/IssueScenarios.js");
+    expect(await IssueScenario.countDocuments()).toBe(0);
   });
 
   it("rejects an invalid source phase", async () => {

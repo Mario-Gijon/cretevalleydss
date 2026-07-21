@@ -261,15 +261,15 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
       context: { source: "scenario" },
     },
     result: { standardResult: { rankedAlternatives: [] }, modelExecution: { kind: "scenario", executedAt: new Date("2026-01-12T11:00:00.000Z") }, rawOutput: { raw: true } },
-    execution: { status: "done", error: null, startedAt: new Date("2026-01-12T10:59:00.000Z"), completedAt: new Date("2026-01-12T11:00:00.000Z") },
+    execution: { startedAt: new Date("2026-01-12T10:59:00.000Z"), completedAt: new Date("2026-01-12T11:00:00.000Z") },
   });
   const failedScenario = await IssueScenario.create({
     issue: issue._id,
     createdBy: owner._id,
-    name: "Failed scenario",
+    name: "Additional scenario",
     targetModel: baseModel._id,
     source: { consensusPhase: consensus ? 2 : 0, stageResult: finalResult._id, domainType: null },
-    execution: { status: "error", error: "Model service unavailable", startedAt: new Date("2026-01-12T11:01:00.000Z"), completedAt: new Date("2026-01-12T11:01:00.000Z") },
+    execution: { startedAt: new Date("2026-01-12T11:01:00.000Z"), completedAt: new Date("2026-01-12T11:01:00.000Z") },
   });
 
   return {
@@ -434,8 +434,8 @@ describe("definitive Finished Issue contract", () => {
     expect(payload.models.criteriaWeighting).toMatchObject({ name: "Weight model" });
     expect(payload.models.compatible.some((model) => model.id === payload.models.base.id)).toBe(true);
     expect(payload.scenarios).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: String(fixture.scenarios.scenario._id), description: "Stored scenario description", targetModel: expect.objectContaining({ paperUrl: "https://papers.example.test/base" }), source: { consensusPhase: 2, stageResult: String(fixture.results.finalResult._id), domainType: null }, execution: expect.objectContaining({ status: "done", completedAt: iso("2026-01-12T11:00:00.000Z") }) }),
-      expect.objectContaining({ id: String(fixture.scenarios.failedScenario._id), description: null, execution: expect.objectContaining({ status: "error", error: "Model service unavailable" }) }),
+      expect.objectContaining({ id: String(fixture.scenarios.scenario._id), description: "Stored scenario description", targetModel: expect.objectContaining({ paperUrl: "https://papers.example.test/base" }), source: { consensusPhase: 2, stageResult: String(fixture.results.finalResult._id), domainType: null }, execution: { startedAt: iso("2026-01-12T10:59:00.000Z"), completedAt: iso("2026-01-12T11:00:00.000Z") } }),
+      expect.objectContaining({ id: String(fixture.scenarios.failedScenario._id), description: null, execution: { startedAt: iso("2026-01-12T11:01:00.000Z"), completedAt: iso("2026-01-12T11:01:00.000Z") } }),
     ]));
     expect(payload.executionMetadata).toMatchObject({
       contractVersion: 1,

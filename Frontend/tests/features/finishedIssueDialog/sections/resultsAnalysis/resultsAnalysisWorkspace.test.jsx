@@ -23,7 +23,7 @@ const completeScenario = (id, ranks) => ({
   name: id,
   targetModel: { id: `model-${id}`, name: `Model ${id}` },
   source: { consensusPhase: 5, stageResult: null, domainType: "numeric" },
-  execution: { status: "done", error: null, startedAt: "2026-01-02T10:00:00.000Z", completedAt: "2026-01-02T10:00:00.000Z" },
+  execution: { startedAt: "2026-01-02T10:00:00.000Z", completedAt: "2026-01-02T10:00:00.000Z" },
   result: {
     standardResult: {
       rankedAlternatives: ranks.map(([alternativeId, rank, score]) => ({ alternativeId, rank, score })),
@@ -39,7 +39,7 @@ describe("Results analysis workspace", () => {
     const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["scenario-forward", "base", "scenario-reverse"] });
     expect(data.selected.map((entry) => entry.color)).toEqual(["#27d5e4", "#6fdc68", "#a960e8"]);
   });
-  it("resolves the latest base evaluation, keeps every ranking entry, and excludes failed runs", () => {
+  it("resolves the latest base evaluation and keeps every ranking entry", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios = [
       completeScenario("scenario-forward", [["a", 1, -1.4], ["b", 2, -2.1]]),
@@ -52,7 +52,7 @@ describe("Results analysis workspace", () => {
     expect(data.selected[0].sourcePhase).toBe(5);
     expect(data.selected[0].ranking.map((entry) => entry.name)).toEqual(["Beta", "Alpha"]);
     expect(data.selected[1].ranking.map((entry) => entry.score)).toEqual([-1.4, -2.1]);
-    expect(data.selectableOptions.find((option) => option.key === "scenario-error")).toMatchObject({ selectable: false, unavailableReason: "Model unavailable" });
+    expect(data.selectableOptions.find((option) => option.key === "scenario-secondary")).toMatchObject({ selectable: true });
     expect(JSON.stringify(payload)).toBe(snapshot);
   });
 
@@ -131,20 +131,20 @@ describe("Results analysis workspace", () => {
     expect(cells.get("base:base")).toBe(1);
   });
 
-  it("keeps an ordered 1–3 selection, blocks unavailable executions, and promotes the new primary", async () => {
+  it("keeps an ordered 1–3 selection and promotes the new primary", async () => {
     const selectGlobalExecution = vi.fn();
     const options = [
       { key: "base", selectable: true },
       { key: "scenario-a", selectable: true },
       { key: "scenario-b", selectable: true },
-      { key: "scenario-error", selectable: false },
+      { key: "scenario-c", selectable: true },
     ];
     const { result } = renderHook(() => useFinishedIssueResultsSelection({ issueId: "issue-1", executionOptions: options, selectGlobalExecution }));
 
     await waitFor(() => expect(result.current.selectedExecutionKeys).toEqual(["base"]));
     act(() => result.current.addExecution("scenario-a"));
     act(() => result.current.addExecution("scenario-b"));
-    act(() => result.current.addExecution("scenario-error"));
+    act(() => result.current.addExecution("scenario-c"));
     expect(result.current.selectedExecutionKeys).toEqual(["base", "scenario-a", "scenario-b"]);
     act(() => result.current.removeExecution("base"));
     await waitFor(() => expect(result.current.selectedExecutionKeys).toEqual(["scenario-a", "scenario-b"]));

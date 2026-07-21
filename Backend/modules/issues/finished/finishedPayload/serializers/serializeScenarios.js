@@ -38,8 +38,6 @@ export const serializeScenarios = ({ scenarios }) =>
     requestSnapshot: cloneSerializable(scenario.requestSnapshot, {}),
     result: cloneSerializable(scenario.result, {}),
     execution: {
-      status: scenario.execution?.status ?? null,
-      error: cloneSerializable(scenario.execution?.error, null),
       startedAt: toIsoOrNull(scenario.execution?.startedAt),
       completedAt: toIsoOrNull(scenario.execution?.completedAt),
     },

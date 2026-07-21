@@ -28,7 +28,7 @@ describe("Finished Issue canonical contract", () => {
     expect(scenario.phaseResults).toEqual([]);
     expect(scenario.standardizedOutput.rankedAlternatives[0].alternativeId).toBe("a");
     expect(JSON.stringify(payload)).toBe(snapshot);
-    expect(buildFinishedIssueExecutionOptions(payload).map((option) => option.key)).toEqual(["base", "scenario-ok", "scenario-error"]);
+    expect(buildFinishedIssueExecutionOptions(payload).map((option) => option.key)).toEqual(["base", "scenario-ok", "scenario-secondary"]);
   });
 
   it("keeps overview, evaluations and consensus canonical while results follow execution", () => {

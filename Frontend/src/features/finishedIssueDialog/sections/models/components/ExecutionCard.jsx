@@ -19,7 +19,7 @@ const ExecutionCard = ({ execution, formattedComputedAt, onSelect, onRemove }) =
           event.preventDefault();
           onSelect(execution.key);
         }
-      }} sx={executionCardSx(execution.selected, execution.failed)}>
+      }} sx={executionCardSx(execution.selected)}>
       <Stack direction="row" alignItems="flex-start" spacing={1.15}>
         <Box sx={executionCardIconSx}>{isBase ? <LayersRoundedIcon /> : <ShowChartRoundedIcon />}</Box>
         <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -59,7 +59,6 @@ const ExecutionCard = ({ execution, formattedComputedAt, onSelect, onRemove }) =
         </Box>
       </Stack>
       <Typography variant="body2" title={execution.description} sx={executionCardDescriptionSx}>{execution.description}</Typography>
-      {execution.failed && execution.error ? <Typography variant="caption" title={execution.error} sx={{ mt: -0.7, mb: 1, color: "error.light", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{execution.error}</Typography> : null}
       <Box sx={{ mt: "auto", pt: 1.2, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <Stack direction="row" spacing={0.7} alignItems="center"><CalendarMonthRoundedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
           <Box><Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "fontWeightBold" }}>Computed at</Typography><Typography variant="body2" sx={{ fontWeight: "fontWeightBold" }}>{formattedComputedAt || "—"}</Typography></Box>
