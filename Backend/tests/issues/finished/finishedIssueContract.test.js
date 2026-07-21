@@ -249,39 +249,27 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
     name: "Compatible scenario",
     description: "Stored scenario description",
     targetModel: baseModel._id,
-    targetModelName: baseModel.name,
-    targetApiModelKey: baseModel.apiModelKey,
-    targetApiEndpoint: baseModel.apiEndpoint,
-    targetEvaluationStructureKey: baseModel.evaluationStructureKey,
-    targetSupportsConsensus: false,
-    evaluationStructureKey: "alternativeCriteriaMatrix",
-    criteriaWeightsStructureKey: "manualCriteriaWeights",
-    domainType: null,
-    status: "done",
-    config: { modelParameters: { alpha: 0.8 }, normalizedModelParameters: { alpha: 0.8 } },
-    inputs: {
-      consensusPhaseUsed: consensus ? 2 : 0,
-      expertsOrder: [accepted.email],
-      alternatives: [{ id: alternativeA._id, name: alternativeA.name }],
-      criteria: [{ id: numericCriterion._id, name: numericCriterion.name, criterionType: numericCriterion.type }],
-      weightsUsed: { [String(numericCriterion._id)]: 1 },
-      evaluationPayloads: [{ expert: { id: String(accepted._id) }, payload: alternativePayload }],
+    source: {
+      consensusPhase: consensus ? 2 : 0,
+      stageResult: finalResult._id,
+      domainType: null,
+    },
+    config: { parameterOverrides: { alpha: 0.8 } },
+    requestSnapshot: {
+      modelParameters: { alpha: 0.8 },
+      evaluations: [{ expert: { id: String(accepted._id) }, payload: alternativePayload }],
       context: { source: "scenario" },
     },
-    outputs: { standardResult: { rankedAlternatives: [] }, modelExecution: { kind: "scenario", executedAt: new Date("2026-01-12T11:00:00.000Z") }, rawOutput: { raw: true } },
+    result: { standardResult: { rankedAlternatives: [] }, modelExecution: { kind: "scenario", executedAt: new Date("2026-01-12T11:00:00.000Z") }, rawOutput: { raw: true } },
+    execution: { status: "done", error: null, startedAt: new Date("2026-01-12T10:59:00.000Z"), completedAt: new Date("2026-01-12T11:00:00.000Z") },
   });
   const failedScenario = await IssueScenario.create({
     issue: issue._id,
     createdBy: owner._id,
     name: "Failed scenario",
     targetModel: baseModel._id,
-    targetModelName: baseModel.name,
-    targetApiModelKey: baseModel.apiModelKey,
-    targetApiEndpoint: baseModel.apiEndpoint,
-    targetEvaluationStructureKey: baseModel.evaluationStructureKey,
-    evaluationStructureKey: "alternativeCriteriaMatrix",
-    status: "error",
-    error: "Model service unavailable",
+    source: { consensusPhase: consensus ? 2 : 0, stageResult: finalResult._id, domainType: null },
+    execution: { status: "error", error: "Model service unavailable", startedAt: new Date("2026-01-12T11:01:00.000Z"), completedAt: new Date("2026-01-12T11:01:00.000Z") },
   });
 
   return {
@@ -446,8 +434,8 @@ describe("definitive Finished Issue contract", () => {
     expect(payload.models.criteriaWeighting).toMatchObject({ name: "Weight model" });
     expect(payload.models.compatible.some((model) => model.id === payload.models.base.id)).toBe(true);
     expect(payload.scenarios).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: String(fixture.scenarios.scenario._id), description: "Stored scenario description", computedAt: iso("2026-01-12T11:00:00.000Z"), targetModel: expect.objectContaining({ paperUrl: "https://papers.example.test/base" }), status: "done", inputs: expect.objectContaining({ consensusPhaseUsed: 2 }) }),
-      expect.objectContaining({ id: String(fixture.scenarios.failedScenario._id), description: null, status: "error", error: "Model service unavailable" }),
+      expect.objectContaining({ id: String(fixture.scenarios.scenario._id), description: "Stored scenario description", targetModel: expect.objectContaining({ paperUrl: "https://papers.example.test/base" }), source: { consensusPhase: 2, stageResult: String(fixture.results.finalResult._id), domainType: null }, execution: expect.objectContaining({ status: "done", completedAt: iso("2026-01-12T11:00:00.000Z") }) }),
+      expect.objectContaining({ id: String(fixture.scenarios.failedScenario._id), description: null, execution: expect.objectContaining({ status: "error", error: "Model service unavailable" }) }),
     ]));
     expect(payload.executionMetadata).toMatchObject({
       contractVersion: 1,
@@ -455,7 +443,6 @@ describe("definitive Finished Issue contract", () => {
       completeness: {
         missingEvidence: expect.arrayContaining([
           { code: "BASE_MODEL_DEFINITION_SNAPSHOT_NOT_STORED" },
-          { code: "SCENARIO_CRITERION_HIERARCHY_NOT_STORED", scenarioId: String(fixture.scenarios.scenario._id) },
         ]),
       },
     });

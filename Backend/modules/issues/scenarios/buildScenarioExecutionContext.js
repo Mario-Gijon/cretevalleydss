@@ -357,7 +357,7 @@ export const buildScenarioExecutionContext = async ({
     completedEvaluations,
   });
 
-  const { paramsUsed, normalizedParams, weightsUsed } =
+  const { normalizedParams, weightsUsed } =
     buildScenarioParametersOrThrow({
       targetModel,
       paramOverrides,
@@ -487,14 +487,9 @@ export const buildScenarioExecutionContext = async ({
     participations: scenarioParticipations,
     completedEvaluations,
     latestAlternativeResult,
+    stageResultId: latestAlternativeResult._id,
     domainType,
-    paramsUsed,
-    normalizedParams,
-    weightsUsed,
-    expertsOrder: evaluationPayloads.map((entry) => entry.expert.email),
     evaluationPhase: phase,
-    evaluationPayloads,
-    scenarioExecutionContext,
     requestPayload,
   };
 };

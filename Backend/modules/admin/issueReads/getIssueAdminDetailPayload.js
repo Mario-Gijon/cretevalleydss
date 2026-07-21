@@ -161,8 +161,9 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     IssueScenario.find({ issue: issueId })
       .sort({ createdAt: -1 })
       .select(
-        "_id name targetModel targetModelName domainType evaluationStructureKey criteriaWeightsStructureKey status createdAt createdBy"
+        "_id name targetModel source.domainType execution.status createdAt createdBy"
       )
+      .populate("targetModel", "name")
       .populate("createdBy", "name email")
       .lean(),
     IssueExpressionDomain.find({ issue: issueId }).lean(),
@@ -434,12 +435,14 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       scenarios: scenarios.map((scenario) => ({
         id: toIdString(scenario._id),
         name: scenario.name,
-        targetModelId: toIdString(scenario.targetModel),
-        targetModelName: scenario.targetModelName,
-        domainType: scenario.domainType,
-        evaluationStructureKey: scenario.evaluationStructureKey,
-        criteriaWeightsStructureKey: scenario.criteriaWeightsStructureKey,
-        status: scenario.status,
+        targetModel: scenario.targetModel
+          ? {
+              id: toIdString(scenario.targetModel),
+              name: scenario.targetModel.name ?? null,
+            }
+          : null,
+        source: { domainType: scenario.source?.domainType ?? null },
+        execution: { status: scenario.execution?.status ?? null },
         createdAt: scenario.createdAt,
         createdBy: scenario.createdBy
           ? {

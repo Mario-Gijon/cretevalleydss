@@ -48,15 +48,15 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
     model: catalogModel
       ? { ...catalogModel, ...scenario.targetModel }
       : scenario.targetModel || null,
-    configuration: scenario.configuration || null,
-    sourcePhase: Number.isInteger(scenario?.inputs?.consensusPhaseUsed)
-      ? scenario.inputs.consensusPhaseUsed
+    requestSnapshot: scenario.requestSnapshot || null,
+    sourcePhase: Number.isInteger(scenario?.source?.consensusPhase)
+      ? scenario.source.consensusPhase
       : null,
     phaseResults: [],
-    standardizedOutput: scenario?.outputs?.standardResult ?? null,
-    consensusMeasure: scenario?.outputs?.standardResult?.consensusMeasure ?? null,
-    modelSpecificOutput: scenario?.outputs?.modelExecution ?? null,
-    rawOutput: scenario?.outputs?.rawOutput ?? null,
+    standardizedOutput: scenario?.result?.standardResult ?? null,
+    consensusMeasure: scenario?.result?.standardResult?.consensusMeasure ?? null,
+    modelSpecificOutput: scenario?.result?.modelExecution ?? null,
+    rawOutput: scenario?.result?.rawOutput ?? null,
     scenario,
   };
 };
@@ -75,8 +75,8 @@ export const buildFinishedIssueExecutionOptions = (payload) => [
     type: "scenario",
     label: nonEmpty(scenario?.name) || scenario?.targetModel?.name || "Scenario",
     modelName: scenario?.targetModel?.name || "—",
-    status: scenario?.status || "unknown",
-    error: scenario?.error ?? null,
+    status: scenario?.execution?.status || "unknown",
+    error: scenario?.execution?.error ?? null,
   })).filter((option) => Boolean(option.key)),
 ];
 

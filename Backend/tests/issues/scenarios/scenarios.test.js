@@ -33,6 +33,7 @@ import {
 import {
   createConfirmedUser,
   createIssueFixture,
+  createIssueModel,
   createParticipationFixture,
 } from "../../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
@@ -48,54 +49,39 @@ const createScenarioFixture = async ({
   createdBy,
   name = "Scenario A",
   targetModelId = null,
-  targetModelName = "Scenario Model",
   domainType = "numeric",
-  evaluationStructureKey = "alternativeCriteriaMatrix",
-  criteriaWeightsStructureKey = "manualCriteriaWeights",
   status = "done",
-  config = {
+  parameterOverrides = { alpha: 0.8 },
+  requestSnapshot = {
     modelParameters: { alpha: 1 },
-    normalizedModelParameters: { alpha: 1 },
-  },
-  inputs = {
-    consensusPhaseUsed: 0,
-    expertsOrder: ["expert@example.com"],
-    alternatives: [{ id: new mongoose.Types.ObjectId(), name: "Alternative A" }],
-    criteria: [{
-      id: new mongoose.Types.ObjectId(),
-      name: "Criterion A",
-      criterionType: "benefit",
-    }],
-    weightsUsed: { "criterion-1": 1 },
-    evaluationPayloads: [{ expert: { id: "expert-1" }, payload: { value: 1 } }],
+    evaluations: [{ expert: { id: "expert-1" }, payload: { value: 1 } }],
     context: { issue: { id: String(issueId) } },
   },
-  outputs = {
+  result = {
     standardResult: { ranking: ["Alternative A"] },
     modelExecution: { ok: true },
     rawOutput: { raw: true },
   },
 } = {}) => {
+  const targetModel = targetModelId
+    ? null
+    : await createIssueModel({ name: "Scenario Model" });
+
   return IssueScenario.create({
     issue: issueId,
     createdBy,
     name,
-    targetModel: targetModelId ?? createdBy,
-    targetModelName,
-    targetApiModelKey: "scenario-model",
-    targetApiEndpoint: {
-      method: "POST",
-      path: "/solve-scenario",
+    targetModel: targetModelId ?? targetModel._id,
+    source: { consensusPhase: 0, stageResult: null, domainType },
+    config: { parameterOverrides },
+    requestSnapshot,
+    result,
+    execution: {
+      status,
+      error: null,
+      startedAt: new Date("2026-01-01T10:00:00.000Z"),
+      completedAt: new Date("2026-01-01T10:01:00.000Z"),
     },
-    targetEvaluationStructureKey: "alternativeCriteriaMatrix",
-    targetSupportsConsensus: false,
-    evaluationStructureKey,
-    criteriaWeightsStructureKey,
-    domainType,
-    status,
-    config,
-    inputs,
-    outputs,
   });
 };
 
@@ -132,12 +118,9 @@ describe("issue scenarios access and payloads", () => {
     expect(result.scenarios[0]).toMatchObject({
       id: expect.any(String),
       name: "Owner scenario",
-      targetModelId: expect.any(String),
-      targetModelName: "Scenario Model",
-      domainType: "numeric",
-      evaluationStructureKey: "alternativeCriteriaMatrix",
-      criteriaWeightsStructureKey: "manualCriteriaWeights",
-      status: "done",
+      targetModel: { id: expect.any(String), name: "Scenario Model" },
+      source: { domainType: "numeric" },
+      execution: { status: "done" },
       createdAt: expect.any(Date),
       createdBy: {
         email: "owner@example.com",
@@ -250,22 +233,12 @@ describe("issue scenarios access and payloads", () => {
       id: String(scenario._id),
       issueId: String(issue._id),
       name: "Detailed scenario",
-      targetModelId: expect.any(String),
-      targetModelName: "Scenario Model",
-      targetApiModelKey: "scenario-model",
-      targetApiEndpoint: {
-        method: "POST",
-        path: "/solve-scenario",
-      },
-      targetEvaluationStructureKey: "alternativeCriteriaMatrix",
-      targetSupportsConsensus: false,
-      evaluationStructureKey: "alternativeCriteriaMatrix",
-      criteriaWeightsStructureKey: "manualCriteriaWeights",
-      domainType: "numeric",
-      status: "done",
+      targetModel: { id: expect.any(String), name: "Scenario Model" },
+      source: { consensusPhase: 0, domainType: "numeric" },
+      execution: { status: "done" },
       config: expect.any(Object),
-      inputs: expect.any(Object),
-      outputs: expect.any(Object),
+      requestSnapshot: expect.any(Object),
+      result: expect.any(Object),
       createdBy: {
         email: "owner@example.com",
         name: "Owner User",
@@ -541,7 +514,7 @@ describe("scenario API contracts", () => {
       data: [
         {
           name: "API scenario",
-          targetModelName: "Scenario Model",
+          targetModel: { name: "Scenario Model" },
           createdBy: {
             email: "owner@example.com",
           },

@@ -5,6 +5,14 @@ import { isPlainObject } from "../../../utils/common/objects.js";
 import { buildScenarioExecutionContext } from "./buildScenarioExecutionContext.js";
 import { executeScenarioModel } from "../modelExecution/index.js";
 
+const cloneJsonCompatibleOrThrow = (value, field) => {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    throw createBadRequestError(`${field} must be JSON-compatible`, { field });
+  }
+};
+
 const normalizeScenarioCreationInputOrThrow = ({
   targetModelId,
   scenarioName,
@@ -120,6 +128,7 @@ export const createIssueScenario = async ({
     paramOverrides: normalizedInput.paramOverrides,
   });
 
+  const startedAt = new Date();
   const {
     standardResult,
     modelExecution,
@@ -130,6 +139,12 @@ export const createIssueScenario = async ({
     decisionModelsServiceBaseUrl,
     httpClient,
   });
+  const completedAt = new Date();
+
+  const requestSnapshot = cloneJsonCompatibleOrThrow(
+    context.requestPayload,
+    "requestSnapshot"
+  );
 
   const scenario = await IssueScenario.create({
     issue: context.issue._id,
@@ -137,40 +152,28 @@ export const createIssueScenario = async ({
     name: normalizedInput.scenarioName,
     description: normalizedInput.scenarioDescription,
     targetModel: context.targetModel._id,
-    targetModelName: context.targetModel.name,
-    targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
-    targetApiEndpoint: context.targetRuntimeSnapshot.targetApiEndpoint,
-    targetEvaluationStructureKey:
-      context.targetRuntimeSnapshot.targetEvaluationStructureKey,
-    targetSupportsConsensus: context.targetRuntimeSnapshot.targetSupportsConsensus,
-    evaluationStructureKey: context.issue.evaluationStructureKey,
-    criteriaWeightsStructureKey: context.issue.criteriaWeightsStructureKey,
-    domainType: context.domainType,
-    status: "done",
+    source: {
+      consensusPhase: context.evaluationPhase,
+      stageResult: context.stageResultId,
+      domainType: context.domainType,
+    },
     config: {
-      modelParameters: context.paramsUsed,
-      normalizedModelParameters: context.normalizedParams,
+      parameterOverrides: cloneJsonCompatibleOrThrow(
+        normalizedInput.paramOverrides,
+        "paramOverrides"
+      ),
     },
-    inputs: {
-      consensusPhaseUsed: context.evaluationPhase,
-      expertsOrder: context.expertsOrder,
-      alternatives: context.alternatives.map((alternative) => ({
-        id: alternative._id,
-        name: alternative.name,
-      })),
-      criteria: context.criteria.map((criterion) => ({
-        id: criterion._id,
-        name: criterion.name,
-        criterionType: criterion.type,
-      })),
-      weightsUsed: context.weightsUsed,
-      evaluationPayloads: context.evaluationPayloads,
-      context: context.scenarioExecutionContext,
+    requestSnapshot,
+    result: {
+      standardResult: cloneJsonCompatibleOrThrow(standardResult, "standardResult"),
+      modelExecution: cloneJsonCompatibleOrThrow(modelExecution, "modelExecution"),
+      rawOutput: cloneJsonCompatibleOrThrow(rawOutput, "rawOutput"),
     },
-    outputs: {
-      standardResult,
-      modelExecution,
-      rawOutput,
+    execution: {
+      status: "done",
+      error: null,
+      startedAt,
+      completedAt,
     },
   });
 

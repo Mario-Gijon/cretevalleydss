@@ -4783,19 +4783,29 @@
                     "type": "string",
                     "example": "Sensitivity test"
                   },
-                  "targetModelName": {
+                  "scenarioDescription": {
                     "type": "string",
-                    "example": "TOPSIS"
+                    "example": "Compare a requested parameter override."
                   },
                   "targetModelId": {
                     "type": "string",
+                    "description": "Authoritative IssueModel identity."
+                  },
+                  "sourcePhase": {
+                    "type": "integer",
+                    "minimum": 0,
                     "nullable": true
                   },
                   "paramOverrides": {
                     "type": "object",
                     "additionalProperties": true
                   }
-                }
+                },
+                "required": [
+                  "scenarioName",
+                  "scenarioDescription",
+                  "targetModelId"
+                ]
               }
             }
           }

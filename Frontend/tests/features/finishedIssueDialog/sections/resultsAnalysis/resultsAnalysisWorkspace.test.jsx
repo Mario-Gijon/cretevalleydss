@@ -21,9 +21,10 @@ import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/fin
 const completeScenario = (id, ranks) => ({
   id,
   name: id,
-  status: "completed",
   targetModel: { id: `model-${id}`, name: `Model ${id}` },
-  outputs: {
+  source: { consensusPhase: 5, stageResult: null, domainType: "numeric" },
+  execution: { status: "done", error: null, startedAt: "2026-01-02T10:00:00.000Z", completedAt: "2026-01-02T10:00:00.000Z" },
+  result: {
     standardResult: {
       rankedAlternatives: ranks.map(([alternativeId, rank, score]) => ({ alternativeId, rank, score })),
       plotsGraphic: {},
@@ -79,8 +80,8 @@ describe("Results analysis workspace", () => {
 
     expect(initial.selected[0].ranking.map((entry) => entry.name)).toEqual(["Alpha", "Beta"]);
     expect(final.selected[0].ranking.map((entry) => entry.name)).toEqual(["Beta", "Alpha"]);
-    expect(initial.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].outputs.standardResult });
-    expect(final.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].outputs.standardResult });
+    expect(initial.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].result.standardResult });
+    expect(final.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].result.standardResult });
     expect(initial.comparison.movement).not.toEqual(final.comparison.movement);
   });
 

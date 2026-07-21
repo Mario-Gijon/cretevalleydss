@@ -31,123 +31,38 @@ const issueScenarioSchema = new Schema(
       ref: "IssueModel",
       required: true,
     },
-    targetModelName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    targetApiModelKey: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    targetApiEndpoint: {
-      method: {
-        type: String,
-        trim: true,
-      },
-      path: {
-        type: String,
+
+    source: {
+      consensusPhase: {
+        type: Number,
         required: true,
-        trim: true,
+        min: 0,
       },
-    },
-    targetEvaluationStructureKey: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    targetSupportsConsensus: {
-      type: Boolean,
-      default: false,
-    },
-
-    evaluationStructureKey: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    criteriaWeightsStructureKey: {
-      type: String,
-      default: null,
-      trim: true,
-    },
-
-    domainType: {
-      type: String,
-      enum: ["numeric", "linguistic"],
-      default: null,
-    },
-
-    status: {
-      type: String,
-      enum: ["running", "done", "error"],
-      default: "done",
-    },
-    error: {
-      type: String,
-      default: null,
+      stageResult: {
+        type: Schema.Types.ObjectId,
+        ref: "IssueStageResult",
+        default: null,
+      },
+      domainType: {
+        type: String,
+        enum: ["numeric", "linguistic"],
+        default: null,
+      },
     },
 
     config: {
+      parameterOverrides: {
+        type: Schema.Types.Mixed,
+        default: {},
+      },
+    },
+
+    requestSnapshot: {
       modelParameters: {
         type: Schema.Types.Mixed,
         default: {},
       },
-      normalizedModelParameters: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
-    },
-
-    inputs: {
-      consensusPhaseUsed: {
-        type: Number,
-        default: 0,
-      },
-      expertsOrder: {
-        type: [String],
-        default: [],
-      },
-      alternatives: {
-        type: [
-          {
-            id: {
-              type: Schema.Types.ObjectId,
-              required: true,
-            },
-            name: {
-              type: String,
-              required: true,
-            },
-          },
-        ],
-        default: [],
-      },
-      criteria: {
-        type: [
-          {
-            id: {
-              type: Schema.Types.ObjectId,
-              required: true,
-            },
-            name: {
-              type: String,
-              required: true,
-            },
-            criterionType: {
-              type: String,
-              required: true,
-            },
-          },
-        ],
-        default: [],
-      },
-      weightsUsed: {
-        type: Schema.Types.Mixed,
-        default: null,
-      },
-      evaluationPayloads: {
+      evaluations: {
         type: Schema.Types.Mixed,
         default: [],
       },
@@ -157,7 +72,7 @@ const issueScenarioSchema = new Schema(
       },
     },
 
-    outputs: {
+    result: {
       standardResult: {
         type: Schema.Types.Mixed,
         default: {},
@@ -171,9 +86,30 @@ const issueScenarioSchema = new Schema(
         default: {},
       },
     },
+
+    execution: {
+      status: {
+        type: String,
+        enum: ["queued", "running", "done", "error"],
+        required: true,
+      },
+      error: {
+        type: Schema.Types.Mixed,
+        default: null,
+      },
+      startedAt: {
+        type: Date,
+        default: null,
+      },
+      completedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,
+    minimize: false,
   }
 );
 

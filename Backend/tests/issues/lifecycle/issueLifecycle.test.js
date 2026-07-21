@@ -135,14 +135,8 @@ const createCascadeFixture = async () => {
     createdBy: owner._id,
     name: "Scenario A",
     targetModel: targetModelId,
-    targetModelName: "Model A",
-    targetApiModelKey: "target-model",
-    targetApiEndpoint: {
-      method: "POST",
-      path: "/execute",
-    },
-    targetEvaluationStructureKey: "alternativeCriteriaMatrix",
-    evaluationStructureKey: "alternativeCriteriaMatrix",
+    source: { consensusPhase: 0, stageResult: null, domainType: "numeric" },
+    execution: { status: "done", error: null, startedAt: new Date(), completedAt: new Date() },
   });
 
   return {

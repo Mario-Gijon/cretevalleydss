@@ -56,7 +56,7 @@ describe("ModelsView", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios = [payload.scenarios[0]];
     payload.scenarios[0].description = "Test description";
-    payload.scenarios[0].computedAt = "2026-01-02T10:00:00.000Z";
+    payload.scenarios[0].execution.completedAt = "2026-01-02T10:00:00.000Z";
     renderView(payload, "scenario-ok");
     expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
     expect(screen.getByTitle("Scenario")).toBeInTheDocument();

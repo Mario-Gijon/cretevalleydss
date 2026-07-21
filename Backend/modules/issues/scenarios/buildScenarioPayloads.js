@@ -13,17 +13,18 @@ import {
 const mapScenarioListItem = (scenario) => ({
   id: toIdString(scenario?._id),
   name: scenario?.name || "",
-  targetModelId: toIdString(scenario?.targetModel),
-  targetModelName: scenario?.targetModelName || null,
-  domainType: scenario?.domainType ?? null,
-  evaluationStructureKey:
-    scenario?.evaluationStructureKey ||
-    scenario?.targetEvaluationStructureKey ||
-    null,
-  criteriaWeightsStructureKey:
-    scenario?.criteriaWeightsStructureKey ||
-    null,
-  status: scenario?.status || null,
+  targetModel: scenario?.targetModel
+    ? {
+        id: toIdString(scenario.targetModel),
+        name: scenario.targetModel.name ?? null,
+      }
+    : null,
+  source: {
+    domainType: scenario?.source?.domainType ?? null,
+  },
+  execution: {
+    status: scenario?.execution?.status ?? null,
+  },
   createdAt: scenario?.createdAt || null,
   createdBy: scenario?.createdBy
     ? {
@@ -37,23 +38,18 @@ const mapScenarioDetail = (scenarioDoc) => ({
   id: toIdString(scenarioDoc?._id),
   issueId: toIdString(scenarioDoc?.issue),
   name: scenarioDoc?.name || "",
-  targetModelId: toIdString(scenarioDoc?.targetModel),
-  targetModelName: scenarioDoc?.targetModelName || null,
-  targetApiModelKey: scenarioDoc?.targetApiModelKey || null,
-  targetApiEndpoint: scenarioDoc?.targetApiEndpoint || null,
-  targetEvaluationStructureKey:
-    scenarioDoc?.targetEvaluationStructureKey || null,
-  targetSupportsConsensus: scenarioDoc?.targetSupportsConsensus === true,
-  evaluationStructureKey:
-    scenarioDoc?.evaluationStructureKey || null,
-  criteriaWeightsStructureKey:
-    scenarioDoc?.criteriaWeightsStructureKey || null,
-  domainType: scenarioDoc?.domainType ?? null,
-  status: scenarioDoc?.status || null,
-  error: scenarioDoc?.error || null,
+  description: scenarioDoc?.description || "",
+  targetModel: scenarioDoc?.targetModel
+    ? {
+        id: toIdString(scenarioDoc.targetModel),
+        name: scenarioDoc.targetModel.name ?? null,
+      }
+    : null,
+  source: scenarioDoc?.source || {},
   config: scenarioDoc?.config || {},
-  inputs: scenarioDoc?.inputs || {},
-  outputs: scenarioDoc?.outputs || {},
+  requestSnapshot: scenarioDoc?.requestSnapshot || {},
+  result: scenarioDoc?.result || {},
+  execution: scenarioDoc?.execution || {},
   createdAt: scenarioDoc?.createdAt || null,
   updatedAt: scenarioDoc?.updatedAt || null,
   createdBy: scenarioDoc?.createdBy
@@ -80,8 +76,9 @@ export const getIssueScenariosPayload = async ({ issueId, userId }) => {
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
     .select(
-      "_id name targetModel targetModelName domainType evaluationStructureKey criteriaWeightsStructureKey targetEvaluationStructureKey status createdAt createdBy"
+      "_id name targetModel source.domainType execution.status createdAt createdBy"
     )
+    .populate("targetModel", "name")
     .populate("createdBy", "email name")
     .lean();
 
@@ -98,6 +95,7 @@ export const getScenarioByIdPayload = async ({ scenarioId, userId }) => {
   }
 
   const scenarioDoc = await IssueScenario.findById(scenarioId)
+    .populate("targetModel", "name")
     .populate("createdBy", "email name")
     .lean();
 

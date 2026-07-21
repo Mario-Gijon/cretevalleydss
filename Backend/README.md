@@ -118,6 +118,17 @@ bun run reset:global-expression-domains
 
 Alternatively, use `npm run reset:global-expression-domains`. It replaces every global expression domain in the database selected by the loaded environment configuration, while preserving user-owned domains and issue-domain snapshots. It is not executed during application startup.
 
+## Migrate issue scenarios
+
+After deploying the `IssueScenario` persistence-contract change, run this one-time maintenance command against the selected database:
+
+```bash
+cd Backend
+npm run migrate:issue-scenarios
+```
+
+The script is idempotent for already migrated documents. It rewrites each legacy scenario into `source`, `config.parameterOverrides`, `requestSnapshot`, `result`, and `execution`, then removes the legacy duplicated fields. Review the selected `.env` / `.env.<NODE_ENV>` database connection before running it.
+
 ## Documentation
 
 The backend technical documentation is available in the [`docs/`](./docs) directory.

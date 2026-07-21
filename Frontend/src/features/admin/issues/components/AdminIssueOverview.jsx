@@ -297,10 +297,10 @@ export default function AdminIssueOverview({
                 >
                   <Stack spacing={0.15}>
                     <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                      {scenario?.name || scenario?.targetModelName || "Scenario"}
+                      {scenario?.name || scenario?.targetModel?.name || "Scenario"}
                     </Typography>
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                      {scenario?.targetModelName || "—"} · {scenario?.status || "—"}
+                      {scenario?.targetModel?.name || "—"} · {scenario?.execution?.status || "—"}
                     </Typography>
                   </Stack>
 

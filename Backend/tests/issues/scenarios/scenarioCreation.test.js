@@ -27,8 +27,6 @@ const buildMockExecutionContext = () => {
   return {
     issue: {
       _id: issueId,
-      evaluationStructureKey: "alternativeCriteriaMatrix",
-      criteriaWeightsStructureKey: "manualCriteriaWeights",
     },
     targetModel: {
       _id: targetModelId,
@@ -43,51 +41,13 @@ const buildMockExecutionContext = () => {
       targetEvaluationStructureKey: "alternativeCriteriaMatrix",
       targetSupportsConsensus: false,
     },
-    requestPayload: {
-      modelParameters: {},
-      evaluations: [],
-    },
-    paramsUsed: {
-      alpha: 1,
-    },
-    normalizedParams: {
-      alpha: 1,
-    },
     domainType: "numeric",
     evaluationPhase: 0,
-    expertsOrder: ["expert@example.com"],
-    alternatives: [
-      {
-        _id: new mongoose.Types.ObjectId(),
-        name: "Alternative A",
-      },
-    ],
-    criteria: [
-      {
-        _id: new mongoose.Types.ObjectId(),
-        name: "Criterion A",
-        type: "benefit",
-      },
-    ],
-    weightsUsed: {
-      "criterion-a": 1,
-    },
-    evaluationPayloads: [
-      {
-        expert: {
-          id: "expert-1",
-          email: "expert@example.com",
-          name: "Expert User",
-        },
-        payload: {
-          value: 1,
-        },
-      },
-    ],
-    scenarioExecutionContext: {
-      issue: {
-        id: String(issueId),
-      },
+    stageResultId: new mongoose.Types.ObjectId(),
+    requestPayload: {
+      modelParameters: { alpha: 1 },
+      evaluations: [{ expert: { id: "expert-1" }, payload: { value: 1 } }],
+      context: { issue: { id: String(issueId) }, consensusPhase: 0 },
     },
   };
 };
@@ -190,7 +150,7 @@ describe("createIssueScenario input normalization", () => {
       scenarioName: "Historical run",
       scenarioDescription: "  Replays the stored phase.  ",
       sourcePhase: 3,
-      paramOverrides: null,
+      paramOverrides: { alpha: 0.4 },
     });
 
     expect(scenarioExecutionState.buildScenarioExecutionContext).toHaveBeenCalledWith({
@@ -198,10 +158,27 @@ describe("createIssueScenario input normalization", () => {
       userId,
       targetModelId: "target-model-id",
       sourcePhase: 3,
-      paramOverrides: {},
+      paramOverrides: { alpha: 0.4 },
     });
     const { IssueScenario } = await import("../../../models/IssueScenarios.js");
-    expect((await IssueScenario.findOne()).description).toBe("Replays the stored phase.");
+    const scenario = await IssueScenario.findOne().lean();
+    expect(scenario).toMatchObject({
+      description: "Replays the stored phase.",
+      source: { consensusPhase: 0, domainType: "numeric" },
+      config: { parameterOverrides: { alpha: 0.4 } },
+      requestSnapshot: context.requestPayload,
+      result: {
+        standardResult: { ranking: ["Alternative A"] },
+        modelExecution: { ok: true },
+        rawOutput: { raw: true },
+      },
+      execution: { status: "done", error: null },
+    });
+    expect(scenario.execution.startedAt).toBeInstanceOf(Date);
+    expect(scenario.execution.completedAt).toBeInstanceOf(Date);
+    expect(scenario).not.toHaveProperty("inputs");
+    expect(scenario).not.toHaveProperty("outputs");
+    expect(scenario).not.toHaveProperty("targetModelName");
   });
 
   it("rejects an invalid source phase", async () => {

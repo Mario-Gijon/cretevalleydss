@@ -62,13 +62,11 @@ export const buildModelsCardsData = ({ payload, selectedExecution, executionOpti
         : nonEmpty(scenario?.description, "No scenario description provided."),
       computedAt: option.type === "base"
         ? resolveBaseComputedAt(payload)
-        : scenario?.computedAt ??
-          scenario?.outputs?.modelExecution?.executedAt ??
-          scenario?.createdAt ??
+        : scenario?.execution?.completedAt ?? scenario?.createdAt ??
           null,
       paperUrl: resolvePaperUrl(model),
-      failed: scenario?.status === "error" || scenario?.status === "failed",
-      error: scenario?.error ?? null,
+      failed: scenario?.execution?.status === "error",
+      error: scenario?.execution?.error ?? null,
     };
   });
   const selectedModel = selectedExecution?.type === "scenario"
@@ -77,14 +75,9 @@ export const buildModelsCardsData = ({ payload, selectedExecution, executionOpti
   const selectedName = selectedExecution?.type === "scenario"
     ? nonEmpty(selectedExecution?.scenario?.name, selectedExecution?.label || "Scenario")
     : "Base";
-  const values =
-    selectedExecution?.configuration?.normalizedParameters ??
-    selectedExecution?.configuration?.normalizedModelParameters ??
-    selectedExecution?.configuration?.configuredParameters ??
-    selectedExecution?.configuration?.modelParameters ??
-    selectedModel?.effectiveParameters ??
-    selectedModel?.configuredParameters ??
-    {};
+  const values = selectedExecution?.type === "scenario"
+    ? selectedExecution?.requestSnapshot?.modelParameters ?? {}
+    : selectedModel?.effectiveParameters ?? selectedModel?.configuredParameters ?? {};
 
   return {
     consensusEnabled: payload?.consensus?.enabled === true,

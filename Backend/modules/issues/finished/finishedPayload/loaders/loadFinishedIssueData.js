@@ -41,7 +41,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     }).lean(),
     IssueScenario.find({ issue: issueId })
       .populate("createdBy", USER_SELECT)
-      .populate("targetModel", "moreInfoUrl")
+      .populate("targetModel", "name moreInfoUrl")
       .sort({ createdAt: -1, _id: -1 })
       .lean(),
     ExitUserIssue.find({ issue: issueId })
