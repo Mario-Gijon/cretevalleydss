@@ -173,7 +173,6 @@ export const buildScenarioParametersOrThrow = ({
   }
 
   return {
-    paramsUsed: normalizedScenarioParameters,
     normalizedParams: normalizedScenarioParameters,
     weightsUsed: resolvedWeights,
   };

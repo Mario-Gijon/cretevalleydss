@@ -128,23 +128,22 @@ export const createIssueScenario = async ({
     paramOverrides: normalizedInput.paramOverrides,
   });
 
+  const requestSnapshot = cloneJsonCompatibleOrThrow(
+    context.requestPayload,
+    "requestSnapshot"
+  );
   const startedAt = new Date();
   const {
     standardResult,
     modelExecution,
     rawOutput,
   } = await executeScenarioModel({
-    requestPayload: context.requestPayload,
+    requestPayload: requestSnapshot,
     targetRuntimeSnapshot: context.targetRuntimeSnapshot,
     decisionModelsServiceBaseUrl,
     httpClient,
   });
   const completedAt = new Date();
-
-  const requestSnapshot = cloneJsonCompatibleOrThrow(
-    context.requestPayload,
-    "requestSnapshot"
-  );
 
   const scenario = await IssueScenario.create({
     issue: context.issue._id,

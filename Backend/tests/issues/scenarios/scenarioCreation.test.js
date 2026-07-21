@@ -16,6 +16,7 @@ vi.mock("../../../modules/issues/modelExecution/index.js", () => ({
 }));
 
 import { createIssueScenario } from "../../../modules/issues/scenarios/createIssueScenario.js";
+import { buildScenarioParametersOrThrow } from "../../../modules/issues/scenarios/resolveScenarioModelParameters.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
@@ -56,6 +57,18 @@ describe("createIssueScenario input normalization", () => {
   beforeEach(() => {
     scenarioExecutionState.buildScenarioExecutionContext.mockReset();
     scenarioExecutionState.executeScenarioModel.mockReset();
+  });
+
+  it("returns only normalized parameters and resolved weights", () => {
+    const result = buildScenarioParametersOrThrow({
+      targetModel: { name: "Parameter-free model", parameters: [], usesCriteriaWeights: false },
+      paramOverrides: {},
+      criteria: [],
+      alternatives: [],
+    });
+
+    expect(result).toEqual({ normalizedParams: {}, weightsUsed: null });
+    expect(result).not.toHaveProperty("paramsUsed");
   });
 
   it("rejects an invalid targetModelId", async () => {
@@ -162,6 +175,11 @@ describe("createIssueScenario input normalization", () => {
     });
     const { IssueScenario } = await import("../../../models/IssueScenarios.js");
     const scenario = await IssueScenario.findOne().lean();
+    const executionRequest =
+      scenarioExecutionState.executeScenarioModel.mock.calls[0][0].requestPayload;
+
+    expect(executionRequest).toEqual(scenario.requestSnapshot);
+    expect(executionRequest).not.toBe(context.requestPayload);
     expect(scenario).toMatchObject({
       description: "Replays the stored phase.",
       source: { consensusPhase: 0, domainType: "numeric" },
