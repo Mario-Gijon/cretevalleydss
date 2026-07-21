@@ -19,10 +19,8 @@ describe("resetGlobalExpressionDomains", () => {
     const owner = await createConfirmedUser({ email: "domain-owner@example.com" });
     const issue = await createIssueFixture({ ownerId: owner._id });
     const userDomain = await ExpressionDomain.create({
-      user: owner._id,
+      owner: owner._id,
       name: "User domain",
-      isGlobal: false,
-      locked: false,
       typeKey: "numericDiscrete",
       definition: { min: 1, max: 5, step: 1 },
     });
@@ -35,18 +33,14 @@ describe("resetGlobalExpressionDomains", () => {
     });
     await ExpressionDomain.create([
       {
-        user: null,
+        owner: null,
         name: "Obsolete global",
-        isGlobal: true,
-        locked: false,
         typeKey: "legacyType",
         definition: { legacy: true },
       },
       {
-        user: null,
+        owner: null,
         name: "Malformed global",
-        isGlobal: true,
-        locked: true,
         typeKey: "numericDiscrete",
         definition: { min: 9, max: 1, step: 0 },
       },
@@ -69,23 +63,18 @@ describe("resetGlobalExpressionDomains", () => {
       ],
     });
 
-    expect(await ExpressionDomain.countDocuments({ isGlobal: true })).toBe(4);
-    expect(await ExpressionDomain.countDocuments({ isGlobal: true, user: null })).toBe(4);
-    expect(await ExpressionDomain.find({ isGlobal: true }).select("-createdAt -_id").lean()).toEqual(
+    expect(await ExpressionDomain.countDocuments({ owner: null })).toBe(4);
+    expect(await ExpressionDomain.find({ owner: null }).select("-createdAt -updatedAt -_id").lean()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          user: null,
+          owner: null,
           name: "Continuous 0-1",
-          isGlobal: true,
-          locked: true,
           typeKey: "numericContinuous",
           definition: { min: 0, max: 1, step: null },
         }),
         expect.objectContaining({
-          user: null,
+          owner: null,
           name: "Discrete 0-9",
-          isGlobal: true,
-          locked: true,
           typeKey: "numericDiscrete",
           definition: { min: 0, max: 9, step: 1 },
         }),
@@ -130,20 +119,18 @@ describe("resetGlobalExpressionDomains", () => {
       insertedCount: 4,
       insertedNames: result.insertedNames,
     });
-    expect(await ExpressionDomain.countDocuments({ isGlobal: true })).toBe(4);
+    expect(await ExpressionDomain.countDocuments({ owner: null })).toBe(4);
 
     await ExpressionDomain.create({
-      user: owner._id,
-      name: "Malformed claimed global",
-      isGlobal: true,
-      locked: true,
+      owner: owner._id,
+      name: "Second user domain",
       typeKey: "numericContinuous",
       definition: { min: 0, max: 1, step: null },
     });
     const domainsPayload = await getExpressionDomainsPayload({ userId: owner._id });
     expect(domainsPayload.globals).toHaveLength(4);
-    expect(domainsPayload.globals.every(({ user }) => user === null)).toBe(true);
-    expect(domainsPayload.userDomains).toHaveLength(1);
-    expect(domainsPayload.userDomains[0]._id).toEqual(userDomain._id);
+    expect(domainsPayload.globals.every(({ ownerId }) => ownerId === null)).toBe(true);
+    expect(domainsPayload.userDomains).toHaveLength(2);
+    expect(domainsPayload.userDomains.map(({ _id }) => _id)).toContain(String(userDomain._id));
   });
 });

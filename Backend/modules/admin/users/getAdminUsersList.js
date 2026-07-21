@@ -65,13 +65,12 @@ export const getAdminUsersListPayload = async ({
     ExpressionDomain.aggregate([
       {
         $match: {
-          user: { $in: userIds },
-          isGlobal: false,
+          owner: { $in: userIds },
         },
       },
       {
         $group: {
-          _id: "$user",
+          _id: "$owner",
           count: { $sum: 1 },
         },
       },

@@ -55,10 +55,8 @@ export const buildCanonicalGlobalExpressionDomains = () =>
     const normalizedDomain = normalizeExpressionDomainCreationPayload(sourceDomain);
 
     return {
-      user: null,
+      owner: null,
       name: normalizedDomain.name,
-      isGlobal: true,
-      locked: true,
       typeKey: normalizedDomain.typeKey,
       definition: normalizedDomain.definition,
     };

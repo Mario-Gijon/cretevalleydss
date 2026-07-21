@@ -9,8 +9,7 @@ export const createUserExpressionDomain = async ({ userId, payload }) => {
     name: normalizedDomain.name,
     typeKey: normalizedDomain.typeKey,
     definition: normalizedDomain.definition,
-    isGlobal: false,
-    user: toIdString(userId),
+    owner: toIdString(userId),
   });
 
   await newDomain.save();

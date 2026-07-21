@@ -21,26 +21,20 @@ describe("canonical global expression domains", () => {
 
     expect(domains).toEqual([
       {
-        user: null,
+        owner: null,
         name: "Continuous 0-1",
-        isGlobal: true,
-        locked: true,
         typeKey: "numericContinuous",
         definition: { min: 0, max: 1, step: null },
       },
       {
-        user: null,
+        owner: null,
         name: "Discrete 0-9",
-        isGlobal: true,
-        locked: true,
         typeKey: "numericDiscrete",
         definition: { min: 0, max: 9, step: 1 },
       },
       {
-        user: null,
+        owner: null,
         name: "Ordinal 5",
-        isGlobal: true,
-        locked: true,
         typeKey: "linguisticOrdinal",
         definition: {
           labelCount: 5,
@@ -54,10 +48,8 @@ describe("canonical global expression domains", () => {
         },
       },
       {
-        user: null,
+        owner: null,
         name: "Fuzzy Linguistic 5",
-        isGlobal: true,
-        locked: true,
         typeKey: "linguisticFuzzy",
         definition: expect.objectContaining({
           membershipFunction: "triangular",

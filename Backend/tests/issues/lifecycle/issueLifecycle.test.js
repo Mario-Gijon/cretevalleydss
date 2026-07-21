@@ -17,6 +17,7 @@ import { hideFinishedIssueForUser } from "../../../modules/issues/lifecycle/hide
 import {
   createConfirmedUser,
   createIssueCriteriaFixture,
+  createIssueExpressionDomainSnapshotFixture,
   createIssueFixture,
   createIssueEvaluationFixture,
   createParticipationFixture,
@@ -87,8 +88,8 @@ const createCascadeFixture = async () => {
     requiresAction: true,
   });
 
-  await IssueExpressionDomain.create({
-    issue: issue._id,
+  await createIssueExpressionDomainSnapshotFixture({
+    issueId: issue._id,
     name: "Issue numeric domain",
     typeKey: "numericDiscrete",
     definition: {

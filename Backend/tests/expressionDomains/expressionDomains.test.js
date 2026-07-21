@@ -13,6 +13,7 @@ import { numericDiscrete } from "../../modules/expressionDomains/types/numericDi
 import { createUserExpressionDomain } from "../../modules/expressionDomains/createExpressionDomain.js";
 import { normalizeNewExpressionDomainPayload } from "../../modules/expressionDomains/normalizeExpressionDomainPayload.js";
 import { removeUserExpressionDomain } from "../../modules/expressionDomains/removeExpressionDomain.js";
+import { updateUserExpressionDomain } from "../../modules/expressionDomains/updateExpressionDomain.js";
 import { setupMongoDbTestHooks } from "../setup/database.js";
 
 setupMongoDbTestHooks();
@@ -169,8 +170,7 @@ describe("expression domains", () => {
     expect(storedDomain).toMatchObject({
       name: "Personal numeric",
       typeKey: "numericDiscrete",
-      isGlobal: false,
-      user: user._id,
+      owner: user._id,
       definition: {
         min: 1,
         max: 9,
@@ -255,12 +255,52 @@ describe("expression domains", () => {
     });
   });
 
+  it("does not mutate an existing issue snapshot when its catalog source changes", async () => {
+    const user = await createUser();
+    const domain = await createUserExpressionDomain({
+      userId: user._id,
+      payload: {
+        name: "Historical source",
+        typeKey: "numericContinuous",
+        definition: { min: 0, max: 1 },
+      },
+    });
+    const issue = await Issue.create({
+      ownerId: user._id,
+      createdBy: user._id,
+      model: new mongoose.Types.ObjectId(),
+      apiModelKey: "test-model",
+      apiEndpoint: { method: "POST", path: "/execute" },
+      name: "Historical snapshot issue",
+      evaluationStructureKey: "alternativeCriteriaMatrix",
+      description: "Snapshot immutability",
+      active: false,
+      currentStage: "finished",
+    });
+    const snapshot = await IssueExpressionDomain.create({
+      issue: issue._id,
+      sourceDomain: domain._id,
+      name: domain.name,
+      typeKey: domain.typeKey,
+      definition: domain.definition,
+    });
+
+    domain.name = "Edited source";
+    domain.definition = { min: 10, max: 20, step: null };
+    await domain.save();
+
+    expect(await IssueExpressionDomain.findById(snapshot._id).lean()).toMatchObject({
+      sourceDomain: domain._id,
+      name: "Historical source",
+      definition: { min: 0, max: 1, step: null },
+    });
+  });
+
   it("removeUserExpressionDomain rejects deleting a global domain", async () => {
     const user = await createUser();
     const domain = await ExpressionDomain.create({
       name: "Global numeric",
-      isGlobal: true,
-      user: null,
+      owner: null,
       typeKey: "numericContinuous",
       definition: {
         min: 0,
@@ -274,6 +314,25 @@ describe("expression domains", () => {
         userId: user._id,
       })
     ).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Global domains are predefined and cannot be modified.",
+    });
+  });
+
+  it("rejects editing a global domain", async () => {
+    const user = await createUser();
+    const domain = await ExpressionDomain.create({
+      owner: null,
+      name: "Locked global",
+      typeKey: "numericContinuous",
+      definition: { min: 0, max: 10 },
+    });
+
+    await expect(updateUserExpressionDomain({
+      domainId: domain._id,
+      userId: user._id,
+      updatedDomain: { name: "Attempted edit" },
+    })).rejects.toMatchObject({
       statusCode: 403,
       message: "Global domains are predefined and cannot be modified.",
     });
@@ -303,6 +362,63 @@ describe("expression domains", () => {
       statusCode: 403,
       message: "Not authorized",
     });
+  });
+
+  it("allows an owner to edit their own domain and updates the catalog timestamp", async () => {
+    const owner = await createUser();
+    const domain = await createUserExpressionDomain({
+      userId: owner._id,
+      payload: { name: "Editable", typeKey: "numericContinuous", definition: { min: 0, max: 1 } },
+    });
+
+    const updated = await updateUserExpressionDomain({
+      domainId: domain._id,
+      userId: owner._id,
+      updatedDomain: { name: "Edited", definition: { min: 0, max: 2 } },
+    });
+
+    expect(updated).toMatchObject({ name: "Edited", owner: owner._id });
+    expect(updated.updatedAt).toBeInstanceOf(Date);
+  });
+
+  it("rejects editing another user's domain", async () => {
+    const owner = await createUser();
+    const otherUser = await createUser();
+    const domain = await createUserExpressionDomain({
+      userId: owner._id,
+      payload: { name: "Private edit", typeKey: "numericContinuous", definition: { min: 0, max: 1 } },
+    });
+
+    await expect(updateUserExpressionDomain({
+      domainId: domain._id,
+      userId: otherUser._id,
+      updatedDomain: { name: "Unauthorized" },
+    })).rejects.toMatchObject({ statusCode: 403, message: "Not authorized" });
+  });
+
+  it("enforces unique names per owner while allowing the same name for a different owner", async () => {
+    const firstOwner = await createUser();
+    const secondOwner = await createUser();
+    const payload = { name: "Shared name", typeKey: "numericContinuous", definition: { min: 0, max: 1 } };
+
+    await createUserExpressionDomain({ userId: firstOwner._id, payload });
+    await expect(createUserExpressionDomain({ userId: firstOwner._id, payload })).rejects.toMatchObject({ code: 11000 });
+    await expect(createUserExpressionDomain({ userId: secondOwner._id, payload })).resolves.toMatchObject({
+      owner: secondOwner._id,
+      name: "Shared name",
+    });
+  });
+
+  it("enforces unique names for global domains", async () => {
+    const payload = {
+      owner: null,
+      name: "Only global",
+      typeKey: "numericContinuous",
+      definition: { min: 0, max: 1 },
+    };
+
+    await ExpressionDomain.create(payload);
+    await expect(ExpressionDomain.create(payload)).rejects.toMatchObject({ code: 11000 });
   });
 
   it("core expression domain validateEvaluation signatures no longer include field", () => {

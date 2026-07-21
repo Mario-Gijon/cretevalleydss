@@ -40,7 +40,6 @@ describe("issue creation integration", () => {
     });
     const domain = await createExpressionDomainFixture({
       userId: owner._id,
-      isGlobal: false,
       typeKey: "numericDiscrete",
       definition: {
         min: 1,

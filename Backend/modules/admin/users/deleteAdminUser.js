@@ -136,8 +136,7 @@ export const deleteAdminUser = async ({
 
   const deleteDomainsResult = await applyOptionalSession(
     ExpressionDomain.deleteMany({
-      user: user._id,
-      isGlobal: false,
+      owner: user._id,
     }),
     session
   );

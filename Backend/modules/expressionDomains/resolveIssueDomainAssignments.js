@@ -92,12 +92,12 @@ export const loadAccessibleExpressionDomains = async ({
   const domainDocs = await ExpressionDomain.find({
     _id: { $in: domainIdList },
     $or: [
-      { isGlobal: true, user: null },
-      { isGlobal: false, user: userId },
+      { owner: null },
+      { owner: userId },
     ],
   })
     .select(
-      "_id name typeKey definition isGlobal user"
+      "_id name typeKey definition owner"
     )
     .session(session);
 

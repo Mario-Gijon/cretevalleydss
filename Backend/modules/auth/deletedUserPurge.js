@@ -42,7 +42,7 @@ export const getDeletedUserReferenceCounts = async ({
     countDocuments(Notification, { expert: userId }, session),
     countDocuments(IssueEvaluation, { expert: userId }, session),
     countDocuments(ExitUserIssue, { user: userId }, session),
-    countDocuments(ExpressionDomain, { user: userId }, session),
+    countDocuments(ExpressionDomain, { owner: userId }, session),
     countDocuments(IssueScenario, { createdBy: userId }, session),
   ]);
 

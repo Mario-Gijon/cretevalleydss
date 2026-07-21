@@ -4,6 +4,7 @@ import {
   removeUserExpressionDomain,
   updateExpressionDomainWorkflow,
 } from "../../modules/expressionDomains/index.js";
+import { serializeExpressionDomain } from "../../modules/expressionDomains/serializeExpressionDomain.js";
 import { sendSuccess } from "../../utils/common/responses.js";
 
 export const getExpressionsDomain = async (req, res) => {
@@ -23,7 +24,7 @@ export const createExpressionDomain = async (req, res) => {
   return sendSuccess(
     res,
     `Domain ${newDomain.name} created successfully`,
-    newDomain,
+    serializeExpressionDomain(newDomain),
     201
   );
 };
@@ -45,6 +46,6 @@ export const updateExpressionDomain = async (req, res) => {
     userId: req.uid,
     updatedDomain: req.body.updatedDomain,
     beforeSessionCleanup: (updated) =>
-      sendSuccess(res, "Domain updated successfully", updated),
+      sendSuccess(res, "Domain updated successfully", serializeExpressionDomain(updated)),
   });
 };

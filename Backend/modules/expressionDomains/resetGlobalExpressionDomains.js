@@ -7,7 +7,7 @@ export const resetGlobalExpressionDomains = async ({ session = null } = {}) => {
   const insertOptions = session ? { session } : undefined;
 
   const deletedResult = await ExpressionDomain.deleteMany(
-    { isGlobal: true },
+    { owner: null },
     deleteOptions
   );
   const insertedDomains = await ExpressionDomain.insertMany(

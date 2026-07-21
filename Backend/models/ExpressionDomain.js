@@ -1,52 +1,47 @@
 import { Schema, model } from "mongoose";
 
-const expressionDomainSchema = new Schema({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: "User",
-    default: null,
-  },
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  isGlobal: {
-    type: Boolean,
-    default: false,
-  },
-  locked: {
-    type: Boolean,
-    default: false,
-  },
-  typeKey: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  definition: {
-    type: Schema.Types.Mixed,
-    default: {},
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-expressionDomainSchema.index(
-  { user: 1, name: 1 },
+const expressionDomainSchema = new Schema(
   {
-    unique: true,
-    partialFilterExpression: { user: { $type: "objectId" } },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    typeKey: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    definition: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+  },
+  {
+    timestamps: true,
   }
 );
 
 expressionDomainSchema.index(
-  { isGlobal: 1, name: 1 },
+  { owner: 1, name: 1 },
   {
     unique: true,
-    partialFilterExpression: { isGlobal: true },
+    name: "expression_domain_owner_name_unique",
+    partialFilterExpression: { owner: { $type: "objectId" } },
+  }
+);
+
+expressionDomainSchema.index(
+  { name: 1 },
+  {
+    unique: true,
+    name: "expression_domain_global_name_unique",
+    partialFilterExpression: { owner: null },
   }
 );
 

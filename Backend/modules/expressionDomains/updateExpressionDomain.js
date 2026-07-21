@@ -25,7 +25,6 @@ export const updateUserExpressionDomain = async ({
     name: updatedDomain.name ?? domain.name,
     typeKey: updatedDomain.typeKey ?? domain.typeKey,
     definition: updatedDomain.definition ?? domain.definition,
-    isGlobal: domain.isGlobal,
   });
 
   domain.name = normalizedDomain.name;

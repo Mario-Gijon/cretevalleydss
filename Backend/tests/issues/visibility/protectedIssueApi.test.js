@@ -169,7 +169,7 @@ describe("protected issue API basics", () => {
     expect(response.body.data.userDomains[0]).toMatchObject({
       name: "Owner numeric domain",
       isGlobal: false,
-      user: owner._id.toString(),
+      ownerId: owner._id.toString(),
     });
   });
 

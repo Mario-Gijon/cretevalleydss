@@ -51,7 +51,7 @@ describe("deleteIssueCascade", () => {
     expect(await IssueExpressionDomain.findById(issueSnapshot._id)).toBeNull();
     expect(await ExpressionDomain.findById(liveDomain._id).lean()).toMatchObject({
       _id: liveDomain._id,
-      user: owner._id,
+      owner: owner._id,
       name: "Cascade live domain",
     });
   });

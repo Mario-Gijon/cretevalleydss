@@ -97,12 +97,10 @@ export const isSupportedDomainForModel = ({
     return false;
   }
 
-  const normalizedDomainUserId = toIdString(domain?.user);
+  const normalizedDomainOwnerId = toIdString(domain?.owner);
   const isCreatorOwnedDomain =
-    domain?.isGlobal !== true &&
-    normalizedDomainUserId &&
-    normalizedDomainUserId === toIdString(userId);
-  const isAccessibleDomain = domain?.isGlobal === true || isCreatorOwnedDomain;
+    normalizedDomainOwnerId && normalizedDomainOwnerId === toIdString(userId);
+  const isAccessibleDomain = domain?.owner === null || isCreatorOwnedDomain;
 
   if (!isAccessibleDomain) {
     return false;

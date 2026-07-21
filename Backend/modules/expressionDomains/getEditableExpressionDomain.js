@@ -32,13 +32,13 @@ export const getEditableUserExpressionDomainOrThrow = async ({
     });
   }
 
-  if (domain.isGlobal || domain.user === null) {
+  if (domain.owner === null) {
     throw createForbiddenError(
       "Global domains are predefined and cannot be modified."
     );
   }
 
-  if (!sameId(domain.user, userId)) {
+  if (!sameId(domain.owner, userId)) {
     throw createForbiddenError("Not authorized");
   }
 

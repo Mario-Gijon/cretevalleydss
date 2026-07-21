@@ -75,8 +75,8 @@ export const createIssueModel = async (overrides = {}) => {
 };
 
 export const createExpressionDomainFixture = async ({
+  owner = null,
   userId = null,
-  isGlobal = false,
   type = "numeric",
   numericRange = { min: 0, max: 10, step: 1 },
   membershipFunction = "triangular",
@@ -114,10 +114,8 @@ export const createExpressionDomainFixture = async ({
       };
 
   return ExpressionDomain.create({
-    user: isGlobal ? null : userId,
+    owner: owner || userId,
     name: `Domain ${suffix}`,
-    isGlobal,
-    locked: false,
     typeKey,
     definition,
     ...overrides,
@@ -252,9 +250,18 @@ export const createIssueExpressionDomainSnapshotFixture = async ({
         step: numericRange.step,
       };
 
+  const resolvedSourceDomain = sourceDomain || (
+    await ExpressionDomain.create({
+      owner: null,
+      name: `Snapshot source ${uniqueSuffix()}`,
+      typeKey,
+      definition,
+    })
+  )._id;
+
   return IssueExpressionDomain.create({
     issue: issueId,
-    sourceDomain,
+    sourceDomain: resolvedSourceDomain,
     name,
     typeKey,
     definition,

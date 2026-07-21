@@ -11,7 +11,7 @@ const issueExpressionDomainSchema = new Schema(
     sourceDomain: {
       type: Schema.Types.ObjectId,
       ref: "ExpressionDomain",
-      default: null,
+      required: true,
     },
     name: {
       type: String,
