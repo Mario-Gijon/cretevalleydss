@@ -55,7 +55,12 @@ const rawResult = (stage, phase, collectiveEvaluations) => ({
   _id: `${stage}-${phase}`,
   stage,
   consensusPhase: phase,
-  collectiveEvaluations,
+  inputSnapshot: { expertWeights: [] },
+  result: {
+    standardResult: { collectiveEvaluations },
+    modelExecution: {},
+    rawOutput: {},
+  },
 });
 const evaluation = ({ stage = "alternativeEvaluation", phase = 2, id = "evaluation-1" } = {}) => ({
   _id: id,

@@ -420,16 +420,16 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         rounds: alternativeStageResults.length,
         latestPhase: latestAlternativeStageResult?.consensusPhase ?? null,
         latestConsensusMeasure:
-          latestAlternativeStageResult?.consensusMeasure ?? null,
+          latestAlternativeStageResult?.result?.standardResult?.consensusMeasure ?? null,
         latestAt:
           latestAlternativeStageResult?.updatedAt ||
           latestAlternativeStageResult?.createdAt ||
           null,
         roundsDetail: alternativeStageResults.map((stageResult) => ({
           phase: stageResult.consensusPhase,
-          consensusMeasure: stageResult.consensusMeasure ?? null,
+          consensusMeasure: stageResult.result?.standardResult?.consensusMeasure ?? null,
           computedAt: stageResult.updatedAt || stageResult.createdAt || null,
-          expertWeights: stageResult.expertWeights || [],
+          expertWeights: stageResult.inputSnapshot?.expertWeights || [],
         })),
       },
       scenarios: scenarios.map((scenario) => ({

@@ -103,7 +103,7 @@ export const serializeCriteria = ({ criteria, expressionDomains }) => {
 };
 
 const readFinalWeightsFromStageResult = ({ stageResult, leafIds }) => {
-  const source = stageResult?.collectiveEvaluations?.weightsByCriterion;
+  const source = stageResult?.result?.standardResult?.weightsByCriterion;
   if (!source || typeof source !== "object" || Array.isArray(source)) return null;
 
   const byCriterionId = {};

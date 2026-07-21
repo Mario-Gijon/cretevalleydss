@@ -5,6 +5,10 @@ import {
   toNullableId,
   toRequiredId,
 } from "./serializers.shared.js";
+import {
+  getStageExpertWeights,
+  getStageStandardResult,
+} from "../../../stageResults/stageResultContract.js";
 
 const STAGE_ORDER = {
   criteriaWeighting: 0,
@@ -62,22 +66,25 @@ export const serializePhaseResults = ({ phaseResults, alternatives }) => {
       });
     }
 
+    const standardResult = getStageStandardResult(result);
+    const rankedAlternatives = serializeRanking({
+      rankedAlternatives: standardResult.rankedAlternatives,
+      alternativesById,
+      alternativeIdsByName,
+    });
+
     return {
       id: toRequiredId(result, "phase result"),
       stage: result.stage,
       phase: result.consensusPhase,
       consensusMeasure:
-        typeof result.consensusMeasure === "number" && Number.isFinite(result.consensusMeasure)
-          ? result.consensusMeasure
+        typeof standardResult.consensusMeasure === "number" && Number.isFinite(standardResult.consensusMeasure)
+          ? standardResult.consensusMeasure
           : null,
-      rankedAlternatives: serializeRanking({
-        rankedAlternatives: result.rankedAlternatives,
-        alternativesById,
-        alternativeIdsByName,
-      }),
+      rankedAlternatives,
       collectiveEvaluationId: toRequiredId(result, "phase result"),
-      plotsGraphic: cloneSerializable(result.plotsGraphic, {}),
-      expertWeightSnapshot: (Array.isArray(result.expertWeights) ? result.expertWeights : [])
+      plotsGraphic: cloneSerializable(standardResult.plotsGraphic, {}),
+      expertWeightSnapshot: getStageExpertWeights(result)
         .map((entry) => ({
           expertId: toNullableId(entry.expert),
           weight: entry.weight,
@@ -85,21 +92,20 @@ export const serializePhaseResults = ({ phaseResults, alternatives }) => {
         .filter((entry) => entry.expertId)
         .sort((left, right) => left.expertId.localeCompare(right.expertId)),
       standardizedOutput: {
-        rankedAlternatives: serializeRanking({
-          rankedAlternatives: result.rankedAlternatives,
-          alternativesById,
-          alternativeIdsByName,
-        }),
+        rankedAlternatives,
         consensusMeasure:
-          typeof result.consensusMeasure === "number" && Number.isFinite(result.consensusMeasure)
-            ? result.consensusMeasure
+          typeof standardResult.consensusMeasure === "number" && Number.isFinite(standardResult.consensusMeasure)
+            ? standardResult.consensusMeasure
             : null,
-        plotsGraphic: cloneSerializable(result.plotsGraphic, {}),
+        collectiveEvaluations: cloneSerializable(standardResult.collectiveEvaluations, {}),
+        ...(result.stage === "criteriaWeighting"
+          ? { weightsByCriterion: cloneSerializable(standardResult.weightsByCriterion, null) }
+          : { plotsGraphic: cloneSerializable(standardResult.plotsGraphic, {}) }),
       },
-      modelSpecificOutput: cloneSerializable(result.modelExecution, {}),
-      rawOutput: cloneSerializable(result.rawOutput, {}),
+      modelSpecificOutput: cloneSerializable(result.result?.modelExecution, {}),
+      rawOutput: cloneSerializable(result.result?.rawOutput, {}),
       computedAt: toIsoOrNull(
-        result.modelExecution?.executedAt ?? result.createdAt
+        result.result?.modelExecution?.executedAt ?? result.createdAt
       ),
       createdAt: toIsoOrNull(result.createdAt),
       updatedAt: toIsoOrNull(result.updatedAt),

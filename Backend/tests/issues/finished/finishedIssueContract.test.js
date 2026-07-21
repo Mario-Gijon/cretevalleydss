@@ -205,33 +205,40 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
     issue: issue._id,
     stage: "criteriaWeighting",
     consensusPhase: 0,
-    consensusMeasure: null,
-    rankedAlternatives: [],
-    collectiveEvaluations: weightsPayload,
-    plotsGraphic: {},
-    modelExecution: { kind: "weights", executedAt: new Date("2026-01-10T12:01:00.000Z") },
-    rawOutput: { weights: "raw" },
-    expertWeights: [{ expert: accepted._id, weight: 0.7 }],
+    inputSnapshot: { expertWeights: [{ expert: accepted._id, weight: 0.7 }] },
+    result: {
+      standardResult: {
+        consensusMeasure: null,
+        collectiveEvaluations: weightsPayload,
+        weightsByCriterion: weightsPayload.weightsByCriterion,
+      },
+      modelExecution: { kind: "weights", executedAt: new Date("2026-01-10T12:01:00.000Z") },
+      rawOutput: { weights: "raw" },
+    },
   });
   const createAlternativeResult = async (phase, score, consensusMeasure, reason = null) =>
     IssueStageResult.create({
       issue: issue._id,
       stage: "alternativeEvaluation",
       consensusPhase: phase,
-      consensusMeasure,
-      rankedAlternatives: [
-        { alternativeId: String(alternativeA._id), name: alternativeA.name, score, rank: 1 },
-        { alternativeId: String(alternativeB._id), name: alternativeB.name, score: score - 0.2, rank: 2 },
-      ],
-      collectiveEvaluations: alternativePayload,
-      plotsGraphic: { phase },
-      modelExecution: {
-        kind: "decisionModelsService",
-        executedAt: new Date(`2026-01-11T12:0${phase}:00.000Z`),
-        consensusLifecycle: reason ? { consensusReached: true, finalizationReason: reason } : {},
+      inputSnapshot: { expertWeights: [{ expert: accepted._id, weight: 0.7 }] },
+      result: {
+        standardResult: {
+          consensusMeasure,
+          rankedAlternatives: [
+            { alternativeId: String(alternativeA._id), name: alternativeA.name, score, rank: 1 },
+            { alternativeId: String(alternativeB._id), name: alternativeB.name, score: score - 0.2, rank: 2 },
+          ],
+          collectiveEvaluations: alternativePayload,
+          plotsGraphic: { phase },
+        },
+        modelExecution: {
+          kind: "decisionModelsService",
+          executedAt: new Date(`2026-01-11T12:0${phase}:00.000Z`),
+          consensusLifecycle: reason ? { consensusReached: true, finalizationReason: reason } : {},
+        },
+        rawOutput: { phase },
       },
-      rawOutput: { phase },
-      expertWeights: [{ expert: accepted._id, weight: 0.7 }],
     });
   const initialResult = consensus
     ? await createAlternativeResult(0, 0.6, 0.5)

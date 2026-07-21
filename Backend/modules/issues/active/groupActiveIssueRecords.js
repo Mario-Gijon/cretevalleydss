@@ -1,6 +1,10 @@
 import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
+import {
+  getStageExpertWeights,
+  getStageStandardResult,
+} from "../stageResults/stageResultContract.js";
 
 const groupByIssueId = (items, selector, { recordType }) => {
   const grouped = {};
@@ -35,6 +39,7 @@ export const buildActiveIssueCollections = ({
   const consensusByIssue = {};
 
   for (const stageResult of alternativeStageResults) {
+    const standardResult = getStageStandardResult(stageResult);
     const issueId = toIdString(stageResult.issue);
     if (!issueId) {
       throw createInternalError("IssueStageResult issue id is invalid", {
@@ -52,8 +57,8 @@ export const buildActiveIssueCollections = ({
     }
 
     if (
-      typeof stageResult.consensusMeasure !== "number" ||
-      !Number.isFinite(stageResult.consensusMeasure)
+      typeof standardResult.consensusMeasure !== "number" ||
+      !Number.isFinite(standardResult.consensusMeasure)
     ) {
       throw createInternalError("IssueStageResult consensusMeasure must be finite", {
         field: "consensusMeasure",
@@ -64,7 +69,7 @@ export const buildActiveIssueCollections = ({
       });
     }
 
-    if (!Array.isArray(stageResult.rankedAlternatives)) {
+    if (!Array.isArray(standardResult.rankedAlternatives)) {
       throw createInternalError("IssueStageResult rankedAlternatives must be an array", {
         field: "rankedAlternatives",
         details: {
@@ -74,7 +79,7 @@ export const buildActiveIssueCollections = ({
       });
     }
 
-    if (!isPlainObject(stageResult.collectiveEvaluations)) {
+    if (!isPlainObject(standardResult.collectiveEvaluations)) {
       throw createInternalError("IssueStageResult collectiveEvaluations must be an object", {
         field: "collectiveEvaluations",
         details: {
@@ -84,7 +89,7 @@ export const buildActiveIssueCollections = ({
       });
     }
 
-    if (!isPlainObject(stageResult.modelExecution)) {
+    if (!isPlainObject(stageResult.result?.modelExecution)) {
       throw createInternalError("IssueStageResult modelExecution must be an object", {
         field: "modelExecution",
         details: {
@@ -94,7 +99,7 @@ export const buildActiveIssueCollections = ({
       });
     }
 
-    if (!isPlainObject(stageResult.rawOutput)) {
+    if (!isPlainObject(stageResult.result?.rawOutput)) {
       throw createInternalError("IssueStageResult rawOutput must be an object", {
         field: "rawOutput",
         details: {
@@ -140,18 +145,21 @@ export const buildActiveIssueCollections = ({
         issueId,
         docs
           .sort((left, right) => left.consensusPhase - right.consensusPhase)
-          .map((stageResult) => ({
-            phase: stageResult.consensusPhase,
-            computedAt: stageResult.updatedAt || stageResult.createdAt,
-            consensusLevel: stageResult.consensusMeasure,
-            consensusMeasure: stageResult.consensusMeasure,
-            rankedAlternatives: stageResult.rankedAlternatives,
-            collectiveEvaluations: stageResult.collectiveEvaluations,
-            feedback: stageResult.rawOutput.feedback,
-            recommendations: stageResult.rawOutput.recommendations,
-            modelExecution: stageResult.modelExecution,
-            expertWeights: stageResult.expertWeights || [],
-          })),
+          .map((stageResult) => {
+            const standardResult = getStageStandardResult(stageResult);
+            return {
+              phase: stageResult.consensusPhase,
+              computedAt: stageResult.updatedAt || stageResult.createdAt,
+              consensusLevel: standardResult.consensusMeasure,
+              consensusMeasure: standardResult.consensusMeasure,
+              rankedAlternatives: standardResult.rankedAlternatives,
+              collectiveEvaluations: standardResult.collectiveEvaluations,
+              feedback: stageResult.result.rawOutput.feedback,
+              recommendations: stageResult.result.rawOutput.recommendations,
+              modelExecution: stageResult.result.modelExecution,
+              expertWeights: getStageExpertWeights(stageResult),
+            };
+          }),
       ])
     ),
   };

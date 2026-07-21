@@ -2,6 +2,7 @@ import { Criterion } from "../../../models/Criteria.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { IssueModel } from "../../../models/IssueModels.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { getStageStandardResult } from "../stageResults/stageResultContract.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
@@ -437,8 +438,9 @@ const loadPreviousCollectiveEvaluations = async ({
     consensusPhase: consensusPhase - 1,
   }).lean();
 
-  return isPlainObject(previousStageResult?.collectiveEvaluations)
-    ? cloneSerializable(previousStageResult.collectiveEvaluations, {})
+  const standardResult = getStageStandardResult(previousStageResult);
+  return isPlainObject(standardResult.collectiveEvaluations)
+    ? cloneSerializable(standardResult.collectiveEvaluations, {})
     : {};
 };
 

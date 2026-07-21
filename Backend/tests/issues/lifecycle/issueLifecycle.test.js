@@ -128,6 +128,16 @@ const createCascadeFixture = async () => {
     issue: issue._id,
     stage: "criteriaWeighting",
     consensusPhase: 0,
+    inputSnapshot: { expertWeights: [] },
+    result: {
+      standardResult: {
+        consensusMeasure: null,
+        collectiveEvaluations: {},
+        weightsByCriterion: {},
+      },
+      modelExecution: {},
+      rawOutput: {},
+    },
   });
 
   await IssueScenario.create({

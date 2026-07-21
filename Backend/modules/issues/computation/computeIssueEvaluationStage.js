@@ -380,6 +380,7 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
 
 const mapCriteriaWeightingResultToStageResult = (computeResult) => ({
   consensusMeasure: computeResult.consensusMeasure,
+  weightsByCriterion: computeResult.weightsByCriterion,
   collectiveEvaluations: computeResult.collectiveEvaluations,
   modelExecution: computeResult.modelExecution,
   rawOutput: computeResult.rawOutput,
@@ -418,19 +419,17 @@ const saveStageResult = async ({
   expertWeights = [],
   session = null,
 }) => {
-  let stageResultPayload = null;
+  let standardResult = null;
+  const modelExecution = withConsensusLifecycleInModelExecution({
+    modelExecution: computeResult.modelExecution,
+    consensusLifecycle: lifecycleMetadata,
+  });
 
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-    stageResultPayload = {
+    standardResult = {
       consensusMeasure: computeResult.consensusMeasure,
-      rankedAlternatives: [],
+      weightsByCriterion: computeResult.weightsByCriterion,
       collectiveEvaluations: computeResult.collectiveEvaluations,
-      plotsGraphic: {},
-      modelExecution: withConsensusLifecycleInModelExecution({
-        modelExecution: computeResult.modelExecution,
-        consensusLifecycle: lifecycleMetadata,
-      }),
-      rawOutput: computeResult.rawOutput,
     };
   } else if (stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
     if (!Array.isArray(computeResult.rankedAlternatives)) {
@@ -459,16 +458,11 @@ const saveStageResult = async ({
       );
     }
 
-    stageResultPayload = {
+    standardResult = {
       consensusMeasure: computeResult.consensusMeasure,
       rankedAlternatives: computeResult.rankedAlternatives,
       collectiveEvaluations: computeResult.collectiveEvaluations,
       plotsGraphic: computeResult.plotsGraphic,
-      modelExecution: withConsensusLifecycleInModelExecution({
-        modelExecution: computeResult.modelExecution,
-        consensusLifecycle: lifecycleMetadata,
-      }),
-      rawOutput: computeResult.rawOutput,
     };
   } else {
     throw createInternalError("Unsupported evaluation stage for stage result persistence", {
@@ -487,8 +481,14 @@ const saveStageResult = async ({
       consensusPhase,
     },
     {
-      $set: stageResultPayload,
-      $setOnInsert: { expertWeights },
+      $set: {
+        inputSnapshot: { expertWeights },
+        result: {
+          standardResult,
+          modelExecution,
+          rawOutput: computeResult.rawOutput,
+        },
+      },
     },
     {
       upsert: true,

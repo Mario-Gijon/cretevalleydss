@@ -814,8 +814,18 @@ describe("get evaluation payload behavior", () => {
       issue: issue._id,
       stage: "alternativeEvaluation",
       consensusPhase: 0,
-      collectiveEvaluations: {
-        rankedAlternatives: ["Alternative A"],
+      inputSnapshot: { expertWeights: [] },
+      result: {
+        standardResult: {
+          consensusMeasure: null,
+          rankedAlternatives: [],
+          collectiveEvaluations: {
+            rankedAlternatives: ["Alternative A"],
+          },
+          plotsGraphic: {},
+        },
+        modelExecution: {},
+        rawOutput: {},
       },
     });
 

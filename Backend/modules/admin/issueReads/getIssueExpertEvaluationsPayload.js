@@ -79,7 +79,7 @@ export const getIssueExpertEvaluationsPayload = async ({
   }
 
   const collectiveSource =
-    latestAlternativeStageResult?.collectiveEvaluations || null;
+    latestAlternativeStageResult?.result?.standardResult?.collectiveEvaluations || null;
 
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
     issue.evaluationStructureKey

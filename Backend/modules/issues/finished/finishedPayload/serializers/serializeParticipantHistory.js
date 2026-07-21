@@ -40,7 +40,7 @@ export const serializeParticipantHistory = ({ participations, exitUsers, evaluat
   // Finished-visibility records are hidden and must not create history records.
   exitUsers.filter((entry) => entry.hidden !== true).forEach((entry) => add(entry.user));
   evaluations.forEach((entry) => add(entry.expert));
-  phaseResults.forEach((result) => (Array.isArray(result.expertWeights) ? result.expertWeights : []).forEach((entry) => add(entry.expert)));
+  phaseResults.forEach((result) => (Array.isArray(result.inputSnapshot?.expertWeights) ? result.inputSnapshot.expertWeights : []).forEach((entry) => add(entry.expert)));
 
   participations.forEach((entry) => {
     const id = idOf(entry.expert);
@@ -51,7 +51,7 @@ export const serializeParticipantHistory = ({ participations, exitUsers, evaluat
     evaluations.filter((entry) => entry.completed === true).map((entry) => idOf(entry.expert)).filter(Boolean)
   );
   const snapshots = new Map();
-  phaseResults.forEach((result) => (Array.isArray(result.expertWeights) ? result.expertWeights : []).forEach((entry) => {
+  phaseResults.forEach((result) => (Array.isArray(result.inputSnapshot?.expertWeights) ? result.inputSnapshot.expertWeights : []).forEach((entry) => {
     const id = idOf(entry.expert);
     if (id && finite(entry.weight)) snapshots.set(id, newerSnapshot(snapshots.get(id), { result, weight: entry.weight }));
   }));

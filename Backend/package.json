@@ -40,6 +40,7 @@
     "test": "vitest run --maxWorkers=1",
     "test:watch": "vitest --watch --maxWorkers=1",
     "migrate:issue-scenarios": "node scripts/migrate-issue-scenarios.js",
+    "migrate:issue-stage-results": "node scripts/migrate-issue-stage-results.js",
     "reset:global-expression-domains": "node scripts/reset-global-expression-domains.js",
     "docs:openapi": "node scripts/generate-openapi.mjs",
     "docs:openapi:lint": "redocly lint openapi/openapi.json",

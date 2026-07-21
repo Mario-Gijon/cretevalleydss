@@ -26,6 +26,10 @@ import { validateEvaluationCoverageOrThrow } from "./validateScenarioEvaluationC
 import { buildScenarioParametersOrThrow } from "./resolveScenarioModelParameters.js";
 import { getIssueByIdOrThrow } from "../shared/queries.js";
 import { buildExpertWeightSnapshotOrThrow } from "../shared/expertWeights.js";
+import {
+  getStageExpertWeights,
+  serializePreviousStageResultForExecution,
+} from "../stageResults/stageResultContract.js";
 
 const requireParticipationExpertOrThrow = ({ issueId, participation }) => {
   const expert = participation.expert;
@@ -189,10 +193,10 @@ const resolveScenarioParticipations = ({
     ])
   );
   const savedWeightByExpertId = new Map(
-    (Array.isArray(latestAlternativeResult.expertWeights)
-      ? latestAlternativeResult.expertWeights
-      : []
-    ).map((entry) => [toIdString(entry?.expert), entry?.weight])
+    getStageExpertWeights(latestAlternativeResult).map((entry) => [
+      toIdString(entry?.expert),
+      entry?.weight,
+    ])
   );
 
   return completedEvaluations.map((evaluation) => {
@@ -461,7 +465,9 @@ export const buildScenarioExecutionContext = async ({
     criteria: scenarioCriteria,
     weights: weightsUsed,
     consensusPhase: phase,
-    previousStageResult: latestAlternativeResult,
+    previousStageResult: serializePreviousStageResultForExecution(
+      latestAlternativeResult
+    ),
   };
 
   const requestPayload = {

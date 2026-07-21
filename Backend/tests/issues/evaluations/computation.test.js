@@ -629,22 +629,35 @@ describe("criteria weighting compute orchestration", () => {
       issue: issue._id,
       stage: "criteriaWeighting",
       consensusPhase: 2,
-      collectiveEvaluations: {
-        weightsByCriterion: {
-          [String(leafCriteria[0]._id)]: 0.65,
-          [String(leafCriteria[1]._id)]: 0.35,
+      inputSnapshot: {
+        expertWeights: expect.any(Array),
+      },
+      result: {
+        standardResult: {
+          collectiveEvaluations: {
+            weightsByCriterion: {
+              [String(leafCriteria[0]._id)]: 0.65,
+              [String(leafCriteria[1]._id)]: 0.35,
+            },
+          },
+          weightsByCriterion: {
+            [String(leafCriteria[0]._id)]: 0.65,
+            [String(leafCriteria[1]._id)]: 0.35,
+          },
+        },
+        rawOutput: {
+          backend: "mock",
         },
       },
-      rawOutput: {
-        backend: "mock",
-      },
     });
-    expect(stageResult.modelExecution).toMatchObject({
+    expect(stageResult.result.modelExecution).toMatchObject({
       kind: "decisionModelsService",
       structureKey: "manualCriteriaWeights",
       apiModelKey: "criteria-weighting-model",
       apiEndpointPath: "/criteria-weighting",
     });
+    expect(stageResult.result.standardResult).not.toHaveProperty("rankedAlternatives");
+    expect(stageResult.result.standardResult).not.toHaveProperty("plotsGraphic");
     expect(storedIssue.currentStage).toBe("alternativeEvaluation");
     expect(storedIssue.modelParameters.weights).toEqual({
       [String(leafCriteria[0]._id)]: 0.65,
@@ -885,18 +898,23 @@ describe("alternative compute orchestration", () => {
       issue: issue._id,
       stage: "alternativeEvaluation",
       consensusPhase: 1,
-      collectiveEvaluations: {
-        matrix: "collective",
-      },
-      plotsGraphic: {
-        scatter: [],
-      },
-      rawOutput: {
-        source: "alt-model",
+      result: {
+        standardResult: {
+          collectiveEvaluations: {
+            matrix: "collective",
+          },
+          plotsGraphic: {
+            scatter: [],
+          },
+        },
+        rawOutput: {
+          source: "alt-model",
+        },
       },
     });
-    expect(stageResult.rankedAlternatives).toHaveLength(2);
-    expect(stageResult.modelExecution).toMatchObject({
+    expect(stageResult.result.standardResult.rankedAlternatives).toHaveLength(2);
+    expect(stageResult.result.standardResult).not.toHaveProperty("weightsByCriterion");
+    expect(stageResult.result.modelExecution).toMatchObject({
       kind: "decisionModelsService",
       structureKey: "alternativeCriteriaMatrix",
       apiModelKey: issue.apiModelKey,
@@ -968,6 +986,75 @@ describe("alternative compute orchestration", () => {
     expect(storedIssue.active).toBe(true);
     expect(storedIssue.finishedAt).toBeNull();
   });
+
+  it("replaces the complete persisted snapshot and result when recomputing an existing phase", async () => {
+    const {
+      owner,
+      issue,
+      acceptedExperts,
+      alternatives,
+      leafCriteria,
+    } = await createAlternativeComputeFixture();
+
+    await createCompletedAlternativeEvaluations({
+      issueId: issue._id,
+      experts: acceptedExperts,
+      alternatives,
+      leafCriteria,
+    });
+    await IssueStageResult.create({
+      issue: issue._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      inputSnapshot: {
+        expertWeights: [{ expert: acceptedExperts[0]._id, weight: 1 }],
+      },
+      result: {
+        standardResult: {
+          consensusMeasure: 0.1,
+          rankedAlternatives: [],
+          collectiveEvaluations: { stale: true },
+          plotsGraphic: { stale: true },
+        },
+        modelExecution: { stale: true },
+        rawOutput: { stale: true },
+      },
+    });
+    const httpClient = createHttpClientMock(
+      buildModelSuccessResponse(
+        buildAlternativeServiceResult({
+          alternatives,
+          collectiveEvaluations: { refreshed: true },
+          plotsGraphic: { refreshed: true },
+          rawOutput: { refreshed: true },
+        })
+      )
+    );
+
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const stageResult = await IssueStageResult.findOne({
+      issue: issue._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+    }).lean();
+
+    expect(stageResult.inputSnapshot).toEqual({ expertWeights: [] });
+    expect(stageResult.result).toMatchObject({
+      standardResult: {
+        collectiveEvaluations: { refreshed: true },
+        plotsGraphic: { refreshed: true },
+      },
+      rawOutput: { refreshed: true },
+    });
+    expect(stageResult.result).not.toMatchObject({ rawOutput: { stale: true } });
+  });
 });
 
 describe("consensus compute lifecycle", () => {
@@ -1019,7 +1106,7 @@ describe("consensus compute lifecycle", () => {
 
     expect(storedIssue.currentStage).toBe("finished");
     expect(storedIssue.active).toBe(false);
-    expect(stageResult.modelExecution.consensusLifecycle).toMatchObject({
+    expect(stageResult.result.modelExecution.consensusLifecycle).toMatchObject({
       consensusReached: true,
       maxPhasesReached: false,
       finalizationReason: "consensusReached",

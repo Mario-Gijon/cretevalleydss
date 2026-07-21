@@ -204,7 +204,7 @@ export const getAdminIssuesListPayload = async ({
           _id: "$issue",
           totalRounds: { $sum: 1 },
           latestPhase: { $first: "$consensusPhase" },
-          latestConsensusMeasure: { $first: "$consensusMeasure" },
+          latestConsensusMeasure: { $first: "$result.standardResult.consensusMeasure" },
           latestComputedAt: {
             $first: { $ifNull: ["$updatedAt", "$createdAt"] },
           },

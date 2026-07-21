@@ -15,6 +15,16 @@ const expertWeightSnapshotSchema = new Schema(
   { _id: false }
 );
 
+const stageResultInputSnapshotSchema = new Schema(
+  {
+    expertWeights: {
+      type: [expertWeightSnapshotSchema],
+      default: [],
+    },
+  },
+  { _id: false }
+);
+
 const issueStageResultSchema = new Schema(
   {
     issue: {
@@ -36,33 +46,24 @@ const issueStageResultSchema = new Schema(
       default: 0,
       index: true,
     },
-    consensusMeasure: {
-      type: Number,
-      default: null,
+    inputSnapshot: {
+      type: stageResultInputSnapshotSchema,
+      required: true,
+      default: () => ({ expertWeights: [] }),
     },
-    rankedAlternatives: {
-      type: [Schema.Types.Mixed],
-      default: [],
-    },
-    collectiveEvaluations: {
-      type: Schema.Types.Mixed,
-      default: {},
-    },
-    plotsGraphic: {
-      type: Schema.Types.Mixed,
-      default: {},
-    },
-    modelExecution: {
-      type: Schema.Types.Mixed,
-      default: {},
-    },
-    rawOutput: {
-      type: Schema.Types.Mixed,
-      default: {},
-    },
-    expertWeights: {
-      type: [expertWeightSnapshotSchema],
-      default: [],
+    result: {
+      standardResult: {
+        type: Schema.Types.Mixed,
+        required: true,
+      },
+      modelExecution: {
+        type: Schema.Types.Mixed,
+        required: true,
+      },
+      rawOutput: {
+        type: Schema.Types.Mixed,
+        required: true,
+      },
     },
   },
   {

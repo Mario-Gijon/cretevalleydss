@@ -112,11 +112,11 @@ const serializeContext = ({
         maxPhases: issue.consensusMaxPhases ?? null,
         threshold: issue.consensusThreshold ?? null,
         currentCollectiveEvaluations: cloneSerializable(
-          currentResult?.collectiveEvaluations,
+          currentResult?.result?.standardResult?.collectiveEvaluations,
           {}
         ),
         previousCollectiveEvaluations: cloneSerializable(
-          previousResult?.collectiveEvaluations,
+          previousResult?.result?.standardResult?.collectiveEvaluations,
           {}
         ),
       },
@@ -236,7 +236,7 @@ export const serializeEvaluations = async ({
     stage: result.stage,
     phase: result.phase,
     rawPayload: cloneSerializable(
-      rawPhaseResultByStagePhase.get(`${result.stage}:${result.phase}`)?.collectiveEvaluations,
+      rawPhaseResultByStagePhase.get(`${result.stage}:${result.phase}`)?.result?.standardResult?.collectiveEvaluations,
       {}
     ),
     displayPayload: null,

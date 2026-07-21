@@ -76,11 +76,11 @@ export const validateFinishedEvidenceOrThrow = ({
         field: "phaseResults._id",
       });
     }
-    for (const snapshot of result.expertWeights || []) {
+    for (const snapshot of result.inputSnapshot?.expertWeights || []) {
       const expertId = String(snapshot.expert?._id || snapshot.expert || "");
       if (!expertId || !participantExpertIds.has(expertId)) {
         throw createInternalError("Finished phase result references an unknown participant expert", {
-          field: "phaseResults.expertWeights",
+          field: "phaseResults.inputSnapshot.expertWeights",
           details: { phaseResultId: String(result._id), expertId: expertId || null },
         });
       }
