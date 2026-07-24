@@ -18,8 +18,8 @@ vi.mock("@mui/x-data-grid", () => ({
   ),
 }));
 
-import AlternativeCriteriaMatrixView from "../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
-import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
+import AlternativeCriteriaMatrixView from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
+import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const numericContinuousDomain = {
   id: "domain-cost",
@@ -93,12 +93,8 @@ describe("AlternativeCriteriaMatrixView", () => {
       <StatefulMatrixView
         initialPayload={{
           "alt-1": {
-            "criterion-cost": {
-              value: 5,
-            },
-            "criterion-quality": {
-              value: { labelKey: "medium" },
-            },
+            "criterion-cost": 5,
+            "criterion-quality": { labelKey: "medium" },
           },
         }}
       />
@@ -113,12 +109,8 @@ describe("AlternativeCriteriaMatrixView", () => {
       <StatefulMatrixView
         initialPayload={{
           "alt-1": {
-            "criterion-cost": {
-              value: 12,
-            },
-            "criterion-quality": {
-              value: { labelKey: "medium" },
-            },
+            "criterion-cost": 12,
+            "criterion-quality": { labelKey: "medium" },
           },
         }}
       />
@@ -135,8 +127,8 @@ describe("AlternativeCriteriaMatrixView", () => {
       <StatefulMatrixView
         initialPayload={{
           "alt-1": {
-            "criterion-cost": { value: 5 },
-            "criterion-quality": { value: { labelKey: "medium" } },
+            "criterion-cost": 5,
+            "criterion-quality": { labelKey: "medium" },
           },
         }}
       />
@@ -147,10 +139,10 @@ describe("AlternativeCriteriaMatrixView", () => {
     });
 
     expect(screen.getByTestId("evaluation-state")).toHaveTextContent(
-      '"criterion-cost":{"value":7}'
+      '"criterion-cost":7'
     );
     expect(screen.getByTestId("evaluation-state")).toHaveTextContent(
-      '"criterion-quality":{"value":{"labelKey":"medium"}}'
+      '"criterion-quality":{"labelKey":"medium"}'
     );
   });
 });

@@ -220,7 +220,9 @@ describe("EvaluationStructureDialog", () => {
     renderDialog();
 
     await screen.findByText("Hide collective");
-    expect(screen.getByTestId("view-collective")).toHaveTextContent('{"shared":true}');
+    expect(screen.getByTestId("view-collective")).toHaveTextContent(
+      JSON.stringify(evaluationResponseFixture.data.collectivePayload)
+    );
 
     await userEvent.click(screen.getByRole("button", { name: "Hide collective" }));
 

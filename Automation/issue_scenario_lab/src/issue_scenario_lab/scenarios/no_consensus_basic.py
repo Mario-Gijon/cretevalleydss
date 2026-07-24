@@ -167,7 +167,7 @@ def _matrix(decision_context: dict[str, Any], expert_b: bool = False) -> dict[st
         quality_values = {"Balanced choice": high, "Premium choice": medium, "Budget choice": low}
         cost_values = {"Budget choice": cost_low, "Premium choice": cost_medium, "Balanced choice": cost_high}
     matrix = {
-        item_id: {quality_id: {"value": quality_values[name]}, cost_id: {"value": cost_values[name]}}
+        item_id: {quality_id: quality_values[name], cost_id: cost_values[name]}
         for name, item in ((item["name"], item) for item in alternatives)
         if (item_id := _id(item))
     }
@@ -193,7 +193,7 @@ def _validate_empty_matrix(payload: Any, decision_context: dict[str, Any]) -> No
         row = payload[alternative_id]
         if not isinstance(row, dict) or set(row) != criterion_ids:
             raise ScenarioLabError("evaluation payload row is not an empty matrix for the persisted criteria")
-        if any(cell != {"value": ""} for cell in row.values()):
+        if any(value != "" for value in row.values()):
             raise ScenarioLabError("evaluation payload contains an unexpected stored value")
 
 

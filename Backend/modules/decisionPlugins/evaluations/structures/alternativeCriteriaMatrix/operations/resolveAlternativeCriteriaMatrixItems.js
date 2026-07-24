@@ -1,5 +1,4 @@
 import { createInternalError } from "../../../../../../utils/common/errors.js";
-import { toIdString } from "../../../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../../../utils/common/objects.js";
 import { getExpressionDomainTypeOrThrow } from "../../../../../expressionDomains/expressionDomainTypeCatalog.js";
 
@@ -32,8 +31,10 @@ const requireDecisionAlternativesOrThrow = (decisionContext) => {
   }
 
   return alternatives.map((alternative, index) => {
-    const id = toIdString(alternative?.id ?? alternative?._id);
-    const name = typeof alternative?.name === "string" ? alternative.name.trim() : "";
+    const id =
+      typeof alternative?.id === "string" ? alternative.id.trim() : "";
+    const name =
+      typeof alternative?.name === "string" ? alternative.name.trim() : "";
 
     if (!id || !name) {
       throw createInternalError("Evaluation structure alternative is invalid", {
@@ -58,8 +59,10 @@ const requireDecisionCriteriaOrThrow = (decisionContext) => {
   }
 
   return criteria.map((criterion, index) => {
-    const id = toIdString(criterion?.id ?? criterion?._id);
-    const name = typeof criterion?.name === "string" ? criterion.name.trim() : "";
+    const id =
+      typeof criterion?.id === "string" ? criterion.id.trim() : "";
+    const name =
+      typeof criterion?.name === "string" ? criterion.name.trim() : "";
 
     if (!id || !name) {
       throw createInternalError("Evaluation structure criterion is invalid", {

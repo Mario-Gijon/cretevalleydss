@@ -1,8 +1,8 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import AlternativeCriteriaMatrixView from "../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
-import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
+import AlternativeCriteriaMatrixView from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
+import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const numericDomain = {
   typeKey: "numericContinuous",
@@ -43,14 +43,14 @@ const buildDecisionContext = (criteria = []) => ({
 
 const buildMatrixPayload = () => ({
   "alt-a": {
-    "criterion-1": { value: 7.5 },
-    "criterion-2": { value: { labelKey: "low" } },
-    "criterion-3": { value: { labelKey: "high" } },
+    "criterion-1": 7.5,
+    "criterion-2": { labelKey: "low" },
+    "criterion-3": { labelKey: "high" },
   },
   "alt-b": {
-    "criterion-1": { value: 6.5 },
-    "criterion-2": { value: { labelKey: "high" } },
-    "criterion-3": { value: { labelKey: "low" } },
+    "criterion-1": 6.5,
+    "criterion-2": { labelKey: "high" },
+    "criterion-3": { labelKey: "low" },
   },
 });
 
@@ -61,8 +61,8 @@ describe("AlternativeCriteriaMatrixView", () => {
       { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
     ]);
     const evaluation = {
-      "alt-a": { "criterion-1": { value: 7.5 } },
-      "alt-b": { "criterion-1": { value: 6.5 } },
+      "alt-a": { "criterion-1": 7.5 },
+      "alt-b": { "criterion-1": 6.5 },
     };
 
     const { unmount } = renderWithProviders(
@@ -80,8 +80,8 @@ describe("AlternativeCriteriaMatrixView", () => {
       target: { value: "8" },
     });
     expect(setEvaluation).toHaveBeenCalledWith({
-      "alt-a": { "criterion-1": { value: 8 } },
-      "alt-b": { "criterion-1": { value: 6.5 } },
+      "alt-a": { "criterion-1": 8 },
+      "alt-b": { "criterion-1": 6.5 },
     });
     unmount();
 
@@ -135,10 +135,10 @@ describe("AlternativeCriteriaMatrixView", () => {
         ])}
         evaluation={{
           "alt-a": {
-            "criterion-1": { value: 7.5 },
+            "criterion-1": 7.5,
           },
           "alt-b": {
-            "criterion-1": { value: 6.5 },
+            "criterion-1": 6.5,
           },
         }}
         setEvaluation={vi.fn()}
@@ -152,29 +152,6 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("renders an alert for malformed matrix payloads", () => {
-    renderWithProviders(
-      <AlternativeCriteriaMatrixView
-        decisionContext={buildDecisionContext([
-          { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
-        ])}
-        evaluation={{
-          "alt-a": {
-            "criterion-1": { value: 7.5 },
-          },
-        }}
-        setEvaluation={vi.fn()}
-        collectiveEvaluation={null}
-        readOnly={false}
-        loading={false}
-      />
-    );
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Evaluation payload is missing an alternative row."
-    );
-  });
-
   it("renders an alert for malformed context", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
@@ -184,7 +161,7 @@ describe("AlternativeCriteriaMatrixView", () => {
         }}
         evaluation={{
           "alt-a": {
-            "criterion-1": { value: 7.5 },
+            "criterion-1": 7.5,
           },
         }}
         setEvaluation={vi.fn()}
@@ -214,43 +191,12 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders a collective payload alert for legacy wrapper values and keeps editable inputs rendered", () => {
-    renderWithProviders(
-      <AlternativeCriteriaMatrixView
-        decisionContext={buildDecisionContext([
-          { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
-        ])}
-        evaluation={{
-          "alt-a": {
-            "criterion-1": { value: 7.5 },
-          },
-          "alt-b": {
-            "criterion-1": { value: 6.5 },
-          },
-        }}
-        setEvaluation={vi.fn()}
-        collectiveEvaluation={{
-          "alt-a": {
-            "criterion-1": { localizedLabel: "Legacy" },
-          },
-        }}
-        readOnly={false}
-        loading={false}
-      />
-    );
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Collective payload cell");
-    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Legacy")).not.toBeInTheDocument();
-  });
-
-  it("renders a collective payload alert for object, string, empty-array, and mixed-array present values", () => {
+  it("renders a collective payload alert for invalid present values", () => {
     const criteria = [
       { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
     ];
 
     for (const collectiveEvaluation of [
-      { "alt-a": { "criterion-1": { value: 7.2 } } },
       { "alt-a": { "criterion-1": "7.2" } },
       { "alt-a": { "criterion-1": [] } },
       { "alt-a": { "criterion-1": [0.6, "bad"] } },
@@ -260,10 +206,10 @@ describe("AlternativeCriteriaMatrixView", () => {
           decisionContext={buildDecisionContext(criteria)}
           evaluation={{
             "alt-a": {
-              "criterion-1": { value: 7.5 },
+              "criterion-1": 7.5,
             },
             "alt-b": {
-              "criterion-1": { value: 6.5 },
+              "criterion-1": 6.5,
             },
           }}
           setEvaluation={vi.fn()}
@@ -289,10 +235,10 @@ describe("AlternativeCriteriaMatrixView", () => {
         decisionContext={buildDecisionContext(criteria)}
         evaluation={{
           "alt-a": {
-            "criterion-1": { value: 7.5 },
+            "criterion-1": 7.5,
           },
           "alt-b": {
-            "criterion-1": { value: 6.5 },
+            "criterion-1": 6.5,
           },
         }}
         setEvaluation={vi.fn()}
@@ -317,10 +263,10 @@ describe("AlternativeCriteriaMatrixView", () => {
         decisionContext={buildDecisionContext(criteria)}
         evaluation={{
           "alt-a": {
-            "criterion-1": { value: 7.5 },
+            "criterion-1": 7.5,
           },
           "alt-b": {
-            "criterion-1": { value: 6.5 },
+            "criterion-1": 6.5,
           },
         }}
         setEvaluation={vi.fn()}
@@ -350,10 +296,10 @@ describe("AlternativeCriteriaMatrixView", () => {
         decisionContext={buildDecisionContext(criteria)}
         evaluation={{
           "alt-a": {
-            "criterion-1": { value: { labelKey: "low" } },
+            "criterion-1": { labelKey: "low" },
           },
           "alt-b": {
-            "criterion-1": { value: { labelKey: "high" } },
+            "criterion-1": { labelKey: "high" },
           },
         }}
         setEvaluation={vi.fn()}
@@ -401,10 +347,10 @@ describe("AlternativeCriteriaMatrixView", () => {
         ])}
         evaluation={{
           "alt-a": {
-            "criterion-1": { value: { labelKey: "left" } },
+            "criterion-1": { labelKey: "left" },
           },
           "alt-b": {
-            "criterion-1": { value: { labelKey: "right" } },
+            "criterion-1": { labelKey: "right" },
           },
         }}
         setEvaluation={vi.fn()}

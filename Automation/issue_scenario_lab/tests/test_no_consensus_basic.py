@@ -120,9 +120,9 @@ class FakeClient:
                     "consensus": {"phase": 0, "maxPhases": None, "threshold": None, "currentCollectiveEvaluations": {}, "previousCollectiveEvaluations": {}},
                 },
                 "payload": {
-                    "balanced": {"quality": {"value": ""}, "cost": {"value": ""}},
-                    "premium": {"quality": {"value": ""}, "cost": {"value": ""}},
-                    "budget": {"quality": {"value": ""}, "cost": {"value": ""}},
+                    "balanced": {"quality": "", "cost": ""},
+                    "premium": {"quality": "", "cost": ""},
+                    "budget": {"quality": "", "cost": ""},
                 },
             }
         if path.endswith("/submit"):
@@ -263,7 +263,7 @@ def test_complete_mocked_flow_writes_one_minimal_manifest_entry(tmp_path: Path) 
     assert issue_info["addedExperts"] == ["a@example.test", "b@example.test"]
     assert "consensusThreshold" not in issue_info
     submitted = [call for call in sessions.calls if call[1].endswith("/submit")]
-    assert submitted[0][2]["payload"]["balanced"]["quality"] == {"value": 5.0}
+    assert submitted[0][2]["payload"]["balanced"]["quality"] == 5.0
     assert submitted[0][2]["payload"] != submitted[1][2]["payload"]
     assert next(call for call in sessions.calls if call[1].endswith("/compute"))[0] == "owner"
 

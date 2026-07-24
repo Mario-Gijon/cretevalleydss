@@ -89,8 +89,22 @@ export const evaluationResponseFixture = {
       ],
       criteriaTree: [],
       leafCriteria: [
-        { id: "criterion-cost", name: "Cost" },
-        { id: "criterion-quality", name: "Quality" },
+        {
+          id: "criterion-cost",
+          name: "Cost",
+          expressionDomain: {
+            typeKey: "numericContinuous",
+            definition: { min: 0, max: 10 },
+          },
+        },
+        {
+          id: "criterion-quality",
+          name: "Quality",
+          expressionDomain: {
+            typeKey: "numericContinuous",
+            definition: { min: 0, max: 10 },
+          },
+        },
       ],
       model: {
         id: "model-1",
@@ -110,12 +124,24 @@ export const evaluationResponseFixture = {
       },
     },
     payload: {
-      weightsByCriterion: {
-        "criterion-cost": 0.4,
+      "alt-1": {
+        "criterion-cost": 4,
+        "criterion-quality": 8,
+      },
+      "alt-2": {
+        "criterion-cost": 6,
+        "criterion-quality": 7,
       },
     },
     collectivePayload: {
-      shared: true,
+      "alt-1": {
+        "criterion-cost": 4.5,
+        "criterion-quality": 7.5,
+      },
+      "alt-2": {
+        "criterion-cost": 5.5,
+        "criterion-quality": 7,
+      },
     },
   },
 };

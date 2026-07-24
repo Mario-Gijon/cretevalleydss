@@ -87,10 +87,9 @@ def _linguistic_values(
     )
 
 
-def _cell_value(cell: dict[str, Any], criterion: dict[str, Any], field: str) -> list[float]:
-    value = cell.get("value")
+def _evaluation_value(value: Any, criterion: dict[str, Any], field: str) -> list[float]:
     if value is None or value == "":
-        raise ValueError(f"{field}.value is required")
+        raise ValueError(f"{field} is required")
 
     expression_domain = criterion["expressionDomain"]
     domain_type = expression_domain_type_key(expression_domain).lower()
@@ -114,7 +113,7 @@ def _cell_value(cell: dict[str, Any], criterion: dict[str, Any], field: str) -> 
 
         return [float(item) for item in values]
 
-    return _fuzzy_triplet(value, f"{field}.value")
+    return _fuzzy_triplet(value, field)
 
 
 def _weights(payload: GenericModelExecutionRequest, criteria_count: int) -> list[list[float]]:
@@ -133,7 +132,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     extracted = extract_id_keyed_alternative_criteria_input(
         payload=payload,
         expert_key_fn=_expert_key,
-        cell_value_fn=_cell_value,
+        evaluation_value_fn=_evaluation_value,
     )
 
     return {

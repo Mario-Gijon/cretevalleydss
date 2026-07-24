@@ -166,12 +166,12 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
   };
   const alternativePayload = {
     [String(alternativeA._id)]: {
-      [String(numericCriterion._id)]: { value: 8 },
-      [String(fuzzyCriterion._id)]: { value: { labelKey: "high" } },
+      [String(numericCriterion._id)]: 8,
+      [String(fuzzyCriterion._id)]: { labelKey: "high" },
     },
     [String(alternativeB._id)]: {
-      [String(numericCriterion._id)]: { value: 5 },
-      [String(fuzzyCriterion._id)]: { value: { labelKey: "low" } },
+      [String(numericCriterion._id)]: 5,
+      [String(fuzzyCriterion._id)]: { labelKey: "low" },
     },
   };
   const criteriaEvaluation = await IssueEvaluation.create({

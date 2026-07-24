@@ -13,7 +13,7 @@ def extract_id_keyed_alternative_criteria_input(
     *,
     payload: GenericModelExecutionRequest,
     expert_key_fn: Callable[[dict[str, Any], int], str],
-    cell_value_fn: Callable[[dict[str, Any], dict[str, Any], str], Any],
+    evaluation_value_fn: Callable[[Any, dict[str, Any], str], Any],
     require_expert_weights: bool = False,
 ) -> dict[str, Any]:
     context = payload.context or {}
@@ -131,15 +131,11 @@ def extract_id_keyed_alternative_criteria_input(
                 if criterion_id not in alternative_payload:
                     raise ValueError(f"{field} is required")
 
-                cell = alternative_payload[criterion_id]
-                if not isinstance(cell, dict):
+                value = alternative_payload[criterion_id]
+                if value is None:
                     raise ValueError(f"{field} is required")
-                if set(cell.keys()) != {"value"}:
-                    raise ValueError(f"{field} must contain exactly the key 'value'")
-                if cell.get("value") is None:
-                    raise ValueError(f"{field}.value is required")
 
-                row.append(cell_value_fn(cell, criterion, field))
+                row.append(evaluation_value_fn(value, criterion, field))
 
             matrix.append(row)
 

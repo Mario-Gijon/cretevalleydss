@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { getAlternativeCriteriaMatrixPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.get.js";
-import { saveAlternativeCriteriaMatrixPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.save.js";
-import { alternativeCriteriaMatrixStructure } from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/index.js";
 import { getAlternativePairwiseByCriterionPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.get.js";
 import { saveAlternativePairwiseByCriterionPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.save.js";
 import { alternativePairwiseByCriterionStructure } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/index.js";
@@ -22,11 +19,6 @@ const decisionContext = {
 
 describe("evaluation structure organization", () => {
   it.each([
-    [
-      alternativeCriteriaMatrixStructure,
-      getAlternativeCriteriaMatrixPayload,
-      saveAlternativeCriteriaMatrixPayload,
-    ],
     [
       alternativePairwiseByCriterionStructure,
       getAlternativePairwiseByCriterionPayload,

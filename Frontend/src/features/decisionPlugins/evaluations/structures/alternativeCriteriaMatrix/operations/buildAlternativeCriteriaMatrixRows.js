@@ -10,8 +10,7 @@ export const buildAlternativeCriteriaMatrixRows = ({
     };
 
     criteria.forEach((criterion) => {
-      row[criterion.id] =
-        evaluation?.[alternative.id]?.[criterion.id]?.value;
+      row[criterion.id] = evaluation[alternative.id][criterion.id];
     });
 
     return row;

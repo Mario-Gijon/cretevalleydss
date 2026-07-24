@@ -1,73 +1,34 @@
 import { createBadRequestError } from "../../../../../../utils/common/errors.js";
 import { hasOwnKey, isPlainObject } from "../../../../../../utils/common/objects.js";
-import {
-  resolveRequireValueFromModeOrThrow,
-} from "../../../shared/expressionDomainEvaluationPayload.js";
 import { validateExpressionDomainEvaluationOrThrow } from "../../../../../expressionDomains/validateExpressionDomainEvaluation.js";
 import { resolveAlternativeCriteriaMatrixItems } from "./resolveAlternativeCriteriaMatrixItems.js";
 
-export const buildEmptyAlternativeCriteriaMatrixCell = () => ({
-  value: "",
-});
-export { resolveRequireValueFromModeOrThrow };
-
-const rejectUnsupportedTopLevelShapesOrThrow = (payload) => {
-  if (
-    Object.prototype.hasOwnProperty.call(payload, "cells") ||
-    Object.prototype.hasOwnProperty.call(payload, "evaluations") ||
-    Object.prototype.hasOwnProperty.call(payload, "rows") ||
-    Object.prototype.hasOwnProperty.call(payload, "matrix") ||
-    Object.prototype.hasOwnProperty.call(payload, "direct") ||
-    Object.prototype.hasOwnProperty.call(payload, "pairwiseAlternatives")
-  ) {
-    throw createBadRequestError("Unsupported alternative criteria matrix payload shape", {
-      field: "payload",
-    });
-  }
-};
-
-const requireCanonicalCellOrThrow = ({
-  cell,
+const normalizeEvaluationValueOrThrow = ({
+  value,
   field,
   requireValue,
   expressionDomain,
 }) => {
-  if (!isPlainObject(cell)) {
-    throw createBadRequestError("Matrix cell must be an object.", {
+  if (value === undefined || value === null) {
+    throw createBadRequestError("Matrix evaluation value is invalid.", {
       field,
     });
   }
 
-  const keys = Object.keys(cell);
-
-  if (keys.length !== 1 || !hasOwnKey(cell, "value")) {
-    throw createBadRequestError("Matrix cell must contain exactly the key 'value'.", {
-      field,
-    });
-  }
-
-  if (cell.value === undefined || cell.value === null) {
-    throw createBadRequestError("Matrix cell value is invalid.", {
-      field: `${field}.value`,
-    });
-  }
-
-  if (cell.value === "") {
+  if (value === "") {
     if (requireValue) {
-      throw createBadRequestError("All cells must include a value for submit.", {
-        field: `${field}.value`,
+      throw createBadRequestError("All matrix evaluations must include a value for submit.", {
+        field,
       });
     }
 
-    return buildEmptyAlternativeCriteriaMatrixCell();
+    return "";
   }
 
-  return {
-    value: validateExpressionDomainEvaluationOrThrow({
-      value: cell.value,
-      expressionDomain,
-    }),
-  };
+  return validateExpressionDomainEvaluationOrThrow({
+    value,
+    expressionDomain,
+  });
 };
 
 const requireCanonicalShapeOrThrow = ({
@@ -133,8 +94,6 @@ export const normalizeAlternativeCriteriaMatrix = async ({
     });
   }
 
-  rejectUnsupportedTopLevelShapesOrThrow(payload);
-
   const {
     alternatives,
     criteria,
@@ -155,8 +114,8 @@ export const normalizeAlternativeCriteriaMatrix = async ({
     normalizedPayload[alternative.id] = {};
 
     for (const criterion of criteria) {
-      normalizedPayload[alternative.id][criterion.id] = requireCanonicalCellOrThrow({
-        cell: alternativeRow[criterion.id],
+      normalizedPayload[alternative.id][criterion.id] = normalizeEvaluationValueOrThrow({
+        value: alternativeRow[criterion.id],
         field: `payload.${alternative.id}.${criterion.id}`,
         requireValue,
         expressionDomain: criterion.expressionDomain,

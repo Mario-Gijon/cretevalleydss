@@ -47,7 +47,12 @@ const buildMockExecutionContext = () => {
     stageResultId: new mongoose.Types.ObjectId(),
     requestPayload: {
       modelParameters: { alpha: 1 },
-      evaluations: [{ expert: { id: "expert-1" }, payload: { value: 1 } }],
+      evaluations: [
+        {
+          expert: { id: "expert-1" },
+          payload: { alternative1: { criterion1: 1 } },
+        },
+      ],
       context: { issue: { id: String(issueId) }, consensusPhase: 0 },
     },
   };

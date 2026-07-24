@@ -181,9 +181,9 @@ def _matrix(context: dict[str, Any], *, expert_b: bool) -> dict[str, Any]:
         if expert_b
         else {"Balanced choice": c_low, "Premium choice": c_high, "Budget choice": c_medium}
     )
-    matrix = {_id(item) or "": {quality_id: {"value": quality[name]}, cost_id: {"value": cost[name]}} for name, item in alternatives.items()}
+    matrix = {_id(item) or "": {quality_id: quality[name], cost_id: cost[name]} for name, item in alternatives.items()}
     if "" in matrix or any(
-        set(row) != {quality_id, cost_id} or any(set(cell) != {"value"} or not _finite(cell["value"]) or cell["value"] <= 0 for cell in row.values())
+        set(row) != {quality_id, cost_id} or any(not _finite(value) or value <= 0 for value in row.values())
         for row in matrix.values()
     ):
         raise ScenarioLabError("WASPAS matrix is not a complete positive persisted matrix")
@@ -193,7 +193,7 @@ def _matrix(context: dict[str, Any], *, expert_b: bool) -> dict[str, Any]:
 def _weighted(first: dict[str, Any], second: dict[str, Any]) -> dict[str, dict[str, float]]:
     return {
         alternative_id: {
-            criterion_id: first[alternative_id][criterion_id]["value"] * 0.75 + second[alternative_id][criterion_id]["value"] * 0.25
+            criterion_id: first[alternative_id][criterion_id] * 0.75 + second[alternative_id][criterion_id] * 0.25
             for criterion_id in first[alternative_id]
         }
         for alternative_id in first
@@ -476,7 +476,7 @@ def generate(
         expected = _weighted(matrices[0], matrices[1])
         equal = {
             alternative_id: {
-                criterion_id: (matrices[0][alternative_id][criterion_id]["value"] + matrices[1][alternative_id][criterion_id]["value"]) / 2
+                criterion_id: (matrices[0][alternative_id][criterion_id] + matrices[1][alternative_id][criterion_id]) / 2
                 for criterion_id in row
             }
             for alternative_id, row in expected.items()

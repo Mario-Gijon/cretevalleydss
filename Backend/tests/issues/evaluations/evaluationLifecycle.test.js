@@ -48,7 +48,7 @@ const buildAlternativeMatrixPayload = ({
         Object.fromEntries(
           leafCriteria.map((criterion) => [
             String(criterion._id),
-            { value: rawValue ?? "" },
+            rawValue ?? "",
           ])
         ),
       ];
@@ -525,8 +525,8 @@ describe("evaluation draft save behavior", () => {
     });
     expect(stored.completed).toBe(false);
     expect(stored.submittedAt).toBeNull();
-    expect(stored.payload[firstAlternativeId][criterionId]).toEqual({ value: 7 });
-    expect(stored.payload[secondAlternativeId][criterionId]).toEqual({ value: "" });
+    expect(stored.payload[firstAlternativeId][criterionId]).toBe(7);
+    expect(stored.payload[secondAlternativeId][criterionId]).toBe("");
   });
 
   it("saving a draft twice updates the existing document and does not touch other experts or issues", async () => {
@@ -717,7 +717,7 @@ describe("get evaluation payload behavior", () => {
     for (const alternativeId of alternativeIds) {
       expect(Object.keys(result.payload[alternativeId])).toEqual(criterionIds);
       for (const criterionId of criterionIds) {
-        expect(result.payload[alternativeId][criterionId]).toEqual({ value: "" });
+        expect(result.payload[alternativeId][criterionId]).toBe("");
       }
     }
   });
@@ -803,7 +803,7 @@ describe("get evaluation payload behavior", () => {
 
     expect(result.consensusPhase).toBe(1);
     expect(result.completed).toBe(false);
-    expect(result.payload[firstAlternativeId][criterionId].value).toBe("");
+    expect(result.payload[firstAlternativeId][criterionId]).toBe("");
   });
 
   it("includes collectivePayload only when a previous consensus phase result exists", async () => {
@@ -1105,9 +1105,9 @@ describe("evaluation submit behavior", () => {
 
     expect(currentPhaseDocs).toHaveLength(1);
     expect(currentPhaseDocs[0].completed).toBe(true);
-    expect(currentPhaseDocs[0].payload[firstAlternativeId][criterionId].value).toBe(6);
-    expect(previousPhaseDoc.payload[firstAlternativeId][criterionId].value).toBe(2);
-    expect(untouchedOtherExpert.payload[firstAlternativeId][criterionId].value).toBe(9);
+    expect(currentPhaseDocs[0].payload[firstAlternativeId][criterionId]).toBe(6);
+    expect(previousPhaseDoc.payload[firstAlternativeId][criterionId]).toBe(2);
+    expect(untouchedOtherExpert.payload[firstAlternativeId][criterionId]).toBe(9);
   });
 });
 
@@ -1313,8 +1313,8 @@ describe("consensus phase and re-entry behavior", () => {
       consensusPhase: 1,
     }).lean();
 
-    expect(previousPhase.payload[firstAlternativeId][criterionId].value).toBe(3);
-    expect(currentPhase.payload[firstAlternativeId][criterionId].value).toBe(7);
+    expect(previousPhase.payload[firstAlternativeId][criterionId]).toBe(3);
+    expect(currentPhase.payload[firstAlternativeId][criterionId]).toBe(7);
   });
 
   it("a re-added expert evaluates only the current consensus phase and older drafts are not resurrected", async () => {
@@ -1388,7 +1388,7 @@ describe("consensus phase and re-entry behavior", () => {
 
     expect(beforeSave.consensusPhase).toBe(2);
     expect(beforeSave.completed).toBe(false);
-    expect(beforeSave.payload[firstAlternativeId][String(leafCriteria[0]._id)].value).toBe("");
+    expect(beforeSave.payload[firstAlternativeId][String(leafCriteria[0]._id)]).toBe("");
 
     const currentPhasePayload = buildAlternativeMatrixPayload({
       alternatives,
@@ -1412,7 +1412,7 @@ describe("consensus phase and re-entry behavior", () => {
     });
 
     expect(afterSave.consensusPhase).toBe(2);
-    expect(afterSave.payload[firstAlternativeId][String(leafCriteria[0]._id)].value).toBe(9);
+    expect(afterSave.payload[firstAlternativeId][String(leafCriteria[0]._id)]).toBe(9);
 
     await submitIssueEvaluation({
       issueId: issue._id,

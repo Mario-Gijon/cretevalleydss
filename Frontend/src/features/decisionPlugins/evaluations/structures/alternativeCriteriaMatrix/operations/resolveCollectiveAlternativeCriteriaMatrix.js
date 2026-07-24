@@ -18,7 +18,7 @@ const isCanonicalCollectiveValue = (value) => {
   );
 };
 
-export const resolveCanonicalCollectiveAlternativeCriteriaMatrix = ({
+export const resolveCollectiveAlternativeCriteriaMatrix = ({
   alternatives,
   criteria,
   collectiveEvaluation,

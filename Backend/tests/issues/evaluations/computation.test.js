@@ -60,9 +60,7 @@ const buildAlternativeMatrixPayload = ({
       return [
         alternativeId,
         {
-          [criterionId]: {
-            value: valuesByAlternativeId[alternativeId],
-          },
+          [criterionId]: valuesByAlternativeId[alternativeId],
         },
       ];
     })
@@ -98,8 +96,18 @@ const buildCriteriaWeightingServiceResult = ({
 
 const buildAlternativeServiceResult = ({
   alternatives,
+  leafCriteria,
   consensusMeasure = null,
-  collectiveEvaluations = { aggregate: true },
+  collectiveEvaluations = buildAlternativeMatrixPayload({
+    alternatives,
+    leafCriteria,
+    valuesByAlternativeId: Object.fromEntries(
+      alternatives.map((alternative, index) => [
+        String(alternative._id),
+        alternatives.length - index,
+      ])
+    ),
+  }),
   plotsGraphic = { series: [] },
   rawOutput = { provider: "mocked" },
 }) => ({
@@ -822,8 +830,14 @@ describe("alternative compute orchestration", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           collectiveEvaluations: {
-            matrix: "collective",
+            [String(alternatives[0]._id)]: {
+              [String(leafCriteria[0]._id)]: 7,
+            },
+            [String(alternatives[1]._id)]: {
+              [String(leafCriteria[0]._id)]: 5,
+            },
           },
           plotsGraphic: {
             scatter: [],
@@ -901,7 +915,12 @@ describe("alternative compute orchestration", () => {
       result: {
         standardResult: {
           collectiveEvaluations: {
-            matrix: "collective",
+            [String(alternatives[0]._id)]: {
+              [String(leafCriteria[0]._id)]: 7,
+            },
+            [String(alternatives[1]._id)]: {
+              [String(leafCriteria[0]._id)]: 5,
+            },
           },
           plotsGraphic: {
             scatter: [],
@@ -930,7 +949,12 @@ describe("alternative compute orchestration", () => {
       currentStage: "finished",
       result: {
         collectiveEvaluations: {
-          matrix: "collective",
+          [String(alternatives[0]._id)]: {
+            [String(leafCriteria[0]._id)]: 7,
+          },
+          [String(alternatives[1]._id)]: {
+            [String(leafCriteria[0]._id)]: 5,
+          },
         },
         plotsGraphic: {
           scatter: [],
@@ -1013,7 +1037,14 @@ describe("alternative compute orchestration", () => {
         standardResult: {
           consensusMeasure: 0.1,
           rankedAlternatives: [],
-          collectiveEvaluations: { stale: true },
+          collectiveEvaluations: buildAlternativeMatrixPayload({
+            alternatives,
+            leafCriteria,
+            valuesByAlternativeId: {
+              [String(alternatives[0]._id)]: 1,
+              [String(alternatives[1]._id)]: 2,
+            },
+          }),
           plotsGraphic: { stale: true },
         },
         modelExecution: { stale: true },
@@ -1024,7 +1055,15 @@ describe("alternative compute orchestration", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
-          collectiveEvaluations: { refreshed: true },
+          leafCriteria,
+          collectiveEvaluations: buildAlternativeMatrixPayload({
+            alternatives,
+            leafCriteria,
+            valuesByAlternativeId: {
+              [String(alternatives[0]._id)]: 8,
+              [String(alternatives[1]._id)]: 9,
+            },
+          }),
           plotsGraphic: { refreshed: true },
           rawOutput: { refreshed: true },
         })
@@ -1048,7 +1087,14 @@ describe("alternative compute orchestration", () => {
     expect(stageResult.inputSnapshot).toEqual({ expertWeights: [] });
     expect(stageResult.result).toMatchObject({
       standardResult: {
-        collectiveEvaluations: { refreshed: true },
+        collectiveEvaluations: buildAlternativeMatrixPayload({
+          alternatives,
+          leafCriteria,
+          valuesByAlternativeId: {
+            [String(alternatives[0]._id)]: 8,
+            [String(alternatives[1]._id)]: 9,
+          },
+        }),
         plotsGraphic: { refreshed: true },
       },
       rawOutput: { refreshed: true },
@@ -1084,6 +1130,7 @@ describe("consensus compute lifecycle", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           consensusMeasure: 0.9,
         })
       )
@@ -1147,6 +1194,7 @@ describe("consensus compute lifecycle", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           consensusMeasure: 0.5,
         })
       )
@@ -1214,6 +1262,7 @@ describe("consensus compute lifecycle", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           consensusMeasure: 0.4,
         })
       )
@@ -1305,6 +1354,7 @@ describe("simulated consensus orchestration", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           consensusMeasure: 0.5,
           rawOutput: {
             suggested_next_evaluations: {
@@ -1381,6 +1431,7 @@ describe("simulated consensus orchestration", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           consensusMeasure: 0.4,
           rawOutput: {
             suggested_next_evaluations: nextPhaseSuggestions,
@@ -1390,6 +1441,7 @@ describe("simulated consensus orchestration", () => {
       buildModelSuccessResponse(
         buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           consensusMeasure: 0.95,
           rawOutput: {
             settled: true,

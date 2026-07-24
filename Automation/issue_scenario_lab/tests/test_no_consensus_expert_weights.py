@@ -100,7 +100,7 @@ def test_creator_weight_payload_and_conflicting_positive_matrices_use_persisted_
     assert payload["criteriaWeightingConfig"]["payload"] == {"weightsByCriterion": {"criterion-quality": 0.60, "criterion-cost": 0.40}}
     first, second = _matrix(_context(), expert_b=False), _matrix(_context(), expert_b=True)
     assert first != second
-    assert all(cell["value"] > 0 for matrix in (first, second) for row in matrix.values() for cell in row.values())
+    assert all(value > 0 for matrix in (first, second) for row in matrix.values() for value in row.values())
     expected = _weighted(first, second)
     _validate_collective(deepcopy(expected), expected)
     broken = deepcopy(expected)

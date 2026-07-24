@@ -34,9 +34,7 @@ const buildAlternativeMatrixPayload = ({
       return [
         alternativeId,
         {
-          [criterionId]: {
-            value: valuesByAlternativeId[alternativeId],
-          },
+          [criterionId]: valuesByAlternativeId[alternativeId],
         },
       ];
     })
@@ -50,16 +48,27 @@ const buildModelSuccessResponse = (data) => ({
   },
 });
 
-const buildAlternativeServiceResult = ({ alternatives, consensusMeasure = null }) => ({
+const buildAlternativeServiceResult = ({
+  alternatives,
+  leafCriteria,
+  consensusMeasure = null,
+}) => ({
   rankedAlternatives: alternatives.map((alternative, index) => ({
     alternativeId: String(alternative._id),
     name: alternative.name,
     score: alternatives.length - index,
     rank: index + 1,
   })),
-  collectiveEvaluations: {
-    aggregate: true,
-  },
+  collectiveEvaluations: buildAlternativeMatrixPayload({
+    alternatives,
+    leafCriteria,
+    valuesByAlternativeId: Object.fromEntries(
+      alternatives.map((alternative, index) => [
+        String(alternative._id),
+        alternatives.length - index,
+      ])
+    ),
+  }),
   plotsGraphic: {
     scatter: [],
   },
@@ -234,7 +243,9 @@ describe("compute participation timeline hardening", () => {
     });
 
     const httpClient = createHttpClientMock(
-      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives }))
+      buildModelSuccessResponse(
+        buildAlternativeServiceResult({ alternatives, leafCriteria })
+      )
     );
 
     const result = await computeIssueEvaluationStage({
@@ -431,7 +442,9 @@ describe("compute participation timeline hardening", () => {
     });
 
     const httpClient = createHttpClientMock(
-      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives }))
+      buildModelSuccessResponse(
+        buildAlternativeServiceResult({ alternatives, leafCriteria })
+      )
     );
 
     await computeIssueEvaluationStage({
@@ -523,6 +536,7 @@ describe("compute participation timeline hardening", () => {
       buildModelSuccessResponse({
         ...buildAlternativeServiceResult({
           alternatives,
+          leafCriteria,
           consensusMeasure: 0.4,
         }),
         rawOutput: {

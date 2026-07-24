@@ -46,14 +46,10 @@ const buildManualWeightsPayload = (leafCriteria) => ({
 
 const buildAlternativeMatrixPayload = ({ alternatives, leafCriteria }) => ({
   [String(alternatives[0]._id)]: {
-    [String(leafCriteria[0]._id)]: {
-      value: 6,
-    },
+    [String(leafCriteria[0]._id)]: 6,
   },
   [String(alternatives[1]._id)]: {
-    [String(leafCriteria[0]._id)]: {
-      value: 4,
-    },
+    [String(leafCriteria[0]._id)]: 4,
   },
 });
 
@@ -307,7 +303,7 @@ describe("evaluation API contracts", () => {
     for (const alternativeId of alternativeIds) {
       expect(Object.keys(payload[alternativeId])).toEqual(criterionIds);
       for (const criterionId of criterionIds) {
-        expect(payload[alternativeId][criterionId]).toEqual({ value: "" });
+        expect(payload[alternativeId][criterionId]).toBe("");
       }
     }
   });

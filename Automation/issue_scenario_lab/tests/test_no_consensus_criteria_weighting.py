@@ -151,9 +151,9 @@ class CriteriaClient:
                 ],
             },
             "payload": {
-                "balanced": {"quality": {"value": ""}, "cost": {"value": ""}},
-                "premium": {"quality": {"value": ""}, "cost": {"value": ""}},
-                "budget": {"quality": {"value": ""}, "cost": {"value": ""}},
+                "balanced": {"quality": "", "cost": ""},
+                "premium": {"quality": "", "cost": ""},
+                "budget": {"quality": "", "cost": ""},
             },
         }
 

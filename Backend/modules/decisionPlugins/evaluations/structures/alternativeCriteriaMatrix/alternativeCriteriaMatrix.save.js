@@ -1,7 +1,5 @@
-import {
-  normalizeAlternativeCriteriaMatrix,
-  resolveRequireValueFromModeOrThrow,
-} from "./operations/normalizeAlternativeCriteriaMatrix.js";
+import { resolveRequireValueFromModeOrThrow } from "../../shared/expressionDomainEvaluationPayload.js";
+import { normalizeAlternativeCriteriaMatrix } from "./operations/normalizeAlternativeCriteriaMatrix.js";
 
 export const saveAlternativeCriteriaMatrixPayload = async ({
   payload,

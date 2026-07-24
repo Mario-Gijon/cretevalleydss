@@ -40,10 +40,10 @@ def _base_payload() -> dict[str, Any]:
                 "expert": {"id": "expert-1"},
                 "payload": {
                     "alt-a": {
-                        "criterion-1": {"value": 7.5},
+                        "criterion-1": 7.5,
                     },
                     "alt-b": {
-                        "criterion-1": {"value": 6.5},
+                        "criterion-1": 6.5,
                     },
                 },
             }
@@ -57,10 +57,10 @@ def test_shared_alternative_matrix_retains_criterion_expression_domain() -> None
     result = extract_id_keyed_alternative_criteria_input(
         payload=_request(_base_payload()),
         expert_key_fn=lambda expert, _: str(expert["id"]),
-        cell_value_fn=lambda cell, criterion, field: seen_calls.append(
-            {"cell": cell, "criterion": criterion, "field": field}
+        evaluation_value_fn=lambda value, criterion, field: seen_calls.append(
+            {"value": value, "criterion": criterion, "field": field}
         )
-        or float(cell["value"]),
+        or float(value),
     )
 
     assert result["criterion_items"] == [
@@ -76,27 +76,15 @@ def test_shared_alternative_matrix_retains_criterion_expression_domain() -> None
     assert seen_calls[0]["field"].endswith("['criterion-1']")
 
 
-@pytest.mark.parametrize(
-    "cell,error_message",
-    [
-        (7.5, "is required"),
-        ({"value": 7.5, "expressionDomain": NUMERIC_DOMAIN}, "exactly the key 'value'"),
-        ({"value": 7.5, "domain": NUMERIC_DOMAIN}, "exactly the key 'value'"),
-        ({"value": 7.5, "extra": True}, "exactly the key 'value'"),
-    ],
-)
-def test_shared_alternative_matrix_rejects_non_canonical_cells(
-    cell: Any,
-    error_message: str,
-) -> None:
+def test_shared_alternative_matrix_rejects_null_evaluation_values() -> None:
     payload = _base_payload()
-    payload["evaluations"][0]["payload"]["alt-a"]["criterion-1"] = cell
+    payload["evaluations"][0]["payload"]["alt-a"]["criterion-1"] = None
 
-    with pytest.raises(ValueError, match=error_message):
+    with pytest.raises(ValueError, match="is required"):
         extract_id_keyed_alternative_criteria_input(
             payload=_request(payload),
             expert_key_fn=lambda expert, _: str(expert["id"]),
-            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            evaluation_value_fn=lambda value, criterion, field: float(value),
         )
 
 
@@ -108,17 +96,17 @@ def test_shared_alternative_matrix_rejects_missing_or_unknown_rows_and_cells() -
         extract_id_keyed_alternative_criteria_input(
             payload=_request(payload),
             expert_key_fn=lambda expert, _: str(expert["id"]),
-            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            evaluation_value_fn=lambda value, criterion, field: float(value),
         )
 
     payload = _base_payload()
-    payload["evaluations"][0]["payload"]["alt-c"] = {"criterion-1": {"value": 1}}
+    payload["evaluations"][0]["payload"]["alt-c"] = {"criterion-1": 1}
 
     with pytest.raises(ValueError, match="unknown alternative rows"):
         extract_id_keyed_alternative_criteria_input(
             payload=_request(payload),
             expert_key_fn=lambda expert, _: str(expert["id"]),
-            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            evaluation_value_fn=lambda value, criterion, field: float(value),
         )
 
     payload = _base_payload()
@@ -128,17 +116,17 @@ def test_shared_alternative_matrix_rejects_missing_or_unknown_rows_and_cells() -
         extract_id_keyed_alternative_criteria_input(
             payload=_request(payload),
             expert_key_fn=lambda expert, _: str(expert["id"]),
-            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            evaluation_value_fn=lambda value, criterion, field: float(value),
         )
 
     payload = _base_payload()
-    payload["evaluations"][0]["payload"]["alt-a"]["criterion-2"] = {"value": 1}
+    payload["evaluations"][0]["payload"]["alt-a"]["criterion-2"] = 1
 
     with pytest.raises(ValueError, match="unknown criterion cells"):
         extract_id_keyed_alternative_criteria_input(
             payload=_request(payload),
             expert_key_fn=lambda expert, _: str(expert["id"]),
-            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            evaluation_value_fn=lambda value, criterion, field: float(value),
         )
 
 
@@ -150,7 +138,7 @@ def test_shared_alternative_matrix_rejects_missing_criterion_expression_domain()
         extract_id_keyed_alternative_criteria_input(
             payload=_request(payload),
             expert_key_fn=lambda expert, _: str(expert["id"]),
-            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            evaluation_value_fn=lambda value, criterion, field: float(value),
         )
 
 
@@ -168,7 +156,7 @@ def test_shared_alternative_matrix_validates_and_normalizes_expert_weights() -> 
     result = extract_id_keyed_alternative_criteria_input(
         payload=_request(payload),
         expert_key_fn=lambda expert, _: str(expert["id"]),
-        cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+        evaluation_value_fn=lambda value, criterion, field: float(value),
         require_expert_weights=True,
     )
 
@@ -179,6 +167,6 @@ def test_shared_alternative_matrix_validates_and_normalizes_expert_weights() -> 
         extract_id_keyed_alternative_criteria_input(
             payload=_request(payload),
             expert_key_fn=lambda expert, _: str(expert["id"]),
-            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            evaluation_value_fn=lambda value, criterion, field: float(value),
             require_expert_weights=True,
         )

@@ -110,37 +110,19 @@ FUZZY_TOPSIS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                     },
                     "payload": {
                         "alt-supplier-a": {
-                            "crit-quality": {
-                                "value": {"labelKey": "high"},
-                            },
-                            "crit-cost": {
-                                "value": {"labelKey": "medium"},
-                            },
-                            "crit-delivery": {
-                                "value": {"labelKey": "high"},
-                            },
+                            "crit-quality": {"labelKey": "high"},
+                            "crit-cost": {"labelKey": "medium"},
+                            "crit-delivery": {"labelKey": "high"},
                         },
                         "alt-supplier-b": {
-                            "crit-quality": {
-                                "value": {"labelKey": "high"},
-                            },
-                            "crit-cost": {
-                                "value": {"labelKey": "low"},
-                            },
-                            "crit-delivery": {
-                                "value": {"labelKey": "very_high"},
-                            },
+                            "crit-quality": {"labelKey": "high"},
+                            "crit-cost": {"labelKey": "low"},
+                            "crit-delivery": {"labelKey": "very_high"},
                         },
                         "alt-supplier-c": {
-                            "crit-quality": {
-                                "value": {"labelKey": "very_high"},
-                            },
-                            "crit-cost": {
-                                "value": {"labelKey": "high"},
-                            },
-                            "crit-delivery": {
-                                "value": {"labelKey": "medium"},
-                            },
+                            "crit-quality": {"labelKey": "very_high"},
+                            "crit-cost": {"labelKey": "high"},
+                            "crit-delivery": {"labelKey": "medium"},
                         },
                     },
                 },
@@ -152,37 +134,19 @@ FUZZY_TOPSIS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                     },
                     "payload": {
                         "alt-supplier-a": {
-                            "crit-quality": {
-                                "value": {"labelKey": "high"},
-                            },
-                            "crit-cost": {
-                                "value": {"labelKey": "medium"},
-                            },
-                            "crit-delivery": {
-                                "value": {"labelKey": "very_high"},
-                            },
+                            "crit-quality": {"labelKey": "high"},
+                            "crit-cost": {"labelKey": "medium"},
+                            "crit-delivery": {"labelKey": "very_high"},
                         },
                         "alt-supplier-b": {
-                            "crit-quality": {
-                                "value": {"labelKey": "very_high"},
-                            },
-                            "crit-cost": {
-                                "value": {"labelKey": "low"},
-                            },
-                            "crit-delivery": {
-                                "value": {"labelKey": "very_high"},
-                            },
+                            "crit-quality": {"labelKey": "very_high"},
+                            "crit-cost": {"labelKey": "low"},
+                            "crit-delivery": {"labelKey": "very_high"},
                         },
                         "alt-supplier-c": {
-                            "crit-quality": {
-                                "value": {"labelKey": "very_high"},
-                            },
-                            "crit-cost": {
-                                "value": {"labelKey": "high"},
-                            },
-                            "crit-delivery": {
-                                "value": {"labelKey": "high"},
-                            },
+                            "crit-quality": {"labelKey": "very_high"},
+                            "crit-cost": {"labelKey": "high"},
+                            "crit-delivery": {"labelKey": "high"},
                         },
                     },
                 },

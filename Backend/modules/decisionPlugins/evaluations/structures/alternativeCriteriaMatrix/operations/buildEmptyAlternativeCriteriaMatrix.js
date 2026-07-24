@@ -1,5 +1,3 @@
-import { buildEmptyAlternativeCriteriaMatrixCell } from "./normalizeAlternativeCriteriaMatrix.js";
-
 export const buildEmptyAlternativeCriteriaMatrix = ({
   alternatives,
   criteria,
@@ -10,7 +8,7 @@ export const buildEmptyAlternativeCriteriaMatrix = ({
       Object.fromEntries(
         criteria.map((criterion) => [
           criterion.id,
-          buildEmptyAlternativeCriteriaMatrixCell(),
+          "",
         ])
       ),
     ])

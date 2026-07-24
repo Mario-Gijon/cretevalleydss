@@ -43,7 +43,7 @@ const buildAlternativeMatrixPayload = ({
         Object.fromEntries(
           leafCriteria.map((criterion) => [
             String(criterion._id),
-            { value: rawValue ?? "" },
+            rawValue ?? "",
           ])
         ),
       ];
@@ -297,7 +297,7 @@ describe("evaluation participation entry guards", () => {
       stage: "alternativeEvaluation",
     });
 
-    expect(payload.payload[String(alternatives[0]._id)][String(leafCriteria[0]._id)].value).toBe("");
+    expect(payload.payload[String(alternatives[0]._id)][String(leafCriteria[0]._id)]).toBe("");
   });
 
   it("keeps legacy null entryPhase and entryStage participations backward compatible", async () => {

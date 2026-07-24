@@ -9,7 +9,7 @@ export const validateAlternativeCriteriaMatrixValue = ({
   alternativeName,
   criterionName,
 }) => {
-  if (value === "" || value === null || value === undefined) {
+  if (value === "") {
     return null;
   }
 

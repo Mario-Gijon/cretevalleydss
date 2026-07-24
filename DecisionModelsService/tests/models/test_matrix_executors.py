@@ -62,10 +62,10 @@ def _aras_request() -> GenericModelExecutionRequest:
                     "expert": {"id": "expert-1"},
                     "payload": {
                         "alt-a": {
-                            "criterion-1": {"value": 7.5},
+                            "criterion-1": 7.5,
                         },
                         "alt-b": {
-                            "criterion-1": {"value": 6.5},
+                            "criterion-1": 6.5,
                         },
                     },
                 }
@@ -101,10 +101,10 @@ def _fuzzy_request(value: Any) -> GenericModelExecutionRequest:
                     "expert": {"id": "expert-1"},
                     "payload": {
                         "alt-a": {
-                            "criterion-1": {"value": value},
+                            "criterion-1": value,
                         },
                         "alt-b": {
-                            "criterion-1": {"value": {"labelKey": "low"}},
+                            "criterion-1": {"labelKey": "low"},
                         },
                     },
                 }
@@ -191,8 +191,8 @@ def test_waspas_executor_passes_ordered_expert_weights(monkeypatch) -> None:
             "expert": {"id": "expert-2"},
             "weight": 0.8,
             "payload": {
-                "alt-a": {"criterion-1": {"value": 2.0}},
-                "alt-b": {"criterion-1": {"value": 9.0}},
+                "alt-a": {"criterion-1": 2.0},
+                "alt-b": {"criterion-1": 9.0},
             },
         }
     )

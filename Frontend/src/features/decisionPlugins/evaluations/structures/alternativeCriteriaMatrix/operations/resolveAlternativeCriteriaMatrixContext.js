@@ -13,8 +13,10 @@ export const resolveDecisionAlternatives = (decisionContext) => {
   }
 
   return decisionContext.alternatives.map((alternative, index) => {
-    const id = String(alternative?.id ?? alternative?._id ?? "").trim();
-    const name = String(alternative?.name ?? "").trim();
+    const id =
+      typeof alternative?.id === "string" ? alternative.id.trim() : "";
+    const name =
+      typeof alternative?.name === "string" ? alternative.name.trim() : "";
 
     if (!id || !name) {
       throw new Error(`Decision context alternative ${index + 1} is invalid.`);
@@ -34,8 +36,10 @@ export const resolveDecisionCriteria = (decisionContext) => {
   }
 
   return decisionContext.leafCriteria.map((criterion, index) => {
-    const id = String(criterion?.id ?? criterion?._id ?? "").trim();
-    const name = String(criterion?.name ?? "").trim();
+    const id =
+      typeof criterion?.id === "string" ? criterion.id.trim() : "";
+    const name =
+      typeof criterion?.name === "string" ? criterion.name.trim() : "";
     const expressionDomain = criterion?.expressionDomain;
 
     if (!id || !name) {

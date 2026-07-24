@@ -191,7 +191,15 @@ describe("EvaluationsView", () => {
     renderView(data, { ...selection, showCollective: true });
 
     expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", collectiveEvaluation: { weights: true } }));
-    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "alternativeEvaluation", collectiveEvaluation: { collectiveDisplay: true } }));
+    expect(rendererSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: "alternativeEvaluation",
+        collectiveEvaluation: {
+          a: { cost: 4.5, quality: 7.5 },
+          b: { cost: 5.5, quality: 7 },
+        },
+      })
+    );
   });
 
   it("hides criteria weighting and expands alternative evaluation only when the stage has no evidence", () => {
