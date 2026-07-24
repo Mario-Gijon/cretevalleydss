@@ -2,15 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { getAlternativeCriteriaMatrixPayload } from "../../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.get.js";
 import { saveAlternativeCriteriaMatrixPayload } from "../../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.save.js";
+import { normalizeAlternativeCriteriaMatrix } from "../../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/normalizeAlternativeCriteriaMatrix.js";
 
 const numericDomain = {
   typeKey: "numericContinuous",
-  definition: {
-    min: 0,
-    max: 10,
-  },
+  definition: { min: 0, max: 10 },
 };
-
 const ordinalDomain = {
   typeKey: "linguisticOrdinal",
   definition: {
@@ -20,28 +17,18 @@ const ordinalDomain = {
     ],
   },
 };
-
 const buildDecisionContext = (expressionDomain = numericDomain) => ({
   alternatives: [
     { id: "alternative1", name: "Alternative 1" },
     { id: "alternative2", name: "Alternative 2" },
   ],
   leafCriteria: [
-    {
-      id: "criterion1",
-      name: "Criterion 1",
-      expressionDomain,
-    },
+    { id: "criterion1", name: "Criterion 1", expressionDomain },
   ],
 });
-
 const buildPayload = (firstValue = 7.5, secondValue = 6.5) => ({
-  alternative1: {
-    criterion1: firstValue,
-  },
-  alternative2: {
-    criterion1: secondValue,
-  },
+  alternative1: { criterion1: firstValue },
+  alternative2: { criterion1: secondValue },
 });
 
 describe("alternativeCriteriaMatrix payload", () => {
@@ -57,10 +44,23 @@ describe("alternativeCriteriaMatrix payload", () => {
   it("returns validated existing GET payload values without changing the direct shape", async () => {
     await expect(
       getAlternativeCriteriaMatrixPayload({
-        payload: buildPayload(7.5, 6.5),
+        payload: buildPayload(),
         decisionContext: buildDecisionContext(),
       })
-    ).resolves.toEqual(buildPayload(7.5, 6.5));
+    ).resolves.toEqual(buildPayload());
+  });
+
+  it("normalizes synchronously from explicit alternatives and criteria", () => {
+    const decisionContext = buildDecisionContext();
+    const normalizedPayload = normalizeAlternativeCriteriaMatrix({
+      payload: buildPayload(),
+      alternatives: decisionContext.alternatives,
+      criteria: decisionContext.leafCriteria,
+      requireValue: true,
+    });
+
+    expect(normalizedPayload).toEqual(buildPayload());
+    expect(normalizedPayload).not.toBeInstanceOf(Promise);
   });
 
   it("allows only the empty string as a missing draft value", async () => {
@@ -75,7 +75,6 @@ describe("alternativeCriteriaMatrix payload", () => {
     for (const invalidValue of [null, undefined]) {
       const payload = buildPayload();
       payload.alternative1.criterion1 = invalidValue;
-
       await expect(
         saveAlternativeCriteriaMatrixPayload({
           payload,
@@ -101,32 +100,23 @@ describe("alternativeCriteriaMatrix payload", () => {
         decisionContext: buildDecisionContext(),
         mode: "submit",
       })
-    ).rejects.toThrow(
-      "All matrix evaluations must include a value for submit."
-    );
+    ).rejects.toThrow("All matrix evaluations must include a value for submit.");
   });
 
   it("normalizes complex direct values through the criterion expression domain", async () => {
     await expect(
       saveAlternativeCriteriaMatrixPayload({
-        payload: buildPayload(
-          { labelKey: "high" },
-          { labelKey: "low" }
-        ),
+        payload: buildPayload({ labelKey: "high" }, { labelKey: "low" }),
         decisionContext: buildDecisionContext(ordinalDomain),
         mode: "submit",
       })
-    ).resolves.toEqual(
-      buildPayload({ labelKey: "high" }, { labelKey: "low" })
-    );
+    ).resolves.toEqual(buildPayload({ labelKey: "high" }, { labelKey: "low" }));
   });
 
   it("rejects missing and unknown alternative rows", async () => {
     await expect(
       saveAlternativeCriteriaMatrixPayload({
-        payload: {
-          alternative1: { criterion1: 7.5 },
-        },
+        payload: { alternative1: { criterion1: 7.5 } },
         decisionContext: buildDecisionContext(),
         mode: "submit",
       })
@@ -134,10 +124,7 @@ describe("alternativeCriteriaMatrix payload", () => {
 
     await expect(
       saveAlternativeCriteriaMatrixPayload({
-        payload: {
-          ...buildPayload(),
-          unknownAlternative: { criterion1: 1 },
-        },
+        payload: { ...buildPayload(), unknownAlternative: { criterion1: 1 } },
         decisionContext: buildDecisionContext(),
         mode: "submit",
       })
@@ -147,32 +134,22 @@ describe("alternativeCriteriaMatrix payload", () => {
   it("rejects missing and unknown criterion values", async () => {
     await expect(
       saveAlternativeCriteriaMatrixPayload({
-        payload: {
-          alternative1: {},
-          alternative2: { criterion1: 6.5 },
-        },
+        payload: { alternative1: {}, alternative2: { criterion1: 6.5 } },
         decisionContext: buildDecisionContext(),
         mode: "submit",
       })
-    ).rejects.toThrow(
-      "Alternative criteria row is missing a criterion cell."
-    );
+    ).rejects.toThrow("Alternative criteria row is missing a criterion cell.");
 
     await expect(
       saveAlternativeCriteriaMatrixPayload({
         payload: {
-          alternative1: {
-            criterion1: 7.5,
-            unknownCriterion: 1,
-          },
+          alternative1: { criterion1: 7.5, unknownCriterion: 1 },
           alternative2: { criterion1: 6.5 },
         },
         decisionContext: buildDecisionContext(),
         mode: "submit",
       })
-    ).rejects.toThrow(
-      "Alternative criteria row contains unknown criterion cells."
-    );
+    ).rejects.toThrow("Alternative criteria row contains unknown criterion cells.");
   });
 
   it("rejects malformed payload rows and invalid domain values", async () => {
@@ -186,10 +163,7 @@ describe("alternativeCriteriaMatrix payload", () => {
 
     await expect(
       saveAlternativeCriteriaMatrixPayload({
-        payload: {
-          alternative1: 7.5,
-          alternative2: { criterion1: 6.5 },
-        },
+        payload: { alternative1: 7.5, alternative2: { criterion1: 6.5 } },
         decisionContext: buildDecisionContext(),
         mode: "submit",
       })
@@ -202,20 +176,5 @@ describe("alternativeCriteriaMatrix payload", () => {
         mode: "submit",
       })
     ).rejects.toThrow();
-  });
-
-  it("requires canonical decisionContext ids without _id fallbacks", async () => {
-    const decisionContext = buildDecisionContext();
-    decisionContext.alternatives[0] = {
-      _id: "alternative1",
-      name: "Alternative 1",
-    };
-
-    await expect(
-      getAlternativeCriteriaMatrixPayload({
-        payload: null,
-        decisionContext,
-      })
-    ).rejects.toThrow("Evaluation structure alternative is invalid");
   });
 });

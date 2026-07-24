@@ -1,8 +1,5 @@
 import { validateExpressionDomainEvaluation } from "../../../../../expressionDomains";
 
-export const buildAlternativeCriteriaMatrixCellKey = (rowId, criterionId) =>
-  `${rowId}::${criterionId}`;
-
 export const validateAlternativeCriteriaMatrixValue = ({
   value,
   expressionDomain,
@@ -31,11 +28,3 @@ export const validateAlternativeCriteriaMatrixValue = ({
 
   return null;
 };
-
-export const buildAlternativeCriteriaMatrixErrorMap = (errors) =>
-  errors.reduce((errorMap, errorItem) => {
-    errorMap[
-      buildAlternativeCriteriaMatrixCellKey(errorItem.rowId, errorItem.criterionId)
-    ] = errorItem.message;
-    return errorMap;
-  }, {});

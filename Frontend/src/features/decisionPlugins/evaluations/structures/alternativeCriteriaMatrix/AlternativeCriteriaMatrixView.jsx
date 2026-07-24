@@ -1,30 +1,19 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Alert, Box, useTheme } from "@mui/material";
 
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
+import { isPlainObject } from "../../../../../utils/common/objects";
 import { alternativeCriteriaMatrixViewSx } from "./AlternativeCriteriaMatrixView.styles";
 import AlternativeCriteriaMatrixCell from "./components/AlternativeCriteriaMatrixCell";
 import { buildAlternativeCriteriaMatrixColumns } from "./operations/buildAlternativeCriteriaMatrixColumns";
 import { buildAlternativeCriteriaMatrixRows } from "./operations/buildAlternativeCriteriaMatrixRows";
-import {
-  resolveDecisionAlternatives,
-  resolveDecisionCriteria,
-} from "./operations/resolveAlternativeCriteriaMatrixContext";
 import { resolveCollectiveAlternativeCriteriaMatrix } from "./operations/resolveCollectiveAlternativeCriteriaMatrix";
 import { updateAlternativeCriteriaMatrixValue } from "./operations/updateAlternativeCriteriaMatrixValue";
-import {
-  buildAlternativeCriteriaMatrixCellKey,
-  buildAlternativeCriteriaMatrixErrorMap,
-  validateAlternativeCriteriaMatrixValue,
-} from "./operations/validateAlternativeCriteriaMatrixValue";
+import { validateAlternativeCriteriaMatrixValue } from "./operations/validateAlternativeCriteriaMatrixValue";
 
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const AlternativeCriteriaMatrixContent = ({
-  alternatives,
-  criteria,
+const AlternativeCriteriaMatrixView = ({
+  decisionContext,
   evaluation,
   setEvaluation,
   collectiveEvaluation,
@@ -32,24 +21,22 @@ const AlternativeCriteriaMatrixContent = ({
   loading,
 }) => {
   const theme = useTheme();
-  const [validationErrorsByCell, setValidationErrorsByCell] = useState({});
+  const alternatives = decisionContext.alternatives;
+  const criteria = decisionContext.leafCriteria;
+  const hasEvaluation = isPlainObject(evaluation);
+  const isWaitingForEvaluation = loading === true && evaluation == null;
   const permitEdit = readOnly !== true && loading !== true;
 
-  const alternativeNameById = useMemo(
-    () =>
-      new Map(
-        alternatives.map((alternative) => [alternative.id, alternative.name])
-      ),
-    [alternatives]
-  );
   const matrixRows = useMemo(
     () =>
-      buildAlternativeCriteriaMatrixRows({
-        alternatives,
-        criteria,
-        evaluation,
-      }),
-    [alternatives, criteria, evaluation]
+      hasEvaluation
+        ? buildAlternativeCriteriaMatrixRows({
+            alternatives,
+            criteria,
+            evaluation,
+          })
+        : [],
+    [alternatives, criteria, evaluation, hasEvaluation]
   );
   const collectiveResolution = useMemo(() => {
     try {
@@ -70,89 +57,43 @@ const AlternativeCriteriaMatrixContent = ({
     }
   }, [alternatives, collectiveEvaluation, criteria]);
 
-  const validationErrorsMap = useMemo(() => {
-    const errors = [];
+  if (isWaitingForEvaluation) {
+    return null;
+  }
 
-    matrixRows.forEach((row) => {
-      criteria.forEach((criterion) => {
-        const validationError = validateAlternativeCriteriaMatrixValue({
-          value: row[criterion.id],
-          expressionDomain: criterion.expressionDomain,
-          alternativeName: row.alternativeLabel,
-          criterionName: criterion.name,
-        });
+  if (!hasEvaluation) {
+    return <Alert severity="error">Evaluation payload is invalid.</Alert>;
+  }
 
-        if (validationError) {
-          errors.push({
-            rowId: row.id,
-            criterionId: criterion.id,
-            message: validationError.message,
-          });
-        }
-      });
-    });
-
-    return buildAlternativeCriteriaMatrixErrorMap(errors);
-  }, [criteria, matrixRows]);
-
-  const updateValue = ({
-    alternativeId,
-    criterion,
-    nextValue,
-  }) => {
-    const validationKey = buildAlternativeCriteriaMatrixCellKey(
-      alternativeId,
-      criterion.id
+  const updateValue = ({ alternativeId, criterion, nextValue }) => {
+    setEvaluation(
+      updateAlternativeCriteriaMatrixValue({
+        evaluation,
+        alternativeId,
+        criterionId: criterion.id,
+        nextValue,
+      })
     );
-    const validationError = validateAlternativeCriteriaMatrixValue({
-      value: nextValue,
-      expressionDomain: criterion.expressionDomain,
-      alternativeName: alternativeNameById.get(alternativeId),
-      criterionName: criterion.name,
-    });
-
-    setValidationErrorsByCell((previousErrors) => {
-      const nextErrors = { ...previousErrors };
-
-      if (validationError) {
-        nextErrors[validationKey] = validationError.message;
-      } else {
-        delete nextErrors[validationKey];
-      }
-
-      return nextErrors;
-    });
-
-    const nextEvaluation = updateAlternativeCriteriaMatrixValue({
-      evaluation,
-      alternativeId,
-      criterionId: criterion.id,
-      nextValue,
-    });
-    setEvaluation(nextEvaluation);
   };
 
   const columns = buildAlternativeCriteriaMatrixColumns({
     criteria,
     renderCell: ({ rowId, criterion, value }) => {
-      const validationKey = buildAlternativeCriteriaMatrixCellKey(
-        rowId,
-        criterion.id
-      );
+      const alternative = alternatives.find((item) => item.id === rowId);
+      const validationError = validateAlternativeCriteriaMatrixValue({
+        value,
+        expressionDomain: criterion.expressionDomain,
+        alternativeName: alternative.name,
+        criterionName: criterion.name,
+      });
 
       return (
         <AlternativeCriteriaMatrixCell
           expressionDomain={criterion.expressionDomain}
           value={value}
-          collectiveValue={
-            collectiveResolution.payload?.[rowId]?.[criterion.id]
-          }
+          collectiveValue={collectiveResolution.payload?.[rowId]?.[criterion.id]}
           permitEdit={permitEdit}
-          error={
-            validationErrorsByCell[validationKey] ||
-            validationErrorsMap[validationKey] ||
-            ""
-          }
+          error={validationError?.message ?? ""}
           onChange={(nextValue) =>
             updateValue({
               alternativeId: rowId,
@@ -188,43 +129,6 @@ const AlternativeCriteriaMatrixContent = ({
       />
     </Box>
   );
-};
-
-const AlternativeCriteriaMatrixView = ({
-  decisionContext,
-  evaluation,
-  setEvaluation,
-  collectiveEvaluation,
-  readOnly,
-  loading,
-}) => {
-  if (loading === true && evaluation == null) {
-    return null;
-  }
-
-  try {
-    if (!isPlainObject(evaluation)) {
-      throw new Error("Evaluation payload is invalid.");
-    }
-
-    return (
-      <AlternativeCriteriaMatrixContent
-        alternatives={resolveDecisionAlternatives(decisionContext)}
-        criteria={resolveDecisionCriteria(decisionContext)}
-        evaluation={evaluation}
-        setEvaluation={setEvaluation}
-        collectiveEvaluation={collectiveEvaluation}
-        readOnly={readOnly}
-        loading={loading}
-      />
-    );
-  } catch (error) {
-    return (
-      <Alert severity="error">
-        {error instanceof Error ? error.message : "Decision context is invalid."}
-      </Alert>
-    );
-  }
 };
 
 export default AlternativeCriteriaMatrixView;

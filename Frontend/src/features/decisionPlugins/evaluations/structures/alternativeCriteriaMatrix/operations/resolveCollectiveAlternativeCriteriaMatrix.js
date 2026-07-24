@@ -1,20 +1,16 @@
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../../../../utils/common/objects";
 
 const hasOwnKey = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 
-const isFiniteNumber = (value) =>
-  typeof value === "number" && Number.isFinite(value);
-
 const isCanonicalCollectiveValue = (value) => {
-  if (isFiniteNumber(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return true;
   }
 
   return (
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every((item) => isFiniteNumber(item))
+    value.every((item) => typeof item === "number" && Number.isFinite(item))
   );
 };
 
@@ -23,7 +19,7 @@ export const resolveCollectiveAlternativeCriteriaMatrix = ({
   criteria,
   collectiveEvaluation,
 }) => {
-  if (collectiveEvaluation === null || collectiveEvaluation === undefined) {
+  if (collectiveEvaluation === null) {
     return null;
   }
 
@@ -43,7 +39,7 @@ export const resolveCollectiveAlternativeCriteriaMatrix = ({
 
   for (const alternative of alternatives) {
     if (!hasOwnKey(collectiveEvaluation, alternative.id)) {
-      continue;
+      throw new Error("Collective payload is missing an alternative row.");
     }
 
     const row = collectiveEvaluation[alternative.id];
@@ -62,7 +58,7 @@ export const resolveCollectiveAlternativeCriteriaMatrix = ({
 
     for (const criterion of criteria) {
       if (!hasOwnKey(row, criterion.id)) {
-        continue;
+        throw new Error("Collective alternative row is missing a criterion cell.");
       }
 
       if (!isCanonicalCollectiveValue(row[criterion.id])) {

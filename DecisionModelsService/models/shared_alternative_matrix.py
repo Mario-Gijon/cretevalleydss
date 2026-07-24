@@ -180,19 +180,23 @@ def normalize_collective_evaluations_by_ids(
     criterion_ids: list[str],
 ) -> dict[str, dict[str, Any]]:
     if not isinstance(collective_matrix, list):
-        return {}
+        raise ValueError("collective_matrix must be a list")
+
+    if len(collective_matrix) != len(alternative_ids):
+        raise ValueError("collective_matrix row count must match alternatives")
 
     collective_evaluations: dict[str, dict[str, Any]] = {}
 
     for row_index, alternative_id in enumerate(alternative_ids):
-        row = collective_matrix[row_index] if row_index < len(collective_matrix) else None
+        row = collective_matrix[row_index]
         if not isinstance(row, list):
-            continue
+            raise ValueError(f"collective_matrix[{row_index}] must be a list")
+
+        if len(row) != len(criterion_ids):
+            raise ValueError("collective_matrix column count must match criteria")
 
         collective_evaluations[alternative_id] = {}
         for criterion_index, criterion_id in enumerate(criterion_ids):
-            collective_evaluations[alternative_id][criterion_id] = (
-                row[criterion_index] if criterion_index < len(row) else ""
-            )
+            collective_evaluations[alternative_id][criterion_id] = row[criterion_index]
 
     return collective_evaluations

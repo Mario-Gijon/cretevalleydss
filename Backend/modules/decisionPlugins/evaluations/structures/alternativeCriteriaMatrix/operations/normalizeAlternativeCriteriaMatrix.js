@@ -1,7 +1,6 @@
 import { createBadRequestError } from "../../../../../../utils/common/errors.js";
 import { hasOwnKey, isPlainObject } from "../../../../../../utils/common/objects.js";
 import { validateExpressionDomainEvaluationOrThrow } from "../../../../../expressionDomains/validateExpressionDomainEvaluation.js";
-import { resolveAlternativeCriteriaMatrixItems } from "./resolveAlternativeCriteriaMatrixItems.js";
 
 const normalizeEvaluationValueOrThrow = ({
   value,
@@ -83,9 +82,10 @@ const requireCanonicalShapeOrThrow = ({
   }
 };
 
-export const normalizeAlternativeCriteriaMatrix = async ({
+export const normalizeAlternativeCriteriaMatrix = ({
   payload,
-  decisionContext,
+  alternatives,
+  criteria,
   requireValue,
 }) => {
   if (!isPlainObject(payload)) {
@@ -94,12 +94,6 @@ export const normalizeAlternativeCriteriaMatrix = async ({
     });
   }
 
-  const {
-    alternatives,
-    criteria,
-  } = await resolveAlternativeCriteriaMatrixItems({
-    decisionContext,
-  });
   requireCanonicalShapeOrThrow({
     payload,
     alternatives,

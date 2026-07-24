@@ -114,7 +114,13 @@ describe("AlternativeCriteriaMatrixView", () => {
         collectiveEvaluation={{
           "alt-a": {
             "criterion-1": 7.2,
+            "criterion-2": 0,
             "criterion-3": [0.6, 0.8, 1],
+          },
+          "alt-b": {
+            "criterion-1": 6.2,
+            "criterion-2": 1,
+            "criterion-3": [0, 0.2, 0.4],
           },
         }}
         readOnly={false}
@@ -127,7 +133,7 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.getByTitle("High — [0.6, 0.8, 1]")).toBeInTheDocument();
   });
 
-  it("does not show a chip for a missing collective cell and does not show an error for null collectiveEvaluation", () => {
+  it("does not show a collective chip or an error for null collectiveEvaluation", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
         decisionContext={buildDecisionContext([
@@ -150,28 +156,6 @@ describe("AlternativeCriteriaMatrixView", () => {
 
     expect(screen.queryByText("7.2")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("renders an alert for malformed context", () => {
-    renderWithProviders(
-      <AlternativeCriteriaMatrixView
-        decisionContext={{
-          alternatives: [{ id: "alt-a", name: "Alternative A" }],
-          leafCriteria: [{ id: "criterion-1", name: "Numeric" }],
-        }}
-        evaluation={{
-          "alt-a": {
-            "criterion-1": 7.5,
-          },
-        }}
-        setEvaluation={vi.fn()}
-        collectiveEvaluation={null}
-        readOnly={false}
-        loading={false}
-      />
-    );
-
-    expect(screen.getByRole("alert")).toHaveTextContent("expressionDomain is invalid");
   });
 
   it("withholds the grid while loading without fabricating a matrix", () => {
@@ -197,9 +181,18 @@ describe("AlternativeCriteriaMatrixView", () => {
     ];
 
     for (const collectiveEvaluation of [
-      { "alt-a": { "criterion-1": "7.2" } },
-      { "alt-a": { "criterion-1": [] } },
-      { "alt-a": { "criterion-1": [0.6, "bad"] } },
+      {
+        "alt-a": { "criterion-1": "7.2" },
+        "alt-b": { "criterion-1": 6.2 },
+      },
+      {
+        "alt-a": { "criterion-1": [] },
+        "alt-b": { "criterion-1": 6.2 },
+      },
+      {
+        "alt-a": { "criterion-1": [0.6, "bad"] },
+        "alt-b": { "criterion-1": 6.2 },
+      },
     ]) {
       const { unmount } = renderWithProviders(
         <AlternativeCriteriaMatrixView
@@ -307,6 +300,9 @@ describe("AlternativeCriteriaMatrixView", () => {
           "alt-a": {
             "criterion-1": [0.61, 0.8, 1],
           },
+          "alt-b": {
+            "criterion-1": [0.6, 0.8, 1],
+          },
         }}
         readOnly={false}
         loading={false}
@@ -357,6 +353,9 @@ describe("AlternativeCriteriaMatrixView", () => {
         collectiveEvaluation={{
           "alt-a": {
             "criterion-1": [0.11, 0.22, 0.33, 0.44, 0.55],
+          },
+          "alt-b": {
+            "criterion-1": [0.6, 0.7, 0.8, 0.9, 1],
           },
         }}
         readOnly={false}

@@ -7,10 +7,14 @@ export const saveAlternativeCriteriaMatrixPayload = async ({
   mode,
 }) => {
   const requireValue = resolveRequireValueFromModeOrThrow(mode);
-
-  return normalizeAlternativeCriteriaMatrix({
+  const alternatives = decisionContext.alternatives;
+  const criteria = decisionContext.leafCriteria;
+  const normalizedPayload = normalizeAlternativeCriteriaMatrix({
     payload,
-    decisionContext,
+    alternatives,
+    criteria,
     requireValue,
   });
+
+  return normalizedPayload;
 };
