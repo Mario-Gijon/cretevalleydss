@@ -1,167 +1,26 @@
 import { useMemo, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
-import {
-  Alert,
-  Box,
-  Chip,
-  Stack,
-  useTheme,
-} from "@mui/material";
+import { Alert, Box, useTheme } from "@mui/material";
 
-import {
-  ExpressionDomainEvaluationInput,
-  findMatchingFuzzyLabel,
-  getExpressionDomainTypeMetadataOrThrow,
-  validateExpressionDomainEvaluation,
-} from "../../../../expressionDomains";
-import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDisplayValue";
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
+import { alternativeCriteriaMatrixViewSx } from "./AlternativeCriteriaMatrixView.styles";
+import AlternativeCriteriaMatrixCell from "./components/AlternativeCriteriaMatrixCell";
+import { buildAlternativeCriteriaMatrixColumns } from "./operations/buildAlternativeCriteriaMatrixColumns";
+import { buildAlternativeCriteriaMatrixRows } from "./operations/buildAlternativeCriteriaMatrixRows";
 import {
-  requireCanonicalAlternativeCriteriaMatrix,
+  resolveDecisionAlternatives,
+  resolveDecisionCriteria,
+} from "./operations/resolveAlternativeCriteriaMatrixContext";
+import {
   resolveCanonicalCollectiveAlternativeCriteriaMatrix,
-  updateAlternativeCriteriaMatrixCell,
-} from "./alternativeCriteriaMatrix.helpers.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const resolveDecisionAlternatives = (decisionContext) => {
-  if (!isPlainObject(decisionContext)) {
-    throw new Error("Decision context is invalid.");
-  }
-
-  if (!Array.isArray(decisionContext.alternatives)) {
-    throw new Error("Decision context alternatives must be an array.");
-  }
-
-  return decisionContext.alternatives.map((alternative, index) => {
-    const id = String(alternative?.id ?? alternative?._id ?? "").trim();
-    const name = String(alternative?.name ?? "").trim();
-
-    if (!id || !name) {
-      throw new Error(`Decision context alternative ${index + 1} is invalid.`);
-    }
-
-    return { id, name };
-  });
-};
-
-const resolveDecisionCriteria = (decisionContext) => {
-  if (!isPlainObject(decisionContext)) {
-    throw new Error("Decision context is invalid.");
-  }
-
-  if (!Array.isArray(decisionContext.leafCriteria)) {
-    throw new Error("Decision context leafCriteria must be an array.");
-  }
-
-  return decisionContext.leafCriteria.map((criterion, index) => {
-    const id = String(criterion?.id ?? criterion?._id ?? "").trim();
-    const name = String(criterion?.name ?? "").trim();
-    const expressionDomain = criterion?.expressionDomain;
-
-    if (!id || !name) {
-      throw new Error(`Decision context criterion ${index + 1} is invalid.`);
-    }
-
-    if (!isPlainObject(expressionDomain)) {
-      throw new Error(`Decision context criterion ${index + 1} expressionDomain is invalid.`);
-    }
-
-    const typeKey =
-      typeof expressionDomain.typeKey === "string"
-        ? expressionDomain.typeKey.trim()
-        : "";
-
-    if (!typeKey) {
-      throw new Error(
-        `Decision context criterion ${index + 1} expressionDomain type is invalid.`
-      );
-    }
-
-    getExpressionDomainTypeMetadataOrThrow(typeKey);
-
-    return {
-      id,
-      name,
-      expressionDomain,
-    };
-  });
-};
-
-const hasCollectiveValue = (value) => value !== undefined;
-
-const isEmptyMatrixValue = (value) =>
-  value === "" || value === null || value === undefined;
-
-const buildCellValidationKey = (rowId, criterionId) => `${rowId}::${criterionId}`;
-
-const validateMatrixValue = ({
-  value,
-  expressionDomain,
-  alternativeName,
-  criterionName,
-}) => {
-  if (isEmptyMatrixValue(value)) {
-    return null;
-  }
-
-  try {
-    validateExpressionDomainEvaluation({
-      value,
-      expressionDomain,
-    });
-  } catch (validationError) {
-    return {
-      alternativeName,
-      criterionName,
-      message:
-        validationError instanceof Error
-          ? validationError.message
-          : "Value is invalid.",
-    };
-  }
-
-  return null;
-};
-
-const buildValidationErrorMap = (errors) =>
-  errors.reduce((errorMap, errorItem) => {
-    errorMap[buildCellValidationKey(errorItem.rowId, errorItem.criterionId)] =
-      errorItem.message;
-    return errorMap;
-  }, {});
-
-const formatCollectiveChipPresentation = ({ collectiveValue, expressionDomain }) => {
-  const formattedVector = formatCollectiveDisplayValue(collectiveValue);
-
-  if (
-    expressionDomain?.typeKey === "linguisticFuzzy" &&
-    Array.isArray(collectiveValue)
-  ) {
-    const matchingLabel = findMatchingFuzzyLabel({
-      values: collectiveValue,
-      expressionDomain,
-    });
-
-    if (matchingLabel?.label) {
-      return {
-        label: matchingLabel.label,
-        title: `${matchingLabel.label} — ${formattedVector}`,
-      };
-    }
-
-    return {
-      label: formattedVector,
-      title: formattedVector,
-    };
-  }
-
-  return {
-    label: formatCollectiveDisplayValue(collectiveValue),
-    title: undefined,
-  };
-};
+} from "./operations/resolveCollectiveAlternativeCriteriaMatrix";
+import { updateAlternativeCriteriaMatrixCell } from "./operations/updateAlternativeCriteriaMatrixCell";
+import { requireCanonicalAlternativeCriteriaMatrix } from "./operations/validateAlternativeCriteriaMatrix";
+import {
+  buildAlternativeCriteriaMatrixCellKey,
+  buildAlternativeCriteriaMatrixErrorMap,
+  validateAlternativeCriteriaMatrixValue,
+} from "./operations/validateAlternativeCriteriaMatrixValues";
 
 const AlternativeCriteriaMatrixView = ({
   decisionContext,
@@ -274,18 +133,10 @@ const AlternativeCriteriaMatrixView = ({
 
   const matrixRows = useMemo(
     () =>
-      alternativeItems.map((alternative) => {
-        const row = {
-          id: alternative.id,
-          alternativeLabel: alternative.name,
-        };
-
-        criteria.forEach((criterion) => {
-          row[criterion.id] =
-            payloadResolution.payload?.[alternative.id]?.[criterion.id]?.value;
-        });
-
-        return row;
+      buildAlternativeCriteriaMatrixRows({
+        alternatives: alternativeItems,
+        criteria,
+        evaluation: payloadResolution.payload,
       }),
     [alternativeItems, criteria, payloadResolution.payload]
   );
@@ -303,7 +154,7 @@ const AlternativeCriteriaMatrixView = ({
 
     matrixRows.forEach((row) => {
       criteria.forEach((criterion) => {
-        const validationError = validateMatrixValue({
+        const validationError = validateAlternativeCriteriaMatrixValue({
           value: row[criterion.id],
           expressionDomain: criterion.expressionDomain,
           alternativeName: row.alternativeLabel,
@@ -328,13 +179,16 @@ const AlternativeCriteriaMatrixView = ({
     };
   }, [criteria, matrixRows, payloadResolution.valid]);
   const validationErrorsMap = useMemo(
-    () => buildValidationErrorMap(validationResult.errors),
+    () => buildAlternativeCriteriaMatrixErrorMap(validationResult.errors),
     [validationResult.errors]
   );
 
   const updateCellValue = ({ rowId, criterionId, expressionDomain, nextValue }) => {
-    const validationKey = buildCellValidationKey(rowId, criterionId);
-    const nextValidationError = validateMatrixValue({
+    const validationKey = buildAlternativeCriteriaMatrixCellKey(
+      rowId,
+      criterionId
+    );
+    const nextValidationError = validateAlternativeCriteriaMatrixValue({
       value: nextValue,
       expressionDomain,
       alternativeName: alternativeNameById.get(rowId) || rowId,
@@ -368,143 +222,41 @@ const AlternativeCriteriaMatrixView = ({
     setEvaluation(nextEvaluation);
   };
 
-  const renderCollectiveChip = ({ collectiveValue, expressionDomain }) => {
-    if (!hasCollectiveValue(collectiveValue)) {
-      return null;
-    }
-
-    const presentation = formatCollectiveChipPresentation({
-      collectiveValue,
-      expressionDomain,
-    });
-
-    return (
-      <Chip
-        label={presentation.label}
-        title={presentation.title}
-        variant="outlined"
-        size="small"
-        sx={{
-          ml: 1,
-          fontSize: "0.75rem",
-          height: 20,
-          pointerEvents: "none",
-          flexShrink: 0,
-        }}
-        color="info"
-      />
-    );
-  };
-
-  const renderCellWithCollective = ({
-    input,
-    collectiveValue,
-    collectiveExpressionDomain,
-  }) => (
-    <Stack
-      direction="row"
-      alignItems="center"
-      sx={{
-        width: "100%",
-        height: "100%",
-        minWidth: 0,
-      }}
-    >
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        {input}
-      </Box>
-      {hasCollectiveValue(collectiveValue) ? (
-        <Box
-          sx={{
-            ml: 1,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-          }}
-        >
-          {renderCollectiveChip({
-            collectiveValue,
-            expressionDomain: collectiveExpressionDomain,
-          })}
-        </Box>
-      ) : null}
-    </Stack>
-  );
-
   const renderMatrixCell = ({ rowId, criterion, value }) => {
     const collectiveValue = collectiveResolution.payload?.[rowId]?.[criterion.id];
     const expressionDomain = criterion.expressionDomain;
     const cellError =
-      validationErrorsByCell[buildCellValidationKey(rowId, criterion.id)] ||
-      validationErrorsMap[buildCellValidationKey(rowId, criterion.id)] ||
+      validationErrorsByCell[
+        buildAlternativeCriteriaMatrixCellKey(rowId, criterion.id)
+      ] ||
+      validationErrorsMap[
+        buildAlternativeCriteriaMatrixCellKey(rowId, criterion.id)
+      ] ||
       "";
 
-    return renderCellWithCollective({
-      collectiveValue,
-      collectiveExpressionDomain: expressionDomain,
-      input: (
-        <Box
-          sx={{ width: "100%", minWidth: 0 }}
-          title={cellError || undefined}
-          onMouseDown={(event) => {
-            event.stopPropagation();
-          }}
-          onClick={(event) => {
-            event.stopPropagation();
-          }}
-        >
-          <ExpressionDomainEvaluationInput
-            expressionDomain={expressionDomain}
-            value={value}
-            onChange={(nextValue) => {
-              if (!permitEdit) {
-                return;
-              }
-
-              updateCellValue({
-                rowId,
-                criterionId: criterion.id,
-                expressionDomain,
-                nextValue,
-              });
-            }}
-            disabled={!permitEdit}
-            error={Boolean(cellError)}
-            showHelperText={false}
-          />
-        </Box>
-      ),
-    });
+    return (
+      <AlternativeCriteriaMatrixCell
+        expressionDomain={expressionDomain}
+        value={value}
+        collectiveValue={collectiveValue}
+        permitEdit={permitEdit}
+        error={cellError}
+        onChange={(nextValue) =>
+          updateCellValue({
+            rowId,
+            criterionId: criterion.id,
+            expressionDomain,
+            nextValue,
+          })
+        }
+      />
+    );
   };
 
-  const columns = [
-    {
-      field: "alternativeLabel",
-      headerName: "Alternative/Criterion",
-      minWidth: 120,
-      flex: 1,
-    },
-    ...criteria.map((criterion) => ({
-      field: criterion.id,
-      headerName: criterion.name,
-      flex: 1,
-      minWidth: 120,
-      renderCell: (params) =>
-        renderMatrixCell({
-          rowId: params.row.id,
-          criterion,
-          value: params.row[criterion.id],
-        }),
-    })),
-  ];
+  const columns = buildAlternativeCriteriaMatrixColumns({
+    criteria,
+    renderCell: renderMatrixCell,
+  });
 
   if (shouldWithholdGrid) {
     return null;
@@ -519,15 +271,7 @@ const AlternativeCriteriaMatrixView = ({
   }
 
   return (
-    <Box
-      sx={{
-        width: "100%",
-        maxWidth: "none",
-        minWidth: 0,
-        p: { xs: 1, sm: 1.5 },
-        overflow: "hidden",
-      }}
-    >
+    <Box sx={alternativeCriteriaMatrixViewSx}>
       {!collectiveResolution.valid ? (
         <Alert severity="error" sx={{ mb: 1.5 }}>
           {collectiveResolution.message}

@@ -34,6 +34,7 @@ vi.mock(
 );
 
 import PairwiseAlternativesGrid from "../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/components/PairwiseAlternativesGrid.jsx";
+import AlternativePairwiseByCriterionView from "../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/AlternativePairwiseByCriterionView.jsx";
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 const alternatives = [
@@ -185,5 +186,86 @@ describe("PairwiseAlternativesGrid", () => {
     expect(screen.getAllByText("0.6")).toHaveLength(1);
     expect(screen.getAllByText("0.4")).toHaveLength(1);
     expect(document.querySelectorAll(".diagonal-cell .MuiChip-root")).toHaveLength(0);
+  });
+});
+
+describe("AlternativePairwiseByCriterionView", () => {
+  const decisionContext = {
+    alternatives,
+    leafCriteria: [
+      {
+        id: "cost",
+        name: "Cost",
+        expressionDomain: numericContinuousDomain,
+      },
+    ],
+  };
+  const evaluation = {
+    cost: canonicalEmptyEvaluations,
+  };
+
+  it("updates the complete evaluation through setEvaluation", () => {
+    const setEvaluation = vi.fn();
+
+    renderWithProviders(
+      <AlternativePairwiseByCriterionView
+        decisionContext={decisionContext}
+        evaluation={evaluation}
+        setEvaluation={setEvaluation}
+        collectiveEvaluation={null}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("expression-domain-input"), {
+      target: { value: "2" },
+    });
+
+    expect(setEvaluation).toHaveBeenCalledWith({
+      cost: {
+        "alt-a": { "alt-b": { value: 2 } },
+        "alt-b": { "alt-a": { value: 4 } },
+      },
+    });
+  });
+
+  it.each([
+    { readOnly: true, loading: false },
+    { readOnly: false, loading: true },
+  ])("disables editing for $readOnly/$loading", ({ readOnly, loading }) => {
+    renderWithProviders(
+      <AlternativePairwiseByCriterionView
+        decisionContext={decisionContext}
+        evaluation={evaluation}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
+        readOnly={readOnly}
+        loading={loading}
+      />
+    );
+
+    expect(screen.getByLabelText("expression-domain-input")).toBeDisabled();
+  });
+
+  it("rejects a malformed collective matrix at the view boundary", () => {
+    renderWithProviders(
+      <AlternativePairwiseByCriterionView
+        decisionContext={decisionContext}
+        evaluation={evaluation}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
+          cost: {
+            "alt-a": { "alt-b": 0.6 },
+          },
+        }}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    expect(
+      screen.getByText("Collective pairwise payload has an invalid row.")
+    ).toBeInTheDocument();
   });
 });

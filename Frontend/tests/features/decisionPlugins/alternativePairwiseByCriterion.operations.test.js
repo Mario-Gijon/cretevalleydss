@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   describePairwiseCellValue,
   getUnmatchedFuzzyTooltipText,
-  requireCanonicalPairwiseEvaluations,
-  updatePairwiseEvaluations,
-} from "../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/components/pairwiseGrid.helpers.js";
+} from "../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/describeAlternativePairwiseValue.js";
+import { requireCanonicalPairwiseEvaluations } from "../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/validateAlternativePairwiseEvaluation.js";
+import { updatePairwiseEvaluations } from "../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/updateAlternativePairwiseComparison.js";
 
 const alternatives = [
   { id: "alt-a", name: "Alternative A" },
@@ -52,7 +52,7 @@ const canonicalEmptyEvaluations = {
   },
 };
 
-describe("pairwiseGrid helpers", () => {
+describe("alternative pairwise operations", () => {
   it("requires a canonical empty matrix", () => {
     expect(
       requireCanonicalPairwiseEvaluations({

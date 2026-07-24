@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildGetPayload,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.getPayload.js";
-import {
-  normalizePayloadOrThrow,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.payload.js";
+  getAlternativeCriteriaMatrixPayload as buildGetPayload,
+} from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.get.js";
+import { saveAlternativeCriteriaMatrixPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.save.js";
+
+const normalizePayloadOrThrow = ({ requireValue, ...args }) =>
+  saveAlternativeCriteriaMatrixPayload({
+    ...args,
+    mode: requireValue ? "submit" : "draft",
+  });
 
 const buildNumericContinuousDomain = () => ({
   typeKey: "numericContinuous",
@@ -67,7 +71,7 @@ describe("alternativeCriteriaMatrix", () => {
       decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
     });
 
-    expect(result.payload).toEqual({
+    expect(result).toEqual({
       "alt-a": {
         "criterion-1": { value: "" },
       },

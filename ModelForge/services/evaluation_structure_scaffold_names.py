@@ -11,6 +11,8 @@ class EvaluationStructureScaffoldNames:
     component_name: str
     view_component_name: str
     backend_structure_export_name: str
+    get_function_name: str
+    save_function_name: str
 
 
 def _to_pascal_case(evaluation_structure_key: str) -> str:
@@ -41,4 +43,6 @@ def build_evaluation_structure_scaffold_names(
         backend_structure_export_name=(
             request.backendStructureExportName or evaluation_structure_key
         ),
+        get_function_name=f"get{component_name}Payload",
+        save_function_name=f"save{component_name}Payload",
     )

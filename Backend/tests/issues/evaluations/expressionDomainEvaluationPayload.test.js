@@ -7,10 +7,10 @@ import {
 } from "../../../modules/decisionPlugins/evaluations/shared/expressionDomainEvaluationPayload.js";
 import {
   resolveRequireValueFromModeOrThrow as resolveMatrixRequireValueFromModeOrThrow,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.payload.js";
+} from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/normalizeAlternativeCriteriaMatrix.js";
 import {
   resolveRequireValueFromModeOrThrow as resolvePairwiseRequireValueFromModeOrThrow,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.payload.js";
+} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/normalizeAlternativePairwiseEvaluation.js";
 
 describe("expressionDomainEvaluationPayload", () => {
   const numericContinuousDomain = {

@@ -3,30 +3,13 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluationStages.js";
+import { {{ get_function_name }} } from "./{{ evaluation_structure_key }}.get.js";
+import { {{ save_function_name }} } from "./{{ evaluation_structure_key }}.save.js";
 
 export const {{ backend_structure_export_name }} = Object.freeze({
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.{{ stage_constant }},
   implementationStatus: "scaffold",
-
-  async get({ payload, decisionContext }) {
-    void decisionContext;
-
-    // Return the complete payload that must be sent to the Frontend.
-    // To send the stored payload without changes:
-    // return payload;
-    return payload ?? {};
-  },
-
-  async save({ payload, decisionContext, mode }) {
-    void decisionContext;
-    void mode;
-
-    // mode === "draft" normally allows incomplete data.
-    // mode === "submit" is the definitive submission.
-    // Return the complete payload that must be stored in the database.
-    // To store the received payload without changes:
-    // return payload;
-    return payload;
-  },
+  get: {{ get_function_name }},
+  save: {{ save_function_name }},
 });

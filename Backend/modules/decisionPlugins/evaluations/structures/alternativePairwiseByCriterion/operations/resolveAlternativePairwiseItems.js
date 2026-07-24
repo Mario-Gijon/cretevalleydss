@@ -1,7 +1,7 @@
-import { createInternalError } from "../../../../../utils/common/errors.js";
-import { toIdString } from "../../../../../utils/common/ids.js";
-import { assertPairwiseReflectionCompatible } from "../../../../expressionDomains/operations/assertPairwiseReflectionCompatible.js";
-import { isPlainObject } from "../../../../../utils/common/objects.js";
+import { createInternalError } from "../../../../../../utils/common/errors.js";
+import { toIdString } from "../../../../../../utils/common/ids.js";
+import { assertPairwiseReflectionCompatible } from "../../../../../expressionDomains/operations/assertPairwiseReflectionCompatible.js";
+import { isPlainObject } from "../../../../../../utils/common/objects.js";
 
 export const buildComparisonKey = (alternativeAId, alternativeBId) =>
   `${alternativeAId}::${alternativeBId}`;
@@ -136,7 +136,7 @@ export const buildExpectedPairsByCriterion = ({ criteria, alternatives }) => {
   return expectedPairsByCriterion;
 };
 
-export const resolveAlternativesAndCriteria = async ({ decisionContext }) => {
+export const resolveAlternativePairwiseItems = async ({ decisionContext }) => {
   const alternatives = requireDecisionAlternativesOrThrow(decisionContext);
   const criteria = requireDecisionCriteriaOrThrow(decisionContext);
 

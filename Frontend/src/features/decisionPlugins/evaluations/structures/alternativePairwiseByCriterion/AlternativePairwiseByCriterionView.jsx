@@ -3,6 +3,9 @@ import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import PairwiseAlternativesGrid from "./components/PairwiseAlternativesGrid";
 import CriterionCompactSelector from "./components/CriterionCompactSelector";
+import { resolveAlternativePairwiseContext } from "./operations/resolveAlternativePairwiseContext";
+import { resolveCollectiveAlternativePairwiseMatrix } from "./operations/resolveCollectiveAlternativePairwiseMatrix";
+import { updateCriterionAlternativePairwiseEvaluation } from "./operations/updateCriterionAlternativePairwiseEvaluation";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -15,23 +18,8 @@ const AlternativePairwiseByCriterionView = ({
   readOnly,
   loading,
 }) => {
-  const alternativeItems = Array.isArray(decisionContext?.alternatives)
-    ? decisionContext.alternatives
-        .map((alternative) => ({
-          id: String(alternative?.id ?? alternative?._id ?? "").trim(),
-          name: String(alternative?.name ?? "").trim(),
-        }))
-        .filter((alternative) => alternative.id && alternative.name)
-    : [];
-  const criteriaItems = Array.isArray(decisionContext?.leafCriteria)
-    ? decisionContext.leafCriteria
-        .map((criterion) => ({
-          ...criterion,
-          id: String(criterion?.id ?? criterion?._id ?? "").trim(),
-          name: String(criterion?.name ?? "").trim(),
-        }))
-        .filter((criterion) => criterion.id && criterion.name)
-    : [];
+  const { alternatives: alternativeItems, criteria: criteriaItems } =
+    resolveAlternativePairwiseContext(decisionContext);
   const permitEdit = readOnly !== true && loading !== true;
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
 
@@ -80,26 +68,11 @@ const AlternativePairwiseByCriterionView = ({
   let collectiveEvaluations = null;
   if (collectiveEvaluation !== null && collectiveEvaluation !== undefined) {
     try {
-      if (!isPlainObject(collectiveEvaluation)) {
-        throw new Error("Collective pairwise payload must be an object.");
-      }
-      const matrix = collectiveEvaluation[currentCriterion.id];
-      if (!isPlainObject(matrix)) {
-        throw new Error("Collective pairwise payload is missing the selected criterion.");
-      }
-      const alternativeIds = alternativeItems.map((alternative) => alternative.id);
-      if (Object.keys(matrix).some((rowId) => !alternativeIds.includes(rowId))) {
-        throw new Error("Collective pairwise payload contains unknown alternatives.");
-      }
-      alternativeIds.forEach((rowId) => {
-        const row = matrix[rowId];
-        if (!isPlainObject(row)) throw new Error("Collective pairwise payload has an invalid row.");
-        const expectedColumns = alternativeIds.filter((columnId) => columnId !== rowId);
-        if (Object.keys(row).length !== expectedColumns.length || expectedColumns.some((columnId) => !Object.prototype.hasOwnProperty.call(row, columnId))) {
-          throw new Error("Collective pairwise payload has an invalid matrix.");
-        }
+      collectiveEvaluations = resolveCollectiveAlternativePairwiseMatrix({
+        collectiveEvaluation,
+        criterionId: currentCriterion.id,
+        alternatives: alternativeItems,
       });
-      collectiveEvaluations = matrix;
     } catch (error) {
       return <Alert severity="error">{error instanceof Error ? error.message : "Collective pairwise payload is invalid."}</Alert>;
     }
@@ -135,13 +108,13 @@ const AlternativePairwiseByCriterionView = ({
                     return;
                   }
 
-                  if (!isPlainObject(evaluation)) {
-                    throw new Error("Pairwise evaluation payload state is invalid.");
-                  }
-
-                  const nextEvaluation = structuredClone(evaluation);
-                  nextEvaluation[currentCriterion.id] = nextComparisons;
-                  setEvaluation(nextEvaluation);
+                  setEvaluation(
+                    updateCriterionAlternativePairwiseEvaluation({
+                      evaluation,
+                      criterionId: currentCriterion.id,
+                      nextComparisons,
+                    })
+                  );
                 }}
                 expressionDomain={currentCriterion.expressionDomain}
                 collectiveEvaluations={collectiveEvaluations}

@@ -10,10 +10,14 @@ import { formatCollectiveDisplayValue } from "../../../shared/formatCollectiveDi
 import { buildEvaluationMatrixDataGridSx } from "../../../shared/evaluationMatrixTable.styles";
 import PairwiseDerivedValueDisplay from "./PairwiseDerivedValueDisplay.jsx";
 import {
+  buildPairwiseAlternativesDataGridSx,
+  pairwiseAlternativesGridSx,
+} from "./PairwiseAlternativesGrid.styles.js";
+import {
   describePairwiseCellValue,
-  requireCanonicalPairwiseEvaluations,
-  updatePairwiseEvaluations,
-} from "./pairwiseGrid.helpers.js";
+} from "../operations/describeAlternativePairwiseValue";
+import { updatePairwiseEvaluations } from "../operations/updateAlternativePairwiseComparison";
+import { requireCanonicalPairwiseEvaluations } from "../operations/validateAlternativePairwiseEvaluation";
 
 const formatCollectiveChip = ({ value, expressionDomain }) => {
   if (expressionDomain?.typeKey === "linguisticFuzzy" && Array.isArray(value)) {
@@ -83,13 +87,13 @@ const PairwiseAlternativesGrid = ({
           : formatCollectiveChip({ value: collectiveValue, expressionDomain });
 
         return (
-          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ width: "100%", minWidth: 0, height: "100%" }}>
-            <Box sx={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center" }}>
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={pairwiseAlternativesGridSx.cell}>
+            <Box sx={pairwiseAlternativesGridSx.value}>
               {upper ? (
                 <Box
                   onClick={(event) => event.stopPropagation()}
                   onMouseDown={(event) => event.stopPropagation()}
-                  sx={{ width: "100%", "& .MuiFormControl-root": { width: "100%" } }}
+                  sx={pairwiseAlternativesGridSx.input}
                 >
                   <ExpressionDomainEvaluationInput
                     expressionDomain={expressionDomain}
@@ -111,7 +115,7 @@ const PairwiseAlternativesGrid = ({
                 </Box>
               ) : <PairwiseDerivedValueDisplay cell={cell} expressionDomain={expressionDomain} />}
             </Box>
-            {collectiveChip ? <Chip label={collectiveChip.label} title={collectiveChip.title} variant="outlined" color="info" size="small" sx={{ height: 20, flexShrink: 0, pointerEvents: "none" }} /> : null}
+            {collectiveChip ? <Chip label={collectiveChip.label} title={collectiveChip.title} variant="outlined" color="info" size="small" sx={pairwiseAlternativesGridSx.chip} /> : null}
           </Stack>
         );
       },
@@ -119,7 +123,7 @@ const PairwiseAlternativesGrid = ({
   ];
 
   return (
-    <Box sx={{ width: "100%", minWidth: 0, overflowX: "auto" }}>
+    <Box sx={pairwiseAlternativesGridSx.container}>
       <DataGrid
         autoHeight
         rows={rows}
@@ -133,7 +137,11 @@ const PairwiseAlternativesGrid = ({
         disableRowSelectionOnClick
         getRowId={(row) => row.id}
         getCellClassName={(params) => params.field === "alternativeLabel" ? "first-column" : params.row.id === params.field ? "diagonal-cell" : "pairwise-grid-cell"}
-        sx={{ ...buildEvaluationMatrixDataGridSx(theme), minWidth: Math.max(500, orderedAlternatives.length * 150 + 150) }}
+        sx={buildPairwiseAlternativesDataGridSx({
+          theme,
+          alternativeCount: orderedAlternatives.length,
+          buildSharedStyles: buildEvaluationMatrixDataGridSx,
+        })}
       />
     </Box>
   );

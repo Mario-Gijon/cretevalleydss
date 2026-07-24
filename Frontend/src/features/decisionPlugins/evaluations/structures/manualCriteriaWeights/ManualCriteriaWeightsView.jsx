@@ -1,4 +1,12 @@
-import { Box, Chip, Stack, TextField, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
+
+import ManualCriterionWeightField from "./components/ManualCriterionWeightField";
+import { resolveManualCriteriaWeightItems } from "./operations/resolveManualCriteriaWeightItems";
+import {
+  resolveCollectiveManualCriteriaWeights,
+  resolveManualCriteriaWeights,
+} from "./operations/resolveManualCriteriaWeights";
+import { updateManualCriterionWeight } from "./operations/updateManualCriterionWeight";
 
 const ManualCriteriaWeightsView = ({
   decisionContext,
@@ -8,30 +16,11 @@ const ManualCriteriaWeightsView = ({
   readOnly,
   loading,
 }) => {
-  const criteria = Array.isArray(decisionContext?.leafCriteria)
-    ? decisionContext.leafCriteria
-        .map((criterion) => ({
-          id: criterion?.id,
-          name: criterion?.name,
-        }))
-        .filter((criterion) => criterion.id && criterion.name)
-    : [];
+  const criteria = resolveManualCriteriaWeightItems(decisionContext);
   const isReadOnly = readOnly === true || loading === true;
-  const weightsByCriterion =
-    evaluation &&
-    typeof evaluation === "object" &&
-    !Array.isArray(evaluation)
-      ? evaluation.weightsByCriterion || {}
-      : {};
+  const weightsByCriterion = resolveManualCriteriaWeights(evaluation);
   const collectiveWeightsByCriterion =
-    collectiveEvaluation &&
-    typeof collectiveEvaluation === "object" &&
-    !Array.isArray(collectiveEvaluation) &&
-    collectiveEvaluation.weightsByCriterion &&
-    typeof collectiveEvaluation.weightsByCriterion === "object" &&
-    !Array.isArray(collectiveEvaluation.weightsByCriterion)
-      ? collectiveEvaluation.weightsByCriterion
-      : {};
+    resolveCollectiveManualCriteriaWeights(collectiveEvaluation);
 
   if (criteria.length === 0) {
     return (
@@ -52,48 +41,22 @@ const ManualCriteriaWeightsView = ({
           <Box sx={{ width: "100%", minWidth: 0 }}>
             <Stack spacing={1.1} sx={{ pt: 1 }}>
               {criteria.map((criterion) => (
-                <Stack
+                <ManualCriterionWeightField
                   key={criterion.id}
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={1}
-                  alignItems={{ xs: "stretch", md: "center" }}
-                >
-                  <Typography variant="body2" sx={{ flex: 1, fontWeight: 800 }}>
-                    {criterion.name}
-                  </Typography>
-                  <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-                    <TextField
-                      type="number"
-                      size="small"
-                      color="secondary"
-                      variant="outlined"
-                      disabled={isReadOnly}
-                      value={weightsByCriterion[criterion.id] ?? ""}
-                      onChange={(event) => {
-                        if (isReadOnly) return;
-
-                        const raw = event.target.value;
-                        const nextEvaluation = structuredClone(evaluation ?? {});
-                        nextEvaluation.weightsByCriterion = {
-                          ...(nextEvaluation.weightsByCriterion || {}),
-                          [criterion.id]: raw === "" ? "" : Number(raw),
-                        };
-                        setEvaluation(nextEvaluation);
-                      }}
-                      inputProps={{ min: 0, max: 1, step: 0.1 }}
-                      sx={{ width: { xs: "100%", md: 150 } }}
-                    />
-                    {typeof collectiveWeightsByCriterion[criterion.id] === "number" ? (
-                      <Chip
-                        size="small"
-                        color="secondary"
-                        variant="outlined"
-                        label={`Collective ${collectiveWeightsByCriterion[criterion.id]}`}
-                        sx={{ height: 25, fontSize: 10.5, fontWeight: 800, whiteSpace: "nowrap" }}
-                      />
-                    ) : null}
-                  </Stack>
-                </Stack>
+                  criterion={criterion}
+                  value={weightsByCriterion[criterion.id]}
+                  collectiveValue={collectiveWeightsByCriterion[criterion.id]}
+                  readOnly={isReadOnly}
+                  onChange={(rawValue) =>
+                    setEvaluation(
+                      updateManualCriterionWeight({
+                        evaluation,
+                        criterionId: criterion.id,
+                        rawValue,
+                      })
+                    )
+                  }
+                />
               ))}
             </Stack>
           </Box>

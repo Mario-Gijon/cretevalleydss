@@ -1,7 +1,7 @@
-import { createInternalError } from "../../../../../utils/common/errors.js";
-import { toIdString } from "../../../../../utils/common/ids.js";
-import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { getExpressionDomainTypeOrThrow } from "../../../../expressionDomains/expressionDomainTypeCatalog.js";
+import { createInternalError } from "../../../../../../utils/common/errors.js";
+import { toIdString } from "../../../../../../utils/common/ids.js";
+import { isPlainObject } from "../../../../../../utils/common/objects.js";
+import { getExpressionDomainTypeOrThrow } from "../../../../../expressionDomains/expressionDomainTypeCatalog.js";
 
 const requireDecisionContextOrThrow = (decisionContext) => {
   if (
@@ -94,7 +94,7 @@ const requireDecisionCriteriaOrThrow = (decisionContext) => {
   });
 };
 
-export const resolveAlternativesAndCriteria = async ({ decisionContext }) => ({
+export const resolveAlternativeCriteriaMatrixItems = async ({ decisionContext }) => ({
   alternatives: requireDecisionAlternativesOrThrow(decisionContext),
   criteria: requireDecisionCriteriaOrThrow(decisionContext),
 });

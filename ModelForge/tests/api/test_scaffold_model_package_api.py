@@ -100,6 +100,10 @@ def test_model_package_apply_writes_expected_files_inside_temp_project_root(
         project_root
         / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/index.js",
         project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/alternativeMatrix.get.js",
+        project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/alternativeMatrix.save.js",
+        project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/index.js",
         project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/AlternativeMatrixView.jsx",

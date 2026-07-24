@@ -1,5 +1,5 @@
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { normalizeText } from "./bestWorstCriteria.payload.js";
+import { normalizeText } from "./operations/normalizeBestWorstCriteriaEvaluation.js";
 
 const buildEmptyComparisons = (criterionItems) =>
   criterionItems.reduce((accumulator, criterion) => {
@@ -49,7 +49,7 @@ const resolveCriterionItems = async ({ decisionContext }) => {
   return [];
 };
 
-export const buildGetPayload = async ({
+export const getBestWorstCriteriaPayload = async ({
   payload,
   decisionContext,
 }) => {
@@ -67,8 +67,5 @@ export const buildGetPayload = async ({
         criterionItems,
       });
 
-  return {
-    payload: normalizedPayload,
-    criterionItems,
-  };
+  return normalizedPayload;
 };

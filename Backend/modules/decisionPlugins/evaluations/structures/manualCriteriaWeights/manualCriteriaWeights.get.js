@@ -31,7 +31,7 @@ const resolveCriteria = async ({ decisionContext }) =>
         .filter((criterion) => criterion.id && criterion.name)
     : [];
 
-export const buildGetPayload = async ({
+export const getManualCriteriaWeightsPayload = async ({
   payload,
   decisionContext,
 }) => {
@@ -48,8 +48,5 @@ export const buildGetPayload = async ({
         ),
       };
 
-  return {
-    payload: normalizedPayload,
-    criteria,
-  };
+  return normalizedPayload;
 };

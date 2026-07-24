@@ -1,21 +1,21 @@
-import { createBadRequestError } from "../../../../../utils/common/errors.js";
-import { hasOwnKey, isPlainObject } from "../../../../../utils/common/objects.js";
-import { validateExpressionDomainEvaluationOrThrow } from "../../../../expressionDomains/validateExpressionDomainEvaluation.js";
+import { createBadRequestError } from "../../../../../../utils/common/errors.js";
+import { hasOwnKey, isPlainObject } from "../../../../../../utils/common/objects.js";
+import { validateExpressionDomainEvaluationOrThrow } from "../../../../../expressionDomains/validateExpressionDomainEvaluation.js";
 import {
   areExpressionDomainValuesEqual,
   reflectExpressionDomainValue,
-} from "../../../../expressionDomains/index.js";
+} from "../../../../../expressionDomains/index.js";
 import {
   buildExpectedPairsByCriterion,
-  resolveAlternativesAndCriteria,
-} from "./alternativePairwiseByCriterion.context.js";
+  resolveAlternativePairwiseItems,
+} from "./resolveAlternativePairwiseItems.js";
 
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",
   SUBMIT: "submit",
 });
 
-export const buildEmptyCell = () => ({
+export const buildEmptyAlternativePairwiseCell = () => ({
   value: "",
 });
 
@@ -85,7 +85,10 @@ const buildEmptyMatrixForCriterion = ({ alternatives }) =>
       Object.fromEntries(
         alternatives
           .filter((columnAlternative) => columnAlternative.id !== rowAlternative.id)
-          .map((columnAlternative) => [columnAlternative.id, buildEmptyCell()])
+          .map((columnAlternative) => [
+            columnAlternative.id,
+            buildEmptyAlternativePairwiseCell(),
+          ])
       ),
     ])
   );
@@ -179,7 +182,7 @@ const requireCanonicalShapeOrThrow = ({
   }
 };
 
-export const normalizePayloadOrThrow = async ({
+export const normalizeAlternativePairwiseEvaluation = async ({
   payload,
   decisionContext,
   requireValue,
@@ -192,7 +195,7 @@ export const normalizePayloadOrThrow = async ({
 
   rejectUnsupportedTopLevelShapesOrThrow(payload);
 
-  const { alternatives, criteria, criterionIds } = await resolveAlternativesAndCriteria({
+  const { alternatives, criteria, criterionIds } = await resolveAlternativePairwiseItems({
     decisionContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
@@ -239,8 +242,10 @@ export const normalizePayloadOrThrow = async ({
           );
         }
 
-        canonicalMatrix[pair.rowAlternativeId][pair.columnAlternativeId] = buildEmptyCell();
-        canonicalMatrix[pair.columnAlternativeId][pair.rowAlternativeId] = buildEmptyCell();
+        canonicalMatrix[pair.rowAlternativeId][pair.columnAlternativeId] =
+          buildEmptyAlternativePairwiseCell();
+        canonicalMatrix[pair.columnAlternativeId][pair.rowAlternativeId] =
+          buildEmptyAlternativePairwiseCell();
         continue;
       }
 

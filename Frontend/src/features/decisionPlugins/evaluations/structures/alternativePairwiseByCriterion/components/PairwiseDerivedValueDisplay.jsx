@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 
-import { describePairwiseCellValue } from "./pairwiseGrid.helpers.js";
+import { describePairwiseCellValue } from "../operations/describeAlternativePairwiseValue";
 
 const PairwiseDerivedValueDisplay = ({ cell, expressionDomain }) => {
   const { text, tooltip } = describePairwiseCellValue({
@@ -24,4 +24,3 @@ const PairwiseDerivedValueDisplay = ({ cell, expressionDomain }) => {
 };
 
 export default PairwiseDerivedValueDisplay;
-

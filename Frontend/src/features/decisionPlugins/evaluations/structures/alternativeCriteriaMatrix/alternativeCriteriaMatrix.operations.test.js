@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   requireCanonicalAlternativeCriteriaMatrix,
-  resolveCanonicalCollectiveAlternativeCriteriaMatrix,
-  updateAlternativeCriteriaMatrixCell,
-} from "./alternativeCriteriaMatrix.helpers.js";
+} from "./operations/validateAlternativeCriteriaMatrix.js";
+import { resolveCanonicalCollectiveAlternativeCriteriaMatrix } from "./operations/resolveCollectiveAlternativeCriteriaMatrix.js";
+import { updateAlternativeCriteriaMatrixCell } from "./operations/updateAlternativeCriteriaMatrixCell.js";
 
 const alternatives = [
   { id: "alt-a", name: "Alternative A" },
@@ -46,7 +46,7 @@ const buildCanonicalMatrix = () => ({
   },
 });
 
-describe("alternativeCriteriaMatrix helpers", () => {
+describe("alternativeCriteriaMatrix operations", () => {
   it("accepts a complete canonical matrix", () => {
     expect(
       requireCanonicalAlternativeCriteriaMatrix({

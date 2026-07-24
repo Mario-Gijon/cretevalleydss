@@ -90,8 +90,11 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
     )
 
     preview_paths = [item["path"] for item in body["files"]]
+    assert len(preview_paths) == 5
     assert preview_paths == [
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.get.js",
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.save.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PairwiseMatrixView.jsx",
     ]
@@ -100,13 +103,18 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
 
     contents = {item["path"]: item["content"] for item in body["files"]}
     backend = contents[preview_paths[0]]
-    frontend = contents[preview_paths[2]]
+    backend_get = contents[preview_paths[1]]
+    backend_save = contents[preview_paths[2]]
+    frontend = contents[preview_paths[4]]
 
-    assert "async get({ payload, decisionContext })" in backend
-    assert "async save({ payload, decisionContext, mode })" in backend
-    assert "return payload;" in backend
-    assert "Return the complete payload that must be sent to the Frontend." in backend
-    assert "Return the complete payload that must be stored in the database." in backend
+    assert "get: getPairwiseMatrixPayload" in backend
+    assert "save: savePairwiseMatrixPayload" in backend
+    assert "getPairwiseMatrixPayload" in backend_get
+    assert "return payload ?? {};" in backend_get
+    assert "savePairwiseMatrixPayload" in backend_save
+    assert "return payload;" in backend_save
+    assert "Return the complete payload that must be sent to the Frontend." in backend_get
+    assert "Return the complete payload that must be stored in the database." in backend_save
     assert "decisionContext" in frontend
     assert "evaluation" in frontend
     assert "setEvaluation" in frontend
@@ -127,6 +135,16 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
         assert forbidden not in frontend
     assert all(not path.endswith(".md") for path in preview_paths)
     assert all(not path.endswith(".validation.js") for path in preview_paths)
+    for forbidden_path_part in (
+        "/operations/",
+        "/components/",
+        ".styles.js",
+        "logic.js",
+        "payload.js",
+        "helpers.js",
+        "utils.js",
+    ):
+        assert all(forbidden_path_part not in path for path in preview_paths)
 
 
 def test_parameter_structure_preview_reports_expected_paths_without_writing_files(
@@ -198,6 +216,10 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
         / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
         "evaluation_frontend_index": project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
+        "evaluation_backend_get": project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.get.js",
+        "evaluation_backend_save": project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.save.js",
         "evaluation_frontend_view": project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PairwiseMatrixView.jsx",
         "parameter_backend_index": project_root
@@ -222,6 +244,12 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     evaluation_backend_source = expected_files["evaluation_backend"].read_text(
         encoding="utf-8"
     )
+    evaluation_backend_get_source = expected_files[
+        "evaluation_backend_get"
+    ].read_text(encoding="utf-8")
+    evaluation_backend_save_source = expected_files[
+        "evaluation_backend_save"
+    ].read_text(encoding="utf-8")
     evaluation_frontend_index_source = expected_files[
         "evaluation_frontend_index"
     ].read_text(encoding="utf-8")
@@ -247,10 +275,12 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert 'key: "pairwiseMatrix"' in evaluation_backend_source
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_backend_source
-    assert "async get({ payload, decisionContext })" in evaluation_backend_source
-    assert "async save({ payload, decisionContext, mode })" in evaluation_backend_source
-    assert "return payload ?? {};" in evaluation_backend_source
-    assert "return payload;" in evaluation_backend_source
+    assert "get: getPairwiseMatrixPayload" in evaluation_backend_source
+    assert "save: savePairwiseMatrixPayload" in evaluation_backend_source
+    assert "getPairwiseMatrixPayload" in evaluation_backend_get_source
+    assert "return payload ?? {};" in evaluation_backend_get_source
+    assert "savePairwiseMatrixPayload" in evaluation_backend_save_source
+    assert "return payload;" in evaluation_backend_save_source
     assert "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT" not in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_frontend_index_source
     assert 'key: "pairwiseMatrix"' in evaluation_frontend_index_source

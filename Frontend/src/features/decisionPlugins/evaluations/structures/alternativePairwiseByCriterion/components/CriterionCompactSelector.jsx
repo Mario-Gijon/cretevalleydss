@@ -6,11 +6,12 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import { softIconBtnSx } from "../../../shared/evaluationStructure.styles";
+import { buildCriterionToggleGroupSx } from "./CriterionCompactSelector.styles";
 
 const CriterionCompactSelector = ({
   criteria = [],
@@ -43,27 +44,7 @@ const CriterionCompactSelector = ({
                   onSelectCriterion?.(value);
                 }
               }}
-              sx={{
-                display: "inline-flex",
-                gap: 0.75,
-                "& .MuiToggleButton-root": {
-                  borderRadius: 999,
-                  px: 1.25,
-                  py: 0.35,
-                  minHeight: 28,
-                  border: `1px solid ${alpha(theme.palette.common.white, 0.14)}`,
-                  color: "text.secondary",
-                  textTransform: "none",
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                  bgcolor: alpha(theme.palette.background.paper, 0.2),
-                },
-                "& .MuiToggleButton-root.Mui-selected": {
-                  color: "info.light",
-                  borderColor: alpha(theme.palette.info.main, 0.45),
-                  bgcolor: alpha(theme.palette.info.main, 0.16),
-                },
-              }}
+              sx={buildCriterionToggleGroupSx(theme)}
             >
               {criteria.map((criterion, index) => (
                 <ToggleButton key={criterion?.name || index} value={index}>

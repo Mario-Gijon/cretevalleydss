@@ -31,6 +31,8 @@ def _build_placeholder_values(
         "evaluation_structure_key": names.evaluation_structure_key,
         "stage_constant": request.stageConstant,
         "backend_structure_export_name": names.backend_structure_export_name,
+        "get_function_name": names.get_function_name,
+        "save_function_name": names.save_function_name,
         "view_component_name": names.view_component_name,
     }
 
@@ -51,6 +53,14 @@ def build_evaluation_structure_scaffold_preview(
 
     template_map = [
         ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
+        (
+            "backend-get.js.template",
+            f"{backend_target_base_path}/{names.evaluation_structure_key}.get.js",
+        ),
+        (
+            "backend-save.js.template",
+            f"{backend_target_base_path}/{names.evaluation_structure_key}.save.js",
+        ),
         ("frontend-index.js.template", f"{frontend_target_base_path}/index.js"),
         (
             "frontend-view.jsx.template",

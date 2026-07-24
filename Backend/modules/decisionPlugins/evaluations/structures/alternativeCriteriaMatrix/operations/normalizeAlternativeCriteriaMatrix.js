@@ -1,12 +1,12 @@
-import { createBadRequestError } from "../../../../../utils/common/errors.js";
-import { hasOwnKey, isPlainObject } from "../../../../../utils/common/objects.js";
+import { createBadRequestError } from "../../../../../../utils/common/errors.js";
+import { hasOwnKey, isPlainObject } from "../../../../../../utils/common/objects.js";
 import {
   resolveRequireValueFromModeOrThrow,
-} from "../../shared/expressionDomainEvaluationPayload.js";
-import { validateExpressionDomainEvaluationOrThrow } from "../../../../expressionDomains/validateExpressionDomainEvaluation.js";
-import { resolveAlternativesAndCriteria } from "./alternativeCriteriaMatrix.context.js";
+} from "../../../shared/expressionDomainEvaluationPayload.js";
+import { validateExpressionDomainEvaluationOrThrow } from "../../../../../expressionDomains/validateExpressionDomainEvaluation.js";
+import { resolveAlternativeCriteriaMatrixItems } from "./resolveAlternativeCriteriaMatrixItems.js";
 
-export const buildEmptyCell = () => ({
+export const buildEmptyAlternativeCriteriaMatrixCell = () => ({
   value: "",
 });
 export { resolveRequireValueFromModeOrThrow };
@@ -59,7 +59,7 @@ const requireCanonicalCellOrThrow = ({
       });
     }
 
-    return buildEmptyCell();
+    return buildEmptyAlternativeCriteriaMatrixCell();
   }
 
   return {
@@ -122,7 +122,7 @@ const requireCanonicalShapeOrThrow = ({
   }
 };
 
-export const normalizePayloadOrThrow = async ({
+export const normalizeAlternativeCriteriaMatrix = async ({
   payload,
   decisionContext,
   requireValue,
@@ -138,7 +138,7 @@ export const normalizePayloadOrThrow = async ({
   const {
     alternatives,
     criteria,
-  } = await resolveAlternativesAndCriteria({
+  } = await resolveAlternativeCriteriaMatrixItems({
     decisionContext,
   });
   requireCanonicalShapeOrThrow({

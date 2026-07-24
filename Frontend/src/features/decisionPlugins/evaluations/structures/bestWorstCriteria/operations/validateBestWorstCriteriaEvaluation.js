@@ -1,40 +1,5 @@
-const isValidBwmScaleValue = (value) =>
+const isValidBestWorstScaleValue = (value) =>
   Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 9;
-
-export const getBestWorstCriterionItems = (decisionContext) =>
-  Array.isArray(decisionContext?.leafCriteria)
-    ? decisionContext.leafCriteria
-        .map((criterion) => ({
-          id: String(criterion?.id ?? criterion?._id ?? "").trim(),
-          name: String(criterion?.name ?? "").trim(),
-        }))
-        .filter((criterion) => criterion.id && criterion.name)
-    : [];
-
-export const buildEmptyBestWorstCriteriaPayload = (criterionItems) => ({
-  bestCriterion: criterionItems[0]?.id || "",
-  worstCriterion:
-    criterionItems.length > 1
-      ? criterionItems[criterionItems.length - 1]?.id || ""
-      : criterionItems[0]?.id || "",
-  bestToOthers: Object.fromEntries(
-    criterionItems.map((criterion) => [
-      criterion.id,
-      criterion.id === criterionItems[0]?.id ? 1 : "",
-    ])
-  ),
-  othersToWorst: Object.fromEntries(
-    criterionItems.map((criterion) => [
-      criterion.id,
-      criterion.id ===
-      (criterionItems.length > 1
-        ? criterionItems[criterionItems.length - 1]?.id
-        : criterionItems[0]?.id)
-        ? 1
-        : "",
-    ])
-  ),
-});
 
 export const validateBestWorstCriteriaPayload = ({ criterionItems, payload }) => {
   const criterionIds = criterionItems.map((criterion) => criterion.id);
@@ -51,14 +16,14 @@ export const validateBestWorstCriteriaPayload = ({ criterionItems, payload }) =>
   for (const criterion of criterionItems) {
     if (
       criterion.id !== bestCriterion &&
-      !isValidBwmScaleValue(bestToOthers[criterion.id])
+      !isValidBestWorstScaleValue(bestToOthers[criterion.id])
     ) {
       return `Best-to-others value for '${criterion.name}' must be an integer between 1 and 9.`;
     }
 
     if (
       criterion.id !== worstCriterion &&
-      !isValidBwmScaleValue(othersToWorst[criterion.id])
+      !isValidBestWorstScaleValue(othersToWorst[criterion.id])
     ) {
       return `Others-to-worst value for '${criterion.name}' must be an integer between 1 and 9.`;
     }

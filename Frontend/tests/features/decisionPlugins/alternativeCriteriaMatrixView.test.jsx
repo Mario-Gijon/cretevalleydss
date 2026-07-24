@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import AlternativeCriteriaMatrixView from "../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
@@ -55,6 +55,52 @@ const buildMatrixPayload = () => ({
 });
 
 describe("AlternativeCriteriaMatrixView", () => {
+  it("updates a canonical cell and disables it in read-only mode", () => {
+    const setEvaluation = vi.fn();
+    const decisionContext = buildDecisionContext([
+      { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
+    ]);
+    const evaluation = {
+      "alt-a": { "criterion-1": { value: 7.5 } },
+      "alt-b": { "criterion-1": { value: 6.5 } },
+    };
+
+    const { unmount } = renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        decisionContext={decisionContext}
+        evaluation={evaluation}
+        setEvaluation={setEvaluation}
+        collectiveEvaluation={null}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    fireEvent.change(screen.getAllByRole("spinbutton")[0], {
+      target: { value: "8" },
+    });
+    expect(setEvaluation).toHaveBeenCalledWith({
+      "alt-a": { "criterion-1": { value: 8 } },
+      "alt-b": { "criterion-1": { value: 6.5 } },
+    });
+    unmount();
+
+    renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        decisionContext={decisionContext}
+        evaluation={evaluation}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
+        readOnly
+        loading={false}
+      />
+    );
+
+    screen.getAllByRole("spinbutton").forEach((input) => {
+      expect(input).toBeDisabled();
+    });
+  });
+
   it("renders expression-domain inputs for numeric, ordinal, and fuzzy criteria", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildGetPayload,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.getPayload.js";
-import {
-  normalizePayloadOrThrow,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.payload.js";
+  getAlternativePairwiseByCriterionPayload as buildGetPayload,
+} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.get.js";
+import { saveAlternativePairwiseByCriterionPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.save.js";
+
+const normalizePayloadOrThrow = ({ requireValue, ...args }) =>
+  saveAlternativePairwiseByCriterionPayload({
+    ...args,
+    mode: requireValue ? "submit" : "draft",
+  });
 
 const buildDecisionContext = (expressionDomain) => ({
   alternatives: [
@@ -289,7 +293,7 @@ describe("alternativePairwiseByCriterion", () => {
       decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
     });
 
-    expect(result.payload).toEqual({
+    expect(result).toEqual({
       "criterion-1": {
         "alt-a": { "alt-b": { value: "" } },
         "alt-b": { "alt-a": { value: "" } },
@@ -306,7 +310,7 @@ describe("alternativePairwiseByCriterion", () => {
       decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
     });
 
-    expect(result.payload).toEqual({
+    expect(result).toEqual({
       "criterion-1": {
         "alt-a": { "alt-b": { value: 2 } },
         "alt-b": { "alt-a": { value: 4 } },

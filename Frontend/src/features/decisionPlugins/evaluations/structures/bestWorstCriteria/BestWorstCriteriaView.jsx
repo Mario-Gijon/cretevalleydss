@@ -1,20 +1,12 @@
 import { Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import BestWorstComparisonRow from "./components/BestWorstComparisonRow";
+import { buildEmptyBestWorstCriteriaPayload } from "./operations/buildEmptyBestWorstCriteriaEvaluation";
+import { getBestWorstCriterionItems } from "./operations/resolveBestWorstCriteriaItems";
 import {
-  buildEmptyBestWorstCriteriaPayload,
-  getBestWorstCriterionItems,
-} from "./bestWorstCriteria.payload";
-
-const preventInvalidNumberKeys = (event) => {
-  if (["e", "E", "+", "-", ".", ","].includes(event.key)) {
-    event.preventDefault();
-  }
-};
-
-const normalizeScaleInput = (value) => {
-  if (value === "") return "";
-  if (/^[1-9]$/.test(value)) return Number(value);
-  return null;
-};
+  updateBestCriterionSelection,
+  updateBestWorstComparison,
+  updateWorstCriterionSelection,
+} from "./operations/updateBestWorstCriteriaEvaluation";
 
 const BestWorstCriteriaView = ({
   decisionContext,
@@ -59,33 +51,13 @@ const BestWorstCriteriaView = ({
       return;
     }
 
-    const previousBestCriterion = currentPayload.bestCriterion;
-    const next = {
-      ...currentPayload,
-      bestCriterion,
-      bestToOthers: {
-        ...currentPayload.bestToOthers,
-        [bestCriterion]: 1,
-      },
-      othersToWorst: { ...currentPayload.othersToWorst },
-    };
-
-    if (
-      previousBestCriterion &&
-      previousBestCriterion !== bestCriterion &&
-      next.bestToOthers[previousBestCriterion] === 1
-    ) {
-      next.bestToOthers[previousBestCriterion] = "";
-    }
-
-    if (criterionIds.length > 1 && next.worstCriterion === next.bestCriterion) {
-      next.worstCriterion =
-        criterionIds.find((criterionId) => criterionId !== next.bestCriterion) ||
-        next.worstCriterion;
-      next.othersToWorst[next.worstCriterion] = 1;
-    }
-
-    setEvaluation(next);
+    setEvaluation(
+      updateBestCriterionSelection({
+        payload: currentPayload,
+        criterionIds,
+        bestCriterion,
+      })
+    );
   };
 
   const updateWorstCriterion = (worstCriterion) => {
@@ -93,33 +65,13 @@ const BestWorstCriteriaView = ({
       return;
     }
 
-    const previousWorstCriterion = currentPayload.worstCriterion;
-    const next = {
-      ...currentPayload,
-      worstCriterion,
-      bestToOthers: { ...currentPayload.bestToOthers },
-      othersToWorst: {
-        ...currentPayload.othersToWorst,
-        [worstCriterion]: 1,
-      },
-    };
-
-    if (
-      previousWorstCriterion &&
-      previousWorstCriterion !== worstCriterion &&
-      next.othersToWorst[previousWorstCriterion] === 1
-    ) {
-      next.othersToWorst[previousWorstCriterion] = "";
-    }
-
-    if (criterionIds.length > 1 && next.bestCriterion === next.worstCriterion) {
-      next.bestCriterion =
-        criterionIds.find((criterionId) => criterionId !== next.worstCriterion) ||
-        next.bestCriterion;
-      next.bestToOthers[next.bestCriterion] = 1;
-    }
-
-    setEvaluation(next);
+    setEvaluation(
+      updateWorstCriterionSelection({
+        payload: currentPayload,
+        criterionIds,
+        worstCriterion,
+      })
+    );
   };
 
   const updateBestToOthersValue = (criterionId, value) => {
@@ -127,16 +79,16 @@ const BestWorstCriteriaView = ({
       return;
     }
 
-    const normalizedValue = normalizeScaleInput(value);
-    if (normalizedValue === null) return;
-
-    setEvaluation({
-      ...currentPayload,
-      bestToOthers: {
-        ...currentPayload.bestToOthers,
-        [criterionId]: normalizedValue,
-      },
+    const nextEvaluation = updateBestWorstComparison({
+      payload: currentPayload,
+      comparisonKey: "bestToOthers",
+      criterionId,
+      rawValue: value,
     });
+
+    if (nextEvaluation !== currentPayload) {
+      setEvaluation(nextEvaluation);
+    }
   };
 
   const updateOthersToWorstValue = (criterionId, value) => {
@@ -144,54 +96,16 @@ const BestWorstCriteriaView = ({
       return;
     }
 
-    const normalizedValue = normalizeScaleInput(value);
-    if (normalizedValue === null) return;
-
-    setEvaluation({
-      ...currentPayload,
-      othersToWorst: {
-        ...currentPayload.othersToWorst,
-        [criterionId]: normalizedValue,
-      },
+    const nextEvaluation = updateBestWorstComparison({
+      payload: currentPayload,
+      comparisonKey: "othersToWorst",
+      criterionId,
+      rawValue: value,
     });
-  };
 
-  const renderComparisonRow = ({ criterionId, value, onChange }) => {
-    const criterionName = criterionNameById.get(criterionId) || criterionId;
-
-    return (
-      <Stack
-        key={criterionId}
-        direction={{ xs: "column", sm: "row" }}
-        spacing={0.75}
-        alignItems={{ xs: "stretch", sm: "center" }}
-      >
-      <Typography
-        variant="body2"
-        noWrap
-        title={criterionName}
-        sx={{
-          width: { xs: "auto", sm: labelColumnWidth },
-          flexShrink: 0,
-        }}
-      >
-        {criterionName}
-      </Typography>
-
-      <TextField
-        variant="outlined"
-        type="number"
-        size="small"
-        color="info"
-        disabled={isReadOnly}
-        value={value ?? ""}
-        onKeyDown={preventInvalidNumberKeys}
-        onChange={(event) => onChange(criterionId, event.target.value)}
-        inputProps={{ min: 1, max: 9, step: 1 }}
-        sx={{ width: { xs: "100%", sm: 96 } }}
-      />
-      </Stack>
-    );
+    if (nextEvaluation !== currentPayload) {
+      setEvaluation(nextEvaluation);
+    }
   };
 
   if (criterionIds.length === 0) {
@@ -232,13 +146,17 @@ const BestWorstCriteriaView = ({
 
           <Typography variant="subtitle1">Best to others</Typography>
 
-          {bestComparisonIds.map((criterionId) =>
-            renderComparisonRow({
-              criterionId,
-              value: currentPayload.bestToOthers[criterionId],
-              onChange: updateBestToOthersValue,
-            })
-          )}
+          {bestComparisonIds.map((criterionId) => (
+            <BestWorstComparisonRow
+              key={criterionId}
+              criterionId={criterionId}
+              criterionName={criterionNameById.get(criterionId) || criterionId}
+              value={currentPayload.bestToOthers[criterionId]}
+              labelColumnWidth={labelColumnWidth}
+              readOnly={isReadOnly}
+              onChange={updateBestToOthersValue}
+            />
+          ))}
         </Stack>
 
         <Divider
@@ -276,13 +194,17 @@ const BestWorstCriteriaView = ({
 
           <Typography variant="subtitle1">Others to worst</Typography>
 
-          {worstComparisonIds.map((criterionId) =>
-            renderComparisonRow({
-              criterionId,
-              value: currentPayload.othersToWorst[criterionId],
-              onChange: updateOthersToWorstValue,
-            })
-          )}
+          {worstComparisonIds.map((criterionId) => (
+            <BestWorstComparisonRow
+              key={criterionId}
+              criterionId={criterionId}
+              criterionName={criterionNameById.get(criterionId) || criterionId}
+              value={currentPayload.othersToWorst[criterionId]}
+              labelColumnWidth={labelColumnWidth}
+              readOnly={isReadOnly}
+              onChange={updateOthersToWorstValue}
+            />
+          ))}
         </Stack>
       </Stack>
 
