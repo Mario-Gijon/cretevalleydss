@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildAlternativeCriteriaMatrixRows } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/buildAlternativeCriteriaMatrixRows.js";
 import { resolveCollectiveAlternativeCriteriaMatrix } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/resolveCollectiveAlternativeCriteriaMatrix.js";
 import { updateAlternativeCriteriaMatrixValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/updateAlternativeCriteriaMatrixValue.js";
+import { validateAlternativeCriteriaMatrixValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/validateAlternativeCriteriaMatrixValue.js";
 
 const alternatives = [
   { id: "alternative1", name: "Alternative 1" },
@@ -62,6 +63,22 @@ describe("alternativeCriteriaMatrix operations", () => {
     expect(result).not.toBe(evaluation);
     expect(result.alternative1).not.toBe(evaluation.alternative1);
     expect(evaluation.alternative2.criterion1).toBe(6.5);
+  });
+
+  it("returns a validation message string or an empty string", () => {
+    expect(
+      validateAlternativeCriteriaMatrixValue({
+        value: "",
+        expressionDomain: criteria[0].expressionDomain,
+      })
+    ).toBe("");
+
+    expect(
+      validateAlternativeCriteriaMatrixValue({
+        value: 12,
+        expressionDomain: criteria[0].expressionDomain,
+      })
+    ).toBe("Value must be between 0 and 10.");
   });
 
   it("accepts null or a complete direct collective matrix", () => {

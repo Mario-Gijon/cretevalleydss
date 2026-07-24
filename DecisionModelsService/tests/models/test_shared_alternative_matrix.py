@@ -190,8 +190,8 @@ def test_normalize_collective_evaluations_by_ids_builds_a_complete_direct_matrix
     ("collective_matrix", "message"),
     [
         ({}, "must be a list"),
-        ([[7.5]], "row count must match alternatives"),
-        ([[7.5], [6.5, 5.5]], "column count must match criteria"),
+        ([[7.5]], "must contain 2 rows; received 1"),
+        ([[7.5], [6.5, 5.5]], r"\[0\] must contain 2 columns; received 1"),
         ([[7.5, 6.5], {}], r"collective_matrix\[1\] must be a list"),
     ],
 )

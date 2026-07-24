@@ -3,11 +3,9 @@ import { validateExpressionDomainEvaluation } from "../../../../../expressionDom
 export const validateAlternativeCriteriaMatrixValue = ({
   value,
   expressionDomain,
-  alternativeName,
-  criterionName,
 }) => {
   if (value === "") {
-    return null;
+    return "";
   }
 
   try {
@@ -15,16 +13,8 @@ export const validateAlternativeCriteriaMatrixValue = ({
       value,
       expressionDomain,
     });
-  } catch (validationError) {
-    return {
-      alternativeName,
-      criterionName,
-      message:
-        validationError instanceof Error
-          ? validationError.message
-          : "Value is invalid.",
-    };
+    return "";
+  } catch (error) {
+    return error instanceof Error ? error.message : "Value is invalid.";
   }
-
-  return null;
 };

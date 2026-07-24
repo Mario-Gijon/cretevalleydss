@@ -66,25 +66,22 @@ const AlternativeCriteriaMatrixView = ({
   }
 
   const updateValue = ({ alternativeId, criterion, nextValue }) => {
-    setEvaluation(
-      updateAlternativeCriteriaMatrixValue({
-        evaluation,
-        alternativeId,
-        criterionId: criterion.id,
-        nextValue,
-      })
-    );
+    const nextEvaluation = updateAlternativeCriteriaMatrixValue({
+      evaluation,
+      alternativeId,
+      criterionId: criterion.id,
+      nextValue,
+    });
+
+    setEvaluation(nextEvaluation);
   };
 
   const columns = buildAlternativeCriteriaMatrixColumns({
     criteria,
     renderCell: ({ rowId, criterion, value }) => {
-      const alternative = alternatives.find((item) => item.id === rowId);
       const validationError = validateAlternativeCriteriaMatrixValue({
         value,
         expressionDomain: criterion.expressionDomain,
-        alternativeName: alternative.name,
-        criterionName: criterion.name,
       });
 
       return (
@@ -93,7 +90,7 @@ const AlternativeCriteriaMatrixView = ({
           value={value}
           collectiveValue={collectiveResolution.payload?.[rowId]?.[criterion.id]}
           permitEdit={permitEdit}
-          error={validationError?.message ?? ""}
+          error={validationError}
           onChange={(nextValue) =>
             updateValue({
               alternativeId: rowId,

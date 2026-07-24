@@ -1,7 +1,5 @@
 import { isPlainObject } from "../../../../../../utils/common/objects";
 
-const hasOwnKey = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
-
 const isCanonicalCollectiveValue = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return true;
@@ -38,7 +36,7 @@ export const resolveCollectiveAlternativeCriteriaMatrix = ({
   }
 
   for (const alternative of alternatives) {
-    if (!hasOwnKey(collectiveEvaluation, alternative.id)) {
+    if (!Object.hasOwn(collectiveEvaluation, alternative.id)) {
       throw new Error("Collective payload is missing an alternative row.");
     }
 
@@ -57,7 +55,7 @@ export const resolveCollectiveAlternativeCriteriaMatrix = ({
     }
 
     for (const criterion of criteria) {
-      if (!hasOwnKey(row, criterion.id)) {
+      if (!Object.hasOwn(row, criterion.id)) {
         throw new Error("Collective alternative row is missing a criterion cell.");
       }
 

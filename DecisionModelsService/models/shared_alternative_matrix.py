@@ -183,7 +183,10 @@ def normalize_collective_evaluations_by_ids(
         raise ValueError("collective_matrix must be a list")
 
     if len(collective_matrix) != len(alternative_ids):
-        raise ValueError("collective_matrix row count must match alternatives")
+        raise ValueError(
+            "collective_matrix must contain "
+            f"{len(alternative_ids)} rows; received {len(collective_matrix)}"
+        )
 
     collective_evaluations: dict[str, dict[str, Any]] = {}
 
@@ -193,7 +196,10 @@ def normalize_collective_evaluations_by_ids(
             raise ValueError(f"collective_matrix[{row_index}] must be a list")
 
         if len(row) != len(criterion_ids):
-            raise ValueError("collective_matrix column count must match criteria")
+            raise ValueError(
+                f"collective_matrix[{row_index}] must contain "
+                f"{len(criterion_ids)} columns; received {len(row)}"
+            )
 
         collective_evaluations[alternative_id] = {}
         for criterion_index, criterion_id in enumerate(criterion_ids):
