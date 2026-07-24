@@ -16,6 +16,7 @@ import {
   saveIssueEvaluation,
   submitIssueEvaluationPayload,
 } from "../services/issueEvaluation.service";
+import { requireCompleteEvaluationObject } from "../logic/requireCompleteEvaluationObject";
 import AlternativeEvaluationDialogShell from "./AlternativeEvaluationDialogShell";
 import AlternativeEvaluationSaveDialog from "./AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "./AlternativeEvaluationSubmitDialog";
@@ -65,31 +66,7 @@ const EvaluationStructureDialog = ({
   const issueId = String(issue?.id ?? issue?._id ?? "").trim() || null;
 
   const setEvaluation = (nextEvaluation) => {
-    if (
-      !nextEvaluation ||
-      typeof nextEvaluation !== "object" ||
-      Array.isArray(nextEvaluation)
-    ) {
-      throw new TypeError("setEvaluation requires a complete evaluation object.");
-    }
-
-    let serialized;
-    try {
-      serialized = JSON.stringify(nextEvaluation);
-    } catch {
-      throw new TypeError("setEvaluation requires a serializable evaluation object.");
-    }
-
-    if (serialized === undefined) {
-      throw new TypeError("setEvaluation requires a serializable evaluation object.");
-    }
-
-    const normalized = JSON.parse(serialized);
-    if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
-      throw new TypeError("setEvaluation requires a complete evaluation object.");
-    }
-
-    setEvaluationState(normalized);
+    setEvaluationState(requireCompleteEvaluationObject(nextEvaluation));
   };
 
   useEffect(() => {

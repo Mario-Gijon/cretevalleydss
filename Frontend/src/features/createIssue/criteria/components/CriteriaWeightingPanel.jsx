@@ -28,6 +28,7 @@ import {
   getEvaluationStructureEntryForStage,
 } from "../../../decisionPlugins/evaluations/registry";
 import { buildDecisionContext } from "../../../issueEvaluation/context";
+import { requireCompleteEvaluationObject } from "../../../issueEvaluation/logic/requireCompleteEvaluationObject";
 
 export const CriteriaWeightingPanel = ({
   selectedModel,
@@ -512,7 +513,7 @@ export const CriteriaWeightingPanel = ({
               updateConfig(
                 {
                   ...safeConfig,
-                  payload: nextEvaluation,
+                  payload: requireCompleteEvaluationObject(nextEvaluation),
                 },
                 { markDirty: true }
               )

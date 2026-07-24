@@ -56,6 +56,9 @@ export const buildDecisionContext = ({
     resolveObjectOrNull(issue?.modelParameters) ||
     resolveObjectOrNull(issue?.modelParams?.base?.paramsSaved) ||
     resolveObjectOrNull(issue?.modelParams?.base?.paramsResolved);
+  const issueCriteriaWeightingParameters = resolveObjectOrNull(
+    issue?.criteriaWeightingParameters
+  );
   const resolvedAlternatives = Array.isArray(alternatives)
     ? alternatives
     : Array.isArray(issue?.alternatives)
@@ -122,7 +125,7 @@ export const buildDecisionContext = ({
     modelParameters: resolveObjectOrNull(explicitParameters?.modelParameters) || issueParameters || {},
     criteriaWeightingParameters: resolveObjectOrNull(
       explicitParameters?.criteriaWeightingParameters
-    ) || {},
+    ) || issueCriteriaWeightingParameters || {},
     alternatives: parameterContext.alternatives,
     criteriaTree: parameterContext.criteriaTree,
     leafCriteria: parameterContext.leafCriteria,

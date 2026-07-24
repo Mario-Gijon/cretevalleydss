@@ -111,9 +111,15 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
     assert "evaluation" in frontend
     assert "setEvaluation" in frontend
     assert "collectiveEvaluation" in frontend
+    assert "readOnly" in frontend
+    assert "loading" in frontend
+    assert "// console.log(JSON.stringify(decisionContext, null, 2));" in frontend
     for forbidden in (
         "forwardRef",
         "useImperativeHandle",
+        "useEffect",
+        "useMemo",
+        "useState",
         "preparePayloadRead",
         "flushPendingEdits",
         "validatePayloadRead",
@@ -257,7 +263,10 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "evaluation" in evaluation_view_source
     assert "setEvaluation" in evaluation_view_source
     assert "collectiveEvaluation" in evaluation_view_source
-    assert "forwardRef" not in evaluation_view_source
+    assert "readOnly" in evaluation_view_source
+    assert "loading" in evaluation_view_source
+    for forbidden in ("forwardRef", "useEffect", "useMemo", "useState"):
+        assert forbidden not in evaluation_view_source
 
     assert 'key: "scoreRange"' in parameter_backend_index_source
     assert "scoreRangeParameterStructure" in parameter_backend_index_source

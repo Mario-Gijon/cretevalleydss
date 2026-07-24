@@ -11,7 +11,10 @@ import {
 describe("buildDecisionContext", () => {
   it("builds a stable context from a complete issue", () => {
     const context = buildDecisionContext({
-      issue: evaluationIssueFixture,
+      issue: {
+        ...evaluationIssueFixture,
+        criteriaWeightingParameters: { aggregation: "mean" },
+      },
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       structure: {
         key: "alternativeCriteriaMatrix",
@@ -41,7 +44,9 @@ describe("buildDecisionContext", () => {
       modelParameters: {
         alpha: 0.4,
       },
-      criteriaWeightingParameters: {},
+      criteriaWeightingParameters: {
+        aggregation: "mean",
+      },
       alternatives: [
         { id: "alt-1", name: "Option A" },
         { id: "alt-2", name: "Option B" },
@@ -52,6 +57,20 @@ describe("buildDecisionContext", () => {
         threshold: 0.75,
       },
     });
+    expect(Object.keys(context)).toEqual([
+      "issue",
+      "structure",
+      "model",
+      "modelParameters",
+      "criteriaWeightingParameters",
+      "alternatives",
+      "criteriaTree",
+      "leafCriteria",
+      "experts",
+      "criteriaWeights",
+      "expertWeights",
+      "consensus",
+    ]);
     expect(context.criteriaTree).toHaveLength(1);
     expect(context.leafCriteria).toEqual([
       {

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -416,5 +416,36 @@ describe("EvaluationStructureDialog", () => {
     expect(() =>
       mockViewState.lastProps.setEvaluation((previous) => previous)
     ).toThrow("setEvaluation requires a complete evaluation object.");
+  });
+
+  it("accepts a complete object and replaces the previous evaluation completely", async () => {
+    renderDialog();
+    await waitFor(() => expect(mockFetchIssueEvaluation).toHaveBeenCalled());
+    const replacement = { replacement: true };
+
+    act(() => {
+      mockViewState.lastProps.setEvaluation(replacement);
+    });
+
+    expect(mockViewState.lastProps.evaluation).toBe(replacement);
+    expect(mockViewState.lastProps.evaluation).not.toHaveProperty(
+      "weightsByCriterion"
+    );
+    expect(screen.getByTestId("view-payload")).toHaveTextContent(
+      '{"replacement":true}'
+    );
+  });
+
+  it.each([
+    ["an array", []],
+    ["null", null],
+    ["a primitive", 1],
+  ])("rejects %s at the plugin boundary", async (_label, invalidValue) => {
+    renderDialog();
+    await waitFor(() => expect(mockFetchIssueEvaluation).toHaveBeenCalled());
+
+    expect(() => mockViewState.lastProps.setEvaluation(invalidValue)).toThrow(
+      "setEvaluation requires a complete evaluation object."
+    );
   });
 });

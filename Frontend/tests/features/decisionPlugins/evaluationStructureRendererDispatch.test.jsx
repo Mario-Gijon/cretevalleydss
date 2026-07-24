@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetEvaluationStructureEntryForStage = vi.hoisted(() => vi.fn());
+const mockViewState = vi.hoisted(() => ({ lastProps: null }));
 
 vi.mock("../../../src/features/decisionPlugins/evaluations/registry", () => ({
   getEvaluationStructureEntryForStage:
@@ -14,21 +15,33 @@ import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 const FuturePluginView = ({
   decisionContext,
   evaluation,
+  setEvaluation,
   collectiveEvaluation,
   readOnly,
-}) => (
-  <div>
-    <span>Future plugin rendered</span>
-    <span>{decisionContext.marker}</span>
-    <span>{evaluation.value}</span>
-    <span>{collectiveEvaluation.collective}</span>
-    <span>{String(readOnly)}</span>
-  </div>
-);
+}) => {
+  mockViewState.lastProps = {
+    decisionContext,
+    evaluation,
+    setEvaluation,
+    collectiveEvaluation,
+    readOnly,
+  };
+
+  return (
+    <div>
+      <span>Future plugin rendered</span>
+      <span>{decisionContext.marker}</span>
+      <span>{evaluation.value}</span>
+      <span>{collectiveEvaluation.collective}</span>
+      <span>{String(readOnly)}</span>
+    </div>
+  );
+};
 
 describe("EvaluationStructureRenderer registry dispatch", () => {
   beforeEach(() => {
     mockGetEvaluationStructureEntryForStage.mockReset();
+    mockViewState.lastProps = null;
   });
 
   it("renders an arbitrary resolved plugin without a consumer-side structure branch", () => {
@@ -58,6 +71,12 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
     expect(screen.getByText("individual-payload")).toBeInTheDocument();
     expect(screen.getByText("collective-payload")).toBeInTheDocument();
     expect(screen.getByText("true")).toBeInTheDocument();
+    expect(() =>
+      mockViewState.lastProps.setEvaluation({ complete: true })
+    ).not.toThrow();
+    expect(() =>
+      mockViewState.lastProps.setEvaluation((previous) => previous)
+    ).toThrow("setEvaluation requires a complete evaluation object.");
   });
 
   it("renders nothing when the public registry cannot resolve the structure", () => {

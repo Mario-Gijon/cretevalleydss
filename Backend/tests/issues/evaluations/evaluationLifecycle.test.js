@@ -699,6 +699,20 @@ describe("get evaluation payload behavior", () => {
     );
     expect(result.decisionContext.criteriaWeights).toEqual({});
     expect(result.decisionContext.expertWeights).toEqual({});
+    expect(Object.keys(result.decisionContext)).toEqual([
+      "issue",
+      "structure",
+      "model",
+      "modelParameters",
+      "criteriaWeightingParameters",
+      "alternatives",
+      "criteriaTree",
+      "leafCriteria",
+      "experts",
+      "criteriaWeights",
+      "expertWeights",
+      "consensus",
+    ]);
 
     for (const alternativeId of alternativeIds) {
       expect(Object.keys(result.payload[alternativeId])).toEqual(criterionIds);

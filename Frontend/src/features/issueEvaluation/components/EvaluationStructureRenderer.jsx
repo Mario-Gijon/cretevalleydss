@@ -3,8 +3,11 @@ import { Box } from "@mui/material";
 
 import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/registry";
 import { buildDecisionContext } from "../logic/buildDecisionContext";
+import { requireCompleteEvaluationObject } from "../logic/requireCompleteEvaluationObject";
 
-const NOOP = () => {};
+const READ_ONLY_SET_EVALUATION = (nextEvaluation) => {
+  requireCompleteEvaluationObject(nextEvaluation);
+};
 
 const EvaluationStructureRenderer = ({
   decisionContext: providedDecisionContext = null,
@@ -62,7 +65,7 @@ const EvaluationStructureRenderer = ({
       <View
         decisionContext={decisionContext}
         evaluation={evaluation}
-        setEvaluation={NOOP}
+        setEvaluation={READ_ONLY_SET_EVALUATION}
         collectiveEvaluation={collectiveEvaluation}
         readOnly={readOnly === true}
         loading={loading === true}
