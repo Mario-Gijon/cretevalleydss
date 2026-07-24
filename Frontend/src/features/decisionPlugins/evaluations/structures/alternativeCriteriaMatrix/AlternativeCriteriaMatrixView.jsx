@@ -65,11 +65,11 @@ const AlternativeCriteriaMatrixView = ({
     return <Alert severity="error">Evaluation payload is invalid.</Alert>;
   }
 
-  const updateValue = ({ alternativeId, criterion, nextValue }) => {
+  const updateValue = ({ alternativeId, criterionId, nextValue }) => {
     const nextEvaluation = updateAlternativeCriteriaMatrixValue({
       evaluation,
       alternativeId,
-      criterionId: criterion.id,
+      criterionId,
       nextValue,
     });
 
@@ -79,7 +79,7 @@ const AlternativeCriteriaMatrixView = ({
   const columns = buildAlternativeCriteriaMatrixColumns({
     criteria,
     renderCell: ({ rowId, criterion, value }) => {
-      const validationError = validateAlternativeCriteriaMatrixValue({
+      const validationMessage = validateAlternativeCriteriaMatrixValue({
         value,
         expressionDomain: criterion.expressionDomain,
       });
@@ -90,11 +90,11 @@ const AlternativeCriteriaMatrixView = ({
           value={value}
           collectiveValue={collectiveResolution.payload?.[rowId]?.[criterion.id]}
           permitEdit={permitEdit}
-          error={validationError}
+          error={validationMessage}
           onChange={(nextValue) =>
             updateValue({
               alternativeId: rowId,
-              criterion,
+              criterionId: criterion.id,
               nextValue,
             })
           }
