@@ -93,7 +93,7 @@ const twoPhasePayload = () => {
     stage: "alternativeEvaluation",
     phase: 0,
     structureKey: "alternativeCriteriaMatrix",
-    serializedContext: { phase: 0, source: "initial" },
+    decisionContext: { phase: 0, source: "initial" },
   });
   payload.evaluations.individual.push({
     id: "eval-a-0",
@@ -152,8 +152,8 @@ describe("EvaluationsView", () => {
     expect(screen.getByLabelText("Show collective values")).toBeInTheDocument();
     expect(screen.getByTestId("evaluations-stage-divider-wide")).toBeInTheDocument();
     expect(screen.getByTestId("evaluations-stage-divider-narrow")).toBeInTheDocument();
-    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", readOnly: true, collectivePayload: null }));
-    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "alternativeEvaluation", readOnly: true, collectivePayload: null }));
+    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", readOnly: true, collectiveEvaluation: null }));
+    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "alternativeEvaluation", readOnly: true, collectiveEvaluation: null }));
   });
 
   it("uses the union of stored submitters and keeps partial-stage experts factual", () => {
@@ -174,7 +174,7 @@ describe("EvaluationsView", () => {
     expect(data.alternativeEvaluation.individual).toBeNull();
     expect(rendererSpy).not.toHaveBeenCalledWith(expect.objectContaining({
       stage: "alternativeEvaluation",
-      backendPayload: expect.anything(),
+      evaluation: expect.anything(),
     }));
     expect(screen.getByRole("heading", { name: "Criteria weighting" })).toBeInTheDocument();
     expect(screen.getByText("Alternative only")).toBeInTheDocument();
@@ -190,8 +190,8 @@ describe("EvaluationsView", () => {
     });
     renderView(data, { ...selection, showCollective: true });
 
-    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", collectivePayload: { weights: true } }));
-    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "alternativeEvaluation", collectivePayload: { collectiveDisplay: true } }));
+    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", collectiveEvaluation: { weights: true } }));
+    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "alternativeEvaluation", collectiveEvaluation: { collectiveDisplay: true } }));
   });
 
   it("hides criteria weighting and expands alternative evaluation only when the stage has no evidence", () => {
@@ -260,7 +260,7 @@ describe("EvaluationsView", () => {
     const final = buildEvaluationsWorkspaceData({ payload, selection: { ...selection, showCollective: true }, selectedPhase: 5 });
     const fallback = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 99 });
 
-    expect(initial.alternativeEvaluation).toMatchObject({ selectedPhase: 0, submittedAt: "2026-01-01T00:00:00.000Z", individual: { payload: { phase: "zero" } }, collective: { payload: { collective: "zero" } }, renderer: { evaluationContext: { phase: 0, source: "initial" } } });
+    expect(initial.alternativeEvaluation).toMatchObject({ selectedPhase: 0, submittedAt: "2026-01-01T00:00:00.000Z", individual: { payload: { phase: "zero" } }, collective: { payload: { collective: "zero" } }, renderer: { decisionContext: { phase: 0, source: "initial" } } });
     expect(initial.evidence).toMatchObject({ resultId: "alt-0", phase: 0 });
     expect(final.alternativeEvaluation).toMatchObject({ selectedPhase: 5, individual: { payload: { phase: "one" } }, collective: { payload: { collective: "one" } } });
     expect(final.evidence).toMatchObject({ resultId: "alt-5", phase: 5 });

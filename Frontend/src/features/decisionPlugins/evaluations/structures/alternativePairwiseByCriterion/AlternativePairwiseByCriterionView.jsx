@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import PairwiseAlternativesGrid from "./components/PairwiseAlternativesGrid";
@@ -7,27 +7,24 @@ import CriterionCompactSelector from "./components/CriterionCompactSelector";
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const AlternativePairwiseByCriterionView = (
-  {
-    evaluationContext,
-    evaluationPayload,
-    setEvaluationPayload,
-    collectivePayload,
-    readOnly,
-    loading,
-  },
-  ref
-) => {
-  const alternativeItems = Array.isArray(evaluationContext?.alternatives)
-    ? evaluationContext.alternatives
+const AlternativePairwiseByCriterionView = ({
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
+  loading,
+}) => {
+  const alternativeItems = Array.isArray(decisionContext?.alternatives)
+    ? decisionContext.alternatives
         .map((alternative) => ({
           id: String(alternative?.id ?? alternative?._id ?? "").trim(),
           name: String(alternative?.name ?? "").trim(),
         }))
         .filter((alternative) => alternative.id && alternative.name)
     : [];
-  const criteriaItems = Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria
+  const criteriaItems = Array.isArray(decisionContext?.leafCriteria)
+    ? decisionContext.leafCriteria
         .map((criterion) => ({
           ...criterion,
           id: String(criterion?.id ?? criterion?._id ?? "").trim(),
@@ -41,8 +38,6 @@ const AlternativePairwiseByCriterionView = (
   useEffect(() => {
     setCurrentCriterionIndex(0);
   }, [criteriaItems.length]);
-
-  useImperativeHandle(ref, () => ({}));
 
   if (criteriaItems.length === 0) {
     return (
@@ -66,29 +61,29 @@ const AlternativePairwiseByCriterionView = (
   );
   const currentCriterion = criteriaItems[safeCurrentCriterionIndex] || null;
 
-  if (loading && !isPlainObject(evaluationPayload)) {
+  if (loading && !isPlainObject(evaluation)) {
     return null;
   }
 
-  if (!loading && !isPlainObject(evaluationPayload)) {
+  if (!loading && !isPlainObject(evaluation)) {
     return <Alert severity="error">Pairwise evaluation payload is unavailable.</Alert>;
   }
 
   if (
     !loading &&
     currentCriterion &&
-    !Object.prototype.hasOwnProperty.call(evaluationPayload, currentCriterion.id)
+    !Object.prototype.hasOwnProperty.call(evaluation, currentCriterion.id)
   ) {
     return <Alert severity="error">Pairwise criterion payload is unavailable.</Alert>;
   }
 
   let collectiveEvaluations = null;
-  if (collectivePayload !== null && collectivePayload !== undefined) {
+  if (collectiveEvaluation !== null && collectiveEvaluation !== undefined) {
     try {
-      if (!isPlainObject(collectivePayload)) {
+      if (!isPlainObject(collectiveEvaluation)) {
         throw new Error("Collective pairwise payload must be an object.");
       }
-      const matrix = collectivePayload[currentCriterion.id];
+      const matrix = collectiveEvaluation[currentCriterion.id];
       if (!isPlainObject(matrix)) {
         throw new Error("Collective pairwise payload is missing the selected criterion.");
       }
@@ -134,22 +129,19 @@ const AlternativePairwiseByCriterionView = (
             <Stack spacing={0.75}>
               <PairwiseAlternativesGrid
                 alternatives={alternativeItems}
-                evaluations={evaluationPayload[currentCriterion.id]}
+                evaluations={evaluation[currentCriterion.id]}
                 setEvaluations={(nextComparisons) => {
                   if (!permitEdit) {
                     return;
                   }
 
-                  setEvaluationPayload((previous) => {
-                    if (!isPlainObject(previous)) {
-                      throw new Error("Pairwise evaluation payload state is invalid.");
-                    }
+                  if (!isPlainObject(evaluation)) {
+                    throw new Error("Pairwise evaluation payload state is invalid.");
+                  }
 
-                    return {
-                      ...previous,
-                      [currentCriterion.id]: nextComparisons,
-                    };
-                  });
+                  const nextEvaluation = structuredClone(evaluation);
+                  nextEvaluation[currentCriterion.id] = nextComparisons;
+                  setEvaluation(nextEvaluation);
                 }}
                 expressionDomain={currentCriterion.expressionDomain}
                 collectiveEvaluations={collectiveEvaluations}
@@ -163,4 +155,4 @@ const AlternativePairwiseByCriterionView = (
   );
 };
 
-export default forwardRef(AlternativePairwiseByCriterionView);
+export default AlternativePairwiseByCriterionView;

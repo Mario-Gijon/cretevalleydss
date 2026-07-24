@@ -40,26 +40,26 @@ const normalizeComparisonValueOrThrow = (rawValue, { field }) => {
   return numericValue;
 };
 
-const buildCriterionItemsOrThrow = (evaluationContext) => {
-  if (!Array.isArray(evaluationContext?.leafCriteria)) {
-    throw createBadRequestError("evaluationContext.leafCriteria must be an array", {
-      field: "evaluationContext.leafCriteria",
+const buildCriterionItemsOrThrow = (decisionContext) => {
+  if (!Array.isArray(decisionContext?.leafCriteria)) {
+    throw createBadRequestError("decisionContext.leafCriteria must be an array", {
+      field: "decisionContext.leafCriteria",
     });
   }
 
-  return evaluationContext.leafCriteria.map((criterion, index) => {
+  return decisionContext.leafCriteria.map((criterion, index) => {
     const id = normalizeText(criterion?.id ?? criterion?._id);
     const name = normalizeText(criterion?.name);
 
     if (!id) {
       throw createBadRequestError("Each criterion must have a non-empty id", {
-        field: `evaluationContext.leafCriteria[${index}].id`,
+        field: `decisionContext.leafCriteria[${index}].id`,
       });
     }
 
     if (!name) {
       throw createBadRequestError("Each criterion must have a non-empty name", {
-        field: `evaluationContext.leafCriteria[${index}].name`,
+        field: `decisionContext.leafCriteria[${index}].name`,
       });
     }
 
@@ -91,7 +91,7 @@ const normalizeComparisonsMapOrThrow = (
 
 export const normalizePayloadOrThrow = async ({
   payload,
-  evaluationContext,
+  decisionContext,
 }) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError("payload must be an object", {
@@ -99,7 +99,7 @@ export const normalizePayloadOrThrow = async ({
     });
   }
 
-  const criterionItems = buildCriterionItemsOrThrow(evaluationContext);
+  const criterionItems = buildCriterionItemsOrThrow(decisionContext);
 
   const bestCriterion = normalizeText(payload.bestCriterion);
   const worstCriterion = normalizeText(payload.worstCriterion);

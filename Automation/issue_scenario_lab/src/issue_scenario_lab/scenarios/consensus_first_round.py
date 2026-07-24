@@ -159,7 +159,7 @@ def _context(response: Any, issue_id: str) -> dict[str, Any]:
         or response.get("submittedAt") is not None
     ):
         raise ScenarioLabError("Herrera-Viedma pairwise evaluation response is incompatible")
-    context, payload = response.get("evaluationContext"), response.get("payload")
+    context, payload = response.get("decisionContext"), response.get("payload")
     if (
         not isinstance(context, dict)
         or not isinstance(payload, dict)

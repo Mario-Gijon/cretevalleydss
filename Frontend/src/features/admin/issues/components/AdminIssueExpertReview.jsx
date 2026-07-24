@@ -33,7 +33,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
   const theme = useTheme();
   const evaluationStructureKey =
     detail.expertEvaluations?.issue?.evaluationStructureKey ||
-    detail.expertEvaluations?.evaluationContext?.structure?.key ||
+    detail.expertEvaluations?.decisionContext?.structure?.key ||
     "";
 
   return (
@@ -223,7 +223,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
             ) : (
               <Box sx={{ maxWidth: "100%", overflowX: "auto" }}>
                 <EvaluationStructureRenderer
-                  evaluationContext={detail.expertEvaluations?.evaluationContext || null}
+                  decisionContext={detail.expertEvaluations?.decisionContext || null}
                   issue={{
                     ...detail.issueDetail,
                     alternatives: detailView.orderedAlternativesForReview,
@@ -236,8 +236,8 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
                   }}
                   stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
                   structureKey={evaluationStructureKey}
-                  backendPayload={detail.expertEvaluations?.evaluations || {}}
-                  collectivePayload={
+                  evaluation={detail.expertEvaluations?.evaluations || {}}
+                  collectiveEvaluation={
                     detail.showExpertCollective &&
                     detailView.hasExpertCollectiveEvaluations
                       ? detail.expertEvaluations?.collectiveEvaluations || null

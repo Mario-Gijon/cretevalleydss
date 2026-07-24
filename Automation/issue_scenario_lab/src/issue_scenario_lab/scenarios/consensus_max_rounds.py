@@ -101,7 +101,7 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
         or response.get("submittedAt") is not None
     ):
         raise ScenarioLabError("pairwise evaluation response is incompatible")
-    context, payload = response.get("evaluationContext"), response.get("payload")
+    context, payload = response.get("decisionContext"), response.get("payload")
     if (
         not isinstance(context, dict)
         or not isinstance(payload, dict)
@@ -126,14 +126,13 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
         ):
             raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
     if phase == 0:
-        if response.get("collectiveReference") is not None or (context.get("consensus") or {}).get("previousCollectiveEvaluations") not in ({}, None):
+        if response.get("collectivePayload") is not None or (context.get("consensus") or {}).get("previousCollectiveEvaluations") not in ({}, None):
             raise ScenarioLabError("phase-zero evaluation unexpectedly has collective evidence")
     elif previous is not None:
-        reference = response.get("collectiveReference")
+        reference = response.get("collectivePayload")
         if (
             not isinstance(reference, dict)
-            or reference.get("consensusPhase") != phase - 1
-            or reference.get("collectiveEvaluations") != previous
+            or reference != previous
             or (context.get("consensus") or {}).get("previousCollectiveEvaluations") != previous
             or (context.get("consensus") or {}).get("currentCollectiveEvaluations") != {}
         ):
@@ -361,7 +360,7 @@ def _validate_finished_contexts(
     if len(contexts) != 4 or [item.get("phase") for item in contexts] != [0, 1, 2, 3]:
         raise ScenarioLabError("finished issue evaluation contexts are incompatible")
     for phase, record in enumerate(contexts):
-        source = record.get("serializedContext")
+        source = record.get("decisionContext")
         alternatives, criteria = _ids(expected_contexts[phase])
         criterion_ids = record.get("criterionIds")
         leaf_criteria = _items(source, "leafCriteria") if isinstance(source, dict) else []
@@ -600,9 +599,9 @@ def recover_finished(
         finished_contexts = [item for item in _items(evaluations, "contexts") if item.get("stage") == STAGE]
         if len(finished_contexts) != 4:
             raise ScenarioLabError("Finished issue does not contain four alternative-evaluation contexts")
-        contexts = [item.get("serializedContext") for item in finished_contexts]
+        contexts = [item.get("decisionContext") for item in finished_contexts]
         if any(not isinstance(context, dict) for context in contexts):
-            raise ScenarioLabError("Finished issue context is missing serializedContext")
+            raise ScenarioLabError("Finished issue context is missing decisionContext")
         typed_contexts = [context for context in contexts if isinstance(context, dict)]
         collectives = [_collective(context, PHASE_COLLECTIVE_VALUES[phase]) for phase, context in enumerate(typed_contexts)]
         _validate_finished(detail, issue_id, issue_name, typed_contexts, collectives, set(emails[1:]), None)

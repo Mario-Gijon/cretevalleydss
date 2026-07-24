@@ -257,7 +257,7 @@ describe("evaluation API contracts", () => {
         stage: "criteriaWeighting",
         structureKey: "manualCriteriaWeights",
         consensusPhase: 0,
-        evaluationContext: expect.any(Object),
+        decisionContext: expect.any(Object),
         payload: {
           weightsByCriterion: {
             [String(leafCriteria[0]._id)]: 1,
@@ -299,9 +299,9 @@ describe("evaluation API contracts", () => {
       },
     });
     expect(Object.keys(payload)).toEqual(alternativeIds);
-    expect(response.body.data.evaluationContext.alternatives.map((item) => item.id))
+    expect(response.body.data.decisionContext.alternatives.map((item) => item.id))
       .toEqual(alternativeIds);
-    expect(response.body.data.evaluationContext.leafCriteria.map((item) => item.id))
+    expect(response.body.data.decisionContext.leafCriteria.map((item) => item.id))
       .toEqual(criterionIds);
 
     for (const alternativeId of alternativeIds) {

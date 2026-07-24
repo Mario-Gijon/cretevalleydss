@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Box, Button } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
@@ -10,7 +10,7 @@ import {
   EVALUATION_STAGES,
   getEvaluationStructureEntryForStage,
 } from "../../decisionPlugins/evaluations/registry";
-import { buildEvaluationContext } from "../logic/buildEvaluationContext";
+import { buildDecisionContext } from "../logic/buildDecisionContext";
 import {
   fetchIssueEvaluation,
   saveIssueEvaluation,
@@ -41,9 +41,9 @@ const EvaluationStructureDialog = ({
     [stage, structureKey]
   );
   const View = structureEntry?.View || null;
-  const fallbackEvaluationContext = useMemo(
+  const fallbackDecisionContext = useMemo(
     () =>
-      buildEvaluationContext({
+      buildDecisionContext({
         issue,
         stage,
         structure: structureEntry,
@@ -52,51 +52,76 @@ const EvaluationStructureDialog = ({
       }),
     [issue, stage, structureEntry]
   );
-  const [evaluationContext, setEvaluationContext] = useState(
-    fallbackEvaluationContext
+  const [decisionContext, setDecisionContext] = useState(
+    fallbackDecisionContext
   );
-  const [evaluationPayload, setEvaluationPayload] = useState({});
+  const [evaluation, setEvaluationState] = useState({});
   const [initialSnapshot, setInitialSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showCollective, setShowCollective] = useState(false);
-  const [collectivePayload, setCollectivePayload] = useState(null);
+  const [collectiveEvaluation, setCollectiveEvaluation] = useState(null);
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
-  const viewRef = useRef(null);
-  const evaluationPayloadRef = useRef(evaluationPayload);
   const issueId = String(issue?.id ?? issue?._id ?? "").trim() || null;
 
-  useEffect(() => {
-    evaluationPayloadRef.current = evaluationPayload;
-  }, [evaluationPayload]);
+  const setEvaluation = (nextEvaluation) => {
+    if (
+      !nextEvaluation ||
+      typeof nextEvaluation !== "object" ||
+      Array.isArray(nextEvaluation)
+    ) {
+      throw new TypeError("setEvaluation requires a complete evaluation object.");
+    }
+
+    let serialized;
+    try {
+      serialized = JSON.stringify(nextEvaluation);
+    } catch {
+      throw new TypeError("setEvaluation requires a serializable evaluation object.");
+    }
+
+    if (serialized === undefined) {
+      throw new TypeError("setEvaluation requires a serializable evaluation object.");
+    }
+
+    const normalized = JSON.parse(serialized);
+    if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
+      throw new TypeError("setEvaluation requires a complete evaluation object.");
+    }
+
+    setEvaluationState(normalized);
+  };
 
   useEffect(() => {
     if (!isOpen || !issueId) return;
 
     const loadEvaluation = async () => {
       setLoading(true);
-      setEvaluationContext(fallbackEvaluationContext);
-      setEvaluationPayload({});
+      setDecisionContext(fallbackDecisionContext);
+      setEvaluationState({});
+      setInitialSnapshot(JSON.stringify({}));
+      setCollectiveEvaluation(null);
+      setShowCollective(false);
       try {
         const {
-          evaluationContext: responseEvaluationContext,
-          payload: nextEvaluationPayload,
-          collectivePayload: nextCollectivePayload,
+          decisionContext: responseDecisionContext,
+          evaluation: nextEvaluation,
+          collectiveEvaluation: nextCollectiveEvaluation,
         } = await fetchIssueEvaluation(issueId, stage);
 
-        setEvaluationContext(responseEvaluationContext);
-        setEvaluationPayload(nextEvaluationPayload);
-        setCollectivePayload(nextCollectivePayload);
-        setShowCollective(nextCollectivePayload !== null);
-        setInitialSnapshot(JSON.stringify(nextEvaluationPayload));
+        setDecisionContext(responseDecisionContext);
+        setEvaluationState(nextEvaluation);
+        setCollectiveEvaluation(nextCollectiveEvaluation);
+        setShowCollective(nextCollectiveEvaluation !== null);
+        setInitialSnapshot(JSON.stringify(nextEvaluation));
       } catch {
         showSnackbarAlert(
           "Could not load evaluation context for this evaluation.",
           "error"
         );
-        setEvaluationContext(fallbackEvaluationContext);
-        setEvaluationPayload({});
-        setCollectivePayload(null);
+        setDecisionContext(fallbackDecisionContext);
+        setEvaluationState({});
+        setCollectiveEvaluation(null);
         setShowCollective(false);
         setInitialSnapshot(JSON.stringify({}));
       } finally {
@@ -105,40 +130,10 @@ const EvaluationStructureDialog = ({
     };
 
     loadEvaluation();
-  }, [fallbackEvaluationContext, isOpen, issueId, showSnackbarAlert, stage]);
+  }, [fallbackDecisionContext, isOpen, issueId, showSnackbarAlert, stage]);
 
-  const preparePayloadRead = async () => {
-    if (typeof viewRef.current?.preparePayloadRead === "function") {
-      await viewRef.current.preparePayloadRead();
-    } else if (typeof viewRef.current?.flushPendingEdits === "function") {
-      await viewRef.current.flushPendingEdits();
-    }
-
-    if (
-      typeof document !== "undefined" &&
-      document.activeElement instanceof HTMLElement
-    ) {
-      document.activeElement.blur();
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    return evaluationPayloadRef.current;
-  };
-
-  const validatePreparedPayloadRead = async () => {
-    await preparePayloadRead();
-
-    if (typeof viewRef.current?.validatePayloadRead !== "function") {
-      return { valid: true, errors: [] };
-    }
-
-    return viewRef.current.validatePayloadRead();
-  };
-
-  const handleCloseRequest = async () => {
-    const nextEvaluationPayload = await preparePayloadRead();
-
-    if (JSON.stringify(nextEvaluationPayload) !== initialSnapshot) {
+  const handleCloseRequest = () => {
+    if (JSON.stringify(evaluation) !== initialSnapshot) {
       setOpenSaveDialog(true);
       return;
     }
@@ -147,30 +142,15 @@ const EvaluationStructureDialog = ({
   };
 
   const handleClear = () => {
-    setEvaluationPayload({});
+    setEvaluationState({});
     showSnackbarAlert("All evaluations cleared", "success");
   };
 
   const handleSave = async () => {
-    const validation = await validatePreparedPayloadRead();
-
-    if (!validation.valid) {
-      const firstError = validation.errors[0];
-      setOpenSaveDialog(false);
-      showSnackbarAlert(
-        firstError
-          ? `${firstError.alternativeName} / ${firstError.criterionName}: ${firstError.message}`
-          : "Evaluation contains invalid values.",
-        "error"
-      );
-      return;
-    }
-
-    const nextEvaluationPayload = evaluationPayloadRef.current;
     setLoading(true);
     setOpenSaveDialog(false);
 
-    const response = await saveIssueEvaluation(issueId, stage, nextEvaluationPayload);
+    const response = await saveIssueEvaluation(issueId, stage, evaluation);
 
     setLoading(false);
 
@@ -186,46 +166,18 @@ const EvaluationStructureDialog = ({
     showSnackbarAlert(response?.message || "Error saving evaluation draft", "error");
   };
 
-  const handleOpenSubmit = async () => {
-    const validation = await validatePreparedPayloadRead();
-
-    if (!validation.valid) {
-      const firstError = validation.errors[0];
-      showSnackbarAlert(
-        firstError
-          ? `${firstError.alternativeName} / ${firstError.criterionName}: ${firstError.message}`
-          : "Evaluation contains invalid values.",
-        "error"
-      );
-      return;
-    }
-
+  const handleOpenSubmit = () => {
     setOpenSubmitDialog(true);
   };
 
   const handleSubmit = async () => {
-    const validation = await validatePreparedPayloadRead();
-
-    if (!validation.valid) {
-      const firstError = validation.errors[0];
-      setOpenSubmitDialog(false);
-      showSnackbarAlert(
-        firstError
-          ? `${firstError.alternativeName} / ${firstError.criterionName}: ${firstError.message}`
-          : "Evaluation contains invalid values.",
-        "error"
-      );
-      return;
-    }
-
-    const nextEvaluationPayload = evaluationPayloadRef.current;
     setOpenSubmitDialog(false);
     setLoading(true);
 
     const response = await submitIssueEvaluationPayload(
       issueId,
       stage,
-      nextEvaluationPayload
+      evaluation
     );
 
     setLoading(false);
@@ -250,8 +202,8 @@ const EvaluationStructureDialog = ({
       : stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION
         ? "Alternative evaluation"
         : "Evaluation";
-  const hasExpressionDomains = Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria.some((criterion) => criterion?.expressionDomain)
+  const hasExpressionDomains = Array.isArray(decisionContext?.leafCriteria)
+    ? decisionContext.leafCriteria.some((criterion) => criterion?.expressionDomain)
     : false;
 
   const renderView = () => {
@@ -259,17 +211,19 @@ const EvaluationStructureDialog = ({
       return null;
     }
 
-    const visibleCollectivePayload = showCollective ? collectivePayload : null;
+    const visibleCollectiveEvaluation = showCollective
+      ? collectiveEvaluation
+      : null;
     const viewProps = {
-      evaluationContext,
-      evaluationPayload,
-      setEvaluationPayload,
-      collectivePayload: visibleCollectivePayload,
+      decisionContext,
+      evaluation,
+      setEvaluation,
+      collectiveEvaluation: visibleCollectiveEvaluation,
       readOnly: false,
       loading,
     };
 
-    return <View ref={viewRef} {...viewProps} />;
+    return <View {...viewProps} />;
   };
 
   if (!issue || !stage || !structureEntry || !View) {
@@ -287,9 +241,9 @@ const EvaluationStructureDialog = ({
         icon={null}
         title={dialogTitle}
         subtitle={issue?.name || ""}
-        criteria={evaluationContext.leafCriteria}
+        criteria={decisionContext.leafCriteria}
         showExpressionDomains={hasExpressionDomains}
-        showCollectiveControl={collectivePayload !== null}
+        showCollectiveControl={collectiveEvaluation !== null}
         collectiveVisible={showCollective}
         onToggleCollective={() => setShowCollective((value) => !value)}
         contentSx={{ p: { xs: 1.5, sm: 2.2 } }}

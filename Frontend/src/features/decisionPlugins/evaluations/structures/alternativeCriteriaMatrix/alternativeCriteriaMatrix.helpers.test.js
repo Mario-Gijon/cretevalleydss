@@ -194,7 +194,7 @@ describe("alternativeCriteriaMatrix helpers", () => {
       resolveCanonicalCollectiveAlternativeCriteriaMatrix({
         alternatives,
         criteria,
-        collectivePayload: null,
+        collectiveEvaluation: null,
       })
     ).toBeNull();
 
@@ -202,7 +202,7 @@ describe("alternativeCriteriaMatrix helpers", () => {
       resolveCanonicalCollectiveAlternativeCriteriaMatrix({
         alternatives,
         criteria,
-        collectivePayload: {
+        collectiveEvaluation: {
           "alt-a": {
             "criterion-1": 7.2,
             "criterion-2": [0.6, 0.8, 1],
@@ -222,7 +222,7 @@ describe("alternativeCriteriaMatrix helpers", () => {
       resolveCanonicalCollectiveAlternativeCriteriaMatrix({
         alternatives,
         criteria,
-        collectivePayload: {
+        collectiveEvaluation: {
           "alt-a": {
             "criterion-1": { localizedLabel: "Legacy" },
           },
@@ -234,7 +234,7 @@ describe("alternativeCriteriaMatrix helpers", () => {
       resolveCanonicalCollectiveAlternativeCriteriaMatrix({
         alternatives,
         criteria,
-        collectivePayload: {
+        collectiveEvaluation: {
           "alt-a": {
             "criterion-1": [],
           },
@@ -246,7 +246,7 @@ describe("alternativeCriteriaMatrix helpers", () => {
       resolveCanonicalCollectiveAlternativeCriteriaMatrix({
         alternatives,
         criteria,
-        collectivePayload: {
+        collectiveEvaluation: {
           "alt-a": {
             "criterion-1": [0.6, "bad"],
           },
@@ -258,7 +258,7 @@ describe("alternativeCriteriaMatrix helpers", () => {
       resolveCanonicalCollectiveAlternativeCriteriaMatrix({
         alternatives,
         criteria,
-        collectivePayload: {
+        collectiveEvaluation: {
           "alt-c": {
             "criterion-1": 7.2,
           },
@@ -270,7 +270,7 @@ describe("alternativeCriteriaMatrix helpers", () => {
       resolveCanonicalCollectiveAlternativeCriteriaMatrix({
         alternatives,
         criteria,
-        collectivePayload: {
+        collectiveEvaluation: {
           "alt-a": {
             "criterion-3": 7.2,
           },

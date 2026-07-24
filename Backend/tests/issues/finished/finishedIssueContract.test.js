@@ -396,22 +396,22 @@ describe("definitive Finished Issue contract", () => {
     const criteriaWeightingContext = payload.evaluations.contexts.find(
       (context) => context.id === "criteriaWeighting:0"
     );
-    expect(alternativePhaseTwoContext.serializedContext).toMatchObject({
-      decisionModel: { id: String(payload.models.base.id) },
-      criteriaWeightingModel: { id: String(payload.models.criteriaWeighting.id) },
-      activeModel: { id: String(payload.models.base.id) },
+    expect(alternativePhaseTwoContext.decisionContext).toMatchObject({
+      model: { id: String(payload.models.base.id) },
+      experts: expect.any(Array),
+      criteriaWeights: expect.any(Object),
+      expertWeights: expect.any(Object),
       consensus: {
         previousCollectiveEvaluations: expect.objectContaining({
           [String(fixture.alternatives[0]._id)]: expect.any(Object),
         }),
       },
     });
-    expect(criteriaWeightingContext.serializedContext).toMatchObject({
-      activeModel: { id: String(payload.models.criteriaWeighting.id) },
+    expect(criteriaWeightingContext.decisionContext).toMatchObject({
+      model: { id: String(payload.models.criteriaWeighting.id) },
       modelParameters: { alpha: 0.7, weights: expect.any(Object) },
       criteriaWeightingParameters: { method: "mean" },
     });
-    expect(alternativePhaseTwoContext.serializedContext).not.toHaveProperty("model");
     expect(payload.evaluations.collective).toEqual(expect.arrayContaining([
       expect.objectContaining({ phaseResultId: String(fixture.results.criteriaResult._id), stage: "criteriaWeighting" }),
       expect.objectContaining({ phaseResultId: String(fixture.results.finalResult._id), stage: "alternativeEvaluation" }),

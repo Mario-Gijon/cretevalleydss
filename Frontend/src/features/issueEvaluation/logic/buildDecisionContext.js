@@ -9,7 +9,32 @@ const toNonEmptyStringOrNull = (value) => {
 const resolveObjectOrNull = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : null;
 
-export const buildEvaluationContext = ({
+const normalizeExpert = (expert) => {
+  if (typeof expert === "string" || typeof expert === "number") {
+    return {
+      id: toNonEmptyStringOrNull(expert),
+      name: null,
+    };
+  }
+
+  if (!resolveObjectOrNull(expert)) {
+    return null;
+  }
+
+  const id = toNonEmptyStringOrNull(expert.id ?? expert._id ?? expert.email);
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    name: toNonEmptyStringOrNull(expert.name),
+  };
+};
+
+const resolveObjectOrEmpty = (value) => resolveObjectOrNull(value) || {};
+
+export const buildDecisionContext = ({
   issue = null,
   stage = null,
   structure = null,
@@ -18,6 +43,11 @@ export const buildEvaluationContext = ({
   alternatives = undefined,
   criteriaTree = undefined,
   leafCriteria = null,
+  experts = undefined,
+  criteriaWeights = undefined,
+  expertWeights = undefined,
+  currentCollectiveEvaluations = undefined,
+  previousCollectiveEvaluations = undefined,
 }) => {
   const issueModel = resolveObjectOrNull(issue?.model);
   const explicitParameters = resolveObjectOrNull(parameters);
@@ -57,6 +87,22 @@ export const buildEvaluationContext = ({
     typeof issue?.consensusThreshold === "number" && Number.isFinite(issue.consensusThreshold)
       ? issue.consensusThreshold
       : null;
+  const resolvedExperts = Array.isArray(experts)
+    ? experts
+    : Array.isArray(issue?.experts)
+      ? issue.experts
+      : Array.isArray(issue?.expertParticipants)
+        ? issue.expertParticipants
+        : [];
+  const resolvedCriteriaWeights =
+    resolveObjectOrNull(criteriaWeights) ||
+    resolveObjectOrNull(issue?.criteriaWeights) ||
+    resolveObjectOrNull(issue?.modelParameters?.weights) ||
+    {};
+  const resolvedExpertWeights =
+    resolveObjectOrNull(expertWeights) ||
+    resolveObjectOrNull(issue?.expertWeights) ||
+    {};
 
   return {
     issue: {
@@ -80,12 +126,19 @@ export const buildEvaluationContext = ({
     alternatives: parameterContext.alternatives,
     criteriaTree: parameterContext.criteriaTree,
     leafCriteria: parameterContext.leafCriteria,
+    experts: resolvedExperts.map(normalizeExpert).filter(Boolean),
+    criteriaWeights: resolvedCriteriaWeights,
+    expertWeights: resolvedExpertWeights,
     consensus: {
       phase: consensusPhase,
       maxPhases: consensusMaxPhases,
       threshold: consensusThreshold,
-      currentCollectiveEvaluations: {},
-      previousCollectiveEvaluations: {},
+      currentCollectiveEvaluations: resolveObjectOrEmpty(
+        currentCollectiveEvaluations
+      ),
+      previousCollectiveEvaluations: resolveObjectOrEmpty(
+        previousCollectiveEvaluations
+      ),
     },
   };
 };

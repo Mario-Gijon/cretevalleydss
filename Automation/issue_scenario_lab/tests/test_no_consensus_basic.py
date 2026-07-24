@@ -84,8 +84,8 @@ class FakeClient:
                 "consensusPhase": 0,
                 "completed": False,
                 "submittedAt": None,
-                "collectiveReference": None,
-                "evaluationContext": {
+                "collectivePayload": None,
+                "decisionContext": {
                     "issue": {
                         "id": "issue-id",
                         "name": next(call[2]["issueInfo"]["issueName"] for call in self.calls if call[1] == "/issues"),
@@ -315,19 +315,19 @@ def test_old_fictional_payload_context_response_is_rejected(tmp_path: Path) -> N
     sessions = FakeSessions()
 
     def old_response(response: dict[str, Any]) -> dict[str, Any]:
-        response.pop("evaluationContext")
+        response.pop("decisionContext")
         response["payload"] = {"context": {"alternatives": [], "criteria": []}}
         return response
 
     _mutate_first_evaluation_response(sessions, old_response)
-    with pytest.raises(ScenarioLabError, match="missing evaluationContext"):
+    with pytest.raises(ScenarioLabError, match="missing decisionContext"):
         generate(sessions, ManifestStore(tmp_path / "manifest.json"))
 
 
 def test_missing_evaluation_context_is_rejected(tmp_path: Path) -> None:
     sessions = FakeSessions()
-    _mutate_first_evaluation_response(sessions, lambda response: {key: value for key, value in response.items() if key != "evaluationContext"})
-    with pytest.raises(ScenarioLabError, match="missing evaluationContext"):
+    _mutate_first_evaluation_response(sessions, lambda response: {key: value for key, value in response.items() if key != "decisionContext"})
+    with pytest.raises(ScenarioLabError, match="missing decisionContext"):
         generate(sessions, ManifestStore(tmp_path / "manifest.json"))
 
 
@@ -335,7 +335,7 @@ def test_missing_leaf_criteria_is_rejected(tmp_path: Path) -> None:
     sessions = FakeSessions()
 
     def remove_leaf_criteria(response: dict[str, Any]) -> dict[str, Any]:
-        response["evaluationContext"].pop("leafCriteria")
+        response["decisionContext"].pop("leafCriteria")
         return response
 
     _mutate_first_evaluation_response(sessions, remove_leaf_criteria)
@@ -347,7 +347,7 @@ def test_missing_persisted_alternative_id_is_rejected(tmp_path: Path) -> None:
     sessions = FakeSessions()
 
     def remove_alternative_id(response: dict[str, Any]) -> dict[str, Any]:
-        response["evaluationContext"]["alternatives"][0].pop("id")
+        response["decisionContext"]["alternatives"][0].pop("id")
         return response
 
     _mutate_first_evaluation_response(sessions, remove_alternative_id)
@@ -359,7 +359,7 @@ def test_missing_persisted_criterion_id_is_rejected(tmp_path: Path) -> None:
     sessions = FakeSessions()
 
     def remove_criterion_id(response: dict[str, Any]) -> dict[str, Any]:
-        response["evaluationContext"]["leafCriteria"][0].pop("id")
+        response["decisionContext"]["leafCriteria"][0].pop("id")
         return response
 
     _mutate_first_evaluation_response(sessions, remove_criterion_id)
@@ -371,7 +371,7 @@ def test_unexpected_alternative_name_is_rejected(tmp_path: Path) -> None:
     sessions = FakeSessions()
 
     def rename_alternative(response: dict[str, Any]) -> dict[str, Any]:
-        response["evaluationContext"]["alternatives"][0]["name"] = "Unexpected choice"
+        response["decisionContext"]["alternatives"][0]["name"] = "Unexpected choice"
         return response
 
     _mutate_first_evaluation_response(sessions, rename_alternative)
@@ -383,7 +383,7 @@ def test_unexpected_criterion_name_is_rejected(tmp_path: Path) -> None:
     sessions = FakeSessions()
 
     def rename_criterion(response: dict[str, Any]) -> dict[str, Any]:
-        response["evaluationContext"]["leafCriteria"][0]["name"] = "Unexpected criterion"
+        response["decisionContext"]["leafCriteria"][0]["name"] = "Unexpected criterion"
         return response
 
     _mutate_first_evaluation_response(sessions, rename_criterion)

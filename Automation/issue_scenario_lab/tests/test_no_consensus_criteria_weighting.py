@@ -110,7 +110,7 @@ class CriteriaClient:
             "structureKey": "manualCriteriaWeights",
             "consensusPhase": 0,
             "completed": False,
-            "evaluationContext": {
+            "decisionContext": {
                 "issue": {"id": "issue", "currentStage": "criteriaWeighting", "isConsensus": False},
                 "structure": {"key": "manualCriteriaWeights", "stage": "criteriaWeighting"},
                 "model": {"apiModelKey": "topsis"},
@@ -126,7 +126,7 @@ class CriteriaClient:
             "structureKey": "alternativeCriteriaMatrix",
             "consensusPhase": 0,
             "completed": False,
-            "evaluationContext": {
+            "decisionContext": {
                 "issue": {"id": "issue", "currentStage": "alternativeEvaluation", "isConsensus": False},
                 "structure": {"key": "alternativeCriteriaMatrix", "stage": "alternativeEvaluation"},
                 "model": {"apiModelKey": "topsis"},
@@ -224,7 +224,7 @@ class CriteriaClient:
                         "structureKey": "manualCriteriaWeights",
                         "modelId": "topsis",
                         "activeModelId": "manual",
-                        "serializedContext": {"issue": {"id": "issue"}, "activeModel": {"apiModelKey": "manual_criteria_weights"}},
+                        "decisionContext": {"issue": {"id": "issue"}, "model": {"apiModelKey": "manual_criteria_weights"}},
                     },
                     {
                         "id": "alternativeEvaluation:0",
@@ -233,7 +233,7 @@ class CriteriaClient:
                         "structureKey": "alternativeCriteriaMatrix",
                         "modelId": "topsis",
                         "activeModelId": "topsis",
-                        "serializedContext": {"issue": {"id": "issue"}, "activeModel": {"apiModelKey": "topsis"}},
+                        "decisionContext": {"issue": {"id": "issue"}, "model": {"apiModelKey": "topsis"}},
                     },
                 ],
                 "collective": [
@@ -450,7 +450,7 @@ def test_finished_collective_payload_is_separate_from_phase_results() -> None:
         lambda detail: detail["evaluations"]["collective"][0].update({"phaseResultId": "wrong"}),
         lambda detail: detail["evaluations"]["collective"][0]["rawPayload"].update({"weightsByCriterion": {"quality": 1.0}}),
         lambda detail: detail["evaluations"]["collective"][0]["rawPayload"].update({"weightsByCriterion": {"quality": 0.2, "cost": 0.8}}),
-        lambda detail: detail["evaluations"]["contexts"][0]["serializedContext"]["activeModel"].update({"apiModelKey": "topsis"}),
+        lambda detail: detail["evaluations"]["contexts"][0]["decisionContext"]["model"].update({"apiModelKey": "topsis"}),
     ],
 )
 def test_finished_collective_and_context_contract_rejects_mismatches(mutation: Any) -> None:

@@ -21,9 +21,9 @@ const toWeightsByCriterionFromStoredPayload = (
   }, {});
 };
 
-const resolveCriteria = async ({ evaluationContext }) =>
-  Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria
+const resolveCriteria = async ({ decisionContext }) =>
+  Array.isArray(decisionContext?.leafCriteria)
+    ? decisionContext.leafCriteria
         .map((criterion) => ({
           id: criterion?.id,
           name: criterion?.name,
@@ -33,9 +33,9 @@ const resolveCriteria = async ({ evaluationContext }) =>
 
 export const buildGetPayload = async ({
   payload,
-  evaluationContext,
+  decisionContext,
 }) => {
-  const criteria = await resolveCriteria({ evaluationContext });
+  const criteria = await resolveCriteria({ decisionContext });
 
   const normalizedPayload = !payload || typeof payload !== "object"
     ? {

@@ -20,7 +20,7 @@ import {
   validateExpertIdOrThrow,
 } from "./adminIssueReadLoaders.js";
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/index.js";
-import { buildEvaluationStructureContext } from "../../issues/evaluations/index.js";
+import { buildDecisionContext } from "../../issues/evaluations/index.js";
 
 const requireCriteriaWeightingStructureOrThrow = ({
   criteriaWeightsStructureKey,
@@ -177,8 +177,8 @@ export const getIssueExpertWeightsPayload = async ({
         issueId: toIdString(issue._id),
       })
     : null;
-  const criteriaWeightingEvaluationContext = criteriaWeightingStructure
-    ? await buildEvaluationStructureContext({
+  const criteriaWeightingDecisionContext = criteriaWeightingStructure
+    ? await buildDecisionContext({
         issue,
         structure: criteriaWeightingStructure,
         stage: criteriaWeightingStructure.stage,
@@ -189,7 +189,7 @@ export const getIssueExpertWeightsPayload = async ({
   const criteriaWeightingPayload = criteriaWeightingStructure
     ? await criteriaWeightingStructure.get({
         payload: weightDoc?.payload ?? {},
-        evaluationContext: criteriaWeightingEvaluationContext,
+        decisionContext: criteriaWeightingDecisionContext,
       })
     : null;
 
@@ -235,7 +235,7 @@ export const getIssueExpertWeightsPayload = async ({
         kind,
         criteriaWeightingStructure,
       }),
-      evaluationContext: criteriaWeightingEvaluationContext,
+      decisionContext: criteriaWeightingDecisionContext,
       payload: criteriaWeightingPayload,
       leafCriteria: leafNames,
       leafCriteriaDetailed: orderedLeafCriteria.map((criterion) => ({

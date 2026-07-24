@@ -124,7 +124,7 @@ const requireCanonicalShapeOrThrow = ({
 
 export const normalizePayloadOrThrow = async ({
   payload,
-  evaluationContext,
+  decisionContext,
   requireValue,
 }) => {
   if (!isPlainObject(payload)) {
@@ -139,7 +139,7 @@ export const normalizePayloadOrThrow = async ({
     alternatives,
     criteria,
   } = await resolveAlternativesAndCriteria({
-    evaluationContext,
+    decisionContext,
   });
   requireCanonicalShapeOrThrow({
     payload,

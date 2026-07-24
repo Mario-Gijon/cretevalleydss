@@ -1,19 +1,15 @@
-import { forwardRef, useImperativeHandle } from "react";
 import { Box, Chip, Stack, TextField, Typography } from "@mui/material";
 
-const ManualCriteriaWeightsView = (
-  {
-    evaluationContext,
-    evaluationPayload,
-    setEvaluationPayload,
-    collectivePayload,
-    readOnly,
-    loading,
-  },
-  ref
-) => {
-  const criteria = Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria
+const ManualCriteriaWeightsView = ({
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
+  loading,
+}) => {
+  const criteria = Array.isArray(decisionContext?.leafCriteria)
+    ? decisionContext.leafCriteria
         .map((criterion) => ({
           id: criterion?.id,
           name: criterion?.name,
@@ -22,22 +18,20 @@ const ManualCriteriaWeightsView = (
     : [];
   const isReadOnly = readOnly === true || loading === true;
   const weightsByCriterion =
-    evaluationPayload &&
-    typeof evaluationPayload === "object" &&
-    !Array.isArray(evaluationPayload)
-      ? evaluationPayload.weightsByCriterion || {}
+    evaluation &&
+    typeof evaluation === "object" &&
+    !Array.isArray(evaluation)
+      ? evaluation.weightsByCriterion || {}
       : {};
   const collectiveWeightsByCriterion =
-    collectivePayload &&
-    typeof collectivePayload === "object" &&
-    !Array.isArray(collectivePayload) &&
-    collectivePayload.weightsByCriterion &&
-    typeof collectivePayload.weightsByCriterion === "object" &&
-    !Array.isArray(collectivePayload.weightsByCriterion)
-      ? collectivePayload.weightsByCriterion
+    collectiveEvaluation &&
+    typeof collectiveEvaluation === "object" &&
+    !Array.isArray(collectiveEvaluation) &&
+    collectiveEvaluation.weightsByCriterion &&
+    typeof collectiveEvaluation.weightsByCriterion === "object" &&
+    !Array.isArray(collectiveEvaluation.weightsByCriterion)
+      ? collectiveEvaluation.weightsByCriterion
       : {};
-
-  useImperativeHandle(ref, () => ({}));
 
   if (criteria.length === 0) {
     return (
@@ -79,13 +73,12 @@ const ManualCriteriaWeightsView = (
                         if (isReadOnly) return;
 
                         const raw = event.target.value;
-                        setEvaluationPayload((previous) => ({
-                          ...(previous && typeof previous === "object" ? previous : {}),
-                          weightsByCriterion: {
-                            ...((previous && previous.weightsByCriterion) || {}),
-                            [criterion.id]: raw === "" ? "" : Number(raw),
-                          },
-                        }));
+                        const nextEvaluation = structuredClone(evaluation ?? {});
+                        nextEvaluation.weightsByCriterion = {
+                          ...(nextEvaluation.weightsByCriterion || {}),
+                          [criterion.id]: raw === "" ? "" : Number(raw),
+                        };
+                        setEvaluation(nextEvaluation);
                       }}
                       inputProps={{ min: 0, max: 1, step: 0.1 }}
                       sx={{ width: { xs: "100%", md: 150 } }}
@@ -110,4 +103,4 @@ const ManualCriteriaWeightsView = (
   );
 };
 
-export default forwardRef(ManualCriteriaWeightsView);
+export default ManualCriteriaWeightsView;

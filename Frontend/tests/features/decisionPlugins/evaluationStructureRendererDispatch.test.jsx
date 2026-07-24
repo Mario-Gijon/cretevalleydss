@@ -12,16 +12,16 @@ import EvaluationStructureRenderer from "../../../src/features/issueEvaluation/c
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 const FuturePluginView = ({
-  evaluationContext,
-  evaluationPayload,
-  collectivePayload,
+  decisionContext,
+  evaluation,
+  collectiveEvaluation,
   readOnly,
 }) => (
   <div>
     <span>Future plugin rendered</span>
-    <span>{evaluationContext.marker}</span>
-    <span>{evaluationPayload.value}</span>
-    <span>{collectivePayload.collective}</span>
+    <span>{decisionContext.marker}</span>
+    <span>{evaluation.value}</span>
+    <span>{collectiveEvaluation.collective}</span>
     <span>{String(readOnly)}</span>
   </div>
 );
@@ -40,11 +40,11 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
 
     renderWithProviders(
       <EvaluationStructureRenderer
-        evaluationContext={{ marker: "canonical-context" }}
+        decisionContext={{ marker: "canonical-context" }}
         stage="alternativeEvaluation"
         structureKey="futureStructure"
-        backendPayload={{ value: "individual-payload" }}
-        collectivePayload={{ collective: "collective-payload" }}
+        evaluation={{ value: "individual-payload" }}
+        collectiveEvaluation={{ collective: "collective-payload" }}
         readOnly
       />
     );
@@ -65,7 +65,7 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
 
     const { container } = renderWithProviders(
       <EvaluationStructureRenderer
-        evaluationContext={{ marker: "canonical-context" }}
+        decisionContext={{ marker: "canonical-context" }}
         stage="alternativeEvaluation"
         structureKey="missingStructure"
       />

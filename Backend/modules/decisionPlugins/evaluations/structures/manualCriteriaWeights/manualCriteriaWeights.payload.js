@@ -48,12 +48,12 @@ const normalizeWeightValueOrThrow = (rawValue, { criterionName, allowEmpty }) =>
   return numericValue;
 };
 
-const getCriteriaFromEvaluationContextOrThrow = (evaluationContext) => {
-  const leafItems = evaluationContext?.leafCriteria;
+const getCriteriaFromDecisionContextOrThrow = (decisionContext) => {
+  const leafItems = decisionContext?.leafCriteria;
 
   if (!Array.isArray(leafItems)) {
-    throw createBadRequestError("evaluationContext.leafCriteria must be an array", {
-      field: "evaluationContext.leafCriteria",
+    throw createBadRequestError("decisionContext.leafCriteria must be an array", {
+      field: "decisionContext.leafCriteria",
     });
   }
 
@@ -67,7 +67,7 @@ const getCriteriaFromEvaluationContextOrThrow = (evaluationContext) => {
 
 export const normalizeManualPayloadOrThrow = async ({
   payload,
-  evaluationContext,
+  decisionContext,
   allowEmpty,
 }) => {
   if (!isPlainObject(payload)) {
@@ -86,7 +86,7 @@ export const normalizeManualPayloadOrThrow = async ({
     });
   }
 
-  const criteria = getCriteriaFromEvaluationContextOrThrow(evaluationContext);
+  const criteria = getCriteriaFromDecisionContextOrThrow(decisionContext);
 
   const weightsByCriterion = criteria.reduce((accumulator, criterion) => {
     accumulator[criterion.id] = normalizeWeightValueOrThrow(

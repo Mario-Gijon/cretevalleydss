@@ -3,30 +3,30 @@ import { toIdString } from "../../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { getExpressionDomainTypeOrThrow } from "../../../../expressionDomains/expressionDomainTypeCatalog.js";
 
-const requireEvaluationContextOrThrow = (evaluationContext) => {
+const requireDecisionContextOrThrow = (decisionContext) => {
   if (
-    !evaluationContext ||
-    typeof evaluationContext !== "object" ||
-    Array.isArray(evaluationContext)
+    !decisionContext ||
+    typeof decisionContext !== "object" ||
+    Array.isArray(decisionContext)
   ) {
-    throw createInternalError("Evaluation structure context is invalid", {
-      field: "evaluationContext",
+    throw createInternalError("Decision context is invalid", {
+      field: "decisionContext",
     });
   }
 
-  return evaluationContext;
+  return decisionContext;
 };
 
-const requireEvaluationAlternativesOrThrow = (evaluationContext) => {
-  const alternatives = requireEvaluationContextOrThrow(
-    evaluationContext
+const requireDecisionAlternativesOrThrow = (decisionContext) => {
+  const alternatives = requireDecisionContextOrThrow(
+    decisionContext
   )?.alternatives;
 
   if (!Array.isArray(alternatives)) {
     throw createInternalError(
       "Evaluation structure context alternatives must be an array",
       {
-        field: "evaluationContext.alternatives",
+        field: "decisionContext.alternatives",
       }
     );
   }
@@ -37,7 +37,7 @@ const requireEvaluationAlternativesOrThrow = (evaluationContext) => {
 
     if (!id || !name) {
       throw createInternalError("Evaluation structure alternative is invalid", {
-        field: `evaluationContext.alternatives[${index}]`,
+        field: `decisionContext.alternatives[${index}]`,
       });
     }
 
@@ -45,14 +45,14 @@ const requireEvaluationAlternativesOrThrow = (evaluationContext) => {
   });
 };
 
-const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
-  const criteria = requireEvaluationContextOrThrow(evaluationContext)?.leafCriteria;
+const requireDecisionCriteriaOrThrow = (decisionContext) => {
+  const criteria = requireDecisionContextOrThrow(decisionContext)?.leafCriteria;
 
   if (!Array.isArray(criteria)) {
     throw createInternalError(
       "Evaluation structure context leafCriteria must be an array",
       {
-        field: "evaluationContext.leafCriteria",
+        field: "decisionContext.leafCriteria",
       }
     );
   }
@@ -63,13 +63,13 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
 
     if (!id || !name) {
       throw createInternalError("Evaluation structure criterion is invalid", {
-        field: `evaluationContext.leafCriteria[${index}]`,
+        field: `decisionContext.leafCriteria[${index}]`,
       });
     }
 
     if (!isPlainObject(criterion?.expressionDomain)) {
       throw createInternalError("Evaluation structure criterion expressionDomain is invalid", {
-        field: `evaluationContext.leafCriteria[${index}].expressionDomain`,
+        field: `decisionContext.leafCriteria[${index}].expressionDomain`,
       });
     }
 
@@ -80,7 +80,7 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
 
     if (!typeKey) {
       throw createInternalError("Evaluation structure criterion expressionDomain type is invalid", {
-        field: `evaluationContext.leafCriteria[${index}].expressionDomain.typeKey`,
+        field: `decisionContext.leafCriteria[${index}].expressionDomain.typeKey`,
       });
     }
 
@@ -94,7 +94,7 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
   });
 };
 
-export const resolveAlternativesAndCriteria = async ({ evaluationContext }) => ({
-  alternatives: requireEvaluationAlternativesOrThrow(evaluationContext),
-  criteria: requireEvaluationCriteriaOrThrow(evaluationContext),
+export const resolveAlternativesAndCriteria = async ({ decisionContext }) => ({
+  alternatives: requireDecisionAlternativesOrThrow(decisionContext),
+  criteria: requireDecisionCriteriaOrThrow(decisionContext),
 });

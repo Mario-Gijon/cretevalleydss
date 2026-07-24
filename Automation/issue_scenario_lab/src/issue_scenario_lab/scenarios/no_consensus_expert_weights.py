@@ -361,8 +361,8 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, expected: di
         or len(contexts) != 1
     ):
         raise ScenarioLabError("finished issue WASPAS evaluations are incompatible")
-    serialized = contexts[0].get("serializedContext")
-    active_model = serialized.get("activeModel") if isinstance(serialized, dict) else None
+    serialized = contexts[0].get("decisionContext")
+    active_model = serialized.get("model") if isinstance(serialized, dict) else None
     context_alternative_ids = {_id(item) for item in _items(serialized, "alternatives")} if isinstance(serialized, dict) else set()
     context_criterion_ids = {_id(item) for item in _items(serialized, "leafCriteria")} if isinstance(serialized, dict) else set()
     if (

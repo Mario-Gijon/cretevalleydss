@@ -649,7 +649,7 @@ describe("get evaluation payload behavior", () => {
       stage: "criteriaWeighting",
       structureKey: "manualCriteriaWeights",
       consensusPhase: 0,
-      evaluationContext: {
+      decisionContext: {
         issue: {
           id: String(issue._id),
         },
@@ -659,7 +659,7 @@ describe("get evaluation payload behavior", () => {
           [String(leafCriteria[0]._id)]: "",
         },
       },
-      collectiveReference: null,
+      collectivePayload: null,
       completed: false,
       submittedAt: null,
     });
@@ -688,10 +688,17 @@ describe("get evaluation payload behavior", () => {
       submittedAt: null,
     });
     expect(Object.keys(result.payload)).toEqual(alternativeIds);
-    expect(result.evaluationContext.alternatives.map((alternative) => alternative.id))
+    expect(result.decisionContext.alternatives.map((alternative) => alternative.id))
       .toEqual(alternativeIds);
-    expect(result.evaluationContext.leafCriteria.map((criterion) => criterion.id))
+    expect(result.decisionContext.leafCriteria.map((criterion) => criterion.id))
       .toEqual(criterionIds);
+    expect(result.decisionContext.experts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: String(expert._id) }),
+      ])
+    );
+    expect(result.decisionContext.criteriaWeights).toEqual({});
+    expect(result.decisionContext.expertWeights).toEqual({});
 
     for (const alternativeId of alternativeIds) {
       expect(Object.keys(result.payload[alternativeId])).toEqual(criterionIds);
@@ -785,7 +792,7 @@ describe("get evaluation payload behavior", () => {
     expect(result.payload[firstAlternativeId][criterionId].value).toBe("");
   });
 
-  it("includes collectiveReference only when a previous consensus phase result exists", async () => {
+  it("includes collectivePayload only when a previous consensus phase result exists", async () => {
     const {
       issue,
       expert,
@@ -835,11 +842,8 @@ describe("get evaluation payload behavior", () => {
       stage: "alternativeEvaluation",
     });
 
-    expect(result.collectiveReference).toEqual({
-      consensusPhase: 0,
-      collectiveEvaluations: {
-        rankedAlternatives: ["Alternative A"],
-      },
+    expect(result.collectivePayload).toEqual({
+      rankedAlternatives: ["Alternative A"],
     });
   });
 });

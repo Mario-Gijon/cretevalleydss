@@ -19,9 +19,9 @@ const buildEmptyMatrix = ({ alternatives }) =>
     ])
   );
 
-export const buildGetPayload = async ({ payload, evaluationContext }) => {
+export const buildGetPayload = async ({ payload, decisionContext }) => {
   const { alternatives, criteria, criterionIds } = await resolveAlternativesAndCriteria({
-    evaluationContext,
+    decisionContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
     criteria,
@@ -47,7 +47,7 @@ export const buildGetPayload = async ({ payload, evaluationContext }) => {
 
   const normalizedPayload = await normalizePayloadOrThrow({
     payload,
-    evaluationContext,
+    decisionContext,
     requireValue: false,
   });
 

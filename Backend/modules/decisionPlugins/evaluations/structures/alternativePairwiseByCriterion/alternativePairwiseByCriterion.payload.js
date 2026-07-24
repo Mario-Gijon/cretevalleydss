@@ -181,7 +181,7 @@ const requireCanonicalShapeOrThrow = ({
 
 export const normalizePayloadOrThrow = async ({
   payload,
-  evaluationContext,
+  decisionContext,
   requireValue,
 }) => {
   if (!isPlainObject(payload)) {
@@ -193,7 +193,7 @@ export const normalizePayloadOrThrow = async ({
   rejectUnsupportedTopLevelShapesOrThrow(payload);
 
   const { alternatives, criteria, criterionIds } = await resolveAlternativesAndCriteria({
-    evaluationContext,
+    decisionContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
     criteria,

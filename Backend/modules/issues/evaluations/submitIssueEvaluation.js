@@ -1,5 +1,5 @@
 import { advanceToWeightsFinishedAfterSubmit } from "./advanceIssueAfterEvaluationSubmit.js";
-import { buildEvaluationStructureContext } from "./buildEvaluationStructureContext.js";
+import { buildDecisionContext } from "./buildDecisionContext.js";
 import { loadIssueEvaluationContext } from "./loadIssueEvaluationContext.js";
 import { markParticipationCompleted } from "./issueEvaluationParticipation.js";
 import { upsertIssueEvaluation } from "./issueEvaluationPersistence.js";
@@ -18,7 +18,7 @@ export const submitIssueEvaluation = async ({
     session,
   });
 
-  const evaluationContext = await buildEvaluationStructureContext({
+  const decisionContext = await buildDecisionContext({
     issue,
     structure,
     stage,
@@ -28,7 +28,7 @@ export const submitIssueEvaluation = async ({
   const normalizedPayload = await structure.save({
     mode: "submit",
     payload,
-    evaluationContext,
+    decisionContext,
   });
 
   await upsertIssueEvaluation({

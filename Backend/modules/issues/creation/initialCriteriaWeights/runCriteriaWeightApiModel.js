@@ -12,7 +12,7 @@ import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
 import { executeDecisionModelRequest } from "../../modelExecution/index.js";
-import { buildCreatorCriteriaWeightingEvaluationContext } from "./buildCreatorCriteriaWeightingEvaluationContext.js";
+import { buildCreatorDecisionContext } from "./buildCreatorDecisionContext.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,
@@ -113,8 +113,8 @@ export const normalizeCreatorApiCriteriaWeightingPayloadOrThrow = async ({
     });
   }
 
-  const creatorCriteriaWeightingEvaluationContext =
-    buildCreatorCriteriaWeightingEvaluationContext({
+  const creatorDecisionContext =
+    buildCreatorDecisionContext({
       criteriaWeightingStructure,
       criteriaWeightingModel,
       normalizedCriteriaWeightingParameters: criteriaWeightingParameters,
@@ -125,7 +125,7 @@ export const normalizeCreatorApiCriteriaWeightingPayloadOrThrow = async ({
     await criteriaWeightingStructure.save({
       mode: "submit",
       payload,
-      evaluationContext: creatorCriteriaWeightingEvaluationContext,
+      decisionContext: creatorDecisionContext,
     });
 
   return normalizedCreatorPayload;
@@ -166,8 +166,8 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     });
   }
 
-  const creatorCriteriaWeightingEvaluationContext =
-    buildCreatorCriteriaWeightingEvaluationContext({
+  const creatorDecisionContext =
+    buildCreatorDecisionContext({
       criteriaWeightingStructure,
       criteriaWeightingModel,
       normalizedCriteriaWeightingParameters: criteriaWeightingParameters,

@@ -87,7 +87,7 @@ def _empty(phase: int) -> dict[str, Any]:
         "consensusPhase": phase,
         "completed": False,
         "submittedAt": None,
-        "evaluationContext": {
+        "decisionContext": {
             "issue": {"id": "issue", "currentStage": "alternativeEvaluation", "isConsensus": True},
             "model": {"apiModelKey": "herrera_viedma_crp"},
             "alternatives": [{"id": value, "name": name} for name, value in ids.items()],
@@ -102,7 +102,7 @@ def _empty(phase: int) -> dict[str, Any]:
             "consensus": {"phase": phase, "currentCollectiveEvaluations": {}, "previousCollectiveEvaluations": previous},
         },
         "payload": {"overall": matrix},
-        "collectiveReference": None if phase == 0 else {"consensusPhase": phase - 1, "collectiveEvaluations": previous},
+        "collectivePayload": None if phase == 0 else previous,
     }
 
 
@@ -231,7 +231,7 @@ class FakeClient:
         results = [self._result(phase) for phase in range(4)]
 
         def evaluation_context(phase: int) -> dict[str, Any]:
-            serialized = _empty(phase)["evaluationContext"]
+            serialized = _empty(phase)["decisionContext"]
             serialized["issue"]["id"] = self._issue_id
             serialized["criteriaTree"] = [
                 {
@@ -258,7 +258,7 @@ class FakeClient:
                 "activeModelId": "hv",
                 "alternativeIds": ["balanced", "premium", "budget"],
                 "criterionIds": ["root", "overall"],
-                "serializedContext": serialized,
+                "decisionContext": serialized,
             }
 
         def phase_result(phase: int) -> dict[str, Any]:
@@ -276,7 +276,7 @@ class FakeClient:
 
         individual = []
         for phase in range(4):
-            context = _empty(phase)["evaluationContext"]
+            context = _empty(phase)["decisionContext"]
             for expert_index, expert in enumerate(("expert-a-id", "expert-b-id")):
                 individual.append(
                     {
@@ -566,7 +566,7 @@ def test_finished_context_identity_mismatches_do_not_write_manifest(tmp_path: Pa
     def broken() -> dict[str, Any]:
         detail = original()
         context = detail["evaluations"]["contexts"][0]
-        serialized = context["serializedContext"]
+        serialized = context["decisionContext"]
         if mutation == "leaf-only-criterion-ids":
             context["criterionIds"] = ["overall"]
         elif mutation == "group-only-criterion-ids":
@@ -732,7 +732,7 @@ def test_contract_mismatches_do_not_write_manifest(tmp_path: Path, mutation: str
         def broken(method: str, path: str, *, json: Any = None) -> Any:
             response = original(method, path, json=json)
             if method == "GET" and path.endswith("/evaluations/alternativeEvaluation") and sessions.state["phase"] == 2:
-                response["collectiveReference"]["consensusPhase"] = 0
+                response["collectivePayload"] = {"unexpected": True}
             return response
 
         expert.request = broken  # type: ignore[method-assign]

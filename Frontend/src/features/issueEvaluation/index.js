@@ -3,4 +3,4 @@ export {
   EvaluationStructureRenderer,
   ExpressionDomainSummaryButton,
 } from "./rendering/index.js";
-export { buildEvaluationContext } from "./context/index.js";
+export { buildDecisionContext } from "./context/index.js";

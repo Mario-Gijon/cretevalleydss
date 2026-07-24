@@ -154,17 +154,17 @@ def _weight_context(response: Any, issue_id: str) -> tuple[dict[str, Any], tuple
         or response.get("submittedAt") is not None
     ):
         raise ScenarioLabError("criteria-weighting evaluation response is incompatible")
-    context, payload = response.get("evaluationContext"), response.get("payload")
+    context, payload = response.get("decisionContext"), response.get("payload")
     if not isinstance(context, dict) or not isinstance(payload, dict):
-        raise ScenarioLabError("criteria-weighting response is missing evaluationContext or payload")
+        raise ScenarioLabError("criteria-weighting response is missing decisionContext or payload")
     issue, structure = context.get("issue"), context.get("structure")
     if not isinstance(issue, dict) or _id(issue) != issue_id or issue.get("currentStage") != CRITERIA_STAGE or issue.get("isConsensus") is not False:
-        raise ScenarioLabError("criteria-weighting evaluationContext issue is incompatible")
+        raise ScenarioLabError("criteria-weighting decisionContext issue is incompatible")
     if not isinstance(structure, dict) or structure.get("key") != "manualCriteriaWeights" or structure.get("stage") != CRITERIA_STAGE:
-        raise ScenarioLabError("criteria-weighting evaluationContext structure is incompatible")
+        raise ScenarioLabError("criteria-weighting decisionContext structure is incompatible")
     model = context.get("model")
     if model is not None and (not isinstance(model, dict) or ("apiModelKey" in model and model.get("apiModelKey") != MAIN_MODEL_KEY)):
-        raise ScenarioLabError("criteria-weighting evaluationContext model is incompatible with TOPSIS")
+        raise ScenarioLabError("criteria-weighting decisionContext model is incompatible with TOPSIS")
     criteria = _items(context, "leafCriteria")
     by_name = {item.get("name"): item for item in criteria}
     if len(criteria) != 2 or set(by_name) != {"Quality", "Cost"} or any(not _id(item) for item in criteria) or len({_id(item) for item in criteria}) != 2:
@@ -297,8 +297,8 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
         raise ScenarioLabError("finished issue evaluation contexts are incomplete")
     for stage, model_key in ((CRITERIA_STAGE, WEIGHTING_MODEL_KEY), (ALTERNATIVE_STAGE, MAIN_MODEL_KEY)):
         context = context_by_stage[stage]
-        serialized = context.get("serializedContext")
-        active_model = serialized.get("activeModel") if isinstance(serialized, dict) else None
+        serialized = context.get("decisionContext")
+        active_model = serialized.get("model") if isinstance(serialized, dict) else None
         if (
             not isinstance(context.get("id"), str)
             or not context["id"]

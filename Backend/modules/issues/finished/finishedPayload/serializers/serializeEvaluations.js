@@ -54,6 +54,8 @@ const serializeContext = ({
   criteria,
   expressionDomainsById,
   rawPhaseResults,
+  evaluations,
+  participants,
 }) => {
   const currentResult = rawPhaseResults.find(
     (result) => result.stage === stage && result.consensusPhase === phase
@@ -70,6 +72,27 @@ const serializeContext = ({
   });
   const activeModel =
     stage === "criteriaWeighting" ? criteriaWeightingModel : decisionModel;
+  const expertIds = [
+    ...new Set(
+      evaluations
+        .filter(
+          (evaluation) =>
+            evaluation.stage === stage && evaluation.consensusPhase === phase
+        )
+        .map((evaluation) => toRequiredId(evaluation.expert, "evaluation expert"))
+    ),
+  ];
+  const participantByExpertId = new Map(
+    participants.map((participation) => [
+      toRequiredId(participation.expert, "participation expert"),
+      participation,
+    ])
+  );
+  const expertWeights = {};
+  for (const entry of currentResult?.inputSnapshot?.expertWeights || []) {
+    const expertId = toRequiredId(entry.expert, "expert weight expert");
+    expertWeights[expertId] = entry.weight;
+  }
 
   return {
     id: contextIdFor({ stage, phase }),
@@ -88,7 +111,7 @@ const serializeContext = ({
     expressionDomainIds: leafCriteria
       .map((criterion) => criterion.expressionDomain?.id || null)
       .filter(Boolean),
-    serializedContext: {
+    decisionContext: {
       issue: {
         id: toRequiredId(issue, "issue"),
         name: issue.name,
@@ -99,14 +122,18 @@ const serializeContext = ({
         consensusMaxPhases: issue.consensusMaxPhases ?? null,
       },
       structure: { key: structureKey, stage },
-      decisionModel,
-      criteriaWeightingModel,
-      activeModel,
+      model: activeModel,
       modelParameters: cloneSerializable(issue.modelParameters, {}),
       criteriaWeightingParameters: cloneSerializable(issue.criteriaWeightingParameters, {}),
       alternatives: alternatives.map(({ id, name }) => ({ id, name })),
       criteriaTree: serializeCriterionTreeForContext({ criteria }),
       leafCriteria,
+      experts: expertIds.map((id) => ({
+        id,
+        name: participantByExpertId.get(id)?.expert?.name ?? null,
+      })),
+      criteriaWeights: cloneSerializable(issue?.modelParameters?.weights, {}),
+      expertWeights,
       consensus: {
         phase,
         maxPhases: issue.consensusMaxPhases ?? null,
@@ -132,6 +159,7 @@ export const serializeEvaluations = async ({
   alternatives,
   criteria,
   expressionDomains,
+  participants = [],
 }) => {
   const expressionDomainsById = new Map(expressionDomains.map((domain) => [domain.id, domain]));
   const rawPhaseResultByStagePhase = new Map(
@@ -173,6 +201,8 @@ export const serializeEvaluations = async ({
       criteria,
       expressionDomainsById,
       rawPhaseResults,
+      evaluations,
+      participants,
     });
     contexts.push(context);
     contextById.set(context.id, context);
@@ -196,7 +226,7 @@ export const serializeEvaluations = async ({
       try {
         displayPayload = await structure.get({
           payload: evaluation.payload ?? {},
-          evaluationContext: context.serializedContext,
+          decisionContext: context.decisionContext,
         });
       } catch (error) {
         throw createInternalError(

@@ -14,7 +14,7 @@ const EvaluationsOverviewCard = ({ evaluations, onViewEvaluations }) => {
     <Stack spacing={0.65}>
       <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>Preview</Typography>
       {renderer?.structureKey ? <Box sx={dashboardEvaluationViewportSx}>
-        <EvaluationStructureRenderer stage={renderer.stage} structureKey={renderer.structureKey} evaluationContext={renderer.evaluationContext} backendPayload={renderer.backendPayload} collectivePayload={evaluations.showCollective ? renderer.collectivePayload : null} readOnly />
+        <EvaluationStructureRenderer stage={renderer.stage} structureKey={renderer.structureKey} decisionContext={renderer.decisionContext} evaluation={renderer.evaluation} collectiveEvaluation={evaluations.showCollective ? renderer.collectiveEvaluation : null} readOnly />
       </Box> : <DashboardInnerPanel><Stack direction="row" spacing={0.8} alignItems="center"><GroupsRoundedIcon sx={{ color: "text.secondary", fontSize: 19 }} /><Typography variant="body2" sx={{ color: "text.secondary" }}>No registered evaluation view is available for this selection.</Typography></Stack></DashboardInnerPanel>}
     </Stack>
   </DashboardPreviewCard>;

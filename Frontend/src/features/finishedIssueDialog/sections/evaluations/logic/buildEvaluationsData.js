@@ -124,7 +124,7 @@ export const buildEvaluationsData = ({
     collective: collective
       ? { ...collective, payload: payloadFor(collective) }
       : null,
-    selectedSerializedContext: context?.serializedContext || null,
+    selectedDecisionContext: context?.decisionContext || null,
     structureKey:
       context?.structureKey || individual?.structureKey || null,
     expertWeightSnapshot: phaseResult?.expertWeightSnapshot || [],
@@ -135,11 +135,11 @@ export const buildEvaluationsData = ({
         ? {
             stage,
             structureKey: context.structureKey,
-            evaluationContext: context.serializedContext,
-            backendPayload: individual
+            decisionContext: context.decisionContext,
+            evaluation: individual
               ? payloadFor(individual)
               : null,
-            collectivePayload: collective
+            collectiveEvaluation: collective
               ? payloadFor(collective)
               : null,
             readOnly: true,
@@ -167,9 +167,9 @@ export const buildEvaluationsPreview = (data) => ({
     ? {
         stage: data.renderer.stage,
         structureKey: data.renderer.structureKey,
-        evaluationContext: data.renderer.evaluationContext,
-        backendPayload: data.renderer.backendPayload,
-        collectivePayload: data.renderer.collectivePayload,
+        decisionContext: data.renderer.decisionContext,
+        evaluation: data.renderer.evaluation,
+        collectiveEvaluation: data.renderer.collectiveEvaluation,
         readOnly: true,
       }
     : null,

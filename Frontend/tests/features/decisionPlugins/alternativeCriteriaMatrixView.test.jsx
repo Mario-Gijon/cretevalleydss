@@ -33,7 +33,7 @@ const fuzzyDomain = {
   },
 };
 
-const buildEvaluationContext = (criteria = []) => ({
+const buildDecisionContext = (criteria = []) => ({
   alternatives: [
     { id: "alt-a", name: "Alternative A" },
     { id: "alt-b", name: "Alternative B" },
@@ -58,14 +58,14 @@ describe("AlternativeCriteriaMatrixView", () => {
   it("renders expression-domain inputs for numeric, ordinal, and fuzzy criteria", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext([
+        decisionContext={buildDecisionContext([
           { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
           { id: "criterion-2", name: "Ordinal", expressionDomain: ordinalDomain },
           { id: "criterion-3", name: "Fuzzy", expressionDomain: fuzzyDomain },
         ])}
-        evaluationPayload={buildMatrixPayload()}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={{
+        evaluation={buildMatrixPayload()}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
           "alt-a": {
             "criterion-1": 7.2,
             "criterion-3": [0.6, 0.8, 1],
@@ -81,13 +81,13 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.getByTitle("High — [0.6, 0.8, 1]")).toBeInTheDocument();
   });
 
-  it("does not show a chip for a missing collective cell and does not show an error for null collectivePayload", () => {
+  it("does not show a chip for a missing collective cell and does not show an error for null collectiveEvaluation", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext([
+        decisionContext={buildDecisionContext([
           { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
         ])}
-        evaluationPayload={{
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: 7.5 },
           },
@@ -95,8 +95,8 @@ describe("AlternativeCriteriaMatrixView", () => {
             "criterion-1": { value: 6.5 },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={null}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
         readOnly={false}
         loading={false}
       />
@@ -109,16 +109,16 @@ describe("AlternativeCriteriaMatrixView", () => {
   it("renders an alert for malformed matrix payloads", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext([
+        decisionContext={buildDecisionContext([
           { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
         ])}
-        evaluationPayload={{
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: 7.5 },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={null}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
         readOnly={false}
         loading={false}
       />
@@ -132,17 +132,17 @@ describe("AlternativeCriteriaMatrixView", () => {
   it("renders an alert for malformed context", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={{
+        decisionContext={{
           alternatives: [{ id: "alt-a", name: "Alternative A" }],
           leafCriteria: [{ id: "criterion-1", name: "Numeric" }],
         }}
-        evaluationPayload={{
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: 7.5 },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={null}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
         readOnly={false}
         loading={false}
       />
@@ -154,12 +154,12 @@ describe("AlternativeCriteriaMatrixView", () => {
   it("withholds the grid while loading without fabricating a matrix", () => {
     const { container } = renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext([
+        decisionContext={buildDecisionContext([
           { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
         ])}
-        evaluationPayload={undefined}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={null}
+        evaluation={undefined}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
         readOnly={false}
         loading={true}
       />
@@ -171,10 +171,10 @@ describe("AlternativeCriteriaMatrixView", () => {
   it("renders a collective payload alert for legacy wrapper values and keeps editable inputs rendered", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext([
+        decisionContext={buildDecisionContext([
           { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
         ])}
-        evaluationPayload={{
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: 7.5 },
           },
@@ -182,8 +182,8 @@ describe("AlternativeCriteriaMatrixView", () => {
             "criterion-1": { value: 6.5 },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={{
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
           "alt-a": {
             "criterion-1": { localizedLabel: "Legacy" },
           },
@@ -203,7 +203,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
     ];
 
-    for (const collectivePayload of [
+    for (const collectiveEvaluation of [
       { "alt-a": { "criterion-1": { value: 7.2 } } },
       { "alt-a": { "criterion-1": "7.2" } },
       { "alt-a": { "criterion-1": [] } },
@@ -211,8 +211,8 @@ describe("AlternativeCriteriaMatrixView", () => {
     ]) {
       const { unmount } = renderWithProviders(
         <AlternativeCriteriaMatrixView
-          evaluationContext={buildEvaluationContext(criteria)}
-          evaluationPayload={{
+          decisionContext={buildDecisionContext(criteria)}
+          evaluation={{
             "alt-a": {
               "criterion-1": { value: 7.5 },
             },
@@ -220,8 +220,8 @@ describe("AlternativeCriteriaMatrixView", () => {
               "criterion-1": { value: 6.5 },
             },
           }}
-          setEvaluationPayload={vi.fn()}
-          collectivePayload={collectivePayload}
+          setEvaluation={vi.fn()}
+          collectiveEvaluation={collectiveEvaluation}
           readOnly={false}
           loading={false}
         />
@@ -240,8 +240,8 @@ describe("AlternativeCriteriaMatrixView", () => {
 
     const { unmount } = renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext(criteria)}
-        evaluationPayload={{
+        decisionContext={buildDecisionContext(criteria)}
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: 7.5 },
           },
@@ -249,8 +249,8 @@ describe("AlternativeCriteriaMatrixView", () => {
             "criterion-1": { value: 6.5 },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={{
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
           "alt-c": {
             "criterion-1": 7.2,
           },
@@ -268,8 +268,8 @@ describe("AlternativeCriteriaMatrixView", () => {
 
     renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext(criteria)}
-        evaluationPayload={{
+        decisionContext={buildDecisionContext(criteria)}
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: 7.5 },
           },
@@ -277,8 +277,8 @@ describe("AlternativeCriteriaMatrixView", () => {
             "criterion-1": { value: 6.5 },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={{
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
           "alt-a": {
             "criterion-2": 7.2,
           },
@@ -301,8 +301,8 @@ describe("AlternativeCriteriaMatrixView", () => {
 
     const { unmount } = renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext(criteria)}
-        evaluationPayload={{
+        decisionContext={buildDecisionContext(criteria)}
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: { labelKey: "low" } },
           },
@@ -310,8 +310,8 @@ describe("AlternativeCriteriaMatrixView", () => {
             "criterion-1": { value: { labelKey: "high" } },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={{
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
           "alt-a": {
             "criterion-1": [0.61, 0.8, 1],
           },
@@ -327,7 +327,7 @@ describe("AlternativeCriteriaMatrixView", () => {
 
     renderWithProviders(
       <AlternativeCriteriaMatrixView
-        evaluationContext={buildEvaluationContext([
+        decisionContext={buildDecisionContext([
           {
             id: "criterion-1",
             name: "Five-point fuzzy",
@@ -353,7 +353,7 @@ describe("AlternativeCriteriaMatrixView", () => {
             },
           },
         ])}
-        evaluationPayload={{
+        evaluation={{
           "alt-a": {
             "criterion-1": { value: { labelKey: "left" } },
           },
@@ -361,8 +361,8 @@ describe("AlternativeCriteriaMatrixView", () => {
             "criterion-1": { value: { labelKey: "right" } },
           },
         }}
-        setEvaluationPayload={vi.fn()}
-        collectivePayload={{
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
           "alt-a": {
             "criterion-1": [0.11, 0.22, 0.33, 0.44, 0.55],
           },

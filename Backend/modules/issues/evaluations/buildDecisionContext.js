@@ -2,6 +2,7 @@ import { Criterion } from "../../../models/Criteria.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { IssueModel } from "../../../models/IssueModels.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { Participation } from "../../../models/Participations.js";
 import { getStageStandardResult } from "../stageResults/stageResultContract.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
@@ -386,8 +387,13 @@ const loadCriteriaTreeDocs = async ({ issue, criteria }) => {
     .lean();
 };
 
-const loadModelSummary = async ({ issue }) => {
-  const issueModel = issue?.model;
+const loadModelSummary = async ({ issue, stage }) => {
+  const usesCriteriaWeightingModel =
+    stage === EVALUATION_STAGES.CRITERIA_WEIGHTING &&
+    issue?.criteriaWeightingModel;
+  const issueModel = usesCriteriaWeightingModel
+    ? issue.criteriaWeightingModel
+    : issue?.model;
   const issueModelId =
     issueModel && typeof issueModel === "object"
       ? toIdString(issueModel?._id || issueModel?.id) || null
@@ -411,8 +417,14 @@ const loadModelSummary = async ({ issue }) => {
         ? loadedModel.name
         : null,
     apiModelKey:
-      typeof issue?.apiModelKey === "string"
-        ? issue.apiModelKey
+      typeof (
+        usesCriteriaWeightingModel
+          ? issue?.criteriaWeightingApiModelKey
+          : issue?.apiModelKey
+      ) === "string"
+        ? usesCriteriaWeightingModel
+          ? issue.criteriaWeightingApiModelKey
+          : issue.apiModelKey
         : typeof loadedModel?.apiModelKey === "string"
           ? loadedModel.apiModelKey
           : null,
@@ -444,7 +456,60 @@ const loadPreviousCollectiveEvaluations = async ({
     : {};
 };
 
-export const buildEvaluationStructureContext = async ({
+const loadExpertsAndWeights = async ({ issue }) => {
+  const issueId = issue?._id || issue?.id;
+
+  if (!issueId || issueId === "creation") {
+    return {
+      experts: [],
+      expertWeights: {},
+    };
+  }
+
+  const participations = await Participation.find({
+    issue: issueId,
+    invitationStatus: "accepted",
+  })
+    .select("expert weight joinedAt")
+    .sort({ joinedAt: 1, _id: 1 })
+    .populate("expert", "_id name")
+    .lean();
+  const experts = [];
+  const expertWeights = {};
+
+  for (const participation of participations) {
+    const expert = participation?.expert;
+    const id = toIdString(expert?._id || expert);
+
+    if (!id) {
+      continue;
+    }
+
+    experts.push({
+      id,
+      name:
+        expert && typeof expert === "object" && typeof expert.name === "string"
+          ? expert.name
+          : null,
+    });
+
+    if (participation.weight !== null && participation.weight !== undefined) {
+      expertWeights[id] = cloneSerializable(participation.weight, null);
+    }
+  }
+
+  return {
+    experts,
+    expertWeights,
+  };
+};
+
+const resolveCriteriaWeights = (issue) =>
+  isPlainObject(issue?.modelParameters?.weights)
+    ? cloneSerializable(issue.modelParameters.weights, {})
+    : {};
+
+export const buildDecisionContext = async ({
   issue,
   structure = null,
   stage = null,
@@ -464,11 +529,18 @@ export const buildEvaluationStructureContext = async ({
     normalizeNonNegativeIntegerOrNull(consensusPhase) ??
     normalizeNonNegativeIntegerOrNull(issue?.consensusPhase);
 
-  const [alternativeItems, leafItems, criteriaDocs, model] = await Promise.all([
+  const [
+    alternativeItems,
+    leafItems,
+    criteriaDocs,
+    model,
+    expertContext,
+  ] = await Promise.all([
     serializeAlternativeItemsOrThrow({ issue, alternatives }),
     serializeLeafCriterionItemsOrThrow({ issue, leafCriteria }),
     loadCriteriaTreeDocs({ issue, criteria }),
-    loadModelSummary({ issue }),
+    loadModelSummary({ issue, stage: resolvedStage }),
+    loadExpertsAndWeights({ issue }),
   ]);
 
   const criteriaTree = serializeCriteriaTree({
@@ -509,6 +581,9 @@ export const buildEvaluationStructureContext = async ({
     alternatives: alternativeItems,
     criteriaTree,
     leafCriteria: leafItems,
+    experts: expertContext.experts,
+    criteriaWeights: resolveCriteriaWeights(issue),
+    expertWeights: expertContext.expertWeights,
     consensus: {
       phase: resolvedConsensusPhase,
       maxPhases: normalizePositiveIntegerOrNull(issue?.consensusMaxPhases),

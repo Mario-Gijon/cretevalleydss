@@ -11,20 +11,20 @@ import {
 export const bestWorstCriteriaStructure = Object.freeze({
   key: "bestWorstCriteria",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  async get({ payload: storedPayload, evaluationContext }) {
+  async get({ payload: storedPayload, decisionContext }) {
     const { payload } = await buildGetPayload({
       payload: storedPayload,
-      evaluationContext,
+      decisionContext,
     });
     return payload;
   },
 
-  async save({ mode, payload, evaluationContext }) {
+  async save({ mode, payload, decisionContext }) {
     validateSaveModeOrThrow(mode);
 
     const normalized = await normalizePayloadOrThrow({
       payload,
-      evaluationContext,
+      decisionContext,
     });
 
     if (mode === "submit") {

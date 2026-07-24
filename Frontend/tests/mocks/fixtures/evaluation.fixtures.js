@@ -74,7 +74,7 @@ export const evaluationIssueWithUnderscoreIdFixture = {
 export const evaluationResponseFixture = {
   success: true,
   data: {
-    evaluationContext: {
+    decisionContext: {
       issue: {
         id: "issue-eval-1",
         name: "Budget Planning",
@@ -114,10 +114,8 @@ export const evaluationResponseFixture = {
         "criterion-cost": 0.4,
       },
     },
-    collectiveReference: {
-      collectiveEvaluations: {
-        shared: true,
-      },
+    collectivePayload: {
+      shared: true,
     },
   },
 };

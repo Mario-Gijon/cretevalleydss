@@ -126,19 +126,19 @@ const isCanonicalCollectiveValue = (value) => {
 export const resolveCanonicalCollectiveAlternativeCriteriaMatrix = ({
   alternatives,
   criteria,
-  collectivePayload,
+  collectiveEvaluation,
 }) => {
-  if (collectivePayload === null || collectivePayload === undefined) {
+  if (collectiveEvaluation === null || collectiveEvaluation === undefined) {
     return null;
   }
 
-  if (!isPlainObject(collectivePayload)) {
+  if (!isPlainObject(collectiveEvaluation)) {
     throw new Error("Collective payload must be an object.");
   }
 
   const alternativeIds = alternatives.map((alternative) => alternative.id);
   const criterionIds = criteria.map((criterion) => criterion.id);
-  const unknownAlternativeIds = Object.keys(collectivePayload).filter(
+  const unknownAlternativeIds = Object.keys(collectiveEvaluation).filter(
     (alternativeId) => !alternativeIds.includes(alternativeId)
   );
 
@@ -147,11 +147,11 @@ export const resolveCanonicalCollectiveAlternativeCriteriaMatrix = ({
   }
 
   for (const alternative of alternatives) {
-    if (!hasOwnKey(collectivePayload, alternative.id)) {
+    if (!hasOwnKey(collectiveEvaluation, alternative.id)) {
       continue;
     }
 
-    const row = collectivePayload[alternative.id];
+    const row = collectiveEvaluation[alternative.id];
 
     if (!isPlainObject(row)) {
       throw new Error("Collective alternative row must be an object.");
@@ -178,5 +178,5 @@ export const resolveCanonicalCollectiveAlternativeCriteriaMatrix = ({
     }
   }
 
-  return collectivePayload;
+  return collectiveEvaluation;
 };

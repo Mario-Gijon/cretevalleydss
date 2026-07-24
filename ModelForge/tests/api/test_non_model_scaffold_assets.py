@@ -98,6 +98,30 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
     for relative_path in preview_paths:
         assert not (project_root / relative_path).exists()
 
+    contents = {item["path"]: item["content"] for item in body["files"]}
+    backend = contents[preview_paths[0]]
+    frontend = contents[preview_paths[2]]
+
+    assert "async get({ payload, decisionContext })" in backend
+    assert "async save({ payload, decisionContext, mode })" in backend
+    assert "return payload;" in backend
+    assert "Return the complete payload that must be sent to the Frontend." in backend
+    assert "Return the complete payload that must be stored in the database." in backend
+    assert "decisionContext" in frontend
+    assert "evaluation" in frontend
+    assert "setEvaluation" in frontend
+    assert "collectiveEvaluation" in frontend
+    for forbidden in (
+        "forwardRef",
+        "useImperativeHandle",
+        "preparePayloadRead",
+        "flushPendingEdits",
+        "validatePayloadRead",
+    ):
+        assert forbidden not in frontend
+    assert all(not path.endswith(".md") for path in preview_paths)
+    assert all(not path.endswith(".validation.js") for path in preview_paths)
+
 
 def test_parameter_structure_preview_reports_expected_paths_without_writing_files(
     client_factory,
@@ -217,12 +241,11 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert 'key: "pairwiseMatrix"' in evaluation_backend_source
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_backend_source
-    assert "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT" in evaluation_backend_source
-    assert "Implementation guide" in evaluation_backend_source
-    assert "typeKey" in evaluation_backend_source
-    assert "definition depends on typeKey" in evaluation_backend_source
-    assert "numericRange" not in evaluation_backend_source
-    assert "linguisticLabels" not in evaluation_backend_source
+    assert "async get({ payload, decisionContext })" in evaluation_backend_source
+    assert "async save({ payload, decisionContext, mode })" in evaluation_backend_source
+    assert "return payload ?? {};" in evaluation_backend_source
+    assert "return payload;" in evaluation_backend_source
+    assert "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT" not in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_frontend_index_source
     assert 'key: "pairwiseMatrix"' in evaluation_frontend_index_source
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_frontend_index_source
@@ -230,8 +253,11 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert 'implementationStatus: "scaffold"' in evaluation_frontend_index_source
     assert "Implementation guide" in evaluation_frontend_index_source
     assert "pairwiseMatrix is under development." in evaluation_view_source
-    assert "Implementation guide" in evaluation_view_source
-    assert "https://mui.com/material-ui/" in evaluation_view_source
+    assert "decisionContext" in evaluation_view_source
+    assert "evaluation" in evaluation_view_source
+    assert "setEvaluation" in evaluation_view_source
+    assert "collectiveEvaluation" in evaluation_view_source
+    assert "forwardRef" not in evaluation_view_source
 
     assert 'key: "scoreRange"' in parameter_backend_index_source
     assert "scoreRangeParameterStructure" in parameter_backend_index_source

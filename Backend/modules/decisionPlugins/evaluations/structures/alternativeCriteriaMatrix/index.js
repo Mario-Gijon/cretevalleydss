@@ -10,20 +10,20 @@ import {
 export const alternativeCriteriaMatrixStructure = Object.freeze({
   key: "alternativeCriteriaMatrix",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  async get({ payload: storedPayload, evaluationContext }) {
+  async get({ payload: storedPayload, decisionContext }) {
     const { payload } = await buildGetPayload({
       payload: storedPayload,
-      evaluationContext,
+      decisionContext,
     });
     return payload;
   },
 
-  async save({ mode, payload, evaluationContext }) {
+  async save({ mode, payload, decisionContext }) {
     const requireValue = resolveRequireValueFromModeOrThrow(mode);
 
     return normalizePayloadOrThrow({
       payload,
-      evaluationContext,
+      decisionContext,
       requireValue,
     });
   },

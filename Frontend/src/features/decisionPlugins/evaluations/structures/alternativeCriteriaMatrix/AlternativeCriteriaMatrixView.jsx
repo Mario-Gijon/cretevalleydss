@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   Alert,
@@ -25,47 +25,47 @@ import {
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const resolveEvaluationAlternatives = (evaluationContext) => {
-  if (!isPlainObject(evaluationContext)) {
-    throw new Error("Evaluation context is invalid.");
+const resolveDecisionAlternatives = (decisionContext) => {
+  if (!isPlainObject(decisionContext)) {
+    throw new Error("Decision context is invalid.");
   }
 
-  if (!Array.isArray(evaluationContext.alternatives)) {
-    throw new Error("Evaluation context alternatives must be an array.");
+  if (!Array.isArray(decisionContext.alternatives)) {
+    throw new Error("Decision context alternatives must be an array.");
   }
 
-  return evaluationContext.alternatives.map((alternative, index) => {
+  return decisionContext.alternatives.map((alternative, index) => {
     const id = String(alternative?.id ?? alternative?._id ?? "").trim();
     const name = String(alternative?.name ?? "").trim();
 
     if (!id || !name) {
-      throw new Error(`Evaluation context alternative ${index + 1} is invalid.`);
+      throw new Error(`Decision context alternative ${index + 1} is invalid.`);
     }
 
     return { id, name };
   });
 };
 
-const resolveEvaluationCriteria = (evaluationContext) => {
-  if (!isPlainObject(evaluationContext)) {
-    throw new Error("Evaluation context is invalid.");
+const resolveDecisionCriteria = (decisionContext) => {
+  if (!isPlainObject(decisionContext)) {
+    throw new Error("Decision context is invalid.");
   }
 
-  if (!Array.isArray(evaluationContext.leafCriteria)) {
-    throw new Error("Evaluation context leafCriteria must be an array.");
+  if (!Array.isArray(decisionContext.leafCriteria)) {
+    throw new Error("Decision context leafCriteria must be an array.");
   }
 
-  return evaluationContext.leafCriteria.map((criterion, index) => {
+  return decisionContext.leafCriteria.map((criterion, index) => {
     const id = String(criterion?.id ?? criterion?._id ?? "").trim();
     const name = String(criterion?.name ?? "").trim();
     const expressionDomain = criterion?.expressionDomain;
 
     if (!id || !name) {
-      throw new Error(`Evaluation context criterion ${index + 1} is invalid.`);
+      throw new Error(`Decision context criterion ${index + 1} is invalid.`);
     }
 
     if (!isPlainObject(expressionDomain)) {
-      throw new Error(`Evaluation context criterion ${index + 1} expressionDomain is invalid.`);
+      throw new Error(`Decision context criterion ${index + 1} expressionDomain is invalid.`);
     }
 
     const typeKey =
@@ -75,7 +75,7 @@ const resolveEvaluationCriteria = (evaluationContext) => {
 
     if (!typeKey) {
       throw new Error(
-        `Evaluation context criterion ${index + 1} expressionDomain type is invalid.`
+        `Decision context criterion ${index + 1} expressionDomain type is invalid.`
       );
     }
 
@@ -163,27 +163,24 @@ const formatCollectiveChipPresentation = ({ collectiveValue, expressionDomain })
   };
 };
 
-const AlternativeCriteriaMatrixView = (
-  {
-    evaluationContext,
-    evaluationPayload,
-    setEvaluationPayload,
-    collectivePayload,
-    readOnly,
-    loading,
-  },
-  ref
-) => {
+const AlternativeCriteriaMatrixView = ({
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
+  loading,
+}) => {
   const theme = useTheme();
   const [validationErrorsByCell, setValidationErrorsByCell] = useState({});
-  const shouldWithholdGrid = loading === true && evaluationPayload == null;
+  const shouldWithholdGrid = loading === true && evaluation == null;
 
   const contextResolution = useMemo(() => {
     try {
       return {
         valid: true,
-        alternatives: resolveEvaluationAlternatives(evaluationContext),
-        criteria: resolveEvaluationCriteria(evaluationContext),
+        alternatives: resolveDecisionAlternatives(decisionContext),
+        criteria: resolveDecisionCriteria(decisionContext),
         message: "",
       };
     } catch (error) {
@@ -192,10 +189,10 @@ const AlternativeCriteriaMatrixView = (
         alternatives: [],
         criteria: [],
         message:
-          error instanceof Error ? error.message : "Evaluation context is invalid.",
+          error instanceof Error ? error.message : "Decision context is invalid.",
       };
     }
-  }, [evaluationContext]);
+  }, [decisionContext]);
   const alternativeItems = contextResolution.alternatives;
   const criteria = contextResolution.criteria;
 
@@ -226,7 +223,7 @@ const AlternativeCriteriaMatrixView = (
         payload: requireCanonicalAlternativeCriteriaMatrix({
           alternatives: alternativeItems,
           criteria,
-          evaluations: evaluationPayload,
+          evaluations: evaluation,
         }),
         message: "",
       };
@@ -243,7 +240,7 @@ const AlternativeCriteriaMatrixView = (
     contextResolution.message,
     contextResolution.valid,
     criteria,
-    evaluationPayload,
+    evaluation,
     shouldWithholdGrid,
   ]);
   const collectiveResolution = useMemo(() => {
@@ -261,7 +258,7 @@ const AlternativeCriteriaMatrixView = (
         payload: resolveCanonicalCollectiveAlternativeCriteriaMatrix({
           alternatives: alternativeItems,
           criteria,
-          collectivePayload,
+          collectiveEvaluation,
         }),
         message: "",
       };
@@ -273,7 +270,7 @@ const AlternativeCriteriaMatrixView = (
           error instanceof Error ? error.message : "Collective payload is invalid.",
       };
     }
-  }, [alternativeItems, collectivePayload, contextResolution.valid, criteria]);
+  }, [alternativeItems, collectiveEvaluation, contextResolution.valid, criteria]);
 
   const matrixRows = useMemo(
     () =>
@@ -360,16 +357,15 @@ const AlternativeCriteriaMatrixView = (
       return nextErrors;
     });
 
-    setEvaluationPayload((previousPayload) =>
-      updateAlternativeCriteriaMatrixCell({
-        alternatives: alternativeItems,
-        criteria,
-        evaluations: previousPayload,
-        alternativeId: rowId,
-        criterionId,
-        nextValue,
-      })
-    );
+    const nextEvaluation = updateAlternativeCriteriaMatrixCell({
+      alternatives: alternativeItems,
+      criteria,
+      evaluations: evaluation,
+      alternativeId: rowId,
+      criterionId,
+      nextValue,
+    });
+    setEvaluation(nextEvaluation);
   };
 
   const renderCollectiveChip = ({ collectiveValue, expressionDomain }) => {
@@ -447,7 +443,9 @@ const AlternativeCriteriaMatrixView = (
     const collectiveValue = collectiveResolution.payload?.[rowId]?.[criterion.id];
     const expressionDomain = criterion.expressionDomain;
     const cellError =
-      validationErrorsByCell[buildCellValidationKey(rowId, criterion.id)] || "";
+      validationErrorsByCell[buildCellValidationKey(rowId, criterion.id)] ||
+      validationErrorsMap[buildCellValidationKey(rowId, criterion.id)] ||
+      "";
 
     return renderCellWithCollective({
       collectiveValue,
@@ -508,31 +506,6 @@ const AlternativeCriteriaMatrixView = (
     })),
   ];
 
-  const flushPendingEdits = async () => {
-    await Promise.resolve();
-  };
-
-  useImperativeHandle(ref, () => ({
-    flushPendingEdits,
-    preparePayloadRead: flushPendingEdits,
-    validatePayloadRead: () => {
-      setValidationErrorsByCell(validationErrorsMap);
-
-      if (!payloadResolution.valid) {
-        return {
-          valid: false,
-          errors: [
-            {
-              message: payloadResolution.message,
-            },
-          ],
-        };
-      }
-
-      return validationResult;
-    },
-  }));
-
   if (shouldWithholdGrid) {
     return null;
   }
@@ -580,4 +553,4 @@ const AlternativeCriteriaMatrixView = (
   );
 };
 
-export default forwardRef(AlternativeCriteriaMatrixView);
+export default AlternativeCriteriaMatrixView;

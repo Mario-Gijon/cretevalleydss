@@ -1,4 +1,4 @@
-import { buildEvaluationStructureContext } from "./buildEvaluationStructureContext.js";
+import { buildDecisionContext } from "./buildDecisionContext.js";
 import { loadIssueEvaluationContext } from "./loadIssueEvaluationContext.js";
 import { upsertIssueEvaluation } from "./issueEvaluationPersistence.js";
 
@@ -14,7 +14,7 @@ export const saveIssueEvaluationDraft = async ({
     stage,
   });
 
-  const evaluationContext = await buildEvaluationStructureContext({
+  const decisionContext = await buildDecisionContext({
     issue,
     structure,
     stage,
@@ -24,7 +24,7 @@ export const saveIssueEvaluationDraft = async ({
   const normalizedPayload = await structure.save({
     mode: "draft",
     payload,
-    evaluationContext,
+    decisionContext,
   });
 
   await upsertIssueEvaluation({

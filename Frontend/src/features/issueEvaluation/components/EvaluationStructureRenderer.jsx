@@ -2,17 +2,17 @@ import { useMemo } from "react";
 import { Box } from "@mui/material";
 
 import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/registry";
-import { buildEvaluationContext } from "../logic/buildEvaluationContext";
+import { buildDecisionContext } from "../logic/buildDecisionContext";
 
 const NOOP = () => {};
 
 const EvaluationStructureRenderer = ({
-  evaluationContext: providedEvaluationContext = null,
+  decisionContext: providedDecisionContext = null,
   issue,
   stage,
   structureKey,
-  backendPayload = null,
-  collectivePayload = null,
+  evaluation: providedEvaluation = null,
+  collectiveEvaluation = null,
   readOnly = false,
   loading = false,
 }) => {
@@ -25,17 +25,17 @@ const EvaluationStructureRenderer = ({
     [stage, structureKey]
   );
   const View = structureEntry?.View || null;
-  const evaluationContext = useMemo(
+  const decisionContext = useMemo(
     () => {
-      if (providedEvaluationContext && typeof providedEvaluationContext === "object") {
-        return providedEvaluationContext;
+      if (providedDecisionContext && typeof providedDecisionContext === "object") {
+        return providedDecisionContext;
       }
 
       if (!issue) {
         return null;
       }
 
-      return buildEvaluationContext({
+      return buildDecisionContext({
         issue,
         stage,
         structure: structureEntry,
@@ -43,27 +43,27 @@ const EvaluationStructureRenderer = ({
         criteriaTree: issue?.criteria || [],
       });
     },
-    [providedEvaluationContext, issue, stage, structureEntry]
+    [providedDecisionContext, issue, stage, structureEntry]
   );
-  const evaluationPayload = useMemo(() => {
-    if (!evaluationContext) {
+  const evaluation = useMemo(() => {
+    if (!decisionContext) {
       return {};
     }
 
-    return backendPayload ?? {};
-  }, [evaluationContext, backendPayload]);
+    return providedEvaluation ?? {};
+  }, [decisionContext, providedEvaluation]);
 
-  if (!View || !evaluationContext) {
+  if (!View || !decisionContext) {
     return null;
   }
 
   return (
     <Box sx={{ width: "100%", minWidth: 0 }}>
       <View
-        evaluationContext={evaluationContext}
-        evaluationPayload={evaluationPayload}
-        setEvaluationPayload={NOOP}
-        collectivePayload={collectivePayload}
+        decisionContext={decisionContext}
+        evaluation={evaluation}
+        setEvaluation={NOOP}
+        collectiveEvaluation={collectiveEvaluation}
         readOnly={readOnly === true}
         loading={loading === true}
       />

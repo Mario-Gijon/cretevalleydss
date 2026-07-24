@@ -23,7 +23,7 @@ import {
   executeAlternativeEvaluationModel,
   executeCriteriaWeightingModel,
 } from "../modelExecution/index.js";
-import { buildEvaluationStructureContext } from "../evaluations/buildEvaluationStructureContext.js";
+import { buildDecisionContext } from "../evaluations/buildDecisionContext.js";
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
@@ -756,7 +756,7 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
       expertId,
       expertSuggestion,
     });
-    const evaluationContext = await buildEvaluationStructureContext({
+    const decisionContext = await buildDecisionContext({
       issue,
       structure,
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
@@ -766,7 +766,7 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
     const normalizedPayload = await structure.save({
       mode: "submit",
       payload: suggestedPayload,
-      evaluationContext,
+      decisionContext,
     });
 
     await IssueEvaluation.findOneAndUpdate(

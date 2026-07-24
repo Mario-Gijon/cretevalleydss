@@ -129,9 +129,9 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
         ? {
             stage,
             structureKey: context.structureKey,
-            evaluationContext: context.serializedContext,
-            backendPayload: individual ? payloadFor(individual) : null,
-            collectivePayload: collective ? payloadFor(collective) : null,
+            decisionContext: context.decisionContext,
+            evaluation: individual ? payloadFor(individual) : null,
+            collectiveEvaluation: collective ? payloadFor(collective) : null,
             readOnly: true,
           }
         : null,

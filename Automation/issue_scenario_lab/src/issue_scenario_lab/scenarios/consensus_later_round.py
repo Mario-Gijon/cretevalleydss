@@ -42,7 +42,7 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
         or response.get("submittedAt") is not None
     ):
         raise ScenarioLabError("pairwise evaluation response is incompatible")
-    context, payload = response.get("evaluationContext"), response.get("payload")
+    context, payload = response.get("decisionContext"), response.get("payload")
     if (
         not isinstance(context, dict)
         or not isinstance(payload, dict)
@@ -61,14 +61,13 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
         ):
             raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
     if phase == 0:
-        if response.get("collectiveReference") is not None or (context.get("consensus") or {}).get("previousCollectiveEvaluations") not in ({}, None):
+        if response.get("collectivePayload") is not None or (context.get("consensus") or {}).get("previousCollectiveEvaluations") not in ({}, None):
             raise ScenarioLabError("phase-zero evaluation unexpectedly has collective evidence")
     elif previous is not None:
-        reference = response.get("collectiveReference")
+        reference = response.get("collectivePayload")
         if (
             not isinstance(reference, dict)
-            or reference.get("consensusPhase") != phase - 1
-            or reference.get("collectiveEvaluations") != previous
+            or reference != previous
             or (context.get("consensus") or {}).get("previousCollectiveEvaluations") != previous
             or (context.get("consensus") or {}).get("currentCollectiveEvaluations") != {}
         ):

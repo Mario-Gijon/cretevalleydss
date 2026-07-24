@@ -64,7 +64,7 @@ const AdminIssueReadOnlyWeights = ({
         </Typography>
       ) : (
         <EvaluationStructureRenderer
-          evaluationContext={weights?.evaluationContext || null}
+          decisionContext={weights?.decisionContext || null}
           issue={{
             criteria: criteriaRows.map((criterion) => ({
               ...criterion,
@@ -73,7 +73,7 @@ const AdminIssueReadOnlyWeights = ({
           }}
           stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
           structureKey={weights?.structureKey || ""}
-          backendPayload={weights.payload}
+          evaluation={weights.payload}
           readOnly
         />
       )}

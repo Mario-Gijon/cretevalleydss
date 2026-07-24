@@ -81,11 +81,11 @@ const EvaluationPluginPanel = ({
           <EvaluationStructureRenderer
             stage={stageData.renderer.stage}
             structureKey={stageData.renderer.structureKey}
-            evaluationContext={stageData.renderer.evaluationContext}
-            backendPayload={stageData.renderer.backendPayload}
-            collectivePayload={
+            decisionContext={stageData.renderer.decisionContext}
+            evaluation={stageData.renderer.evaluation}
+            collectiveEvaluation={
               showCollective
-                ? stageData.renderer.collectivePayload
+                ? stageData.renderer.collectiveEvaluation
                 : null
             }
             readOnly

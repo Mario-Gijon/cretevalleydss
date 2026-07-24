@@ -36,9 +36,9 @@ const mergeStoredPayload = ({ storedPayload, criterionItems }) => {
   };
 };
 
-const resolveCriterionItems = async ({ evaluationContext }) => {
-  if (Array.isArray(evaluationContext?.leafCriteria) && evaluationContext.leafCriteria.length > 0) {
-    return evaluationContext.leafCriteria
+const resolveCriterionItems = async ({ decisionContext }) => {
+  if (Array.isArray(decisionContext?.leafCriteria) && decisionContext.leafCriteria.length > 0) {
+    return decisionContext.leafCriteria
       .map((criterion) => ({
         id: normalizeText(criterion?.id ?? criterion?._id),
         name: normalizeText(criterion?.name),
@@ -51,9 +51,9 @@ const resolveCriterionItems = async ({ evaluationContext }) => {
 
 export const buildGetPayload = async ({
   payload,
-  evaluationContext,
+  decisionContext,
 }) => {
-  const criterionItems = await resolveCriterionItems({ evaluationContext });
+  const criterionItems = await resolveCriterionItems({ decisionContext });
 
   const normalizedPayload = !payload || typeof payload !== "object"
     ? {

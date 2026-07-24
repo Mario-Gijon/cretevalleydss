@@ -23,7 +23,7 @@ import {
 } from "./adminIssueReadLoaders.js";
 import { createNotFoundError } from "../../../utils/common/errors.js";
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/index.js";
-import { buildEvaluationStructureContext } from "../../issues/evaluations/index.js";
+import { buildDecisionContext } from "../../issues/evaluations/index.js";
 
 export const getIssueExpertEvaluationsPayload = async ({
   issueId,
@@ -84,7 +84,7 @@ export const getIssueExpertEvaluationsPayload = async ({
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
     issue.evaluationStructureKey
   );
-  const evaluationContext = await buildEvaluationStructureContext({
+  const decisionContext = await buildDecisionContext({
     issue,
     structure: alternativeEvaluationStructure,
     stage: alternativeEvaluationStructure.stage,
@@ -96,7 +96,7 @@ export const getIssueExpertEvaluationsPayload = async ({
 
   const evaluations = await alternativeEvaluationStructure.get({
     payload: evaluationDoc?.payload ?? {},
-    evaluationContext,
+    decisionContext,
   });
   const progress = await resolveEvaluationProgressStats({
     storedEvaluation: evaluationDoc,
@@ -123,7 +123,7 @@ export const getIssueExpertEvaluationsPayload = async ({
       filledCells: progress.completed ? 1 : 0,
       lastEvaluationAt: progress.lastActivityAt,
     },
-    evaluationContext,
+    decisionContext,
     evaluations,
     collectiveEvaluations: collectiveSource,
   };

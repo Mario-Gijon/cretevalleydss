@@ -37,7 +37,7 @@ const buildFuzzyDomain = () => ({
   },
 });
 
-const buildEvaluationContext = (expressionDomain) => ({
+const buildDecisionContext = (expressionDomain) => ({
   alternatives: [
     { id: "alt-a", name: "Alternative A" },
     { id: "alt-b", name: "Alternative B" },
@@ -64,7 +64,7 @@ describe("alternativeCriteriaMatrix", () => {
   it("builds the complete canonical empty matrix for GET initialization", async () => {
     const result = await buildGetPayload({
       payload: undefined,
-      evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+      decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
     });
 
     expect(result.payload).toEqual({
@@ -81,7 +81,7 @@ describe("alternativeCriteriaMatrix", () => {
     await expect(
       normalizePayloadOrThrow({
         payload: buildCanonicalPayload("", 6.5),
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: false,
       })
     ).resolves.toEqual({
@@ -95,7 +95,7 @@ describe("alternativeCriteriaMatrix", () => {
 
     const submitted = await normalizePayloadOrThrow({
       payload: buildCanonicalPayload(),
-      evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+      decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
       requireValue: true,
     });
 
@@ -108,7 +108,7 @@ describe("alternativeCriteriaMatrix", () => {
     await expect(
       normalizePayloadOrThrow({
         payload: buildCanonicalPayload({ labelKey: "medium" }, { labelKey: "low" }),
-        evaluationContext: buildEvaluationContext(buildOrdinalDomain()),
+        decisionContext: buildDecisionContext(buildOrdinalDomain()),
         requireValue: true,
       })
     ).resolves.toEqual({
@@ -123,7 +123,7 @@ describe("alternativeCriteriaMatrix", () => {
     await expect(
       normalizePayloadOrThrow({
         payload: buildCanonicalPayload({ labelKey: "high" }, { labelKey: "low" }),
-        evaluationContext: buildEvaluationContext(buildFuzzyDomain()),
+        decisionContext: buildDecisionContext(buildFuzzyDomain()),
         requireValue: true,
       })
     ).resolves.toEqual({
@@ -147,7 +147,7 @@ describe("alternativeCriteriaMatrix", () => {
             "criterion-1": { value: 6.5 },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("Matrix cell must be an object.");
@@ -167,7 +167,7 @@ describe("alternativeCriteriaMatrix", () => {
               "criterion-1": { value: 6.5 },
             },
           },
-          evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+          decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
           requireValue: true,
         })
       ).rejects.toThrow("Matrix cell must contain exactly the key 'value'.");
@@ -182,7 +182,7 @@ describe("alternativeCriteriaMatrix", () => {
             "criterion-1": { value: 7.5 },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("payload is missing an alternative row.");
@@ -195,7 +195,7 @@ describe("alternativeCriteriaMatrix", () => {
             "criterion-1": { value: 5 },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("payload contains unknown alternative rows");
@@ -208,7 +208,7 @@ describe("alternativeCriteriaMatrix", () => {
             "criterion-1": { value: 6.5 },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("Alternative criteria row is missing a criterion cell.");
@@ -224,7 +224,7 @@ describe("alternativeCriteriaMatrix", () => {
             "criterion-1": { value: 6.5 },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("Alternative criteria row contains unknown criterion cells.");
@@ -234,7 +234,7 @@ describe("alternativeCriteriaMatrix", () => {
     await expect(
       normalizePayloadOrThrow({
         payload: buildCanonicalPayload(null, 6.5),
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: false,
       })
     ).rejects.toThrow("Matrix cell value is invalid.");
@@ -249,7 +249,7 @@ describe("alternativeCriteriaMatrix", () => {
             "criterion-1": { value: 6.5 },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: false,
       })
     ).rejects.toThrow("Matrix cell value is invalid.");
@@ -257,7 +257,7 @@ describe("alternativeCriteriaMatrix", () => {
     await expect(
       normalizePayloadOrThrow({
         payload: buildCanonicalPayload("", 6.5),
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("All cells must include a value for submit.");
@@ -271,7 +271,7 @@ describe("alternativeCriteriaMatrix", () => {
             "criterion-1": { value: 7.5 },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
       })
     ).rejects.toThrow("payload is missing an alternative row.");
   });

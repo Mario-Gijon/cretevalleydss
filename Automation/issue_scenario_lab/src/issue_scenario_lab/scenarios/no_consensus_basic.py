@@ -139,23 +139,23 @@ def _evaluation_items(evaluation_context: dict[str, Any]) -> tuple[list[dict[str
     alternatives_by_name = {item.get("name"): item for item in alternatives}
     criteria_by_name = {item.get("name"): item for item in criteria}
     if len(alternatives) != 3 or len(alternatives_by_name) != 3 or set(alternatives_by_name) != _ALTERNATIVE_NAMES:
-        raise ScenarioLabError("evaluationContext alternatives do not match the expected three choices")
+        raise ScenarioLabError("decisionContext alternatives do not match the expected three choices")
     if len(criteria) != 2 or len(criteria_by_name) != 2 or set(criteria_by_name) != set(_CRITERION_TYPES):
-        raise ScenarioLabError("evaluationContext leafCriteria do not match Quality and Cost")
+        raise ScenarioLabError("decisionContext leafCriteria do not match Quality and Cost")
     if any(not _id(item) for item in alternatives) or len({_id(item) for item in alternatives}) != 3:
-        raise ScenarioLabError("evaluationContext contains a missing persisted alternative id")
+        raise ScenarioLabError("decisionContext contains a missing persisted alternative id")
     if any(not _id(item) for item in criteria) or len({_id(item) for item in criteria}) != 2:
-        raise ScenarioLabError("evaluationContext contains a missing persisted criterion id")
+        raise ScenarioLabError("decisionContext contains a missing persisted criterion id")
     for name, expected_type in _CRITERION_TYPES.items():
         criterion = criteria_by_name[name]
         if criterion.get("type") != expected_type:
-            raise ScenarioLabError(f"evaluationContext criterion {name} has an unexpected type")
+            raise ScenarioLabError(f"decisionContext criterion {name} has an unexpected type")
         numeric_levels(criterion.get("expressionDomain", {}))
     return alternatives, criteria_by_name
 
 
-def _matrix(evaluation_context: dict[str, Any], expert_b: bool = False) -> dict[str, Any]:
-    alternatives, criteria_by_name = _evaluation_items(evaluation_context)
+def _matrix(decision_context: dict[str, Any], expert_b: bool = False) -> dict[str, Any]:
+    alternatives, criteria_by_name = _evaluation_items(decision_context)
     quality, cost = criteria_by_name["Quality"], criteria_by_name["Cost"]
     quality_id, cost_id = _id(quality), _id(cost)
     assert quality_id and cost_id
@@ -176,15 +176,15 @@ def _matrix(evaluation_context: dict[str, Any], expert_b: bool = False) -> dict[
     return matrix
 
 
-def _context_identity(evaluation_context: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+def _context_identity(decision_context: dict[str, Any]) -> tuple[tuple[str, str], ...]:
     """Capture the persisted IDs the two experts must evaluate against."""
 
-    alternatives, criteria_by_name = _evaluation_items(evaluation_context)
+    alternatives, criteria_by_name = _evaluation_items(decision_context)
     return tuple(sorted((str(item["name"]), _id(item) or "") for item in [*alternatives, *criteria_by_name.values()]))
 
 
-def _validate_empty_matrix(payload: Any, evaluation_context: dict[str, Any]) -> None:
-    alternatives, criteria_by_name = _evaluation_items(evaluation_context)
+def _validate_empty_matrix(payload: Any, decision_context: dict[str, Any]) -> None:
+    alternatives, criteria_by_name = _evaluation_items(decision_context)
     alternative_ids = {_id(item) for item in alternatives}
     criterion_ids = {_id(item) for item in criteria_by_name.values()}
     if not isinstance(payload, dict) or set(payload) != alternative_ids:
@@ -207,25 +207,25 @@ def _validate_evaluation_response(response: Any, issue_id: str, *, model_key: st
         or response.get("completed") is not False
     ):
         raise ScenarioLabError("expert evaluation context is incompatible")
-    evaluation_context = response.get("evaluationContext")
-    if not isinstance(evaluation_context, dict):
-        raise ScenarioLabError("expert evaluation response is missing evaluationContext")
-    structure, issue = evaluation_context.get("structure"), evaluation_context.get("issue")
+    decision_context = response.get("decisionContext")
+    if not isinstance(decision_context, dict):
+        raise ScenarioLabError("expert evaluation response is missing decisionContext")
+    structure, issue = decision_context.get("structure"), decision_context.get("issue")
     if not isinstance(structure, dict) or structure.get("key") != "alternativeCriteriaMatrix" or structure.get("stage") != STAGE:
-        raise ScenarioLabError("evaluationContext structure is incompatible")
+        raise ScenarioLabError("decisionContext structure is incompatible")
     if (
         not isinstance(issue, dict)
         or _id(issue) != issue_id
         or issue.get("currentStage") != STAGE
         or issue.get("isConsensus") is not False
     ):
-        raise ScenarioLabError("evaluationContext issue is incompatible")
-    model = evaluation_context.get("model")
+        raise ScenarioLabError("decisionContext issue is incompatible")
+    model = decision_context.get("model")
     if model is not None and (not isinstance(model, dict) or ("apiModelKey" in model and model.get("apiModelKey") != model_key)):
-        raise ScenarioLabError(f"evaluationContext model is incompatible with {model_key}")
-    _context_identity(evaluation_context)
-    _validate_empty_matrix(response.get("payload"), evaluation_context)
-    return evaluation_context
+        raise ScenarioLabError(f"decisionContext model is incompatible with {model_key}")
+    _context_identity(decision_context)
+    _validate_empty_matrix(response.get("payload"), decision_context)
+    return decision_context
 
 
 def _validate_finished_detail(detail: Any, issue_id: str) -> None:

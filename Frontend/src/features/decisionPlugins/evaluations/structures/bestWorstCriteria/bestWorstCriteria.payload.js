@@ -1,9 +1,9 @@
 const isValidBwmScaleValue = (value) =>
   Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 9;
 
-export const getBestWorstCriterionItems = (evaluationContext) =>
-  Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria
+export const getBestWorstCriterionItems = (decisionContext) =>
+  Array.isArray(decisionContext?.leafCriteria)
+    ? decisionContext.leafCriteria
         .map((criterion) => ({
           id: String(criterion?.id ?? criterion?._id ?? "").trim(),
           name: String(criterion?.name ?? "").trim(),

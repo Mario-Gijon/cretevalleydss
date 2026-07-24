@@ -64,7 +64,7 @@ def _context_payload() -> dict[str, Any]:
         "structureKey": "alternativePairwiseByCriterion",
         "consensusPhase": 0,
         "completed": False,
-        "evaluationContext": {
+        "decisionContext": {
             "issue": {"id": "issue", "currentStage": "alternativeEvaluation", "isConsensus": True},
             "model": {"apiModelKey": "herrera_viedma_crp"},
             "alternatives": [{"id": value, "name": name} for name, value in ids.items()],

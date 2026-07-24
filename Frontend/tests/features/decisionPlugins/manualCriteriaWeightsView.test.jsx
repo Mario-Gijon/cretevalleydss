@@ -11,13 +11,13 @@ const context = {
   ],
 };
 
-const renderView = ({ payload = {}, collectivePayload = null, readOnly = true } = {}) =>
+const renderView = ({ payload = {}, collectiveEvaluation = null, readOnly = true } = {}) =>
   renderWithProviders(
     <ManualCriteriaWeightsView
-      evaluationContext={context}
-      evaluationPayload={payload}
-      collectivePayload={collectivePayload}
-      setEvaluationPayload={vi.fn()}
+      decisionContext={context}
+      evaluation={payload}
+      collectiveEvaluation={collectiveEvaluation}
+      setEvaluation={vi.fn()}
       readOnly={readOnly}
       loading={false}
     />
@@ -27,7 +27,7 @@ describe("ManualCriteriaWeightsView", () => {
   it("keeps individual criterion weights visible and adds stored collective weights by criterion id", () => {
     renderView({
       payload: { weightsByCriterion: { cost: 0.4, quality: 0.6 } },
-      collectivePayload: { weightsByCriterion: { quality: 0.55, cost: 0.45 } },
+      collectiveEvaluation: { weightsByCriterion: { quality: 0.55, cost: 0.45 } },
     });
 
     expect(screen.getAllByRole("spinbutton").map((input) => input.value)).toEqual(["0.4", "0.6"]);
@@ -43,7 +43,7 @@ describe("ManualCriteriaWeightsView", () => {
 
   it("renders collective-only weights safely without inventing individual values", () => {
     renderView({
-      collectivePayload: { weightsByCriterion: { cost: 0.45, quality: 0.55 } },
+      collectiveEvaluation: { weightsByCriterion: { cost: 0.45, quality: 0.55 } },
     });
 
     expect(screen.getAllByRole("spinbutton").map((input) => input.value)).toEqual(["", ""]);

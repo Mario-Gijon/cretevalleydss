@@ -27,7 +27,7 @@ import {
   EVALUATION_STAGES,
   getEvaluationStructureEntryForStage,
 } from "../../../decisionPlugins/evaluations/registry";
-import { buildEvaluationContext } from "../../../issueEvaluation/context";
+import { buildDecisionContext } from "../../../issueEvaluation/context";
 
 export const CriteriaWeightingPanel = ({
   selectedModel,
@@ -284,13 +284,19 @@ export const CriteriaWeightingPanel = ({
   ]);
   const safeConfig = criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
 
-  const criteriaWeightingEvaluationContext = useMemo(() => {
+  const criteriaWeightingDecisionContext = useMemo(() => {
     if (!selectedCriteriaWeightingStructureEntry) {
       return null;
     }
 
-    return buildEvaluationContext({
-      issue: null,
+    return buildDecisionContext({
+      issue: {
+        id: null,
+        name: null,
+        currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        consensusPhase: 0,
+        isConsensus: false,
+      },
       stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       structure: selectedCriteriaWeightingStructureEntry,
       model: selectedApiCriteriaWeightingModel,
@@ -309,13 +315,13 @@ export const CriteriaWeightingPanel = ({
     leafCriteria,
     safeConfig?.criteriaWeightingParameters,
   ]);
-  const criteriaWeightingEvaluationPayload = useMemo(() => {
-    if (!criteriaWeightingEvaluationContext) {
+  const criteriaWeightingEvaluation = useMemo(() => {
+    if (!criteriaWeightingDecisionContext) {
       return null;
     }
 
     return safeConfig?.payload ?? {};
-  }, [criteriaWeightingEvaluationContext, safeConfig?.payload]);
+  }, [criteriaWeightingDecisionContext, safeConfig?.payload]);
   if (!modelUsesWeights) {
     return null;
   }
@@ -498,25 +504,20 @@ export const CriteriaWeightingPanel = ({
 
       {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ? (
         SelectedCriteriaWeightingView &&
-        criteriaWeightingEvaluationContext ? (
+        criteriaWeightingDecisionContext ? (
           <SelectedCriteriaWeightingView
-            evaluationContext={criteriaWeightingEvaluationContext}
-            evaluationPayload={criteriaWeightingEvaluationPayload}
-            setEvaluationPayload={(nextEvaluationPayload) =>
+            decisionContext={criteriaWeightingDecisionContext}
+            evaluation={criteriaWeightingEvaluation}
+            setEvaluation={(nextEvaluation) =>
               updateConfig(
                 {
                   ...safeConfig,
-                  payload:
-                    typeof nextEvaluationPayload === "function"
-                      ? nextEvaluationPayload(
-                          criteriaWeightingEvaluationPayload ?? {}
-                        )
-                      : nextEvaluationPayload,
+                  payload: nextEvaluation,
                 },
                 { markDirty: true }
               )
             }
-            collectivePayload={null}
+            collectiveEvaluation={null}
             readOnly={false}
             loading={false}
           />

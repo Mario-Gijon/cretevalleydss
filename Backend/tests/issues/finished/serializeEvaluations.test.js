@@ -103,20 +103,20 @@ describe("finished evaluation serialization", () => {
       rawPayload: { privateValue: "secret" },
       displayPayload: { transformed: "secret" },
     });
-    expect(context.serializedContext.consensus).toMatchObject({
+    expect(context.decisionContext.consensus).toMatchObject({
       currentCollectiveEvaluations: { phase: 2 },
       previousCollectiveEvaluations: { phase: 0 },
     });
-    expect(context.serializedContext).toMatchObject({
-      decisionModel: { id: "decision-model" },
-      criteriaWeightingModel: { id: "weight-model" },
-      activeModel: { id: "decision-model" },
+    expect(context.decisionContext).toMatchObject({
+      model: { id: "decision-model" },
       modelParameters: { decisionAlpha: 1 },
       criteriaWeightingParameters: { weightingBeta: 2 },
+      experts: [{ id: "expert-1", name: null }],
+      criteriaWeights: {},
+      expertWeights: {},
     });
-    expect(context.serializedContext).not.toHaveProperty("model");
-    expect(JSON.parse(JSON.stringify(context.serializedContext))).toEqual(
-      context.serializedContext
+    expect(JSON.parse(JSON.stringify(context.decisionContext))).toEqual(
+      context.decisionContext
     );
   });
 
@@ -137,10 +137,8 @@ describe("finished evaluation serialization", () => {
     });
     const context = result.contexts.find((entry) => entry.id === "criteriaWeighting:4");
 
-    expect(context.serializedContext).toMatchObject({
-      decisionModel: { id: "decision-model" },
-      criteriaWeightingModel: { id: "weight-model" },
-      activeModel: { id: "weight-model" },
+    expect(context.decisionContext).toMatchObject({
+      model: { id: "weight-model" },
       consensus: { previousCollectiveEvaluations: { phase: 1 } },
     });
   });
@@ -159,9 +157,8 @@ describe("finished evaluation serialization", () => {
       rawPhaseResults: [rawResult("criteriaWeighting", 0, { phase: 0 })],
     });
 
-    expect(result.contexts[0].serializedContext).toMatchObject({
-      criteriaWeightingModel: null,
-      activeModel: null,
+    expect(result.contexts[0].decisionContext).toMatchObject({
+      model: null,
     });
   });
 

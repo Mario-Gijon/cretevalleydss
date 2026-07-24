@@ -1,5 +1,5 @@
-import { createRef, useState } from "react";
-import { act, screen } from "@testing-library/react";
+import { useState } from "react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@mui/x-data-grid", () => ({
@@ -47,7 +47,7 @@ const linguisticOrdinalDomain = {
   },
 };
 
-const evaluationContext = {
+const decisionContext = {
   alternatives: [
     { id: "alt-1", name: "Option A" },
   ],
@@ -69,20 +69,21 @@ const evaluationContext = {
 
 const StatefulMatrixView = ({
   initialPayload,
-  viewRef = null,
 }) => {
   const [payload, setPayload] = useState(initialPayload);
 
   return (
-    <AlternativeCriteriaMatrixView
-      ref={viewRef}
-      evaluationContext={evaluationContext}
-      evaluationPayload={payload}
-      setEvaluationPayload={setPayload}
-      collectivePayload={null}
-      readOnly={false}
-      loading={false}
-    />
+    <>
+      <AlternativeCriteriaMatrixView
+        decisionContext={decisionContext}
+        evaluation={payload}
+        setEvaluation={setPayload}
+        collectiveEvaluation={null}
+        readOnly={false}
+        loading={false}
+      />
+      <pre data-testid="evaluation-state">{JSON.stringify(payload)}</pre>
+    </>
   );
 };
 
@@ -108,11 +109,8 @@ describe("AlternativeCriteriaMatrixView", () => {
   });
 
   it("marks an invalid numeric cell without showing helper text", () => {
-    const viewRef = createRef();
-
     renderWithProviders(
       <StatefulMatrixView
-        viewRef={viewRef}
         initialPayload={{
           "alt-1": {
             "criterion-cost": {
@@ -127,22 +125,32 @@ describe("AlternativeCriteriaMatrixView", () => {
     );
 
     const input = screen.getByRole("spinbutton");
-    let validationResult;
-    act(() => {
-      validationResult = viewRef.current.validatePayloadRead();
-    });
 
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByText("Value must be between 0 and 10.")).not.toBeInTheDocument();
-    expect(validationResult.valid).toBe(false);
-    expect(validationResult.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          rowId: "alt-1",
-          criterionId: "criterion-cost",
-          message: "Value must be between 0 and 10.",
-        }),
-      ])
+  });
+
+  it("replaces the complete owner evaluation as soon as a cell changes", () => {
+    renderWithProviders(
+      <StatefulMatrixView
+        initialPayload={{
+          "alt-1": {
+            "criterion-cost": { value: 5 },
+            "criterion-quality": { value: { labelKey: "medium" } },
+          },
+        }}
+      />
+    );
+
+    fireEvent.change(screen.getByRole("spinbutton"), {
+      target: { value: "7" },
+    });
+
+    expect(screen.getByTestId("evaluation-state")).toHaveTextContent(
+      '"criterion-cost":{"value":7}'
+    );
+    expect(screen.getByTestId("evaluation-state")).toHaveTextContent(
+      '"criterion-quality":{"value":{"labelKey":"medium"}}'
     );
   });
 });

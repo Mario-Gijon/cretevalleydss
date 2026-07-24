@@ -70,9 +70,9 @@ def _empty(phase: int, collective: dict[str, Any] | None = None) -> dict[str, An
         "consensusPhase": phase,
         "completed": False,
         "submittedAt": None,
-        "evaluationContext": context,
+        "decisionContext": context,
         "payload": {"overall": matrix},
-        "collectiveReference": None if phase == 0 else {"consensusPhase": 0, "collectiveEvaluations": collective},
+        "collectivePayload": None if phase == 0 else collective,
     }
 
 

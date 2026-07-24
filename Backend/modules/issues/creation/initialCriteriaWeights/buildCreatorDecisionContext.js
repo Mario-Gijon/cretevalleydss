@@ -30,7 +30,7 @@ const normalizeLeafCriterion = (criterion) => {
   };
 };
 
-export const buildCreatorCriteriaWeightingEvaluationContext = ({
+export const buildCreatorDecisionContext = ({
   criteriaWeightingStructure,
   criteriaWeightingModel,
   normalizedCriteriaWeightingParameters = {},
@@ -42,7 +42,7 @@ export const buildCreatorCriteriaWeightingEvaluationContext = ({
 
   return {
     issue: {
-      id: "creation",
+      id: null,
       name: "Issue creation",
       currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       consensusPhase: 0,
@@ -69,6 +69,9 @@ export const buildCreatorCriteriaWeightingEvaluationContext = ({
     alternatives: [],
     criteriaTree: [],
     leafCriteria: leafItems,
+    experts: [],
+    criteriaWeights: {},
+    expertWeights: {},
     consensus: {
       phase: 0,
       maxPhases: null,

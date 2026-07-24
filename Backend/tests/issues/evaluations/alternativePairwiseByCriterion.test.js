@@ -7,7 +7,7 @@ import {
   normalizePayloadOrThrow,
 } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.payload.js";
 
-const buildEvaluationContext = (expressionDomain) => ({
+const buildDecisionContext = (expressionDomain) => ({
   alternatives: [
     { id: "alt-a", name: "Alternative A" },
     { id: "alt-b", name: "Alternative B" },
@@ -80,7 +80,7 @@ describe("alternativePairwiseByCriterion", () => {
         upperValue: 2,
         lowerValue: 4,
       }),
-      evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+      decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
       requireValue: true,
     });
 
@@ -98,7 +98,7 @@ describe("alternativePairwiseByCriterion", () => {
         upperValue: 2,
         lowerValue: 4,
       }),
-      evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+      decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
       requireValue: true,
     });
 
@@ -115,7 +115,7 @@ describe("alternativePairwiseByCriterion", () => {
             "alt-b": { "alt-a": { value: 4 } },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("Pairwise cell must be an object.");
@@ -135,7 +135,7 @@ describe("alternativePairwiseByCriterion", () => {
             "alt-b": { "alt-a": { value: 4 } },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("Pairwise cell must contain exactly the key 'value'.");
@@ -150,7 +150,7 @@ describe("alternativePairwiseByCriterion", () => {
             "alt-b": { "alt-a": { value: 4 } },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("Pairwise row is missing a directed comparison.");
@@ -168,7 +168,7 @@ describe("alternativePairwiseByCriterion", () => {
             "alt-b": { "alt-a": { value: 4 } },
           },
         },
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toThrow("Diagonal pairwise cells are not allowed.");
@@ -181,7 +181,7 @@ describe("alternativePairwiseByCriterion", () => {
           upperValue: 2,
           lowerValue: 3,
         }),
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: true,
       })
     ).rejects.toMatchObject({
@@ -196,7 +196,7 @@ describe("alternativePairwiseByCriterion", () => {
         upperValue: "",
         lowerValue: "",
       }),
-      evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+      decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
       requireValue: false,
     });
 
@@ -211,7 +211,7 @@ describe("alternativePairwiseByCriterion", () => {
           upperValue: 2,
           lowerValue: "",
         }),
-        evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+        decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
         requireValue: false,
       })
     ).rejects.toThrow(
@@ -225,7 +225,7 @@ describe("alternativePairwiseByCriterion", () => {
         upperValue: { labelKey: "low" },
         lowerValue: { labelKey: "high" },
       }),
-      evaluationContext: buildEvaluationContext(buildOrdinalDomain()),
+      decisionContext: buildDecisionContext(buildOrdinalDomain()),
       requireValue: true,
     });
 
@@ -240,7 +240,7 @@ describe("alternativePairwiseByCriterion", () => {
         upperValue: { labelKey: "high" },
         lowerValue: { values: [0, 0, 0.2] },
       }),
-      evaluationContext: buildEvaluationContext(buildFuzzyMatchingDomain()),
+      decisionContext: buildDecisionContext(buildFuzzyMatchingDomain()),
       requireValue: true,
     });
 
@@ -255,7 +255,7 @@ describe("alternativePairwiseByCriterion", () => {
         upperValue: { labelKey: "custom" },
         lowerValue: { values: [0.09999999999999998, 0.7, 0.9] },
       }),
-      evaluationContext: buildEvaluationContext(buildFuzzyUnmatchedDomain()),
+      decisionContext: buildDecisionContext(buildFuzzyUnmatchedDomain()),
       requireValue: true,
     });
 
@@ -271,7 +271,7 @@ describe("alternativePairwiseByCriterion", () => {
           upperValue: 0.3,
           lowerValue: 0.7,
         }),
-        evaluationContext: buildEvaluationContext({
+        decisionContext: buildDecisionContext({
           typeKey: "numericDiscrete",
           definition: { min: 0, max: 1, step: 0.3 },
         }),
@@ -286,7 +286,7 @@ describe("alternativePairwiseByCriterion", () => {
   it("builds the complete canonical empty matrix for GET initialization", async () => {
     const result = await buildGetPayload({
       payload: undefined,
-      evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+      decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
     });
 
     expect(result.payload).toEqual({
@@ -303,7 +303,7 @@ describe("alternativePairwiseByCriterion", () => {
         upperValue: 2,
         lowerValue: 4,
       }),
-      evaluationContext: buildEvaluationContext(buildNumericContinuousDomain()),
+      decisionContext: buildDecisionContext(buildNumericContinuousDomain()),
     });
 
     expect(result.payload).toEqual({

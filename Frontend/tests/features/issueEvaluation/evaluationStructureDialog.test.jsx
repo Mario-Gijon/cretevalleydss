@@ -1,4 +1,3 @@
-import { forwardRef, useImperativeHandle } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,8 +9,6 @@ const mockFetchIssueEvaluation = vi.hoisted(() => vi.fn());
 const mockSaveIssueEvaluation = vi.hoisted(() => vi.fn());
 const mockSubmitIssueEvaluationPayload = vi.hoisted(() => vi.fn());
 const mockViewState = vi.hoisted(() => ({
-  prepareMode: null,
-  nextPayload: undefined,
   lastProps: null,
 }));
 
@@ -36,46 +33,23 @@ vi.mock("../../../src/context/issues/issues.context", async (importOriginal) => 
   };
 });
 
-const MockEvaluationView = forwardRef((props, ref) => {
+const MockEvaluationView = (props) => {
   mockViewState.lastProps = props;
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      preparePayloadRead:
-        mockViewState.prepareMode === "prepare"
-          ? async () => {
-            if (mockViewState.nextPayload !== undefined) {
-              props.setEvaluationPayload(mockViewState.nextPayload);
-            }
-          }
-          : undefined,
-      flushPendingEdits:
-        mockViewState.prepareMode === "flush"
-          ? async () => {
-            if (mockViewState.nextPayload !== undefined) {
-              props.setEvaluationPayload(mockViewState.nextPayload);
-            }
-          }
-          : undefined,
-    }),
-    [props]
-  );
 
   return (
     <div>
-      <div data-testid="view-context-id">{props.evaluationContext?.issue?.id || ""}</div>
-      <div data-testid="view-payload">{JSON.stringify(props.evaluationPayload)}</div>
+      <div data-testid="view-context-id">{props.decisionContext?.issue?.id || ""}</div>
+      <div data-testid="view-payload">{JSON.stringify(props.evaluation)}</div>
       <div data-testid="view-collective">
-        {props.collectivePayload ? JSON.stringify(props.collectivePayload) : "null"}
+        {props.collectiveEvaluation ? JSON.stringify(props.collectiveEvaluation) : "null"}
       </div>
       <div data-testid="view-readonly">{String(props.readOnly)}</div>
-      <button onClick={() => props.setEvaluationPayload({ changed: true })}>
+      <button onClick={() => props.setEvaluation({ changed: true })}>
         mark-dirty
       </button>
     </div>
   );
-});
+};
 MockEvaluationView.displayName = "MockEvaluationView";
 
 vi.mock(
@@ -177,8 +151,6 @@ describe("EvaluationStructureDialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockViewState.prepareMode = null;
-    mockViewState.nextPayload = undefined;
     mockViewState.lastProps = null;
     mockUseSnackbarAlertContext.mockReturnValue({ showSnackbarAlert });
     mockUseIssuesDataContext.mockReturnValue({ fetchActiveIssues });
@@ -188,10 +160,10 @@ describe("EvaluationStructureDialog", () => {
       View: MockEvaluationView,
     });
     mockFetchIssueEvaluation.mockResolvedValue({
-      evaluationContext: evaluationResponseFixture.data.evaluationContext,
-      payload: evaluationResponseFixture.data.payload,
-      collectivePayload:
-        evaluationResponseFixture.data.collectiveReference.collectiveEvaluations,
+      decisionContext: evaluationResponseFixture.data.decisionContext,
+      evaluation: evaluationResponseFixture.data.payload,
+      collectiveEvaluation:
+        evaluationResponseFixture.data.collectivePayload,
     });
   });
 
@@ -223,9 +195,9 @@ describe("EvaluationStructureDialog", () => {
     expect(screen.getByText("Alternative evaluation")).toBeInTheDocument();
     expect(screen.getByText("Budget Planning")).toBeInTheDocument();
     expect(mockViewState.lastProps).toMatchObject({
-      evaluationContext: evaluationResponseFixture.data.evaluationContext,
-      evaluationPayload: evaluationResponseFixture.data.payload,
-      collectivePayload: evaluationResponseFixture.data.collectiveReference.collectiveEvaluations,
+      decisionContext: evaluationResponseFixture.data.decisionContext,
+      evaluation: evaluationResponseFixture.data.payload,
+      collectiveEvaluation: evaluationResponseFixture.data.collectivePayload,
       readOnly: false,
     });
     expect(screen.getByTestId("view-readonly")).toHaveTextContent("false");
@@ -260,7 +232,7 @@ describe("EvaluationStructureDialog", () => {
 
   it("falls back to local context and resets payload when boundary validation rejects", async () => {
     mockFetchIssueEvaluation.mockRejectedValue(
-      new Error("Missing evaluationContext in evaluation response.")
+      new Error("Missing decisionContext in evaluation response.")
     );
 
     renderDialog({
@@ -276,8 +248,8 @@ describe("EvaluationStructureDialog", () => {
     });
 
     expect(screen.getByTestId("view-payload")).toHaveTextContent("{}");
-    expect(mockViewState.lastProps.evaluationContext.issue.id).toBe("issue-eval-1");
-    expect(mockViewState.lastProps.evaluationContext.leafCriteria).toHaveLength(2);
+    expect(mockViewState.lastProps.decisionContext.issue.id).toBe("issue-eval-1");
+    expect(mockViewState.lastProps.decisionContext.leafCriteria).toHaveLength(2);
   });
 
   it("falls back to local context when the service rejects and clears loading", async () => {
@@ -293,7 +265,7 @@ describe("EvaluationStructureDialog", () => {
       expect(screen.getByTestId("shell-loading")).toHaveTextContent("false");
     });
 
-    expect(mockViewState.lastProps.evaluationContext.issue.id).toBe("issue-eval-1");
+    expect(mockViewState.lastProps.decisionContext.issue.id).toBe("issue-eval-1");
     expect(screen.getByTestId("view-payload")).toHaveTextContent("{}");
   });
 
@@ -308,22 +280,18 @@ describe("EvaluationStructureDialog", () => {
     });
   });
 
-  it("flushes pending edits before dirty-close detection and opens the save dialog", async () => {
-    mockViewState.prepareMode = "prepare";
-    mockViewState.nextPayload = { prepared: true };
-
+  it("detects the current evaluation as dirty without reading from the view", async () => {
     renderDialog();
     await waitFor(() => expect(mockFetchIssueEvaluation).toHaveBeenCalled());
 
+    await userEvent.click(screen.getByRole("button", { name: "mark-dirty" }));
     await userEvent.click(screen.getByRole("button", { name: "request-close" }));
 
     expect(await screen.findByText("Save changes?")).toBeInTheDocument();
     expect(setIsOpen).not.toHaveBeenCalled();
   });
 
-  it("saves the draft after flushing pending edits and closes on success", async () => {
-    mockViewState.prepareMode = "prepare";
-    mockViewState.nextPayload = { prepared: true };
+  it("saves the current complete evaluation and closes on success", async () => {
     mockSaveIssueEvaluation.mockResolvedValue({
       success: true,
       message: "Draft saved.",
@@ -340,7 +308,7 @@ describe("EvaluationStructureDialog", () => {
       expect(mockSaveIssueEvaluation).toHaveBeenCalledWith(
         "issue-eval-1",
         EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-        { prepared: true }
+        { changed: true }
       );
       expect(showSnackbarAlert).toHaveBeenCalledWith("Draft saved.", "success");
       expect(setIsOpen).toHaveBeenCalledWith(false);
@@ -379,9 +347,7 @@ describe("EvaluationStructureDialog", () => {
     expect(setIsOpen).toHaveBeenCalledWith(false);
   });
 
-  it("opens submit confirmation and submits flushed payload on success", async () => {
-    mockViewState.prepareMode = "flush";
-    mockViewState.nextPayload = { submitted: true };
+  it("opens submit confirmation and submits the current complete evaluation", async () => {
     mockSubmitIssueEvaluationPayload.mockResolvedValue({
       success: true,
       message: "Submitted.",
@@ -390,6 +356,7 @@ describe("EvaluationStructureDialog", () => {
     renderDialog();
     await waitFor(() => expect(mockFetchIssueEvaluation).toHaveBeenCalled());
 
+    await userEvent.click(screen.getByRole("button", { name: "mark-dirty" }));
     await userEvent.click(screen.getByRole("button", { name: "Submit" }));
     await screen.findByText("Submit evaluations?");
     await userEvent.click(screen.getAllByRole("button", { name: "Submit" })[1]);
@@ -398,7 +365,7 @@ describe("EvaluationStructureDialog", () => {
       expect(mockSubmitIssueEvaluationPayload).toHaveBeenCalledWith(
         "issue-eval-1",
         EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-        { submitted: true }
+        { changed: true }
       );
       expect(showSnackbarAlert).toHaveBeenCalledWith("Submitted.", "success");
       expect(fetchActiveIssues).toHaveBeenCalledTimes(1);
@@ -440,5 +407,14 @@ describe("EvaluationStructureDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "request-close" }));
 
     expect(await screen.findByText("Save changes?")).toBeInTheDocument();
+  });
+
+  it("rejects functional updaters at the plugin boundary", async () => {
+    renderDialog();
+    await waitFor(() => expect(mockFetchIssueEvaluation).toHaveBeenCalled());
+
+    expect(() =>
+      mockViewState.lastProps.setEvaluation((previous) => previous)
+    ).toThrow("setEvaluation requires a complete evaluation object.");
   });
 });

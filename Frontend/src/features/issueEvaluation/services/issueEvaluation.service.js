@@ -7,15 +7,14 @@ import {
 export const normalizeIssueEvaluationResponse = (response) => {
   const data = response?.data;
 
-  if (!data?.evaluationContext) {
-    throw new Error("Missing evaluationContext in evaluation response.");
+  if (!data?.decisionContext) {
+    throw new Error("Missing decisionContext in evaluation response.");
   }
 
   return {
-    evaluationContext: data.evaluationContext,
-    payload: data.payload ?? {},
-    collectivePayload:
-      data.collectiveReference?.collectiveEvaluations ?? null,
+    decisionContext: data.decisionContext,
+    evaluation: data.payload ?? {},
+    collectiveEvaluation: data.collectivePayload ?? null,
   };
 };
 

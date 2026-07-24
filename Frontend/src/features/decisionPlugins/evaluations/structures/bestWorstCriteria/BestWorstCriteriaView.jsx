@@ -1,4 +1,3 @@
-import { forwardRef, useImperativeHandle } from "react";
 import { Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import {
   buildEmptyBestWorstCriteriaPayload,
@@ -17,31 +16,28 @@ const normalizeScaleInput = (value) => {
   return null;
 };
 
-const BestWorstCriteriaView = (
-  {
-    evaluationContext,
-    evaluationPayload,
-    setEvaluationPayload,
-    readOnly,
-    loading,
-  },
-  ref
-) => {
-  const criterionItems = getBestWorstCriterionItems(evaluationContext);
+const BestWorstCriteriaView = ({
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
+  loading,
+}) => {
+  void collectiveEvaluation;
+  const criterionItems = getBestWorstCriterionItems(decisionContext);
   const criterionIds = criterionItems.map((criterion) => criterion.id);
   const criterionNameById = new Map(
     criterionItems.map((criterion) => [criterion.id, criterion.name])
   );
   const currentPayload =
-    evaluationPayload &&
-    typeof evaluationPayload === "object" &&
-    !Array.isArray(evaluationPayload) &&
-    Object.keys(evaluationPayload).length > 0
-      ? evaluationPayload
+    evaluation &&
+    typeof evaluation === "object" &&
+    !Array.isArray(evaluation) &&
+    Object.keys(evaluation).length > 0
+      ? evaluation
       : buildEmptyBestWorstCriteriaPayload(criterionItems);
   const isReadOnly = readOnly === true || loading === true;
-
-  useImperativeHandle(ref, () => ({}));
 
   const bestComparisonIds = criterionIds.filter(
     (criterionId) => criterionId !== currentPayload.bestCriterion
@@ -89,7 +85,7 @@ const BestWorstCriteriaView = (
       next.othersToWorst[next.worstCriterion] = 1;
     }
 
-    setEvaluationPayload(next);
+    setEvaluation(next);
   };
 
   const updateWorstCriterion = (worstCriterion) => {
@@ -123,7 +119,7 @@ const BestWorstCriteriaView = (
       next.bestToOthers[next.bestCriterion] = 1;
     }
 
-    setEvaluationPayload(next);
+    setEvaluation(next);
   };
 
   const updateBestToOthersValue = (criterionId, value) => {
@@ -134,7 +130,7 @@ const BestWorstCriteriaView = (
     const normalizedValue = normalizeScaleInput(value);
     if (normalizedValue === null) return;
 
-    setEvaluationPayload({
+    setEvaluation({
       ...currentPayload,
       bestToOthers: {
         ...currentPayload.bestToOthers,
@@ -151,7 +147,7 @@ const BestWorstCriteriaView = (
     const normalizedValue = normalizeScaleInput(value);
     if (normalizedValue === null) return;
 
-    setEvaluationPayload({
+    setEvaluation({
       ...currentPayload,
       othersToWorst: {
         ...currentPayload.othersToWorst,
@@ -297,4 +293,4 @@ const BestWorstCriteriaView = (
   );
 };
 
-export default forwardRef(BestWorstCriteriaView);
+export default BestWorstCriteriaView;

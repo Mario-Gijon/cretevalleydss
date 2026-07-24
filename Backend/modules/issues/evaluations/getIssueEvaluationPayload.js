@@ -1,4 +1,4 @@
-import { buildEvaluationStructureContext } from "./buildEvaluationStructureContext.js";
+import { buildDecisionContext } from "./buildDecisionContext.js";
 import { loadIssueEvaluationContext } from "./loadIssueEvaluationContext.js";
 import { loadPreviousCollectiveReference } from "./loadPreviousCollectiveReference.js";
 import { findStoredEvaluation } from "./issueEvaluationPersistence.js";
@@ -17,7 +17,7 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     consensusPhase: issue.consensusPhase,
   });
 
-  const evaluationContext = await buildEvaluationStructureContext({
+  const decisionContext = await buildDecisionContext({
     issue,
     structure,
     stage,
@@ -29,10 +29,10 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     // (and potentially malformed) empty payload. Structures own the former
     // case; they must still validate every persisted payload strictly.
     payload: storedEvaluation ? storedEvaluation.payload : null,
-    evaluationContext,
+    decisionContext,
   });
 
-  const collectiveReference = await loadPreviousCollectiveReference({
+  const previousCollective = await loadPreviousCollectiveReference({
     issue,
     stage,
   });
@@ -41,9 +41,9 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     stage,
     structureKey: structure.key,
     consensusPhase: issue.consensusPhase,
-    evaluationContext,
+    decisionContext,
     payload,
-    collectiveReference,
+    collectivePayload: previousCollective?.collectiveEvaluations ?? null,
     completed: storedEvaluation?.completed ?? false,
     submittedAt: storedEvaluation?.submittedAt ?? null,
   };

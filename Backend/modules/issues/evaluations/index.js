@@ -7,4 +7,4 @@ export {
   submitIssueEvaluationWorkflow,
 } from "./submitIssueEvaluationWorkflow.js";
 
-export { buildEvaluationStructureContext } from "./buildEvaluationStructureContext.js";
+export { buildDecisionContext } from "./buildDecisionContext.js";
