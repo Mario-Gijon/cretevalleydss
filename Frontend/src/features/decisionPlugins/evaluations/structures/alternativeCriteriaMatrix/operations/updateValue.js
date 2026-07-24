@@ -1,4 +1,4 @@
-export const updateAlternativeCriteriaMatrixValue = ({
+export const updateValue = ({
   evaluation,
   alternativeId,
   criterionId,

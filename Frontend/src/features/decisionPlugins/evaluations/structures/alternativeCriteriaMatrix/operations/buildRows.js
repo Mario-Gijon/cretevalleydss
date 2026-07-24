@@ -1,4 +1,4 @@
-export const buildAlternativeCriteriaMatrixRows = ({
+export const buildRows = ({
   alternatives,
   criteria,
   evaluation,

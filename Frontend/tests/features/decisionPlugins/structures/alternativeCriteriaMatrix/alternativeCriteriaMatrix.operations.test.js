@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAlternativeCriteriaMatrixRows } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/buildAlternativeCriteriaMatrixRows.js";
-import { resolveCollectiveAlternativeCriteriaMatrix } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/resolveCollectiveAlternativeCriteriaMatrix.js";
-import { updateAlternativeCriteriaMatrixValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/updateAlternativeCriteriaMatrixValue.js";
-import { validateAlternativeCriteriaMatrixValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/validateAlternativeCriteriaMatrixValue.js";
+import { buildRows } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/buildRows.js";
+import { resolveCollective } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/resolveCollective.js";
+import { updateValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/updateValue.js";
+import { validateValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/validateValue.js";
 
 const alternatives = [
   { id: "alternative1", name: "Alternative 1" },
@@ -29,7 +29,7 @@ const evaluation = {
 describe("alternativeCriteriaMatrix operations", () => {
   it("builds rows from direct evaluation values", () => {
     expect(
-      buildAlternativeCriteriaMatrixRows({
+      buildRows({
         alternatives,
         criteria,
         evaluation,
@@ -49,7 +49,7 @@ describe("alternativeCriteriaMatrix operations", () => {
   });
 
   it("clones the complete evaluation and updates one direct value", () => {
-    const result = updateAlternativeCriteriaMatrixValue({
+    const result = updateValue({
       evaluation,
       alternativeId: "alternative2",
       criterionId: "criterion1",
@@ -67,14 +67,14 @@ describe("alternativeCriteriaMatrix operations", () => {
 
   it("returns a validation message string or an empty string", () => {
     expect(
-      validateAlternativeCriteriaMatrixValue({
+      validateValue({
         value: "",
         expressionDomain: criteria[0].expressionDomain,
       })
     ).toBe("");
 
     expect(
-      validateAlternativeCriteriaMatrixValue({
+      validateValue({
         value: 12,
         expressionDomain: criteria[0].expressionDomain,
       })
@@ -83,7 +83,7 @@ describe("alternativeCriteriaMatrix operations", () => {
 
   it("accepts null or a complete direct collective matrix", () => {
     expect(
-      resolveCollectiveAlternativeCriteriaMatrix({
+      resolveCollective({
         alternatives,
         criteria,
         collectiveEvaluation: null,
@@ -91,7 +91,7 @@ describe("alternativeCriteriaMatrix operations", () => {
     ).toBeNull();
 
     expect(
-      resolveCollectiveAlternativeCriteriaMatrix({
+      resolveCollective({
         alternatives,
         criteria,
         collectiveEvaluation: {
@@ -107,7 +107,7 @@ describe("alternativeCriteriaMatrix operations", () => {
 
   it("rejects incomplete, invalid, and unknown collective values", () => {
     expect(() =>
-      resolveCollectiveAlternativeCriteriaMatrix({
+      resolveCollective({
         alternatives,
         criteria,
         collectiveEvaluation: {
@@ -117,7 +117,7 @@ describe("alternativeCriteriaMatrix operations", () => {
     ).toThrow("Collective payload is missing an alternative row.");
 
     expect(() =>
-      resolveCollectiveAlternativeCriteriaMatrix({
+      resolveCollective({
         alternatives,
         criteria,
         collectiveEvaluation: {
@@ -128,7 +128,7 @@ describe("alternativeCriteriaMatrix operations", () => {
     ).toThrow("Collective alternative row is missing a criterion cell.");
 
     expect(() =>
-      resolveCollectiveAlternativeCriteriaMatrix({
+      resolveCollective({
         alternatives,
         criteria,
         collectiveEvaluation: {
@@ -139,7 +139,7 @@ describe("alternativeCriteriaMatrix operations", () => {
     ).toThrow("must be a finite number or a non-empty array of finite numbers");
 
     expect(() =>
-      resolveCollectiveAlternativeCriteriaMatrix({
+      resolveCollective({
         alternatives,
         criteria,
         collectiveEvaluation: {
@@ -149,7 +149,7 @@ describe("alternativeCriteriaMatrix operations", () => {
     ).toThrow("Collective payload contains unknown alternative rows.");
 
     expect(() =>
-      resolveCollectiveAlternativeCriteriaMatrix({
+      resolveCollective({
         alternatives,
         criteria,
         collectiveEvaluation: {

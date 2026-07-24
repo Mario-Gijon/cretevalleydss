@@ -1,6 +1,6 @@
 import { validateExpressionDomainEvaluation } from "../../../../../expressionDomains";
 
-export const validateAlternativeCriteriaMatrixValue = ({
+export const validateValue = ({
   value,
   expressionDomain,
 }) => {

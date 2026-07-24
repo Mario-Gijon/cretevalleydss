@@ -12,7 +12,7 @@ const isCanonicalCollectiveValue = (value) => {
   );
 };
 
-export const resolveCollectiveAlternativeCriteriaMatrix = ({
+export const resolveCollective = ({
   alternatives,
   criteria,
   collectiveEvaluation,

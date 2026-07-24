@@ -5,12 +5,12 @@ import { Alert, Box, useTheme } from "@mui/material";
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
 import { isPlainObject } from "../../../../../utils/common/objects";
 import { alternativeCriteriaMatrixViewSx } from "./AlternativeCriteriaMatrixView.styles";
-import AlternativeCriteriaMatrixCell from "./components/AlternativeCriteriaMatrixCell";
-import { buildAlternativeCriteriaMatrixColumns } from "./operations/buildAlternativeCriteriaMatrixColumns";
-import { buildAlternativeCriteriaMatrixRows } from "./operations/buildAlternativeCriteriaMatrixRows";
-import { resolveCollectiveAlternativeCriteriaMatrix } from "./operations/resolveCollectiveAlternativeCriteriaMatrix";
-import { updateAlternativeCriteriaMatrixValue } from "./operations/updateAlternativeCriteriaMatrixValue";
-import { validateAlternativeCriteriaMatrixValue } from "./operations/validateAlternativeCriteriaMatrixValue";
+import Cell from "./components/Cell";
+import { buildColumns } from "./operations/buildColumns";
+import { buildRows } from "./operations/buildRows";
+import { resolveCollective } from "./operations/resolveCollective";
+import { updateValue } from "./operations/updateValue";
+import { validateValue } from "./operations/validateValue";
 
 const AlternativeCriteriaMatrixView = ({
   decisionContext,
@@ -30,7 +30,7 @@ const AlternativeCriteriaMatrixView = ({
   const matrixRows = useMemo(
     () =>
       hasEvaluation
-        ? buildAlternativeCriteriaMatrixRows({
+        ? buildRows({
             alternatives,
             criteria,
             evaluation,
@@ -41,7 +41,7 @@ const AlternativeCriteriaMatrixView = ({
   const collectiveResolution = useMemo(() => {
     try {
       return {
-        payload: resolveCollectiveAlternativeCriteriaMatrix({
+        payload: resolveCollective({
           alternatives,
           criteria,
           collectiveEvaluation,
@@ -65,8 +65,8 @@ const AlternativeCriteriaMatrixView = ({
     return <Alert severity="error">Evaluation payload is invalid.</Alert>;
   }
 
-  const updateValue = ({ alternativeId, criterionId, nextValue }) => {
-    const nextEvaluation = updateAlternativeCriteriaMatrixValue({
+  const handleValueChange = ({ alternativeId, criterionId, nextValue }) => {
+    const nextEvaluation = updateValue({
       evaluation,
       alternativeId,
       criterionId,
@@ -76,23 +76,23 @@ const AlternativeCriteriaMatrixView = ({
     setEvaluation(nextEvaluation);
   };
 
-  const columns = buildAlternativeCriteriaMatrixColumns({
+  const columns = buildColumns({
     criteria,
     renderCell: ({ rowId, criterion, value }) => {
-      const validationMessage = validateAlternativeCriteriaMatrixValue({
+      const validationMessage = validateValue({
         value,
         expressionDomain: criterion.expressionDomain,
       });
 
       return (
-        <AlternativeCriteriaMatrixCell
+        <Cell
           expressionDomain={criterion.expressionDomain}
           value={value}
           collectiveValue={collectiveResolution.payload?.[rowId]?.[criterion.id]}
           permitEdit={permitEdit}
           error={validationMessage}
           onChange={(nextValue) =>
-            updateValue({
+            handleValueChange({
               alternativeId: rowId,
               criterionId: criterion.id,
               nextValue,

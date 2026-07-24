@@ -1,4 +1,4 @@
-export const buildAlternativeCriteriaMatrixColumns = ({
+export const buildColumns = ({
   criteria,
   renderCell,
 }) => [

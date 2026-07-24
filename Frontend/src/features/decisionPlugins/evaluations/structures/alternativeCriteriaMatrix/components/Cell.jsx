@@ -1,10 +1,10 @@
 import { Box, Chip, Stack } from "@mui/material";
 
 import { ExpressionDomainEvaluationInput } from "../../../../../expressionDomains";
-import { alternativeCriteriaMatrixCellSx } from "./AlternativeCriteriaMatrixCell.styles";
-import { formatAlternativeCriteriaCollectiveValue } from "../operations/formatAlternativeCriteriaCollectiveValue";
+import { cellSx } from "./Cell.styles";
+import { formatCollectiveValue } from "../operations/formatCollectiveValue";
 
-const AlternativeCriteriaMatrixCell = ({
+const Cell = ({
   expressionDomain,
   value,
   collectiveValue,
@@ -14,7 +14,7 @@ const AlternativeCriteriaMatrixCell = ({
 }) => {
   const hasCollectiveValue = collectiveValue !== undefined;
   const collectivePresentation = hasCollectiveValue
-    ? formatAlternativeCriteriaCollectiveValue({
+    ? formatCollectiveValue({
         collectiveValue,
         expressionDomain,
       })
@@ -24,11 +24,11 @@ const AlternativeCriteriaMatrixCell = ({
     <Stack
       direction="row"
       alignItems="center"
-      sx={alternativeCriteriaMatrixCellSx.container}
+      sx={cellSx.container}
     >
-      <Box sx={alternativeCriteriaMatrixCellSx.input}>
+      <Box sx={cellSx.input}>
         <Box
-          sx={alternativeCriteriaMatrixCellSx.inputBoundary}
+          sx={cellSx.inputBoundary}
           title={error || undefined}
           onMouseDown={(event) => {
             event.stopPropagation();
@@ -52,13 +52,13 @@ const AlternativeCriteriaMatrixCell = ({
         </Box>
       </Box>
       {collectivePresentation ? (
-        <Box sx={alternativeCriteriaMatrixCellSx.collective}>
+        <Box sx={cellSx.collective}>
           <Chip
             label={collectivePresentation.label}
             title={collectivePresentation.title}
             variant="outlined"
             size="small"
-            sx={alternativeCriteriaMatrixCellSx.chip}
+            sx={cellSx.chip}
             color="info"
           />
         </Box>
@@ -67,4 +67,4 @@ const AlternativeCriteriaMatrixCell = ({
   );
 };
 
-export default AlternativeCriteriaMatrixCell;
+export default Cell;

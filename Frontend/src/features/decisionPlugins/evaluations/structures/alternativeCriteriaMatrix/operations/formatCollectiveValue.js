@@ -1,7 +1,7 @@
 import { findMatchingFuzzyLabel } from "../../../../../expressionDomains";
 import { formatCollectiveDisplayValue } from "../../../shared/formatCollectiveDisplayValue";
 
-export const formatAlternativeCriteriaCollectiveValue = ({
+export const formatCollectiveValue = ({
   collectiveValue,
   expressionDomain,
 }) => {
