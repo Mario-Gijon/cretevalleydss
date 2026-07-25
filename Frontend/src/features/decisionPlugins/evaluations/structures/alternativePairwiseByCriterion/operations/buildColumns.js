@@ -23,7 +23,6 @@ export const buildColumns = ({ alternatives, renderCell }) => {
           columnAlternativeId,
           value: diagonal ? undefined : params.row[columnAlternativeId],
           diagonal,
-          editable: !diagonal,
         });
       },
     })),

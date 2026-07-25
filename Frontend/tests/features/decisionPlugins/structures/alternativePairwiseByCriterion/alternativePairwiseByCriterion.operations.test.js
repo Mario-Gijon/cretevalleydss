@@ -72,7 +72,7 @@ describe("alternativePairwiseByCriterion operations", () => {
     ]);
   });
 
-  it("builds columns with every non-diagonal cell editable", () => {
+  it("builds columns with direct cell data and diagonal metadata", () => {
     const renderCell = vi.fn((cell) => cell);
     const columns = buildColumns({ alternatives, renderCell });
 
@@ -85,7 +85,6 @@ describe("alternativePairwiseByCriterion operations", () => {
       columnAlternativeId: "alt-b",
       value: 2,
       diagonal: false,
-      editable: true,
     });
     expect(
       columns[1].renderCell({
@@ -93,7 +92,6 @@ describe("alternativePairwiseByCriterion operations", () => {
       })
     ).toMatchObject({
       diagonal: true,
-      editable: false,
     });
     expect(
       columns[1].renderCell({
@@ -104,7 +102,6 @@ describe("alternativePairwiseByCriterion operations", () => {
       columnAlternativeId: "alt-a",
       value: 4,
       diagonal: false,
-      editable: true,
     });
   });
 

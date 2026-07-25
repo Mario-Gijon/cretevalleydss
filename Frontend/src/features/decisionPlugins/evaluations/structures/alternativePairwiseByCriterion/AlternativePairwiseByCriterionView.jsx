@@ -8,6 +8,8 @@ import { resolveCollective } from "./operations/resolveCollective";
 import { updateValue } from "./operations/updateValue";
 import { validateEvaluation } from "./operations/validateEvaluation";
 
+const EMPTY_ITEMS = Object.freeze([]);
+
 const AlternativePairwiseByCriterionView = ({
   decisionContext,
   evaluation,
@@ -18,10 +20,10 @@ const AlternativePairwiseByCriterionView = ({
 }) => {
   const alternatives = Array.isArray(decisionContext?.alternatives)
     ? decisionContext.alternatives
-    : Object.freeze([]);
+    : EMPTY_ITEMS;
   const criteria = Array.isArray(decisionContext?.leafCriteria)
     ? decisionContext.leafCriteria
-    : Object.freeze([]);
+    : EMPTY_ITEMS;
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
   const safeCurrentCriterionIndex = Math.max(
     0,
