@@ -17,11 +17,6 @@ export const cellSx = {
       width: "100%",
     },
   },
-  derived: {
-    display: "inline-block",
-    minHeight: 24,
-    lineHeight: 1.5,
-  },
   diagonal: {
     width: "100%",
     textAlign: "center",

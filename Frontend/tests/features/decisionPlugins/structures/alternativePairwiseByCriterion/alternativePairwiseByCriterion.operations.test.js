@@ -72,7 +72,7 @@ describe("alternativePairwiseByCriterion operations", () => {
     ]);
   });
 
-  it("builds columns with direct cell data and index-based editability", () => {
+  it("builds columns with every non-diagonal cell editable", () => {
     const renderCell = vi.fn((cell) => cell);
     const columns = buildColumns({ alternatives, renderCell });
 
@@ -94,6 +94,17 @@ describe("alternativePairwiseByCriterion operations", () => {
     ).toMatchObject({
       diagonal: true,
       editable: false,
+    });
+    expect(
+      columns[1].renderCell({
+        row: { id: "alt-b", "alt-a": 4 },
+      })
+    ).toEqual({
+      rowAlternativeId: "alt-b",
+      columnAlternativeId: "alt-a",
+      value: 4,
+      diagonal: false,
+      editable: true,
     });
   });
 
@@ -119,7 +130,7 @@ describe("alternativePairwiseByCriterion operations", () => {
     ).toThrow();
   });
 
-  it("updates and clears both direct directions", () => {
+  it("updates and clears both direct directions from either visual half", () => {
     const initialEvaluation = buildEvaluation("", "");
     const updated = updateValue({
       evaluation: initialEvaluation,
@@ -134,20 +145,32 @@ describe("alternativePairwiseByCriterion operations", () => {
     expect(updated).toEqual(buildEvaluation());
     expect(initialEvaluation).toEqual(buildEvaluation("", ""));
 
+    const lowerDirectionUpdated = updateValue({
+      evaluation: updated,
+      alternatives,
+      criterionId: "cost",
+      rowAlternativeId: "alt-b",
+      columnAlternativeId: "alt-a",
+      nextValue: 3,
+      expressionDomain: numericDomain,
+    });
+
+    expect(lowerDirectionUpdated).toEqual(buildEvaluation(3, 3));
+
     expect(
       updateValue({
-        evaluation: updated,
+        evaluation: lowerDirectionUpdated,
         alternatives,
         criterionId: "cost",
-        rowAlternativeId: "alt-a",
-        columnAlternativeId: "alt-b",
+        rowAlternativeId: "alt-b",
+        columnAlternativeId: "alt-a",
         nextValue: "",
         expressionDomain: numericDomain,
       })
     ).toEqual(buildEvaluation("", ""));
   });
 
-  it("rejects diagonal and lower-triangle updates", () => {
+  it("rejects diagonal and unknown-alternative updates", () => {
     expect(() =>
       updateValue({
         evaluation: buildEvaluation(),
@@ -165,15 +188,15 @@ describe("alternativePairwiseByCriterion operations", () => {
         evaluation: buildEvaluation(),
         alternatives,
         criterionId: "cost",
-        rowAlternativeId: "alt-b",
+        rowAlternativeId: "unknown",
         columnAlternativeId: "alt-a",
         nextValue: 2,
         expressionDomain: numericDomain,
       })
-    ).toThrow("Pairwise updates can only target upper-triangle values.");
+    ).toThrow("Pairwise update references an unknown alternative.");
   });
 
-  it("reflects ordinal and fuzzy values directly", () => {
+  it("reflects ordinal and fuzzy values directly from either direction", () => {
     const ordinalResult = updateValue({
       evaluation: buildEvaluation("", ""),
       alternatives,
@@ -192,6 +215,24 @@ describe("alternativePairwiseByCriterion operations", () => {
       nextValue: { labelKey: "high" },
       expressionDomain: fuzzyDomain,
     });
+    const ordinalLowerResult = updateValue({
+      evaluation: buildEvaluation("", ""),
+      alternatives,
+      criterionId: "cost",
+      rowAlternativeId: "alt-b",
+      columnAlternativeId: "alt-a",
+      nextValue: { labelKey: "high" },
+      expressionDomain: ordinalDomain,
+    });
+    const fuzzyLowerResult = updateValue({
+      evaluation: buildEvaluation("", ""),
+      alternatives,
+      criterionId: "cost",
+      rowAlternativeId: "alt-b",
+      columnAlternativeId: "alt-a",
+      nextValue: { labelKey: "high" },
+      expressionDomain: fuzzyDomain,
+    });
 
     expect(ordinalResult.cost["alt-a"]["alt-b"]).toEqual({
       labelKey: "low",
@@ -203,6 +244,18 @@ describe("alternativePairwiseByCriterion operations", () => {
       labelKey: "high",
     });
     expect(fuzzyResult.cost["alt-b"]["alt-a"]).toEqual({
+      values: [0, 0, 0.19999999999999996],
+    });
+    expect(ordinalLowerResult.cost["alt-b"]["alt-a"]).toEqual({
+      labelKey: "high",
+    });
+    expect(ordinalLowerResult.cost["alt-a"]["alt-b"]).toEqual({
+      labelKey: "low",
+    });
+    expect(fuzzyLowerResult.cost["alt-b"]["alt-a"]).toEqual({
+      labelKey: "high",
+    });
+    expect(fuzzyLowerResult.cost["alt-a"]["alt-b"]).toEqual({
       values: [0, 0, 0.19999999999999996],
     });
   });

@@ -3,7 +3,7 @@ import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import { alternativePairwiseByCriterionViewSx } from "./AlternativePairwiseByCriterionView.styles";
 import CriterionSelector from "./components/CriterionSelector";
-import Grid from "./components/Grid";
+import PairwiseMatrix from "./components/PairwiseMatrix";
 import { resolveCollective } from "./operations/resolveCollective";
 import { updateValue } from "./operations/updateValue";
 import { validateEvaluation } from "./operations/validateEvaluation";
@@ -18,10 +18,10 @@ const AlternativePairwiseByCriterionView = ({
 }) => {
   const alternatives = Array.isArray(decisionContext?.alternatives)
     ? decisionContext.alternatives
-    : [];
+    : Object.freeze([]);
   const criteria = Array.isArray(decisionContext?.leafCriteria)
     ? decisionContext.leafCriteria
-    : [];
+    : Object.freeze([]);
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
   const safeCurrentCriterionIndex = Math.max(
     0,
@@ -143,7 +143,7 @@ const AlternativePairwiseByCriterionView = ({
             )
           }
         />
-        <Grid
+        <PairwiseMatrix
           alternatives={alternatives}
           evaluation={evaluationResolution.payload[currentCriterion.id]}
           collectiveEvaluation={

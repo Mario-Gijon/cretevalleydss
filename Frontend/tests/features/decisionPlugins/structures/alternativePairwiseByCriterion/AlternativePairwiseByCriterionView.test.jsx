@@ -56,12 +56,17 @@ const renderView = (props = {}) =>
   );
 
 describe("AlternativePairwiseByCriterionView", () => {
-  it("renders neutral diagonals, an upper input, and a derived lower value", () => {
+  it("renders neutral diagonals and inputs for both pairwise directions", () => {
     renderView();
 
     expect(screen.getAllByText("Neutral")).toHaveLength(2);
-    expect(screen.getAllByLabelText("expression-domain-input")).toHaveLength(1);
-    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("expression-domain-input")).toHaveLength(2);
+    expect(screen.getAllByLabelText("expression-domain-input")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: "2" }),
+        expect.objectContaining({ value: "4" }),
+      ])
+    );
   });
 
   it("renders no payload while loading and reports a missing payload afterward", () => {
@@ -83,10 +88,12 @@ describe("AlternativePairwiseByCriterionView", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables the upper input in read-only mode", () => {
+  it("disables every non-diagonal input in read-only mode", () => {
     renderView({ readOnly: true });
 
-    expect(screen.getByLabelText("expression-domain-input")).toBeDisabled();
+    for (const input of screen.getAllByLabelText("expression-domain-input")) {
+      expect(input).toBeDisabled();
+    }
   });
 
   it("renders a valid collective payload and reports an invalid one", () => {
@@ -142,6 +149,11 @@ describe("AlternativePairwiseByCriterionView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Quality" }));
 
-    expect(screen.getByLabelText("expression-domain-input")).toHaveValue("3");
+    expect(screen.getAllByLabelText("expression-domain-input")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: "3" }),
+        expect.objectContaining({ value: "3" }),
+      ])
+    );
   });
 });

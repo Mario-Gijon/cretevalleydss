@@ -1,4 +1,4 @@
-export const gridSx = {
+export const pairwiseMatrixSx = {
   container: {
     width: "100%",
     minWidth: 0,
@@ -6,7 +6,7 @@ export const gridSx = {
   },
 };
 
-export const buildGridSx = ({
+export const buildPairwiseMatrixSx = ({
   theme,
   alternativeCount,
   buildSharedStyles,

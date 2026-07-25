@@ -3,11 +3,14 @@ import { DataGrid } from "@mui/x-data-grid";
 
 import { buildEvaluationMatrixDataGridSx } from "../../../shared/evaluationMatrixTable.styles";
 import Cell from "./Cell";
-import { buildGridSx, gridSx } from "./Grid.styles";
+import {
+  buildPairwiseMatrixSx,
+  pairwiseMatrixSx,
+} from "./PairwiseMatrix.styles";
 import { buildColumns } from "../operations/buildColumns";
 import { buildRows } from "../operations/buildRows";
 
-const Grid = ({
+const PairwiseMatrix = ({
   alternatives,
   evaluation,
   collectiveEvaluation,
@@ -27,7 +30,6 @@ const Grid = ({
       columnAlternativeId,
       value,
       diagonal,
-      editable,
     }) => (
       <Cell
         value={value}
@@ -38,9 +40,7 @@ const Grid = ({
         }
         expressionDomain={expressionDomain}
         diagonal={diagonal}
-        editable={editable}
         permitEdit={permitEdit}
-        error=""
         onChange={(nextValue) =>
           onChange({
             rowAlternativeId,
@@ -53,7 +53,7 @@ const Grid = ({
   });
 
   return (
-    <Box sx={gridSx.container}>
+    <Box sx={pairwiseMatrixSx.container}>
       <DataGrid
         autoHeight
         rows={rows}
@@ -75,7 +75,7 @@ const Grid = ({
             ? "diagonal-cell"
             : "pairwise-grid-cell";
         }}
-        sx={buildGridSx({
+        sx={buildPairwiseMatrixSx({
           theme,
           alternativeCount: alternatives.length,
           buildSharedStyles: buildEvaluationMatrixDataGridSx,
@@ -85,4 +85,4 @@ const Grid = ({
   );
 };
 
-export default Grid;
+export default PairwiseMatrix;

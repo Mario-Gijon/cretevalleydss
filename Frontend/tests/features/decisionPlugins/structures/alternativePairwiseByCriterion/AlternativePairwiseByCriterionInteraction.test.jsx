@@ -45,7 +45,7 @@ const emptyEvaluation = {
 };
 
 describe("AlternativePairwiseByCriterionView interaction", () => {
-  it("updates the complete direct payload in both directions", () => {
+  it("updates the opposite direction after editing either visual half", () => {
     const setEvaluation = vi.fn();
 
     renderWithProviders(
@@ -59,7 +59,9 @@ describe("AlternativePairwiseByCriterionView interaction", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText("expression-domain-input"), {
+    const inputs = screen.getAllByLabelText("expression-domain-input");
+
+    fireEvent.change(inputs[0], {
       target: { value: "2" },
     });
 
@@ -69,6 +71,49 @@ describe("AlternativePairwiseByCriterionView interaction", () => {
         "alt-b": { "alt-a": 4 },
       },
     });
+
+    fireEvent.change(inputs[1], {
+      target: { value: "3" },
+    });
+
+    expect(setEvaluation).toHaveBeenLastCalledWith({
+      cost: {
+        "alt-a": { "alt-b": 3 },
+        "alt-b": { "alt-a": 3 },
+      },
+    });
+  });
+
+  it("clears both directions after clearing either visual half", () => {
+    const setEvaluation = vi.fn();
+
+    renderWithProviders(
+      <AlternativePairwiseByCriterionView
+        decisionContext={decisionContext}
+        evaluation={{
+          cost: {
+            "alt-a": { "alt-b": 2 },
+            "alt-b": { "alt-a": 4 },
+          },
+        }}
+        setEvaluation={setEvaluation}
+        collectiveEvaluation={null}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    const inputs = screen.getAllByLabelText("expression-domain-input");
+
+    fireEvent.change(inputs[0], {
+      target: { value: "" },
+    });
+    fireEvent.change(inputs[1], {
+      target: { value: "" },
+    });
+
+    expect(setEvaluation).toHaveBeenCalledTimes(2);
+    expect(setEvaluation).toHaveBeenLastCalledWith(emptyEvaluation);
   });
 
   it("uses the same public props for a Finished Issue read-only rendering", () => {
@@ -93,8 +138,9 @@ describe("AlternativePairwiseByCriterionView interaction", () => {
       />
     );
 
-    expect(screen.getByLabelText("expression-domain-input")).toBeDisabled();
-    expect(screen.getByText("4")).toBeInTheDocument();
+    for (const input of screen.getAllByLabelText("expression-domain-input")) {
+      expect(input).toBeDisabled();
+    }
     expect(screen.getByText("2.5")).toBeInTheDocument();
   });
 });

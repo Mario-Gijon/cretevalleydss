@@ -29,10 +29,6 @@ export const updateValue = ({
     throw new Error("Pairwise updates cannot target diagonal values.");
   }
 
-  if (rowIndex > columnIndex) {
-    throw new Error("Pairwise updates can only target upper-triangle values.");
-  }
-
   const criterionEvaluation = evaluation[criterionId];
 
   if (
