@@ -1,10 +1,8 @@
 import { findMatchingFuzzyLabel } from "../../../../../expressionDomains";
+import { isPlainObject } from "../../../../../../utils/common/objects";
 import { requireCanonicalPairwiseCell } from "./validateAlternativePairwiseEvaluation";
 
 const UNMATCHED_FUZZY_TOOLTIP = "No predefined label matches this derived inverse.";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const formatNumericValue = (value) => {
   if (typeof value !== "number" || !Number.isFinite(value)) {

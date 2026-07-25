@@ -1,8 +1,6 @@
 import { getExpressionDomainTypeOrThrow } from "./expressionDomainTypeCatalog.js";
 import { createBadRequestError } from "../../utils/common/errors.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../utils/common/objects.js";
 
 const requireTypeKeyOrThrow = (expressionDomain) => {
   const typeKey = expressionDomain?.typeKey;

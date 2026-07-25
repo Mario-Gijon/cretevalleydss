@@ -31,6 +31,7 @@ import {
   isRecentPendingBackendChange,
   updatePendingBackendChange,
 } from "../../utils/pendingBackendChange.js";
+import { isPlainObject } from "../../utils/common/objects";
 
 const PENDING_SUCCESS_MESSAGE_KEY = "system.pendingSuccessMessage";
 const BACKEND_CHANGE_MAX_AGE_MS = 2 * 60 * 1000;
@@ -86,9 +87,6 @@ const buildStepState = ({
   [STEP_KEYS.manifest]: manifest,
   [STEP_KEYS.redirect]: redirect,
 });
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const normalizePendingBackendChange = (value) => {
   if (!isPlainObject(value)) return null;

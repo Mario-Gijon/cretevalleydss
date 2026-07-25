@@ -1,5 +1,5 @@
 import { Box, Stack, TextField, Typography } from "@mui/material";
-import { isPlainObject } from "../../../../modelParameters/logic/isPlainObject";
+import { isPlainObject } from "../../../../../utils/common/objects";
 import {
   buildCriterionParameterRows,
   resolveCriterionRowValue,

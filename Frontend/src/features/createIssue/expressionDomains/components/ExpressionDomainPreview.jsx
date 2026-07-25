@@ -2,9 +2,7 @@ import { Box, Divider, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../../../utils/common/objects";
 
 const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(value);
 

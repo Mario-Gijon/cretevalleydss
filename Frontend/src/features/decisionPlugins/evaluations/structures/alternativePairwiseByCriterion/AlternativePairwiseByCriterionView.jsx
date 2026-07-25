@@ -6,9 +6,7 @@ import CriterionCompactSelector from "./components/CriterionCompactSelector";
 import { resolveAlternativePairwiseContext } from "./operations/resolveAlternativePairwiseContext";
 import { resolveCollectiveAlternativePairwiseMatrix } from "./operations/resolveCollectiveAlternativePairwiseMatrix";
 import { updateCriterionAlternativePairwiseEvaluation } from "./operations/updateCriterionAlternativePairwiseEvaluation";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../../../../utils/common/objects";
 
 const AlternativePairwiseByCriterionView = ({
   decisionContext,

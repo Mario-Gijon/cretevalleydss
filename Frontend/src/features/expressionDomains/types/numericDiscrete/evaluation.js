@@ -1,7 +1,6 @@
-export const NUMERIC_DISCRETE_EPSILON = 1e-9;
+import { isPlainObject } from "../../../../utils/common/objects";
 
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+export const NUMERIC_DISCRETE_EPSILON = 1e-9;
 
 const normalizeNumericDefinition = (expressionDomain) =>
   isPlainObject(expressionDomain?.definition) ? expressionDomain.definition : null;

@@ -1,4 +1,5 @@
 import { toIdString } from "../../utils/common/ids.js";
+import { isPlainObject } from "../../utils/common/objects.js";
 
 const normalizeSupportedExpressionDomains = (
   supportedExpressionDomains
@@ -30,9 +31,6 @@ const getDefinitionConstraintValue = (domain, constraintKey) => {
 
   return domain?.definition?.[constraintKey];
 };
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const valuesMatchConstraint = (actualValue, expectedValue) => {
   if (Array.isArray(expectedValue)) {

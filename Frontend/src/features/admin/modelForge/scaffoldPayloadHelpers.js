@@ -1,4 +1,5 @@
 import { stripNullConstraintPlaceholders } from "./constraintTemplates.js";
+import { isPlainObject } from "../../../utils/common/objects";
 
 export const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 
@@ -29,9 +30,6 @@ export const RESTRICTIONS_MODE_OPTIONS = [
 
 export const modelKeyPattern = /^[a-z][a-z0-9_]*$/;
 export const lowerCamelCasePattern = /^[a-z][A-Za-z0-9]*$/;
-
-export const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 export const parseLiteralValue = (rawValue) => {
   const text = String(rawValue ?? "");

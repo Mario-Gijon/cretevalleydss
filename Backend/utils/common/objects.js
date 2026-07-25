@@ -1,5 +1,12 @@
-export const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+export const isPlainObject = (value) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+
+  return prototype === Object.prototype || prototype === null;
+};
 
 export const hasOwnKey = (object, key) =>
   Object.prototype.hasOwnProperty.call(object, key);

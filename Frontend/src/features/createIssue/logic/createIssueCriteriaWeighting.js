@@ -3,10 +3,10 @@ import {
 } from "./createIssueCriteriaWeightingModes";
 import {
   isDeepEqual,
-  isPlainObject,
   buildDefaultFuzzyWeightVector,
   buildEqualWeightsByCriterion,
 } from "./createIssueCriteriaWeightValues";
+import { isPlainObject } from "../../../utils/common/objects";
 import { resolveAssignedDomainIds } from "./createIssueAssignedDomains";
 import {
   getExpressionDomainFuzzyValueCount,

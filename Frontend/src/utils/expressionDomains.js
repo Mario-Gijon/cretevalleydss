@@ -1,4 +1,5 @@
 import { getLinguisticMembershipDefinition } from "./linguisticMembershipFunctions";
+import { isPlainObject } from "./common/objects";
 import {
   getExpressionDomainTypeMetadata,
   getExpressionDomainTypeMetadataOrThrow,
@@ -46,9 +47,6 @@ export const getExpressionDomainConstraintValue = (domain, constraintKey) => {
 
   return definition[constraintKey];
 };
-
-export const isPlainObject = (value) =>
-  value != null && typeof value === "object" && !Array.isArray(value);
 
 export const valuesMatchConstraint = (actualValue, expectedValue) => {
   if (Array.isArray(expectedValue)) {

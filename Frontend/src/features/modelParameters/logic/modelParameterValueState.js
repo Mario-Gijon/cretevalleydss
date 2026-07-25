@@ -1,4 +1,4 @@
-import { isPlainObject } from "./isPlainObject";
+import { isPlainObject } from "../../../utils/common/objects";
 import { buildParameterContext } from "./buildModelParameterContext";
 import {
   buildCriterionParameterRows,

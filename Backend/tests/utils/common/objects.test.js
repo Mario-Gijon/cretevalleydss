@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isPlainObject } from "../../../src/utils/common/objects.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 describe("isPlainObject", () => {
   it("accepts objects with Object or null prototypes only", () => {

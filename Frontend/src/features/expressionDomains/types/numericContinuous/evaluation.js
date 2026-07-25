@@ -1,5 +1,4 @@
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../../utils/common/objects";
 
 const normalizeNumericDefinition = (expressionDomain) =>
   isPlainObject(expressionDomain?.definition) ? expressionDomain.definition : null;

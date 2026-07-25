@@ -1,9 +1,8 @@
+import { isPlainObject } from "./common/objects";
+
 export const PENDING_BACKEND_CHANGE_STORAGE_KEY = "system.pendingBackendChange";
 
 const DEFAULT_MAX_AGE_MS = 2 * 60 * 1000;
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 export const getPendingBackendChange = () => {
   if (typeof window === "undefined") return null;

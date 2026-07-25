@@ -1,4 +1,4 @@
-import { isPlainObject } from "./isPlainObject";
+import { isPlainObject } from "../../../utils/common/objects";
 
 export const isCriterionMapParameter = (parameter) =>
   parameter.parameterStructureKey === "numberCriterion" ||

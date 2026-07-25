@@ -1,5 +1,4 @@
-export const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../utils/common/objects";
 
 export const isDeepEqual = (left, right) => {
   if (left === right) return true;

@@ -1,4 +1,5 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 import { getExpressionDomainTypeOrThrow } from "../expressionDomainTypeCatalog.js";
 import {
   getLinguisticFuzzyEvaluationLabels,
@@ -9,9 +10,6 @@ import {
   normalizeLinguisticOrdinalEvaluationValue,
 } from "../types/linguisticOrdinal/evaluation.js";
 import { validateFuzzyValuesOrThrow } from "./validateFuzzyValues.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const hasOnlyLabelKey = (value) =>
   isPlainObject(value) &&

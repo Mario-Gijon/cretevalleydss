@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ParameterReadOnlyHost from "./ParameterReadOnlyHost";
-import { isPlainObject } from "../logic/isPlainObject";
+import { isPlainObject } from "../../../utils/common/objects";
 
 const getParameterKey = (parameter) => parameter.key;
 const getParameterLabel = (parameter) => parameter.label || parameter.key;
