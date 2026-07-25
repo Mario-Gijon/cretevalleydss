@@ -1,4 +1,4 @@
-import { createBadRequestError } from "../../../../../../utils/common/errors.js";
+import { createBadRequestError } from "../../../../utils/common/errors.js";
 
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",

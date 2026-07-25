@@ -1,4 +1,4 @@
-import { resolveRequireValueFromModeOrThrow } from "../../shared/expressionDomainEvaluationPayload.js";
+import { resolveRequireValue } from "../../shared/resolveRequireValue.js";
 import { normalizeAlternativeCriteriaMatrix } from "./operations/normalizeAlternativeCriteriaMatrix.js";
 
 export const saveAlternativeCriteriaMatrixPayload = async ({
@@ -6,7 +6,7 @@ export const saveAlternativeCriteriaMatrixPayload = async ({
   decisionContext,
   mode,
 }) => {
-  const requireValue = resolveRequireValueFromModeOrThrow(mode);
+  const requireValue = resolveRequireValue(mode);
   const alternatives = decisionContext.alternatives;
   const criteria = decisionContext.leafCriteria;
   const normalizedPayload = normalizeAlternativeCriteriaMatrix({

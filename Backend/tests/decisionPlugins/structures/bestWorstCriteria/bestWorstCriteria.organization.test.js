@@ -29,7 +29,6 @@ it("keeps only the canonical operation files", () => {
       "buildEmptyPayload.js",
       "normalizePayload.js",
       "resolveCriteria.js",
-      "resolveRequireValue.js",
       "validatePayloadShape.js",
     ].sort()
   );

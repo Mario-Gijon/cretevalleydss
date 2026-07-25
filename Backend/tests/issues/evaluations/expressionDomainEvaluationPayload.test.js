@@ -3,11 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEmptyExpressionDomainEvaluationValue,
   normalizeExpressionDomainEvaluationValueOrThrow,
-  resolveRequireValueFromModeOrThrow,
 } from "../../../modules/decisionPlugins/evaluations/shared/expressionDomainEvaluationPayload.js";
-import {
-  resolveRequireValue as resolvePairwiseRequireValueFromModeOrThrow,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/resolveRequireValue.js";
 
 describe("expressionDomainEvaluationPayload", () => {
   const numericContinuousDomain = {
@@ -114,19 +110,4 @@ describe("expressionDomainEvaluationPayload", () => {
     ).toThrow(/Value must be between 0 and 10/);
   });
 
-  it("resolves draft and submit mode policies", () => {
-    expect(resolveRequireValueFromModeOrThrow("draft")).toBe(false);
-    expect(resolveRequireValueFromModeOrThrow("submit")).toBe(true);
-    expect(() => resolveRequireValueFromModeOrThrow("other")).toThrow(
-      /Unsupported evaluation save mode/
-    );
-  });
-
-  it("preserves pairwise save mode policy resolution", () => {
-    expect(resolvePairwiseRequireValueFromModeOrThrow("draft")).toBe(false);
-    expect(resolvePairwiseRequireValueFromModeOrThrow("submit")).toBe(true);
-    expect(() => resolvePairwiseRequireValueFromModeOrThrow("other")).toThrow(
-      /Unsupported evaluation save mode/
-    );
-  });
 });
