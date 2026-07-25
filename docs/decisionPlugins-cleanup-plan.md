@@ -46,7 +46,7 @@ Clean enough:
 - `Frontend/src/features/decisionPlugins/evaluations/shared/formatCollectiveDisplayValue.js`
 - `Frontend/src/features/decisionPlugins/evaluations/shared/evaluationMatrixTable.styles.js`
 - `Frontend/src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/BestWorstCriteriaView.jsx`
-- `Frontend/src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.payload.js`
+- `Frontend/src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/`
 - `Frontend/src/features/decisionPlugins/evaluations/structures/manualCriteriaWeights/ManualCriteriaWeightsView.jsx`
 
 Hard to read or mixed-responsibility files:
@@ -153,8 +153,8 @@ Clean enough:
 - `Backend/modules/decisionPlugins/evaluations/evaluationStructureRegistry.js`
 - `Backend/modules/decisionPlugins/evaluations/structures/manualCriteriaWeights/manualCriteriaWeights.payload.js`
 - `Backend/modules/decisionPlugins/evaluations/structures/manualCriteriaWeights/manualCriteriaWeights.getPayload.js`
-- `Backend/modules/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.payload.js`
-- `Backend/modules/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.getPayload.js`
+- `Backend/modules/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/`
+- `Backend/modules/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.get.js`
 
 Hard to read or mixed-responsibility files:
 
@@ -321,6 +321,28 @@ Notes:
 
 - Generic `buildGetPayload` exports in structure folders
   - Acceptable because the file names provide context, but if these functions become shared or imported more broadly, prefer structure-specific names.
+
+## Current Best-Worst Criteria Contract
+
+Individual BWM evaluations use exactly four fields: `bestCriterionId`,
+`worstCriterionId`, `bestToOthers`, and `othersToWorst`. Both comparison maps
+contain every leaf criterion and store direct integer values from 1 through 9,
+or `""` while drafting. Empty evaluations do not select criteria implicitly.
+Changing a selection resets its complete comparison vector and writes only the
+new self-comparison as `1`.
+
+BWM collective evaluation intentionally has a different result contract:
+
+```json
+{
+  "weightsByCriterion": {
+    "criterionId": 1
+  }
+}
+```
+
+This collective map is a normalized criterion-weight result, not an individual
+Best-to-Others/Others-to-Worst comparison payload.
 
 ## Phase 4 Design Audit: Pairwise Reciprocity
 

@@ -171,15 +171,15 @@ const remapBestWorstCriteriaPayloadOrThrow = ({
     });
   }
 
-  const remappedBestCriterion = remapCriterionIdOrThrow({
-    criterionId: payload.bestCriterion,
+  const remappedBestCriterionId = remapCriterionIdOrThrow({
+    criterionId: payload.bestCriterionId,
     idMap,
-    field: "criteriaWeightingConfig.payload.bestCriterion",
+    field: "criteriaWeightingConfig.payload.bestCriterionId",
   });
-  const remappedWorstCriterion = remapCriterionIdOrThrow({
-    criterionId: payload.worstCriterion,
+  const remappedWorstCriterionId = remapCriterionIdOrThrow({
+    criterionId: payload.worstCriterionId,
     idMap,
-    field: "criteriaWeightingConfig.payload.worstCriterion",
+    field: "criteriaWeightingConfig.payload.worstCriterionId",
   });
 
   const remappedBestToOthers = Object.entries(bestToOthers).reduce(
@@ -188,7 +188,7 @@ const remapBestWorstCriteriaPayloadOrThrow = ({
         remapCriterionIdOrThrow({
           criterionId,
           idMap,
-          field: "criteriaWeightingConfig.payload.bestToOthers",
+          field: `criteriaWeightingConfig.payload.bestToOthers.${criterionId}`,
         })
       ] = value;
       return accumulator;
@@ -202,7 +202,7 @@ const remapBestWorstCriteriaPayloadOrThrow = ({
         remapCriterionIdOrThrow({
           criterionId,
           idMap,
-          field: "criteriaWeightingConfig.payload.othersToWorst",
+          field: `criteriaWeightingConfig.payload.othersToWorst.${criterionId}`,
         })
       ] = value;
       return accumulator;
@@ -211,9 +211,8 @@ const remapBestWorstCriteriaPayloadOrThrow = ({
   );
 
   return {
-    ...payload,
-    bestCriterion: remappedBestCriterion,
-    worstCriterion: remappedWorstCriterion,
+    bestCriterionId: remappedBestCriterionId,
+    worstCriterionId: remappedWorstCriterionId,
     bestToOthers: remappedBestToOthers,
     othersToWorst: remappedOthersToWorst,
   };

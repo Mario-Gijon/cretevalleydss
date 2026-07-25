@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveCriteriaWeightingConfigOrThrow } from "../../../modules/issues/creation/initialCriteriaWeights/resolveInitialCriteriaWeights.js";
+import {
+  remapCriteriaWeightIdsToMongoCriteriaOrThrow,
+  resolveCriteriaWeightingConfigOrThrow,
+} from "../../../modules/issues/creation/initialCriteriaWeights/resolveInitialCriteriaWeights.js";
 import { Issue } from "../../../models/Issues.js";
 import {
   buildCreateIssueInfo,
@@ -29,6 +32,49 @@ const criteriaWeightingModelDefaults = {
 };
 
 describe("criteria weighting structure resolution", () => {
+  it("remaps the canonical deferred BWM payload without legacy fields", () => {
+    const remapped = remapCriteriaWeightIdsToMongoCriteriaOrThrow({
+      resolvedCriteriaWeighting: {
+        criteriaWeightsStructureKey: "bestWorstCriteria",
+        isDeferredApiCriteriaWeighting: true,
+        modelWeights: null,
+        deferredPayload: {
+          bestCriterionId: "source-quality",
+          worstCriterionId: "source-cost",
+          bestToOthers: {
+            "source-quality": 1,
+            "source-cost": 5,
+          },
+          othersToWorst: {
+            "source-quality": 5,
+            "source-cost": 1,
+          },
+        },
+      },
+      sourceLeafCriteria: [
+        { id: "source-quality" },
+        { id: "source-cost" },
+      ],
+      persistedLeafCriteria: [
+        { id: "persisted-quality" },
+        { id: "persisted-cost" },
+      ],
+    });
+
+    expect(remapped.deferredPayload).toEqual({
+      bestCriterionId: "persisted-quality",
+      worstCriterionId: "persisted-cost",
+      bestToOthers: {
+        "persisted-quality": 1,
+        "persisted-cost": 5,
+      },
+      othersToWorst: {
+        "persisted-quality": 5,
+        "persisted-cost": 1,
+      },
+    });
+  });
+
   it("keeps expert manual weighting on manualCriteriaWeights when its model has stale structure metadata", async () => {
     await createIssueModel({
       ...criteriaWeightingModelDefaults,

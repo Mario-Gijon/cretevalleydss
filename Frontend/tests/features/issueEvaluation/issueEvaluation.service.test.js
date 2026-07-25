@@ -73,7 +73,7 @@ describe("issueEvaluation.service", () => {
     submitIssueEvaluation.mockResolvedValue({ success: true });
 
     const issue = { id: "issue-3" };
-    const payload = { bestCriterion: "c1" };
+    const payload = { bestCriterionId: "c1" };
     await submitIssueEvaluationPayload(issue, "criteriaWeighting", payload);
 
     expect(submitIssueEvaluation).toHaveBeenCalledWith(

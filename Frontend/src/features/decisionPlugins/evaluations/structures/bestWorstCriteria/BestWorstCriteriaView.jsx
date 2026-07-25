@@ -1,12 +1,17 @@
-import { Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import BestWorstComparisonRow from "./components/BestWorstComparisonRow";
-import { buildEmptyBestWorstCriteriaPayload } from "./operations/buildEmptyBestWorstCriteriaEvaluation";
-import { getBestWorstCriterionItems } from "./operations/resolveBestWorstCriteriaItems";
-import {
-  updateBestCriterionSelection,
-  updateBestWorstComparison,
-  updateWorstCriterionSelection,
-} from "./operations/updateBestWorstCriteriaEvaluation";
+import { useMemo } from "react";
+import { Alert, Divider, Stack, Typography } from "@mui/material";
+
+import { bestWorstCriteriaViewSx } from "./BestWorstCriteriaView.styles";
+import CollectiveWeights from "./components/CollectiveWeights";
+import ComparisonSection from "./components/ComparisonSection";
+import { buildEmptyPayload } from "./operations/buildEmptyPayload";
+import { resolveCollective } from "./operations/resolveCollective";
+import { resolveCriteria } from "./operations/resolveCriteria";
+import { updateComparison } from "./operations/updateComparison";
+import { updateSelection } from "./operations/updateSelection";
+import { validateEvaluation } from "./operations/validateEvaluation";
+
+const EMPTY_ITEMS = Object.freeze([]);
 
 const BestWorstCriteriaView = ({
   decisionContext,
@@ -16,199 +21,205 @@ const BestWorstCriteriaView = ({
   readOnly,
   loading,
 }) => {
-  void collectiveEvaluation;
-  const criterionItems = getBestWorstCriterionItems(decisionContext);
-  const criterionIds = criterionItems.map((criterion) => criterion.id);
-  const criterionNameById = new Map(
-    criterionItems.map((criterion) => [criterion.id, criterion.name])
-  );
-  const currentPayload =
-    evaluation &&
-    typeof evaluation === "object" &&
-    !Array.isArray(evaluation) &&
-    Object.keys(evaluation).length > 0
-      ? evaluation
-      : buildEmptyBestWorstCriteriaPayload(criterionItems);
-  const isReadOnly = readOnly === true || loading === true;
-
-  const bestComparisonIds = criterionIds.filter(
-    (criterionId) => criterionId !== currentPayload.bestCriterion
-  );
-  const worstComparisonIds = criterionIds.filter(
-    (criterionId) => criterionId !== currentPayload.worstCriterion
-  );
-  const longestCriterionLength = criterionItems.reduce(
-    (max, criterion) => Math.max(max, String(criterion.name).length),
-    0
-  );
-  const labelColumnWidth = `${Math.min(
-    Math.max(longestCriterionLength + 2, 10),
-    28
-  )}ch`;
-
-  const updateBestCriterion = (bestCriterion) => {
-    if (isReadOnly) {
-      return;
+  const sourceCriteria =
+    decisionContext?.leafCriteria === undefined
+      ? EMPTY_ITEMS
+      : decisionContext.leafCriteria;
+  const criteriaResolution = useMemo(() => {
+    try {
+      return {
+        criteria: resolveCriteria({
+          decisionContext: { leafCriteria: sourceCriteria },
+        }),
+        message: "",
+      };
+    } catch (error) {
+      return {
+        criteria: null,
+        message:
+          error instanceof Error ? error.message : "BWM criteria are invalid.",
+      };
+    }
+  }, [sourceCriteria]);
+  const criteria = criteriaResolution.criteria || EMPTY_ITEMS;
+  const evaluationResolution = useMemo(() => {
+    if (!criteriaResolution.criteria) {
+      return { payload: null, message: criteriaResolution.message };
     }
 
-    setEvaluation(
-      updateBestCriterionSelection({
-        payload: currentPayload,
-        criterionIds,
-        bestCriterion,
-      })
-    );
-  };
+    try {
+      const payload =
+        evaluation === null || evaluation === undefined
+          ? buildEmptyPayload({ criteria })
+          : validateEvaluation({ criteria, evaluation });
 
-  const updateWorstCriterion = (worstCriterion) => {
-    if (isReadOnly) {
-      return;
+      return { payload, message: "" };
+    } catch (error) {
+      return {
+        payload: null,
+        message:
+          error instanceof Error ? error.message : "BWM evaluation is invalid.",
+      };
     }
-
-    setEvaluation(
-      updateWorstCriterionSelection({
-        payload: currentPayload,
-        criterionIds,
-        worstCriterion,
-      })
-    );
-  };
-
-  const updateBestToOthersValue = (criterionId, value) => {
-    if (isReadOnly) {
-      return;
+  }, [
+    criteria,
+    criteriaResolution.criteria,
+    criteriaResolution.message,
+    evaluation,
+  ]);
+  const collectiveResolution = useMemo(() => {
+    try {
+      return {
+        payload: resolveCollective({ criteria, collectiveEvaluation }),
+        message: "",
+      };
+    } catch (error) {
+      return {
+        payload: null,
+        message:
+          error instanceof Error
+            ? error.message
+            : "BWM collective evaluation is invalid.",
+      };
     }
+  }, [collectiveEvaluation, criteria]);
 
-    const nextEvaluation = updateBestWorstComparison({
-      payload: currentPayload,
-      comparisonKey: "bestToOthers",
-      criterionId,
-      rawValue: value,
-    });
+  if (loading === true && evaluation == null) {
+    return null;
+  }
 
-    if (nextEvaluation !== currentPayload) {
-      setEvaluation(nextEvaluation);
-    }
-  };
+  if (criteriaResolution.message) {
+    return <Alert severity="error">{criteriaResolution.message}</Alert>;
+  }
 
-  const updateOthersToWorstValue = (criterionId, value) => {
-    if (isReadOnly) {
-      return;
-    }
-
-    const nextEvaluation = updateBestWorstComparison({
-      payload: currentPayload,
-      comparisonKey: "othersToWorst",
-      criterionId,
-      rawValue: value,
-    });
-
-    if (nextEvaluation !== currentPayload) {
-      setEvaluation(nextEvaluation);
-    }
-  };
-
-  if (criterionIds.length === 0) {
+  if (criteria.length === 0) {
     return (
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="body2" sx={bestWorstCriteriaViewSx.empty}>
         No criteria available.
       </Typography>
     );
   }
 
+  if (!evaluationResolution.payload) {
+    return <Alert severity="error">{evaluationResolution.message}</Alert>;
+  }
+
+  const currentEvaluation = evaluationResolution.payload;
+  const permitEdit = readOnly !== true && loading !== true;
+  const longestCriterionLength = criteria.reduce(
+    (maximum, criterion) => Math.max(maximum, criterion.name.length),
+    0
+  );
+  const labelWidth = `${Math.min(
+    Math.max(longestCriterionLength + 2, 10),
+    28
+  )}ch`;
+
+  const handleSelectionChange = ({ selection, criterionId }) => {
+    if (!permitEdit) {
+      return;
+    }
+
+    const nextEvaluation = updateSelection({
+      evaluation: currentEvaluation,
+      criteria,
+      selection,
+      criterionId,
+    });
+
+    setEvaluation(nextEvaluation);
+  };
+
+  const handleComparisonChange = ({ comparison, criterionId, value }) => {
+    if (!permitEdit) {
+      return;
+    }
+
+    const nextEvaluation = updateComparison({
+      evaluation: currentEvaluation,
+      criteria,
+      comparison,
+      criterionId,
+      value,
+    });
+
+    if (nextEvaluation !== currentEvaluation) {
+      setEvaluation(nextEvaluation);
+    }
+  };
+
   return (
-    <Stack spacing={1.25} sx={{ pt: 1.5, width: "100%", maxWidth: "none", minWidth: 0 }}>
+    <Stack spacing={1.5} sx={bestWorstCriteriaViewSx.container}>
+      {collectiveResolution.message ? (
+        <Alert severity="error">{collectiveResolution.message}</Alert>
+      ) : null}
+
+      {collectiveResolution.payload ? (
+        <CollectiveWeights
+          criteria={criteria}
+          weightsByCriterion={
+            collectiveResolution.payload.weightsByCriterion
+          }
+        />
+      ) : null}
+
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={{ xs: 2, md: 5 }}
         alignItems="flex-start"
-        sx={{ width: "100%", minWidth: 0 }}
+        sx={bestWorstCriteriaViewSx.sections}
       >
-        <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
-          <TextField
-            select
-            variant="outlined"
-            label="Best criterion"
-            size="small"
-            color="info"
-            disabled={isReadOnly}
-            value={currentPayload.bestCriterion}
-            onChange={(event) => updateBestCriterion(event.target.value)}
-          >
-            {criterionItems
-              .filter((criterion) => criterion.id !== currentPayload.worstCriterion)
-              .map((criterion) => (
-                <MenuItem key={criterion.id} value={criterion.id}>
-                  {criterion.name}
-                </MenuItem>
-              ))}
-          </TextField>
-
-          <Typography variant="subtitle1">Best to others</Typography>
-
-          {bestComparisonIds.map((criterionId) => (
-            <BestWorstComparisonRow
-              key={criterionId}
-              criterionId={criterionId}
-              criterionName={criterionNameById.get(criterionId) || criterionId}
-              value={currentPayload.bestToOthers[criterionId]}
-              labelColumnWidth={labelColumnWidth}
-              readOnly={isReadOnly}
-              onChange={updateBestToOthersValue}
-            />
-          ))}
-        </Stack>
+        <ComparisonSection
+          title="Best to others"
+          selectorLabel="Best criterion"
+          selectedCriterionId={currentEvaluation.bestCriterionId}
+          excludedCriterionId={currentEvaluation.worstCriterionId}
+          criteria={criteria}
+          comparisons={currentEvaluation.bestToOthers}
+          labelWidth={labelWidth}
+          permitEdit={permitEdit}
+          onSelect={(criterionId) =>
+            handleSelectionChange({ selection: "best", criterionId })
+          }
+          onComparisonChange={(criterionId, value) =>
+            handleComparisonChange({
+              comparison: "bestToOthers",
+              criterionId,
+              value,
+            })
+          }
+        />
 
         <Divider
           orientation="vertical"
           flexItem
-          sx={{ display: { xs: "none", md: "block" } }}
+          sx={bestWorstCriteriaViewSx.verticalDivider}
         />
+        <Divider sx={bestWorstCriteriaViewSx.horizontalDivider} />
 
-        <Divider
-          sx={{
-            display: { xs: "block", md: "none" },
-            width: "100%",
-          }}
+        <ComparisonSection
+          title="Others to worst"
+          selectorLabel="Worst criterion"
+          selectedCriterionId={currentEvaluation.worstCriterionId}
+          excludedCriterionId={currentEvaluation.bestCriterionId}
+          criteria={criteria}
+          comparisons={currentEvaluation.othersToWorst}
+          labelWidth={labelWidth}
+          permitEdit={permitEdit}
+          onSelect={(criterionId) =>
+            handleSelectionChange({ selection: "worst", criterionId })
+          }
+          onComparisonChange={(criterionId, value) =>
+            handleComparisonChange({
+              comparison: "othersToWorst",
+              criterionId,
+              value,
+            })
+          }
         />
-
-        <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
-          <TextField
-            select
-            variant="outlined"
-            label="Worst criterion"
-            size="small"
-            color="info"
-            disabled={isReadOnly}
-            value={currentPayload.worstCriterion}
-            onChange={(event) => updateWorstCriterion(event.target.value)}
-          >
-            {criterionItems
-              .filter((criterion) => criterion.id !== currentPayload.bestCriterion)
-              .map((criterion) => (
-                <MenuItem key={criterion.id} value={criterion.id}>
-                  {criterion.name}
-                </MenuItem>
-              ))}
-          </TextField>
-
-          <Typography variant="subtitle1">Others to worst</Typography>
-
-          {worstComparisonIds.map((criterionId) => (
-            <BestWorstComparisonRow
-              key={criterionId}
-              criterionId={criterionId}
-              criterionName={criterionNameById.get(criterionId) || criterionId}
-              value={currentPayload.othersToWorst[criterionId]}
-              labelColumnWidth={labelColumnWidth}
-              readOnly={isReadOnly}
-              onChange={updateOthersToWorstValue}
-            />
-          ))}
-        </Stack>
       </Stack>
 
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={bestWorstCriteriaViewSx.guidance}>
         Use integer values from 1 to 9.
       </Typography>
     </Stack>

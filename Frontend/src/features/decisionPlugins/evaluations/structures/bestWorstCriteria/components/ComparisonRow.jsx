@@ -1,17 +1,18 @@
 import { Stack, TextField, Typography } from "@mui/material";
 
+import { comparisonRowSx } from "./ComparisonRow.styles";
+
 const preventInvalidNumberKeys = (event) => {
   if (["e", "E", "+", "-", ".", ","].includes(event.key)) {
     event.preventDefault();
   }
 };
 
-const BestWorstComparisonRow = ({
-  criterionId,
-  criterionName,
+const ComparisonRow = ({
+  criterion,
   value,
-  labelColumnWidth,
-  readOnly,
+  labelWidth,
+  permitEdit,
   onChange,
 }) => (
   <Stack
@@ -22,13 +23,10 @@ const BestWorstComparisonRow = ({
     <Typography
       variant="body2"
       noWrap
-      title={criterionName}
-      sx={{
-        width: { xs: "auto", sm: labelColumnWidth },
-        flexShrink: 0,
-      }}
+      title={criterion.name}
+      sx={comparisonRowSx.label(labelWidth)}
     >
-      {criterionName}
+      {criterion.name}
     </Typography>
 
     <TextField
@@ -36,14 +34,14 @@ const BestWorstComparisonRow = ({
       type="number"
       size="small"
       color="info"
-      disabled={readOnly}
-      value={value ?? ""}
+      disabled={!permitEdit}
+      value={value}
       onKeyDown={preventInvalidNumberKeys}
-      onChange={(event) => onChange(criterionId, event.target.value)}
+      onChange={(event) => onChange(event.target.value)}
       inputProps={{ min: 1, max: 9, step: 1 }}
-      sx={{ width: { xs: "100%", sm: 96 } }}
+      sx={comparisonRowSx.input}
     />
   </Stack>
 );
 
-export default BestWorstComparisonRow;
+export default ComparisonRow;

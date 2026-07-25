@@ -1,29 +1,16 @@
-import {
-  normalizeBestWorstCriteriaEvaluation,
-} from "./operations/normalizeBestWorstCriteriaEvaluation.js";
-import {
-  validateBestWorstSaveModeOrThrow,
-  validateSubmittedBestWorstCriteriaOrThrow,
-} from "./operations/validateBestWorstCriteriaEvaluation.js";
+import { normalizePayload } from "./operations/normalizePayload.js";
+import { resolveRequireValue } from "./operations/resolveRequireValue.js";
 
 export const saveBestWorstCriteriaPayload = async ({
   payload,
   decisionContext,
   mode,
 }) => {
-  validateBestWorstSaveModeOrThrow(mode);
+  const requireValue = resolveRequireValue(mode);
 
-  const normalized = await normalizeBestWorstCriteriaEvaluation({
+  return normalizePayload({
     payload,
     decisionContext,
+    requireValue,
   });
-
-  if (mode === "submit") {
-    validateSubmittedBestWorstCriteriaOrThrow({
-      criterionItems: normalized.criterionItems,
-      payload: normalized.payload,
-    });
-  }
-
-  return normalized.payload;
 };

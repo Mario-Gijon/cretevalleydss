@@ -1,71 +1,19 @@
-import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { normalizeText } from "./operations/normalizeBestWorstCriteriaEvaluation.js";
-
-const buildEmptyComparisons = (criterionItems) =>
-  criterionItems.reduce((accumulator, criterion) => {
-    accumulator[criterion.id] = "";
-    return accumulator;
-  }, {});
-
-const mergeStoredPayload = ({ storedPayload, criterionItems }) => {
-  const payload = isPlainObject(storedPayload) ? storedPayload : {};
-  const bestToOthersSource = isPlainObject(payload.bestToOthers)
-    ? payload.bestToOthers
-    : {};
-  const othersToWorstSource = isPlainObject(payload.othersToWorst)
-    ? payload.othersToWorst
-    : {};
-
-  return {
-    bestCriterion: normalizeText(payload.bestCriterion),
-    worstCriterion: normalizeText(payload.worstCriterion),
-    bestToOthers: criterionItems.reduce((accumulator, criterion) => {
-      accumulator[criterion.id] =
-        bestToOthersSource[criterion.id] === undefined
-          ? ""
-          : bestToOthersSource[criterion.id];
-      return accumulator;
-    }, {}),
-    othersToWorst: criterionItems.reduce((accumulator, criterion) => {
-      accumulator[criterion.id] =
-        othersToWorstSource[criterion.id] === undefined
-          ? ""
-          : othersToWorstSource[criterion.id];
-      return accumulator;
-    }, {}),
-  };
-};
-
-const resolveCriterionItems = async ({ decisionContext }) => {
-  if (Array.isArray(decisionContext?.leafCriteria) && decisionContext.leafCriteria.length > 0) {
-    return decisionContext.leafCriteria
-      .map((criterion) => ({
-        id: normalizeText(criterion?.id ?? criterion?._id),
-        name: normalizeText(criterion?.name),
-      }))
-      .filter((criterion) => criterion.id && criterion.name);
-  }
-
-  return [];
-};
+import { buildEmptyPayload } from "./operations/buildEmptyPayload.js";
+import { normalizePayload } from "./operations/normalizePayload.js";
+import { resolveCriteria } from "./operations/resolveCriteria.js";
 
 export const getBestWorstCriteriaPayload = async ({
   payload,
   decisionContext,
 }) => {
-  const criterionItems = await resolveCriterionItems({ decisionContext });
+  if (payload === null || payload === undefined) {
+    const criteria = resolveCriteria({ decisionContext });
+    return buildEmptyPayload({ criteria });
+  }
 
-  const normalizedPayload = !payload || typeof payload !== "object"
-    ? {
-        bestCriterion: "",
-        worstCriterion: "",
-        bestToOthers: buildEmptyComparisons(criterionItems),
-        othersToWorst: buildEmptyComparisons(criterionItems),
-      }
-    : mergeStoredPayload({
-        storedPayload: payload,
-        criterionItems,
-      });
-
-  return normalizedPayload;
+  return normalizePayload({
+    payload,
+    decisionContext,
+    requireValue: false,
+  });
 };

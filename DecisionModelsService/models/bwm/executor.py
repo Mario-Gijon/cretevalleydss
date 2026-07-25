@@ -33,15 +33,13 @@ def _normalize_criteria(payload: GenericModelExecutionRequest) -> list[dict[str,
 
 
 def _normalize_bwm_scale_value(value: Any, field: str) -> float:
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError):
+    if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError(f"{field} must be an integer between 1 and 9")
 
-    if not numeric.is_integer() or numeric < 1 or numeric > 9:
+    if value < 1 or value > 9:
         raise ValueError(f"{field} must be an integer between 1 and 9")
 
-    return numeric
+    return float(value)
 
 
 def _build_weights_by_expert(
@@ -112,8 +110,46 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
             if expert_key in experts_data:
                 return error_response(f"Duplicated BWM evaluation for expert '{expert_key}'")
 
+            expected_payload_keys = {
+                "bestCriterionId",
+                "worstCriterionId",
+                "bestToOthers",
+                "othersToWorst",
+            }
+            if set(eval_payload) != expected_payload_keys:
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': payload must contain exactly bestCriterionId, worstCriterionId, bestToOthers, and othersToWorst"
+                )
+
+            best_criterion_id_value = eval_payload.get("bestCriterionId")
+            worst_criterion_id_value = eval_payload.get("worstCriterionId")
+            if not isinstance(best_criterion_id_value, str):
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': bestCriterionId must be a string"
+                )
+            if not isinstance(worst_criterion_id_value, str):
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': worstCriterionId must be a string"
+                )
+
+            best_criterion_id = best_criterion_id_value.strip()
+            worst_criterion_id = worst_criterion_id_value.strip()
             best_to_others = eval_payload.get("bestToOthers")
             others_to_worst = eval_payload.get("othersToWorst")
+            criterion_ids = [criterion["id"] for criterion in criteria]
+
+            if best_criterion_id not in criterion_ids:
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': bestCriterionId must identify a context criterion"
+                )
+            if worst_criterion_id not in criterion_ids:
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': worstCriterionId must identify a context criterion"
+                )
+            if len(criteria) > 1 and best_criterion_id == worst_criterion_id:
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': bestCriterionId and worstCriterionId must be different"
+                )
 
             if not isinstance(best_to_others, dict):
                 return error_response(
@@ -122,6 +158,14 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
             if not isinstance(others_to_worst, dict):
                 return error_response(
                     f"Invalid BWM payload for expert '{expert_key}': othersToWorst must be an object"
+                )
+            if set(best_to_others) != set(criterion_ids):
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': bestToOthers must contain exactly all context criteria"
+                )
+            if set(others_to_worst) != set(criterion_ids):
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': othersToWorst must contain exactly all context criteria"
                 )
 
             mic: list[float] = []
@@ -155,6 +199,15 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
                     return error_response(
                         f"Invalid BWM payload for expert '{expert_key}': {error}"
                     )
+
+            if best_to_others[best_criterion_id] != 1:
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': bestToOthers['{best_criterion_id}'] must be 1"
+                )
+            if others_to_worst[worst_criterion_id] != 1:
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': othersToWorst['{worst_criterion_id}'] must be 1"
+                )
 
             experts_data[expert_key] = {
                 "mic": mic,

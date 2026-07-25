@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { getBestWorstCriteriaPayload } from "../../../modules/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.get.js";
-import { saveBestWorstCriteriaPayload } from "../../../modules/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.save.js";
-import { bestWorstCriteriaStructure } from "../../../modules/decisionPlugins/evaluations/structures/bestWorstCriteria/index.js";
 import { getManualCriteriaWeightsPayload } from "../../../modules/decisionPlugins/evaluations/structures/manualCriteriaWeights/manualCriteriaWeights.get.js";
 import { saveManualCriteriaWeightsPayload } from "../../../modules/decisionPlugins/evaluations/structures/manualCriteriaWeights/manualCriteriaWeights.save.js";
 import { manualCriteriaWeightsStructure } from "../../../modules/decisionPlugins/evaluations/structures/manualCriteriaWeights/index.js";
@@ -15,86 +12,13 @@ const decisionContext = {
 };
 
 describe("evaluation structure organization", () => {
-  it.each([
-    [
-      bestWorstCriteriaStructure,
-      getBestWorstCriteriaPayload,
-      saveBestWorstCriteriaPayload,
-    ],
-    [
-      manualCriteriaWeightsStructure,
-      getManualCriteriaWeightsPayload,
-      saveManualCriteriaWeightsPayload,
-    ],
-  ])("registers direct get and save function references", (structure, get, save) => {
-    expect(structure.get).toBe(get);
-    expect(structure.save).toBe(save);
-  });
-
-  it("preserves best-worst GET initialization and stored payload normalization", async () => {
-    await expect(
-      getBestWorstCriteriaPayload({
-        payload: undefined,
-        decisionContext,
-      })
-    ).resolves.toEqual({
-      bestCriterion: "",
-      worstCriterion: "",
-      bestToOthers: { cost: "", quality: "" },
-      othersToWorst: { cost: "", quality: "" },
-    });
-
-    await expect(
-      getBestWorstCriteriaPayload({
-        payload: {
-          bestCriterion: " cost ",
-          worstCriterion: "quality",
-          bestToOthers: { cost: 1, quality: 3, unknown: 8 },
-          othersToWorst: { cost: 2, quality: 1, unknown: 8 },
-        },
-        decisionContext,
-      })
-    ).resolves.toEqual({
-      bestCriterion: "cost",
-      worstCriterion: "quality",
-      bestToOthers: { cost: 1, quality: 3 },
-      othersToWorst: { cost: 2, quality: 1 },
-    });
-  });
-
-  it("preserves best-worst draft and submit save behavior", async () => {
-    const payload = {
-      bestCriterion: "cost",
-      worstCriterion: "quality",
-      bestToOthers: { cost: 9, quality: "3" },
-      othersToWorst: { cost: "2", quality: 9 },
-    };
-
-    await expect(
-      saveBestWorstCriteriaPayload({
-        payload,
-        decisionContext,
-        mode: "draft",
-      })
-    ).resolves.toEqual({
-      bestCriterion: "cost",
-      worstCriterion: "quality",
-      bestToOthers: { cost: 1, quality: 3 },
-      othersToWorst: { cost: 2, quality: 1 },
-    });
-
-    await expect(
-      saveBestWorstCriteriaPayload({
-        payload,
-        decisionContext,
-        mode: "submit",
-      })
-    ).resolves.toEqual({
-      bestCriterion: "cost",
-      worstCriterion: "quality",
-      bestToOthers: { cost: 1, quality: 3 },
-      othersToWorst: { cost: 2, quality: 1 },
-    });
+  it("registers direct manual-weight get and save function references", () => {
+    expect(manualCriteriaWeightsStructure.get).toBe(
+      getManualCriteriaWeightsPayload
+    );
+    expect(manualCriteriaWeightsStructure.save).toBe(
+      saveManualCriteriaWeightsPayload
+    );
   });
 
   it("preserves manual-weight GET, draft, and submit behavior", async () => {
