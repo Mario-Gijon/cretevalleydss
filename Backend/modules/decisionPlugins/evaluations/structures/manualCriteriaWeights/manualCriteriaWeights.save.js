@@ -1,30 +1,18 @@
-import {
-  normalizeManualCriteriaWeights,
-} from "./operations/normalizeManualCriteriaWeights.js";
-import {
-  resolveManualWeightsAllowEmptyOrThrow,
-  validateSubmittedManualWeightsOrThrow,
-} from "./operations/validateManualCriteriaWeights.js";
+import { resolveRequireValue } from "../../shared/resolveRequireValue.js";
+import { normalizePayload } from "./operations/normalizePayload.js";
+import { resolveCriteria } from "./operations/resolveCriteria.js";
 
-export const saveManualCriteriaWeightsPayload = async ({
+export const saveManualCriteriaWeightsPayload = ({
   payload,
   decisionContext,
   mode,
 }) => {
-  const allowEmpty = resolveManualWeightsAllowEmptyOrThrow(mode);
+  const requireValue = resolveRequireValue(mode);
+  const criteria = resolveCriteria({ decisionContext });
 
-  const normalized = await normalizeManualCriteriaWeights({
+  return normalizePayload({
     payload,
-    decisionContext,
-    allowEmpty,
+    criteria,
+    requireValue,
   });
-
-  if (mode === "submit") {
-    validateSubmittedManualWeightsOrThrow({
-      weightsByCriterion: normalized.payload.weightsByCriterion,
-      criteria: normalized.criteria,
-    });
-  }
-
-  return normalized.payload;
 };

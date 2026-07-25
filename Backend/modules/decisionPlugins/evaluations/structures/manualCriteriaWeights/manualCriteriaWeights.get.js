@@ -1,52 +1,20 @@
-import { isPlainObject } from "../../../../../utils/common/objects.js";
+import { buildEmptyPayload } from "./operations/buildEmptyPayload.js";
+import { normalizePayload } from "./operations/normalizePayload.js";
+import { resolveCriteria } from "./operations/resolveCriteria.js";
 
-const buildEmptyWeightsByCriterion = (criteria) =>
-  criteria.reduce((accumulator, criterion) => {
-    accumulator[criterion.id] = "";
-    return accumulator;
-  }, {});
-
-const toWeightsByCriterionFromStoredPayload = (
-  storedPayloadWeights,
-  criteria
-) => {
-  const normalizedStoredWeights = isPlainObject(storedPayloadWeights)
-    ? storedPayloadWeights
-    : {};
-
-  return criteria.reduce((accumulator, criterion) => {
-    const value = normalizedStoredWeights[criterion.id];
-    accumulator[criterion.id] = value === undefined ? "" : value;
-    return accumulator;
-  }, {});
-};
-
-const resolveCriteria = async ({ decisionContext }) =>
-  Array.isArray(decisionContext?.leafCriteria)
-    ? decisionContext.leafCriteria
-        .map((criterion) => ({
-          id: criterion?.id,
-          name: criterion?.name,
-        }))
-        .filter((criterion) => criterion.id && criterion.name)
-    : [];
-
-export const getManualCriteriaWeightsPayload = async ({
+export const getManualCriteriaWeightsPayload = ({
   payload,
   decisionContext,
 }) => {
-  const criteria = await resolveCriteria({ decisionContext });
+  const criteria = resolveCriteria({ decisionContext });
 
-  const normalizedPayload = !payload || typeof payload !== "object"
-    ? {
-        weightsByCriterion: buildEmptyWeightsByCriterion(criteria),
-      }
-    : {
-        weightsByCriterion: toWeightsByCriterionFromStoredPayload(
-          payload?.weightsByCriterion,
-          criteria
-        ),
-      };
+  if (payload === null || payload === undefined) {
+    return buildEmptyPayload({ criteria });
+  }
 
-  return normalizedPayload;
+  return normalizePayload({
+    payload,
+    criteria,
+    requireValue: false,
+  });
 };

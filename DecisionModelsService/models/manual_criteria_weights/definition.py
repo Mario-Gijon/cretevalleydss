@@ -17,8 +17,8 @@ MODEL_DEFINITION = ModelDefinition(
     ),
     extended_description=(
         "Manual criteria weights is an auxiliary weighting service that reads "
-        "completed expert weightsByCriterion payloads, averages them by "
-        "criterion, and normalizes the final group weights so they sum to one."
+        "completed expert weightsByCriterion payloads and aggregates completed "
+        "expert weights into a normalized group result."
     ),
     request_examples=MANUAL_CRITERIA_WEIGHTS_REQUEST_EXAMPLES,
     response_examples=MANUAL_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES,

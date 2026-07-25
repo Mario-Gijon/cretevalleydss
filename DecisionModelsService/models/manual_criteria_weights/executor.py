@@ -13,22 +13,49 @@ def _is_plain_object(value: Any) -> bool:
 
 
 def _normalize_criteria(payload: GenericModelExecutionRequest) -> list[dict[str, str]]:
-    criteria = payload.context.get("criteria") if _is_plain_object(payload.context) else []
-    if not isinstance(criteria, list):
-        return []
+    if not _is_plain_object(payload.context):
+        raise ValueError("Manual criteria weights require context to be an object")
+
+    criteria = payload.context.get("criteria")
+    if not isinstance(criteria, list) or len(criteria) == 0:
+        raise ValueError(
+            "Manual criteria weights require a non-empty context.criteria list"
+        )
 
     criterion_items: list[dict[str, str]] = []
-    for criterion in criteria:
+    seen_ids: set[str] = set()
+    for index, criterion in enumerate(criteria):
         if not isinstance(criterion, dict):
-            continue
+            raise ValueError(
+                f"Manual criteria weights context criterion at index {index} must be an object"
+            )
 
-        criterion_id = str(criterion.get("id") or "").strip()
-        name = str(criterion.get("name") or "").strip()
-        if criterion_id and name:
-            criterion_items.append({
-                "id": criterion_id,
-                "name": name,
-            })
+        criterion_id_value = criterion.get("id")
+        name_value = criterion.get("name")
+        criterion_id = (
+            criterion_id_value.strip()
+            if isinstance(criterion_id_value, str)
+            else ""
+        )
+        name = name_value.strip() if isinstance(name_value, str) else ""
+        if not criterion_id:
+            raise ValueError(
+                f"Manual criteria weights context criterion id at index {index} is invalid"
+            )
+        if not name:
+            raise ValueError(
+                f"Manual criteria weights context criterion name at index {index} is invalid"
+            )
+        if criterion_id in seen_ids:
+            raise ValueError(
+                f"Manual criteria weights context criterion id '{criterion_id}' is duplicated"
+            )
+
+        seen_ids.add(criterion_id)
+        criterion_items.append({
+            "id": criterion_id,
+            "name": name,
+        })
 
     return criterion_items
 
@@ -116,6 +143,8 @@ def execute_manual_criteria_weights(
             "Manual criteria weights executed successfully",
             response_data,
         )
+    except ValueError as error:
+        return error_response(str(error))
     except Exception as error:
         return error_response(
             f"Error executing manual criteria weights: {error}",

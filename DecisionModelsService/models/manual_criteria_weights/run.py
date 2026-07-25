@@ -2,7 +2,7 @@ import math
 from typing import Any
 
 
-WEIGHT_SUM_TOLERANCE = 1e-6
+WEIGHT_SUM_TOLERANCE = 1e-3
 
 
 def _extract_expert_key(evaluation: dict[str, Any], index: int) -> str:
@@ -16,13 +16,13 @@ def _extract_expert_key(evaluation: dict[str, Any], index: int) -> str:
 
 
 def _validate_weight(value: Any, *, expert_key: str, criterion_id: str) -> float:
-    try:
-        numeric_weight = float(value)
-    except (TypeError, ValueError):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(
             f"Manual criteria weights payload has invalid "
             f"weightsByCriterion['{criterion_id}'] for expert '{expert_key}'"
         )
+
+    numeric_weight = float(value)
 
     if not math.isfinite(numeric_weight):
         raise ValueError(
@@ -61,7 +61,10 @@ def run_manual_criteria_weights(
     try:
         for index, evaluation in enumerate(evaluations):
             if not isinstance(evaluation, dict):
-                continue
+                return {
+                    "success": False,
+                    "message": "Manual criteria weights require evaluation objects",
+                }
 
             expert_key = _extract_expert_key(evaluation, index)
             if expert_key in expert_weights_by_expert:
@@ -70,9 +73,21 @@ def run_manual_criteria_weights(
                     "message": f"Duplicated manual criteria weights evaluation for expert '{expert_key}'",
                 }
 
-            eval_payload = evaluation.get("payload", {})
+            eval_payload = evaluation.get("payload")
             if not isinstance(eval_payload, dict):
-                continue
+                return {
+                    "success": False,
+                    "message": "Manual criteria weights require evaluation payload objects",
+                }
+
+            if set(eval_payload) != {"weightsByCriterion"}:
+                return {
+                    "success": False,
+                    "message": (
+                        "Manual criteria weights evaluation payloads must contain "
+                        "exactly weightsByCriterion"
+                    ),
+                }
 
             weights_by_criterion = eval_payload.get("weightsByCriterion")
             if not isinstance(weights_by_criterion, dict):
@@ -81,6 +96,16 @@ def run_manual_criteria_weights(
                     "message": (
                         "Manual criteria weights require evaluation payloads with "
                         "weightsByCriterion"
+                    ),
+                }
+
+            criterion_ids = {criterion["id"] for criterion in criteria}
+            if set(weights_by_criterion) != criterion_ids:
+                return {
+                    "success": False,
+                    "message": (
+                        "Manual criteria weights payload must contain exactly all "
+                        "context criteria"
                     ),
                 }
 

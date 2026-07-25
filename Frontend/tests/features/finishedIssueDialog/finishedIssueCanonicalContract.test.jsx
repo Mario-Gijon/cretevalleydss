@@ -41,7 +41,7 @@ describe("Finished Issue canonical contract", () => {
     expect(buildConsensusEvolutionData(payload).rounds.map((round) => round.phase)).toEqual([0, 5]);
     const evaluations = buildEvaluationsData({ payload, selectedStage: "criteriaWeighting", selectedPhase: 1, selectedExpertId: "expert-1" });
     expect(evaluations.renderer).toMatchObject({ stage: "criteriaWeighting", readOnly: true });
-    expect(evaluations.individual.payload).toEqual({ weights: [0.4, 0.6] });
+    expect(evaluations.individual.payload).toEqual({ weightsByCriterion: {} });
     expect(evaluations.expertWeightSnapshot[0]).toEqual({ expertId: "expert-1", weight: 0.7 });
   });
 
