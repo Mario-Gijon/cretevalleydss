@@ -212,22 +212,16 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
                         row.append(0.5)
                         continue
 
-                    cell = row_payload.get(col_alternative_id)
-                    if not isinstance(cell, dict):
-                        raise ValueError(
-                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}'] is required"
-                        )
-
-                    value = cell.get("value")
+                    value = row_payload.get(col_alternative_id)
                     if value is None or value == "":
                         raise ValueError(
-                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}'].value is required"
+                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}'] is required"
                         )
 
                     row.append(
                         _finite_number(
                             value,
-                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}'].value",
+                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}']",
                         )
                     )
 

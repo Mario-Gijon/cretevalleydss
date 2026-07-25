@@ -120,7 +120,7 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
             not isinstance(matrix, dict)
             or set(matrix) != alternative_ids
             or any(
-                not isinstance(row, dict) or set(row) != alternative_ids - {row_id} or any(cell != {"value": ""} for cell in row.values())
+                not isinstance(row, dict) or set(row) != alternative_ids - {row_id} or any(value != "" for value in row.values())
                 for row_id, row in matrix.items()
             )
         ):
@@ -146,9 +146,9 @@ def _matrix(context: dict[str, Any], values: tuple[float, float, float]) -> dict
     bp, bu, pu = values
     payload = {
         criteria["Overall preference"]: {
-            balanced: {premium: {"value": bp}, budget: {"value": bu}},
-            premium: {balanced: {"value": 1 - bp}, budget: {"value": pu}},
-            budget: {balanced: {"value": 1 - bu}, premium: {"value": 1 - pu}},
+            balanced: {premium: bp, budget: bu},
+            premium: {balanced: 1 - bp, budget: pu},
+            budget: {balanced: 1 - bu, premium: 1 - pu},
         }
     }
     _validate_pairwise(payload, set(criteria.values()), {balanced, premium, budget})
@@ -221,7 +221,7 @@ def _validate_suggestions(raw: Any, context: dict[str, Any], forbidden: set[str]
             for row_id, row in matrix.items():
                 if not isinstance(row, dict) or set(row) != alternative_ids - {row_id}:
                     raise ScenarioLabError("consensus suggestion matrix is incomplete")
-                if any(not isinstance(cell, dict) or not _finite(cell.get("value")) or not 0 <= cell["value"] <= 1 for cell in row.values()):
+                if any(not _finite(value) or not 0 <= value <= 1 for value in row.values()):
                     raise ScenarioLabError("consensus suggestion values are incompatible")
     return keys
 

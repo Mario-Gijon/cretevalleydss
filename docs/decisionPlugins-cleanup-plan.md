@@ -326,29 +326,65 @@ Notes:
 
 ### Current Pairwise Contract
 
+The canonical pairwise payload now stores direct expression-domain values:
+
+```json
+{
+  "criterionId": {
+    "alternativeA": {
+      "alternativeB": 0.7
+    },
+    "alternativeB": {
+      "alternativeA": 0.3
+    }
+  }
+}
+```
+
+Canonical linguistic values and empty drafts use the same direct-cell contract:
+
+```json
+{
+  "criterionId": {
+    "alternativeA": {
+      "alternativeB": { "labelKey": "high" }
+    },
+    "alternativeB": {
+      "alternativeA": { "labelKey": "low" }
+    }
+  }
+}
+```
+
+An empty draft stores `""` in both directed positions; it never wraps that
+value in a cell object.
+
+Every leaf criterion and every off-diagonal directed comparison is required.
+The diagonal is omitted. The upper triangle is editable, the lower triangle is
+the expression-domain reflection, and both directions are stored. Empty drafts
+use `""` in both directions. Individual evaluations, collective evaluations,
+and next-round suggestions use this same nested direct-value shape.
+
+The Backend operations are `buildEmptyPayload`, `normalizePayload`,
+`resolveItems`, `resolveRequireValue`, and `validatePayloadShape`. The Frontend
+uses `AlternativePairwiseByCriterionView` with `Grid`, `Cell`,
+`CriterionSelector`, and the direct-value operations in its local `operations`
+folder.
+
+### Superseded Pairwise Audit
+
+The remainder of this audit records the pre-refactor wrapper-based design for
+historical context only. It is not an accepted payload contract.
+
 Input context:
 
 - Frontend pairwise rendering reads `evaluationContext.alternatives` and `evaluationContext.leafCriteria`.
 - Each criterion is treated as owning one expression domain through `criterion.expressionDomain`.
 - Backend pairwise read payload also treats the criterion expression domain as the expected domain for every off-diagonal cell in that criterion.
 
-Payload shape:
-
-```json
-{
-  "criterionId": {
-    "alternativeA": {
-      "alternativeB": {
-        "value": 0.7,
-        "expressionDomain": {
-          "typeKey": "numericContinuous",
-          "definition": { "min": 0, "max": 1 }
-        }
-      }
-    }
-  }
-}
-```
+The superseded payload stored each evaluation inside a cell object alongside
+expression-domain metadata. That shape is no longer reproduced here because it
+is rejected at the expression-domain boundary.
 
 Actual backend read-model behavior:
 

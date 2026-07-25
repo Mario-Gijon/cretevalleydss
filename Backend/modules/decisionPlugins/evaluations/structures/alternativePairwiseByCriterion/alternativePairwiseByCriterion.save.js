@@ -1,16 +1,14 @@
-import {
-  normalizeAlternativePairwiseEvaluation,
-  resolveRequireValueFromModeOrThrow,
-} from "./operations/normalizeAlternativePairwiseEvaluation.js";
+import { normalizePayload } from "./operations/normalizePayload.js";
+import { resolveRequireValue } from "./operations/resolveRequireValue.js";
 
 export const saveAlternativePairwiseByCriterionPayload = async ({
   payload,
   decisionContext,
   mode,
 }) => {
-  const requireValue = resolveRequireValueFromModeOrThrow(mode);
+  const requireValue = resolveRequireValue(mode);
 
-  return normalizeAlternativePairwiseEvaluation({
+  return normalizePayload({
     payload,
     decisionContext,
     requireValue,

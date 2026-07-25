@@ -49,7 +49,7 @@ def _model() -> dict[str, Any]:
 
 def _empty(phase: int, collective: dict[str, Any] | None = None) -> dict[str, Any]:
     alternatives = {"Balanced choice": "balanced", "Premium choice": "premium", "Budget choice": "budget"}
-    matrix = {row: {column: {"value": ""} for column in alternatives.values() if column != row} for row in alternatives.values()}
+    matrix = {row: {column: "" for column in alternatives.values() if column != row} for row in alternatives.values()}
     context = {
         "issue": {"id": "issue", "currentStage": "alternativeEvaluation", "isConsensus": True},
         "model": {"apiModelKey": "herrera_viedma_crp"},
@@ -178,9 +178,9 @@ class FakeClient:
             "consensusMeasure": 1.0 if reached else 0.5,
         }
         suggestion_matrix = {
-            "balanced": {"premium": {"value": 0.8}, "budget": {"value": 0.8}},
-            "premium": {"balanced": {"value": 0.2}, "budget": {"value": 0.7}},
-            "budget": {"balanced": {"value": 0.2}, "premium": {"value": 0.3}},
+            "balanced": {"premium": 0.8, "budget": 0.8},
+            "premium": {"balanced": 0.2, "budget": 0.7},
+            "budget": {"balanced": 0.2, "premium": 0.3},
         }
         suggestions = (
             {}

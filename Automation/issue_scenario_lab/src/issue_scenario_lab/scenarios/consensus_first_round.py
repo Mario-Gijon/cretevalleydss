@@ -222,7 +222,7 @@ def _validate_empty(payload: Any, context: dict[str, Any]) -> None:
         if not isinstance(matrix, dict) or set(matrix) != alternative_ids:
             raise ScenarioLabError("pairwise payload does not contain exactly persisted alternative rows")
         for row_id, row in matrix.items():
-            if not isinstance(row, dict) or set(row) != alternative_ids - {row_id} or any(cell != {"value": ""} for cell in row.values()):
+            if not isinstance(row, dict) or set(row) != alternative_ids - {row_id} or any(value != "" for value in row.values()):
                 raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
 
 
@@ -234,9 +234,9 @@ def _pairwise(context: dict[str, Any], *, expert_b: bool) -> dict[str, Any]:
     for criterion_id in criteria.values():
         bp, bu, pu = values
         output[criterion_id] = {
-            b: {p: {"value": bp}, u: {"value": bu}},
-            p: {b: {"value": 1 - bp}, u: {"value": pu}},
-            u: {b: {"value": 1 - bu}, p: {"value": 1 - pu}},
+            b: {p: bp, u: bu},
+            p: {b: 1 - bp, u: pu},
+            u: {b: 1 - bu, p: 1 - pu},
         }
     _validate_pairwise(output, set(criteria.values()), {b, p, u})
     return output
@@ -252,8 +252,8 @@ def _validate_pairwise(payload: Any, criterion_ids: set[str], alternative_ids: s
             if not isinstance(row, dict) or set(row) != alternative_ids - {row_id}:
                 raise ScenarioLabError("pairwise submission has missing or diagonal cells")
             for col_id, cell in row.items():
-                value = cell.get("value") if isinstance(cell, dict) and set(cell) == {"value"} else None
-                reverse = matrix.get(col_id, {}).get(row_id, {}).get("value")
+                value = cell
+                reverse = matrix.get(col_id, {}).get(row_id)
                 if not _finite(value) or not 0 <= value <= 1 or not _finite(reverse) or abs(value + reverse - 1) > 1e-9:
                     raise ScenarioLabError("pairwise submission values are not finite reciprocal [0, 1] values")
 

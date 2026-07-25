@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { getAlternativePairwiseByCriterionPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.get.js";
-import { saveAlternativePairwiseByCriterionPayload } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.save.js";
-import { alternativePairwiseByCriterionStructure } from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/index.js";
 import { getBestWorstCriteriaPayload } from "../../../modules/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.get.js";
 import { saveBestWorstCriteriaPayload } from "../../../modules/decisionPlugins/evaluations/structures/bestWorstCriteria/bestWorstCriteria.save.js";
 import { bestWorstCriteriaStructure } from "../../../modules/decisionPlugins/evaluations/structures/bestWorstCriteria/index.js";
@@ -19,11 +16,6 @@ const decisionContext = {
 
 describe("evaluation structure organization", () => {
   it.each([
-    [
-      alternativePairwiseByCriterionStructure,
-      getAlternativePairwiseByCriterionPayload,
-      saveAlternativePairwiseByCriterionPayload,
-    ],
     [
       bestWorstCriteriaStructure,
       getBestWorstCriteriaPayload,

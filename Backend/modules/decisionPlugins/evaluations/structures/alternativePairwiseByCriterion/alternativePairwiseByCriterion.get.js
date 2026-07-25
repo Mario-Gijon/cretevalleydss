@@ -1,27 +1,23 @@
-import {
-  resolveAlternativePairwiseItems,
-} from "./operations/resolveAlternativePairwiseItems.js";
-import {
-  normalizeAlternativePairwiseEvaluation,
-} from "./operations/normalizeAlternativePairwiseEvaluation.js";
-import { buildEmptyAlternativePairwiseEvaluation } from "./operations/buildEmptyAlternativePairwiseEvaluation.js";
+import { buildEmptyPayload } from "./operations/buildEmptyPayload.js";
+import { normalizePayload } from "./operations/normalizePayload.js";
+import { resolveItems } from "./operations/resolveItems.js";
 
 export const getAlternativePairwiseByCriterionPayload = async ({
   payload,
   decisionContext,
 }) => {
-  const { alternatives, criteria, criterionIds } = await resolveAlternativePairwiseItems({
+  const { alternatives, criterionIds } = await resolveItems({
     decisionContext,
   });
 
   if (payload === null || payload === undefined) {
-    return buildEmptyAlternativePairwiseEvaluation({
+    return buildEmptyPayload({
       criterionIds,
       alternatives,
     });
   }
 
-  return normalizeAlternativePairwiseEvaluation({
+  return normalizePayload({
     payload,
     decisionContext,
     requireValue: false,

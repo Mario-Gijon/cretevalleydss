@@ -51,16 +51,16 @@ HERRERA_VIEDMA_CRP_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                     "payload": {
                         "crit-overall": {
                             "alt-supplier-a": {
-                                "alt-supplier-b": {"value": 0.35},
-                                "alt-supplier-c": {"value": 0.70},
+                                "alt-supplier-b": 0.35,
+                                "alt-supplier-c": 0.70,
                             },
                             "alt-supplier-b": {
-                                "alt-supplier-a": {"value": 0.65},
-                                "alt-supplier-c": {"value": 0.80},
+                                "alt-supplier-a": 0.65,
+                                "alt-supplier-c": 0.80,
                             },
                             "alt-supplier-c": {
-                                "alt-supplier-a": {"value": 0.30},
-                                "alt-supplier-b": {"value": 0.20},
+                                "alt-supplier-a": 0.30,
+                                "alt-supplier-b": 0.20,
                             },
                         }
                     },
@@ -74,16 +74,16 @@ HERRERA_VIEDMA_CRP_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                     "payload": {
                         "crit-overall": {
                             "alt-supplier-a": {
-                                "alt-supplier-b": {"value": 0.55},
-                                "alt-supplier-c": {"value": 0.75},
+                                "alt-supplier-b": 0.55,
+                                "alt-supplier-c": 0.75,
                             },
                             "alt-supplier-b": {
-                                "alt-supplier-a": {"value": 0.45},
-                                "alt-supplier-c": {"value": 0.60},
+                                "alt-supplier-a": 0.45,
+                                "alt-supplier-c": 0.60,
                             },
                             "alt-supplier-c": {
-                                "alt-supplier-a": {"value": 0.25},
-                                "alt-supplier-b": {"value": 0.40},
+                                "alt-supplier-a": 0.25,
+                                "alt-supplier-b": 0.40,
                             },
                         }
                     },

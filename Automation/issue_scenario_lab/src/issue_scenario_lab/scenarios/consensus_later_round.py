@@ -57,7 +57,7 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
         raise ScenarioLabError("pairwise payload does not contain the persisted Overall preference criterion")
     for matrix in payload.values():
         if set(matrix) != set(alternatives.values()) or any(
-            set(row) != set(alternatives.values()) - {row_id} or any(cell != {"value": ""} for cell in row.values()) for row_id, row in matrix.items()
+            set(row) != set(alternatives.values()) - {row_id} or any(value != "" for value in row.values()) for row_id, row in matrix.items()
         ):
             raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
     if phase == 0:
@@ -81,9 +81,9 @@ def _matrix(context: dict[str, Any], values: tuple[float, float, float]) -> dict
     bp, bu, pu = values
     payload = {
         criteria["Overall preference"]: {
-            balanced: {premium: {"value": bp}, budget: {"value": bu}},
-            premium: {balanced: {"value": 1 - bp}, budget: {"value": pu}},
-            budget: {balanced: {"value": 1 - bu}, premium: {"value": 1 - pu}},
+            balanced: {premium: bp, budget: bu},
+            premium: {balanced: 1 - bp, budget: pu},
+            budget: {balanced: 1 - bu, premium: 1 - pu},
         }
     }
     _validate_pairwise(payload, set(criteria.values()), {balanced, premium, budget})
@@ -163,7 +163,7 @@ def _validate_phase_zero_suggestions(raw: Any, collective: dict[str, Any], forbi
             for row_id, row in matrix.items():
                 if not isinstance(row, dict) or set(row) != alternative_ids - {row_id}:
                     raise ScenarioLabError("phase-zero suggestion matrix is incomplete")
-                if any(not isinstance(cell, dict) or not _finite(cell.get("value")) or not 0 <= cell["value"] <= 1 for cell in row.values()):
+                if any(not _finite(value) or not 0 <= value <= 1 for value in row.values()):
                     raise ScenarioLabError("phase-zero suggestion values are incompatible")
     return keys
 

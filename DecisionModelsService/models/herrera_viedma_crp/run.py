@@ -76,9 +76,9 @@ def _build_suggested_pairwise_payload(
             if row_index == col_index:
                 continue
 
-            payload[criterion_id][row_alternative_id][col_alternative_id] = {
-                "value": row[col_index]
-            }
+            payload[criterion_id][row_alternative_id][col_alternative_id] = row[
+                col_index
+            ]
 
     return payload
 

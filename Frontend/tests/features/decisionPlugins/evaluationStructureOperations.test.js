@@ -6,7 +6,6 @@ import {
   updateBestWorstComparison,
 } from "../../../src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/updateBestWorstCriteriaEvaluation.js";
 import { updateManualCriterionWeight } from "../../../src/features/decisionPlugins/evaluations/structures/manualCriteriaWeights/operations/updateManualCriterionWeight.js";
-import { updateCriterionAlternativePairwiseEvaluation } from "../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/updateCriterionAlternativePairwiseEvaluation.js";
 
 describe("evaluation structure operations", () => {
   it("builds and updates best-worst evaluations without mutating the input", () => {
@@ -51,24 +50,4 @@ describe("evaluation structure operations", () => {
     expect(evaluation.weightsByCriterion.cost).toBe(0.4);
   });
 
-  it("replaces only the selected criterion pairwise matrix", () => {
-    const evaluation = {
-      cost: { a: { b: { value: 2 } }, b: { a: { value: 4 } } },
-      quality: { a: { b: { value: 3 } }, b: { a: { value: 3 } } },
-    };
-    const nextComparisons = {
-      a: { b: { value: 1 } },
-      b: { a: { value: 5 } },
-    };
-
-    const next = updateCriterionAlternativePairwiseEvaluation({
-      evaluation,
-      criterionId: "cost",
-      nextComparisons,
-    });
-
-    expect(next.cost).toEqual(nextComparisons);
-    expect(next.quality).toEqual(evaluation.quality);
-    expect(evaluation.cost.a.b.value).toBe(2);
-  });
 });

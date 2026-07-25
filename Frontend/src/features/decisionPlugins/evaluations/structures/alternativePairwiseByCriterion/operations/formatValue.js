@@ -1,8 +1,8 @@
 import { findMatchingFuzzyLabel } from "../../../../../expressionDomains";
 import { isPlainObject } from "../../../../../../utils/common/objects";
-import { requireCanonicalPairwiseCell } from "./validateAlternativePairwiseEvaluation";
 
-const UNMATCHED_FUZZY_TOOLTIP = "No predefined label matches this derived inverse.";
+const UNMATCHED_FUZZY_TOOLTIP =
+  "No predefined label matches this derived inverse.";
 
 const formatNumericValue = (value) => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -12,15 +12,10 @@ const formatNumericValue = (value) => {
   return Number.parseFloat(value.toPrecision(12)).toString();
 };
 
-const resolveLabelTextOrThrow = ({ labelKey, expressionDomain }) => {
+const resolveLabelText = ({ labelKey, expressionDomain }) => {
   const labels = Array.isArray(expressionDomain?.definition?.labels)
     ? expressionDomain.definition.labels
-    : null;
-
-  if (!labels) {
-    throw new Error("Expression domain definition is invalid.");
-  }
-
+    : [];
   const label = labels.find((item) => item?.key === labelKey);
 
   if (!label) {
@@ -30,12 +25,7 @@ const resolveLabelTextOrThrow = ({ labelKey, expressionDomain }) => {
   return label.label;
 };
 
-export const describePairwiseCellValue = ({ cell, expressionDomain }) => {
-  const value = requireCanonicalPairwiseCell({
-    cell,
-    field: "cell",
-  }).value;
-
+export const formatValue = ({ value, expressionDomain }) => {
   if (value === "") {
     return {
       text: "",
@@ -53,17 +43,17 @@ export const describePairwiseCellValue = ({ cell, expressionDomain }) => {
 
     case "linguisticOrdinal":
       return {
-        text: resolveLabelTextOrThrow({
+        text: resolveLabelText({
           labelKey: value?.labelKey,
           expressionDomain,
         }),
         tooltip: null,
       };
 
-    case "linguisticFuzzy":
+    case "linguisticFuzzy": {
       if (isPlainObject(value) && typeof value.labelKey === "string") {
         return {
-          text: resolveLabelTextOrThrow({
+          text: resolveLabelText({
             labelKey: value.labelKey,
             expressionDomain,
           }),
@@ -84,19 +74,23 @@ export const describePairwiseCellValue = ({ cell, expressionDomain }) => {
           };
         }
 
+        const text = `[${value.values
+          .map((item) => Number.parseFloat(item.toPrecision(12)).toString())
+          .join(", ")}]`;
+
         return {
-          text: `[${value.values
-            .map((item) => Number.parseFloat(item.toPrecision(12)).toString())
-            .join(", ")}]`,
+          text,
           tooltip: UNMATCHED_FUZZY_TOOLTIP,
         };
       }
 
       throw new Error("Fuzzy pairwise value is invalid.");
+    }
 
     default:
       throw new Error("Expression domain type is invalid.");
   }
 };
 
-export const getUnmatchedFuzzyTooltipText = () => UNMATCHED_FUZZY_TOOLTIP;
+export const getUnmatchedFuzzyTooltipText = () =>
+  UNMATCHED_FUZZY_TOOLTIP;

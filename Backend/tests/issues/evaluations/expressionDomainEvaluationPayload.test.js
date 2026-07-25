@@ -6,8 +6,8 @@ import {
   resolveRequireValueFromModeOrThrow,
 } from "../../../modules/decisionPlugins/evaluations/shared/expressionDomainEvaluationPayload.js";
 import {
-  resolveRequireValueFromModeOrThrow as resolvePairwiseRequireValueFromModeOrThrow,
-} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/normalizeAlternativePairwiseEvaluation.js";
+  resolveRequireValue as resolvePairwiseRequireValueFromModeOrThrow,
+} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/operations/resolveRequireValue.js";
 
 describe("expressionDomainEvaluationPayload", () => {
   const numericContinuousDomain = {

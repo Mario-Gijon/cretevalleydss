@@ -79,7 +79,7 @@ def _raw_collective(phase: int) -> dict[str, list[list[float]]]:
 
 def _empty(phase: int) -> dict[str, Any]:
     ids = {"Balanced choice": "balanced", "Premium choice": "premium", "Budget choice": "budget"}
-    matrix = {row: {column: {"value": ""} for column in ids.values() if column != row} for row in ids.values()}
+    matrix = {row: {column: "" for column in ids.values() if column != row} for row in ids.values()}
     previous = _collective(phase - 1) if phase else {}
     return {
         "stage": "alternativeEvaluation",
@@ -194,9 +194,9 @@ class FakeClient:
             "consensusMeasure": PHASE_MEASURES[phase],
         }
         suggestion_matrix = {
-            "balanced": {"premium": {"value": 0.8}, "budget": {"value": 0.8}},
-            "premium": {"balanced": {"value": 0.2}, "budget": {"value": 0.7}},
-            "budget": {"balanced": {"value": 0.2}, "premium": {"value": 0.3}},
+            "balanced": {"premium": 0.8, "budget": 0.8},
+            "premium": {"balanced": 0.2, "budget": 0.7},
+            "budget": {"balanced": 0.2, "premium": 0.3},
         }
         suggestions = {"expert-a-id": {"payload": {"overall": suggestion_matrix}}, "expert-b-id": {"payload": {"overall": suggestion_matrix}}}
         plots = {"expert_points": [[0.1, -0.1], [-0.1, 0.1]], "collective_point": [0.0, 0.0]}

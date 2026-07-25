@@ -57,7 +57,7 @@ def _context_payload() -> dict[str, Any]:
     ids = {"Balanced choice": "balanced", "Premium choice": "premium", "Budget choice": "budget"}
     criteria = {"Overall preference": "overall"}
     empty = {
-        criterion_id: {row: {column: {"value": ""} for column in ids.values() if column != row} for row in ids.values()} for criterion_id in criteria.values()
+        criterion_id: {row: {column: "" for column in ids.values() if column != row} for row in ids.values()} for criterion_id in criteria.values()
     }
     return {
         "stage": "alternativeEvaluation",
