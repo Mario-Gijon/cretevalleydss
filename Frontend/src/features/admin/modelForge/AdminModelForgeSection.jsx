@@ -641,6 +641,28 @@ const ParameterCard = ({
           />
         </Box>
 
+        {parameter.parameterStructureKey === "numberGlobal" ? (
+          <Stack spacing={0.65}>
+            <Typography variant="caption" sx={{ fontWeight: 900 }}>
+              Numeric value type
+            </Typography>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              color="info"
+              value={parameter.valueType || "number"}
+              onChange={(_event, value) => {
+                if (value) {
+                  setParameterField(parameter.id, "valueType", value);
+                }
+              }}
+            >
+              <ToggleButton value="number">Number</ToggleButton>
+              <ToggleButton value="integer">Integer</ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+        ) : null}
+
         <Box
           sx={{
             display: "grid",

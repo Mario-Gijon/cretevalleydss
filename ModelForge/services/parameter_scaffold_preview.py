@@ -12,6 +12,36 @@ from services.template_renderer import render_template_strict
 PARAMETER_TEMPLATES_DIR = (
     Path(__file__).resolve().parent.parent / "templates" / "parameter"
 )
+NUMBER_GLOBAL_TEMPLATE_MAP = [
+    (
+        "number-global/backend-index.js.template",
+        "index.js",
+    ),
+    (
+        "number-global/backend-validate-metadata.js.template",
+        "operations/validateMetadata.js",
+    ),
+    (
+        "number-global/backend-validate-and-normalize.js.template",
+        "operations/validateAndNormalize.js",
+    ),
+    (
+        "number-global/frontend-index.js.template",
+        "index.js",
+    ),
+    (
+        "number-global/frontend-field.jsx.template",
+        "NumberGlobalParameterField.jsx",
+    ),
+    (
+        "number-global/frontend-field.styles.js.template",
+        "NumberGlobalParameterField.styles.js",
+    ),
+    (
+        "number-global/frontend-read-only.jsx.template",
+        "NumberGlobalParameterReadOnly.jsx",
+    ),
+]
 
 
 def _load_template(template_filename: str) -> str:
@@ -48,19 +78,32 @@ def build_parameter_scaffold_preview(
     )
     placeholders = _build_placeholder_values(request)
 
-    template_map = [
-        ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
-        ("backend-validate.js.template", f"{backend_target_base_path}/validate.js"),
-        ("frontend-index.js.template", f"{frontend_target_base_path}/index.js"),
-        (
-            "frontend-field.jsx.template",
-            f"{frontend_target_base_path}/{names.field_component_name}.jsx",
-        ),
-        (
-            "frontend-read-only.jsx.template",
-            f"{frontend_target_base_path}/{names.read_only_component_name}.jsx",
-        ),
-    ]
+    if names.parameter_structure_key == "numberGlobal":
+        template_map = [
+            (
+                template_name,
+                (
+                    f"{backend_target_base_path}/{relative_path}"
+                    if template_name.startswith("number-global/backend-")
+                    else f"{frontend_target_base_path}/{relative_path}"
+                ),
+            )
+            for template_name, relative_path in NUMBER_GLOBAL_TEMPLATE_MAP
+        ]
+    else:
+        template_map = [
+            ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
+            ("backend-validate.js.template", f"{backend_target_base_path}/validate.js"),
+            ("frontend-index.js.template", f"{frontend_target_base_path}/index.js"),
+            (
+                "frontend-field.jsx.template",
+                f"{frontend_target_base_path}/{names.field_component_name}.jsx",
+            ),
+            (
+                "frontend-read-only.jsx.template",
+                f"{frontend_target_base_path}/{names.read_only_component_name}.jsx",
+            ),
+        ]
 
     files = []
     for template_name, output_path in template_map:

@@ -66,6 +66,138 @@ def test_model_package_preview_rejects_malformed_payload(
     assert "issue or criteriaWeighting" in detail[0]["msg"]
 
 
+def test_model_package_preview_emits_canonical_number_global_metadata(
+    client_factory,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    model = valid_model_package_payload["model"]
+    model["parameters"] = [
+        {
+            "key": "iterations",
+            "label": "Iterations",
+            "valueType": "integer",
+            "scope": "global",
+            "parameterStructureKey": "numberGlobal",
+            "required": True,
+            "default": 10,
+            "restrictions": {
+                "min": 1,
+                "max": 100,
+                "allowed": None,
+            },
+        }
+    ]
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/preview",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 200
+    model_item = next(
+        item for item in response.json()["items"] if item["kind"] == "model"
+    )
+    definition = next(
+        file["content"]
+        for file in model_item["files"]
+        if file["path"].endswith("/definition.py")
+    )
+    assert "'parameterStructureKey': 'numberGlobal'" in definition
+    assert "'valueType': 'integer'" in definition
+    assert "'scope': 'global'" in definition
+
+    parameter_item = next(
+        item
+        for item in response.json()["items"]
+        if item["kind"] == "parameter" and item["key"] == "numberGlobal"
+    )
+    generated_files = {
+        file["path"]: file["content"] for file in parameter_item["files"]
+    }
+    backend_validation = generated_files[
+        "Backend/modules/decisionPlugins/modelParameters/structures/"
+        "numberGlobal/operations/validateAndNormalize.js"
+    ]
+    frontend_field = generated_files[
+        "Frontend/src/features/decisionPlugins/modelParameters/fields/"
+        "numberGlobal/NumberGlobalParameterField.jsx"
+    ]
+    assert "Number.isInteger(normalizedValue)" in backend_validation
+    assert "normalizeNumberValue(value)" in backend_validation
+    assert "Math.trunc" not in backend_validation
+    assert "onChange(event.target.value)" in frontend_field
+    assert 'step: isInteger ? 1 : "any"' in frontend_field
+    assert "handleTwoDecimals" not in frontend_field
+    assert "Math.trunc" not in frontend_field
+
+
+def test_model_package_preview_rejects_noncanonical_number_global_metadata(
+    client_factory,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    model = valid_model_package_payload["model"]
+    model["parameters"] = [
+        {
+            "key": "iterations",
+            "label": "Iterations",
+            "valueType": "integer",
+            "scope": "global",
+            "parameterStructureKey": "numberGlobal",
+            "required": True,
+            "default": 4.5,
+            "restrictions": {
+                "min": 1,
+                "max": 10,
+                "allowed": None,
+            },
+        }
+    ]
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/preview",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 422
+    assert "default must be an integer" in response.json()["detail"][0]["msg"]
+
+
+def test_model_package_preview_requires_number_global_value_type(
+    client_factory,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    model = valid_model_package_payload["model"]
+    model["parameters"] = [
+        {
+            "key": "alpha",
+            "label": "Alpha",
+            "scope": "global",
+            "parameterStructureKey": "numberGlobal",
+            "required": True,
+            "default": 0.5,
+            "restrictions": {
+                "min": 0,
+                "max": 1,
+                "allowed": None,
+            },
+        }
+    ]
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/preview",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 422
+    assert "valueType must be number or integer" in response.json()["detail"][0]["msg"]
+
+
 def test_model_package_apply_writes_expected_files_inside_temp_project_root(
     client_factory,
     monkeypatch,

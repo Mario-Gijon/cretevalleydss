@@ -50,6 +50,7 @@ describe("ModelsView", () => {
     expect(screen.getByTitle("Selected execution — Base")).not.toHaveTextContent("Base model");
     expect(screen.queryByTitle("Base · Base model")).not.toBeInTheDocument();
     expect(screen.getByText("Raw output")).toBeInTheDocument();
+    expect(screen.getByText("0.5")).toBeInTheDocument();
   });
 
   it("renders Base, stored scenarios, and the Add model card without old card metadata", () => {
@@ -71,6 +72,7 @@ describe("ModelsView", () => {
     expect(screen.queryByText("Remove")).not.toBeInTheDocument();
     expect(screen.getAllByLabelText("Base execution cannot be removed").length).toBeGreaterThan(0);
     expect(screen.getByTestId("LayersRoundedIcon")).toBeInTheDocument();
+    expect(screen.getByText("0.9")).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText("Remove Scenario"));
     expect(actions.removeScenario).toHaveBeenCalledWith("scenario-ok");

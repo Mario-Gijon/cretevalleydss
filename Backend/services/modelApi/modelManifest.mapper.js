@@ -100,6 +100,9 @@ export const normalizeEndpoint = (apiEndpoint, { emptyValue = null } = {}) => {
 
 export const normalizeParameter = (parameter = {}) => {
   const key = normalizeNonEmptyString(parameter?.key);
+  const parameterStructureKey = normalizeNonEmptyString(
+    parameter?.parameterStructureKey
+  );
 
   return {
     key,
@@ -108,9 +111,13 @@ export const normalizeParameter = (parameter = {}) => {
     description: normalizeNonEmptyString(parameter?.description),
     valueType: normalizeNonEmptyString(parameter?.valueType),
     scope: normalizeNonEmptyString(parameter?.scope),
-    parameterStructureKey: normalizeNonEmptyString(parameter?.parameterStructureKey),
+    parameterStructureKey,
     required: parameter?.required === true,
-    default: hasOwnKey(parameter || {}, "default") ? parameter.default : null,
+    ...(hasOwnKey(parameter || {}, "default")
+      ? { default: parameter.default }
+      : parameterStructureKey === "numberGlobal"
+        ? {}
+        : { default: null }),
     restrictions: normalizeDynamicObject(parameter?.restrictions),
   };
 };

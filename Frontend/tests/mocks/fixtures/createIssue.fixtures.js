@@ -127,8 +127,13 @@ const baseCreateIssueModel = {
   parameters: [
     {
       key: "threshold",
+      label: "Threshold",
+      valueType: "number",
+      scope: "global",
       default: 0.4,
       parameterStructureKey: "numberGlobal",
+      required: true,
+      restrictions: { min: null, max: null, allowed: null },
     },
     {
       key: "criterionScores",

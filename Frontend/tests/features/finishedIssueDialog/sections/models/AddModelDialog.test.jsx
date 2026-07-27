@@ -26,8 +26,12 @@ const enabledModel = {
     {
       key: "alpha",
       label: "Alpha",
+      valueType: "number",
+      scope: "global",
       parameterStructureKey: "numberGlobal",
+      required: true,
       default: 0.5,
+      restrictions: { min: 0, max: 1, allowed: null },
     },
   ],
 };

@@ -40,4 +40,15 @@ describe("model-parameter Decision Plugin public registry", () => {
       'Unsupported parameterStructureKey "future-unregistered-field" for parameter "alpha".'
     );
   });
+
+  it("dispatches numberGlobal through its canonical registry entry", () => {
+    const entry = resolveParameterFieldEntry({
+      key: "alpha",
+      parameterStructureKey: "numberGlobal",
+    });
+
+    expect(entry).toBe(PARAMETER_FIELD_REGISTRY.numberGlobal);
+    expect(entry.FieldComponent).toBeTruthy();
+    expect(entry.ReadOnlyComponent).toBeTruthy();
+  });
 });

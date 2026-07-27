@@ -58,7 +58,8 @@ export const updateCreateIssueParameterValues = ({
   leafCriteria,
 }) => {
   const parameters = getCreateIssueModelParameters(selectedModel);
-  const next = isPlainObject(previous) ? { ...previous } : {};
+  const previousValues = isPlainObject(previous) ? previous : {};
+  const next = {};
   const parameterContext = buildCreateIssueParameterContext({
     selectedModel,
     leafCriteria,
@@ -69,9 +70,9 @@ export const updateCreateIssueParameterValues = ({
     const key = parameter.key;
 
     if (!isCriterionMapParameter(parameter)) {
-      if (next[key] === undefined) {
-        next[key] = parameter.default ?? "";
-      }
+      next[key] = Object.prototype.hasOwnProperty.call(previousValues, key)
+        ? previousValues[key]
+        : parameter.default ?? "";
 
       return;
     }
@@ -83,7 +84,7 @@ export const updateCreateIssueParameterValues = ({
       return;
     }
 
-    const previousValue = next[key];
+    const previousValue = previousValues[key];
     const previousMap = isPlainObject(previousValue) ? previousValue : null;
     const scalarFallback =
       !isPlainObject(previousValue) &&

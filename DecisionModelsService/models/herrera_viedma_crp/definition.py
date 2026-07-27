@@ -91,6 +91,7 @@ MODEL_DEFINITION = ModelDefinition(
         {
             "key": "beta",
             "label": "Beta",
+            "valueType": "number",
             "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,

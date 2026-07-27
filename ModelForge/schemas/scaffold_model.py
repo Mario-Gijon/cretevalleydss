@@ -1,3 +1,4 @@
+import math
 import re
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -10,6 +11,126 @@ def _is_non_empty_string(value: str) -> bool:
 
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
 MODEL_KIND_VALUES = {"issue", "criteriaWeighting"}
+NUMBER_GLOBAL_VALUE_TYPES = {"number", "integer"}
+NUMBER_GLOBAL_RESTRICTION_KEYS = {"min", "max", "allowed"}
+NUMBER_GLOBAL_FORBIDDEN_KEYS = {
+    "isInteger",
+    "numericType",
+    "type",
+    "minimum",
+    "maximum",
+    "options",
+}
+
+
+def _is_finite_number(value) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    return isinstance(value, float) and math.isfinite(value)
+
+
+def _is_integer_number(value) -> bool:
+    return isinstance(value, int) or (
+        isinstance(value, float) and value.is_integer()
+    )
+
+
+def _validate_number_global_parameter(parameter: dict, index: int) -> None:
+    prefix = f"parameters[{index}]"
+    if not _is_non_empty_string(parameter.get("key")):
+        raise ValueError(f"{prefix}.key must be a non-empty string")
+    if not _is_non_empty_string(parameter.get("label")):
+        raise ValueError(f"{prefix}.label must be a non-empty string")
+    if parameter.get("scope") != "global":
+        raise ValueError(f"{prefix}.scope must be global for numberGlobal")
+
+    value_type = parameter.get("valueType")
+    if value_type not in NUMBER_GLOBAL_VALUE_TYPES:
+        raise ValueError(
+            f"{prefix}.valueType must be number or integer for numberGlobal"
+        )
+    if not isinstance(parameter.get("required"), bool):
+        raise ValueError(f"{prefix}.required must be boolean for numberGlobal")
+
+    forbidden_key = next(
+        (key for key in NUMBER_GLOBAL_FORBIDDEN_KEYS if key in parameter),
+        None,
+    )
+    if forbidden_key is not None:
+        raise ValueError(f"{prefix}.{forbidden_key} is not supported")
+
+    restrictions = parameter.get("restrictions")
+    if not isinstance(restrictions, dict):
+        raise ValueError(f"{prefix}.restrictions must be an object")
+    if set(restrictions) != NUMBER_GLOBAL_RESTRICTION_KEYS:
+        raise ValueError(
+            f"{prefix}.restrictions must contain exactly min, max, and allowed"
+        )
+
+    minimum = restrictions["min"]
+    maximum = restrictions["max"]
+    allowed = restrictions["allowed"]
+    for field_name, field_value in (("min", minimum), ("max", maximum)):
+        if field_value is not None and not _is_finite_number(field_value):
+            raise ValueError(
+                f"{prefix}.restrictions.{field_name} must be finite or null"
+            )
+        if (
+            value_type == "integer"
+            and field_value is not None
+            and not _is_integer_number(field_value)
+        ):
+            raise ValueError(
+                f"{prefix}.restrictions.{field_name} must be an integer"
+            )
+
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise ValueError(f"{prefix}.restrictions.min must not exceed max")
+
+    if allowed is not None and not isinstance(allowed, list):
+        raise ValueError(f"{prefix}.restrictions.allowed must be a list or null")
+    if isinstance(allowed, list):
+        seen = set()
+        for allowed_value in allowed:
+            if not _is_finite_number(allowed_value):
+                raise ValueError(
+                    f"{prefix}.restrictions.allowed must contain finite numbers"
+                )
+            if value_type == "integer" and not _is_integer_number(allowed_value):
+                raise ValueError(
+                    f"{prefix}.restrictions.allowed must contain integers"
+                )
+            if (
+                (minimum is not None and allowed_value < minimum)
+                or (maximum is not None and allowed_value > maximum)
+            ):
+                raise ValueError(
+                    f"{prefix}.restrictions.allowed values must satisfy the range"
+                )
+            if allowed_value in seen:
+                raise ValueError(
+                    f"{prefix}.restrictions.allowed must not contain duplicates"
+                )
+            seen.add(allowed_value)
+
+    if "default" not in parameter:
+        if parameter["required"]:
+            raise ValueError(f"{prefix}.default is required")
+        return
+
+    default = parameter["default"]
+    if not _is_finite_number(default):
+        raise ValueError(f"{prefix}.default must be a finite number")
+    if value_type == "integer" and not _is_integer_number(default):
+        raise ValueError(f"{prefix}.default must be an integer")
+    if (
+        (minimum is not None and default < minimum)
+        or (maximum is not None and default > maximum)
+        or (isinstance(allowed, list) and allowed and default not in allowed)
+    ):
+        raise ValueError(f"{prefix}.default must satisfy restrictions")
 
 
 class ModelScaffoldPreviewRequest(BaseModel):
@@ -125,11 +246,13 @@ class ModelScaffoldPreviewRequest(BaseModel):
     def validate_parameters(cls, value: list[dict]) -> list[dict]:
         if not isinstance(value, list):
             raise ValueError("parameters must be a list of objects")
-        for item in value:
+        for index, item in enumerate(value):
             if not isinstance(item, dict):
                 raise ValueError("parameters must be a list of objects")
             if "type" in item:
                 raise ValueError("parameter.type is not supported")
+            if item.get("parameterStructureKey") == "numberGlobal":
+                _validate_number_global_parameter(item, index)
         return value
 
 

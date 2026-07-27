@@ -82,6 +82,7 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
   const key = String(parameter?.key || "").trim();
   const label = String(parameter?.label || "").trim();
   const parameterStructureKey = String(parameter?.parameterStructureKey || "").trim();
+  const isNumberGlobal = parameterStructureKey === "numberGlobal";
 
   if (!key) throw new Error(`Parameter ${index + 1} is missing key`);
   if (!label) throw new Error(`Parameter ${index + 1} is missing label`);
@@ -157,7 +158,20 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
       throw new Error(`${identifier} advanced JSON must be a JSON object`);
     }
 
-    for (const protectedField of PROTECTED_ADVANCED_FIELDS) {
+    const protectedAdvancedFields = isNumberGlobal
+      ? new Set([
+        ...PROTECTED_ADVANCED_FIELDS,
+        "valueType",
+        "scope",
+        "isInteger",
+        "numericType",
+        "minimum",
+        "maximum",
+        "options",
+      ])
+      : PROTECTED_ADVANCED_FIELDS;
+
+    for (const protectedField of protectedAdvancedFields) {
       if (Object.prototype.hasOwnProperty.call(parsedAdvanced, protectedField)) {
         throw new Error(
           `${identifier} advanced JSON cannot override '${protectedField}'`
@@ -173,10 +187,128 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
     label,
     parameterStructureKey,
     required: parameter?.required === true,
-    default: defaultValue,
   };
 
-  if (restrictions !== undefined) {
+  if (isNumberGlobal) {
+    const valueType = String(parameter?.valueType || "").trim();
+    if (valueType !== "number" && valueType !== "integer") {
+      throw new Error(
+        `${identifier} valueType must be number or integer for numberGlobal`
+      );
+    }
+
+    const canonicalRestrictions = {
+      min: restrictions?.min ?? null,
+      max: restrictions?.max ?? null,
+      allowed: restrictions?.allowed ?? null,
+    };
+    const restrictionKeys = isPlainObject(restrictions)
+      ? Object.keys(restrictions)
+      : [];
+    if (
+      restrictionKeys.some(
+        (field) => !["min", "max", "allowed"].includes(field)
+      )
+    ) {
+      throw new Error(
+        `${identifier} numberGlobal restrictions may only contain min, max, and allowed`
+      );
+    }
+    if (
+      canonicalRestrictions.allowed !== null &&
+      !Array.isArray(canonicalRestrictions.allowed)
+    ) {
+      throw new Error(
+        `${identifier} numberGlobal allowed restriction must be an array or null`
+      );
+    }
+
+    const numericValues = [
+      canonicalRestrictions.min,
+      canonicalRestrictions.max,
+      ...(Array.isArray(canonicalRestrictions.allowed)
+        ? canonicalRestrictions.allowed
+        : []),
+    ].filter((value) => value !== null);
+    if (
+      numericValues.some(
+        (value) => typeof value !== "number" || !Number.isFinite(value)
+      )
+    ) {
+      throw new Error(
+        `${identifier} numberGlobal restrictions must contain finite numbers`
+      );
+    }
+    if (
+      valueType === "integer" &&
+      numericValues.some((value) => !Number.isInteger(value))
+    ) {
+      throw new Error(
+        `${identifier} integer restrictions must contain only integers`
+      );
+    }
+    if (
+      canonicalRestrictions.min !== null &&
+      canonicalRestrictions.max !== null &&
+      canonicalRestrictions.min > canonicalRestrictions.max
+    ) {
+      throw new Error(`${identifier} minimum must not exceed maximum`);
+    }
+    if (
+      Array.isArray(canonicalRestrictions.allowed) &&
+      new Set(canonicalRestrictions.allowed).size !==
+        canonicalRestrictions.allowed.length
+    ) {
+      throw new Error(
+        `${identifier} numberGlobal allowed restriction contains duplicates`
+      );
+    }
+    if (
+      Array.isArray(canonicalRestrictions.allowed) &&
+      canonicalRestrictions.allowed.some(
+        (value) =>
+          (canonicalRestrictions.min !== null &&
+            value < canonicalRestrictions.min) ||
+          (canonicalRestrictions.max !== null &&
+            value > canonicalRestrictions.max)
+      )
+    ) {
+      throw new Error(
+        `${identifier} numberGlobal allowed values must satisfy the range`
+      );
+    }
+
+    if (defaultMode !== "null") {
+      if (typeof defaultValue !== "number" || !Number.isFinite(defaultValue)) {
+        throw new Error(`${identifier} default must be a finite number`);
+      }
+      if (valueType === "integer" && !Number.isInteger(defaultValue)) {
+        throw new Error(`${identifier} integer default must be an integer`);
+      }
+      if (
+        (canonicalRestrictions.min !== null &&
+          defaultValue < canonicalRestrictions.min) ||
+        (canonicalRestrictions.max !== null &&
+          defaultValue > canonicalRestrictions.max) ||
+        (Array.isArray(canonicalRestrictions.allowed) &&
+          canonicalRestrictions.allowed.length > 0 &&
+          !canonicalRestrictions.allowed.includes(defaultValue))
+      ) {
+        throw new Error(`${identifier} default must satisfy restrictions`);
+      }
+      payload.default = defaultValue;
+    } else if (parameter?.required === true) {
+      throw new Error(`${identifier} required numberGlobal default is missing`);
+    }
+
+    payload.valueType = valueType;
+    payload.scope = "global";
+    payload.restrictions = canonicalRestrictions;
+  } else {
+    payload.default = defaultValue;
+  }
+
+  if (!isNumberGlobal && restrictions !== undefined) {
     payload.restrictions = restrictions;
   }
 
@@ -217,6 +349,7 @@ export const buildEmptyParameterRow = () => ({
   key: "",
   label: "",
   parameterStructureKey: "",
+  valueType: "number",
   required: false,
   defaultMode: "null",
   defaultLiteralText: "",

@@ -2,9 +2,53 @@ import { describe, expect, it } from "vitest";
 
 import { stripNullConstraintPlaceholders } from "../../../src/features/admin/modelForge/constraintTemplates.js";
 import {
+  buildParameterRowPayloadOrThrow,
   buildConstraintTemplateObjectOrThrow,
   buildSupportedExpressionDomainsPayloadOrThrow,
 } from "../../../src/features/admin/modelForge/scaffoldPayloadHelpers.js";
+
+describe("numberGlobal Model Forge parameter payload", () => {
+  const buildRow = (overrides = {}) => ({
+    key: "iterations",
+    label: "Iterations",
+    parameterStructureKey: "numberGlobal",
+    valueType: "integer",
+    required: true,
+    defaultMode: "literal",
+    defaultLiteralText: "10",
+    restrictionsMode: "minMax",
+    restrictionsMinText: "1",
+    restrictionsMaxText: "100",
+    advancedJsonText: "",
+    ...overrides,
+  });
+
+  it("emits explicit canonical numberGlobal metadata", () => {
+    expect(buildParameterRowPayloadOrThrow(buildRow(), 0)).toEqual({
+      key: "iterations",
+      label: "Iterations",
+      parameterStructureKey: "numberGlobal",
+      valueType: "integer",
+      scope: "global",
+      required: true,
+      default: 10,
+      restrictions: {
+        min: 1,
+        max: 100,
+        allowed: null,
+      },
+    });
+  });
+
+  it("rejects decimal integer defaults without truncating them", () => {
+    expect(() =>
+      buildParameterRowPayloadOrThrow(
+        buildRow({ defaultLiteralText: "4.5" }),
+        0
+      )
+    ).toThrow("integer default must be an integer");
+  });
+});
 
 describe("stripNullConstraintPlaceholders", () => {
   it("strips top-level null placeholders", () => {
