@@ -184,6 +184,7 @@ describe("EvaluationStructureDialog", () => {
     renderDialog();
 
     expect(screen.getByTestId("shell-loading")).toHaveTextContent("true");
+    expect(mockViewState.lastProps.evaluation).toBeNull();
 
     await waitFor(() => {
       expect(mockFetchIssueEvaluation).toHaveBeenCalledWith(
@@ -232,7 +233,7 @@ describe("EvaluationStructureDialog", () => {
     });
   });
 
-  it("falls back to local context and resets payload when boundary validation rejects", async () => {
+  it("keeps evaluation absent when boundary validation rejects", async () => {
     mockFetchIssueEvaluation.mockRejectedValue(
       new Error("Missing decisionContext in evaluation response.")
     );
@@ -249,12 +250,13 @@ describe("EvaluationStructureDialog", () => {
       );
     });
 
-    expect(screen.getByTestId("view-payload")).toHaveTextContent("{}");
-    expect(mockViewState.lastProps.decisionContext.issue.id).toBe("issue-eval-1");
-    expect(mockViewState.lastProps.decisionContext.leafCriteria).toHaveLength(2);
+    expect(
+      screen.getByText("Could not load evaluation context for this evaluation.")
+    ).toBeInTheDocument();
+    expect(mockViewState.lastProps.evaluation).toBeNull();
   });
 
-  it("falls back to local context when the service rejects and clears loading", async () => {
+  it("keeps evaluation absent when the service rejects and clears loading", async () => {
     mockFetchIssueEvaluation.mockRejectedValue(new Error("network"));
 
     renderDialog();
@@ -267,8 +269,10 @@ describe("EvaluationStructureDialog", () => {
       expect(screen.getByTestId("shell-loading")).toHaveTextContent("false");
     });
 
-    expect(mockViewState.lastProps.decisionContext.issue.id).toBe("issue-eval-1");
-    expect(screen.getByTestId("view-payload")).toHaveTextContent("{}");
+    expect(mockViewState.lastProps.evaluation).toBeNull();
+    expect(
+      screen.getByText("Could not load evaluation context for this evaluation.")
+    ).toBeInTheDocument();
   });
 
   it("closes directly when the payload is unchanged", async () => {
@@ -397,18 +401,13 @@ describe("EvaluationStructureDialog", () => {
     expect(setOpenIssueDialog).not.toHaveBeenCalled();
   });
 
-  it("clears all payload data and marks the dialog dirty against a non-empty snapshot", async () => {
+  it("does not expose a generic clear action that would fabricate a payload", async () => {
     renderDialog();
     await waitFor(() => expect(mockFetchIssueEvaluation).toHaveBeenCalled());
 
-    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-
-    expect(showSnackbarAlert).toHaveBeenCalledWith("All evaluations cleared", "success");
-    expect(screen.getByTestId("view-payload")).toHaveTextContent("{}");
-
-    await userEvent.click(screen.getByRole("button", { name: "request-close" }));
-
-    expect(await screen.findByText("Save changes?")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear all" })
+    ).not.toBeInTheDocument();
   });
 
   it("rejects functional updaters at the plugin boundary", async () => {

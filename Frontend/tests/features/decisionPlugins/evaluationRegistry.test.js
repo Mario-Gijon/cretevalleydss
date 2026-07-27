@@ -19,6 +19,9 @@ describe("evaluation Decision Plugin public registry", () => {
       expect(entry.key).toBe(key);
       expect(supportedStages.has(entry.stage)).toBe(true);
       expect(entry.View).toBeTruthy();
+      if (Object.hasOwn(entry, "buildInitialEvaluation")) {
+        expect(entry.buildInitialEvaluation).toBeTypeOf("function");
+      }
       expect(getEvaluationStructureEntry(key)).toBe(entry);
       expect(
         getEvaluationStructureEntryForStage({
@@ -27,6 +30,21 @@ describe("evaluation Decision Plugin public registry", () => {
         })
       ).toBe(entry);
     });
+  });
+
+  it("exposes creator initialization only for the reusable BWM structure", () => {
+    expect(
+      EVALUATION_STRUCTURE_REGISTRY.bestWorstCriteria.buildInitialEvaluation
+    ).toBeTypeOf("function");
+    expect(
+      EVALUATION_STRUCTURE_REGISTRY.manualCriteriaWeights
+    ).not.toHaveProperty("buildInitialEvaluation");
+    expect(
+      EVALUATION_STRUCTURE_REGISTRY.alternativeCriteriaMatrix
+    ).not.toHaveProperty("buildInitialEvaluation");
+    expect(
+      EVALUATION_STRUCTURE_REGISTRY.alternativePairwiseByCriterion
+    ).not.toHaveProperty("buildInitialEvaluation");
   });
 
   it("rejects unknown structures and stage mismatches at the registry boundary", () => {

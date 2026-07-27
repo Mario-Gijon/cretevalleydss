@@ -8,6 +8,7 @@ from schemas.scaffold_model_package import (
     ModelPackagePreviewRequest,
     ModelPackagePreviewResponse,
 )
+from schemas.scaffold_model import ModelScaffoldPreviewRequest
 from schemas.scaffold_parameter import ParameterScaffoldPreviewRequest
 from services.evaluation_structure_scaffold_preview import (
     build_evaluation_structure_scaffold_preview,
@@ -39,7 +40,11 @@ def build_model_package_preview(
     evaluation_requests = _collect_evaluation_structure_requests(request)
     for evaluation_request in evaluation_requests.values():
         items.append(
-            _build_evaluation_structure_item(evaluation_request, project_root)
+            _build_evaluation_structure_item(
+                evaluation_request,
+                project_root,
+                model=request.model,
+            )
         )
 
     parameter_requests = _collect_parameter_structure_requests(request)
@@ -96,7 +101,10 @@ def _build_model_item(
 
 
 def _build_evaluation_structure_item(
-    request: EvaluationStructureScaffoldPreviewRequest, project_root: Path
+    request: EvaluationStructureScaffoldPreviewRequest,
+    project_root: Path,
+    *,
+    model: ModelScaffoldPreviewRequest | None = None,
 ) -> ModelPackagePreviewItem:
     existence = get_evaluation_structure_existence(
         project_root, request.evaluationStructureKey
@@ -122,7 +130,10 @@ def _build_evaluation_structure_item(
             files=[],
         )
 
-    preview = build_evaluation_structure_scaffold_preview(request)
+    preview = build_evaluation_structure_scaffold_preview(
+        request,
+        model=model,
+    )
     return ModelPackagePreviewItem(
         kind="evaluation-structure",
         key=request.evaluationStructureKey,

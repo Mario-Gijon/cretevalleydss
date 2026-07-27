@@ -5,6 +5,7 @@ from schemas.scaffold_evaluation_structure import (
     EvaluationStructureScaffoldPreviewRequest,
     EvaluationStructureScaffoldPreviewResponse,
 )
+from schemas.scaffold_model import ModelScaffoldPreviewRequest
 from services.evaluation_structure_scaffold_names import (
     build_evaluation_structure_scaffold_names,
 )
@@ -24,6 +25,8 @@ def _load_template(template_filename: str) -> str:
 
 def _build_placeholder_values(
     request: EvaluationStructureScaffoldPreviewRequest,
+    *,
+    scaffold_creator_initializer: bool,
 ) -> dict[str, str]:
     names = build_evaluation_structure_scaffold_names(request)
 
@@ -34,11 +37,41 @@ def _build_placeholder_values(
         "get_function_name": names.get_function_name,
         "save_function_name": names.save_function_name,
         "view_component_name": names.view_component_name,
+        "build_initial_evaluation_import": (
+            'import { buildInitialEvaluation } from '
+            '"./operations/buildInitialEvaluation";'
+            if scaffold_creator_initializer
+            else ""
+        ),
+        "build_initial_evaluation_registry_field": (
+            "  buildInitialEvaluation,"
+            if scaffold_creator_initializer
+            else ""
+        ),
     }
+
+
+def _should_scaffold_creator_initializer(
+    *,
+    request: EvaluationStructureScaffoldPreviewRequest,
+    model: ModelScaffoldPreviewRequest | None,
+) -> bool:
+    if model is None:
+        return False
+
+    return (
+        request.stageConstant == "CRITERIA_WEIGHTING"
+        and model.modelKind == "criteriaWeighting"
+        and model.supportsCreatorCriteriaWeighting is True
+        and model.apiModelKey != "manual_criteria_weights"
+        and request.evaluationStructureKey != "manualCriteriaWeights"
+    )
 
 
 def build_evaluation_structure_scaffold_preview(
     request: EvaluationStructureScaffoldPreviewRequest,
+    *,
+    model: ModelScaffoldPreviewRequest | None = None,
 ) -> EvaluationStructureScaffoldPreviewResponse:
     names = build_evaluation_structure_scaffold_names(request)
     backend_target_base_path = (
@@ -49,7 +82,14 @@ def build_evaluation_structure_scaffold_preview(
         "Frontend/src/features/decisionPlugins/evaluations/structures/"
         f"{names.evaluation_structure_key}"
     )
-    placeholders = _build_placeholder_values(request)
+    scaffold_creator_initializer = _should_scaffold_creator_initializer(
+        request=request,
+        model=model,
+    )
+    placeholders = _build_placeholder_values(
+        request,
+        scaffold_creator_initializer=scaffold_creator_initializer,
+    )
 
     template_map = [
         ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
@@ -67,6 +107,13 @@ def build_evaluation_structure_scaffold_preview(
             f"{frontend_target_base_path}/{names.view_component_name}.jsx",
         ),
     ]
+    if scaffold_creator_initializer:
+        template_map.append(
+            (
+                "frontend-build-initial-evaluation.js.template",
+                f"{frontend_target_base_path}/operations/buildInitialEvaluation.js",
+            )
+        )
 
     files = []
     for template_name, output_path in template_map:

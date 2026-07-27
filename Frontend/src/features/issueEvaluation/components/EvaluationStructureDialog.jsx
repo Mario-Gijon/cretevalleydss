@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button } from "@mui/material";
+import { Alert, Box, Button } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
@@ -56,14 +55,17 @@ const EvaluationStructureDialog = ({
   const [decisionContext, setDecisionContext] = useState(
     fallbackDecisionContext
   );
-  const [evaluation, setEvaluationState] = useState({});
+  const [evaluation, setEvaluationState] = useState(null);
   const [initialSnapshot, setInitialSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [showCollective, setShowCollective] = useState(false);
   const [collectiveEvaluation, setCollectiveEvaluation] = useState(null);
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const issueId = String(issue?.id ?? issue?._id ?? "").trim() || null;
+  const evaluationLoading =
+    loading || (isOpen === true && evaluation === null && !loadError);
 
   const setEvaluation = (nextEvaluation) => {
     setEvaluationState(requireCompleteEvaluationObject(nextEvaluation));
@@ -75,10 +77,11 @@ const EvaluationStructureDialog = ({
     const loadEvaluation = async () => {
       setLoading(true);
       setDecisionContext(fallbackDecisionContext);
-      setEvaluationState({});
-      setInitialSnapshot(JSON.stringify({}));
+      setEvaluationState(null);
+      setInitialSnapshot(null);
       setCollectiveEvaluation(null);
       setShowCollective(false);
+      setLoadError("");
       try {
         const {
           decisionContext: responseDecisionContext,
@@ -92,15 +95,18 @@ const EvaluationStructureDialog = ({
         setShowCollective(nextCollectiveEvaluation !== null);
         setInitialSnapshot(JSON.stringify(nextEvaluation));
       } catch {
+        const message =
+          "Could not load evaluation context for this evaluation.";
         showSnackbarAlert(
-          "Could not load evaluation context for this evaluation.",
+          message,
           "error"
         );
         setDecisionContext(fallbackDecisionContext);
-        setEvaluationState({});
+        setEvaluationState(null);
         setCollectiveEvaluation(null);
         setShowCollective(false);
-        setInitialSnapshot(JSON.stringify({}));
+        setInitialSnapshot(null);
+        setLoadError(message);
       } finally {
         setLoading(false);
       }
@@ -116,11 +122,6 @@ const EvaluationStructureDialog = ({
     }
 
     setIsOpen(false);
-  };
-
-  const handleClear = () => {
-    setEvaluationState({});
-    showSnackbarAlert("All evaluations cleared", "success");
   };
 
   const handleSave = async () => {
@@ -187,6 +188,9 @@ const EvaluationStructureDialog = ({
     if (!View) {
       return null;
     }
+    if (loadError) {
+      return <Alert severity="error">{loadError}</Alert>;
+    }
 
     const visibleCollectiveEvaluation = showCollective
       ? collectiveEvaluation
@@ -197,7 +201,7 @@ const EvaluationStructureDialog = ({
       setEvaluation,
       collectiveEvaluation: visibleCollectiveEvaluation,
       readOnly: false,
-      loading,
+      loading: evaluationLoading,
     };
 
     return <View {...viewProps} />;
@@ -212,7 +216,7 @@ const EvaluationStructureDialog = ({
       <AlternativeEvaluationDialogShell
         open={isOpen}
         onClose={handleCloseRequest}
-        loading={loading}
+        loading={evaluationLoading}
         fullScreen={isMobile}
         maxWidth="lg"
         icon={null}
@@ -226,15 +230,6 @@ const EvaluationStructureDialog = ({
         contentSx={{ p: { xs: 1.5, sm: 2.2 } }}
         actions={
           <>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleClear}
-              startIcon={<DeleteSweepOutlinedIcon />}
-            >
-              Clear all
-            </Button>
-
             <Box sx={{ flex: 1 }} />
 
             <Button
@@ -242,6 +237,7 @@ const EvaluationStructureDialog = ({
               color="success"
               onClick={handleOpenSubmit}
               startIcon={<PublishOutlinedIcon />}
+              disabled={evaluationLoading || evaluation === null}
             >
               Submit
             </Button>

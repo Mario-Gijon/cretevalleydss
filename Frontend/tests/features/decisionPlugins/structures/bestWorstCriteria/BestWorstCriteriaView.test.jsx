@@ -32,14 +32,13 @@ const renderView = (props = {}) =>
   );
 
 describe("BestWorstCriteriaView", () => {
-  it("builds an empty UI without implicit selections or comparison rows", () => {
+  it("requires a supplied canonical evaluation outside loading", () => {
     renderView({ evaluation: null });
 
-    expect(screen.getAllByRole("combobox")).toHaveLength(2);
-    expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);
     expect(
-      screen.getAllByText("Select a criterion to enter its comparisons.")
-    ).toHaveLength(2);
+      screen.getByText("BWM evaluation must be an object.")
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
   it("renders comparisons only after selections are present", () => {

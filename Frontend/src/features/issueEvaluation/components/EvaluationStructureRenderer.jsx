@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Box } from "@mui/material";
+import { Alert, Box } from "@mui/material";
 
 import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/registry";
 import { buildDecisionContext } from "../logic/buildDecisionContext";
@@ -48,23 +48,22 @@ const EvaluationStructureRenderer = ({
     },
     [providedDecisionContext, issue, stage, structureEntry]
   );
-  const evaluation = useMemo(() => {
-    if (!decisionContext) {
-      return {};
-    }
-
-    return providedEvaluation ?? {};
-  }, [decisionContext, providedEvaluation]);
-
   if (!View || !decisionContext) {
     return null;
+  }
+  if (loading !== true && providedEvaluation == null) {
+    return (
+      <Alert severity="error">
+        Evaluation payload is unavailable.
+      </Alert>
+    );
   }
 
   return (
     <Box sx={{ width: "100%", minWidth: 0 }}>
       <View
         decisionContext={decisionContext}
-        evaluation={evaluation}
+        evaluation={providedEvaluation}
         setEvaluation={READ_ONLY_SET_EVALUATION}
         collectiveEvaluation={collectiveEvaluation}
         readOnly={readOnly === true}

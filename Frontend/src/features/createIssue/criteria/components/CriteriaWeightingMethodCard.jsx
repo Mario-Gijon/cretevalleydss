@@ -15,6 +15,7 @@ export const CriteriaWeightingMethodCard = ({
   return (
     <Box
       role="button"
+      aria-disabled={disabled}
       tabIndex={disabled ? -1 : 0}
       onClick={handleClick}
       onKeyDown={(event) => {

@@ -29,17 +29,13 @@ const renderView = (props = {}) =>
   );
 
 describe("ManualCriteriaWeightsView", () => {
-  it("renders an empty canonical payload without inventing equal weights", () => {
+  it("requires a supplied canonical evaluation outside loading", () => {
     renderView({ evaluation: null });
 
-    expect(screen.getAllByRole("spinbutton").map((input) => input.value)).toEqual(
-      ["", "", ""]
-    );
     expect(
-      screen.getByText(
-        "Assign each criterion a weight between 0 and 1. Submitted weights must sum to 1."
-      )
+      screen.getByText("Manual-weight evaluation must be an object.")
     ).toBeInTheDocument();
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
   });
 
   it("renders individual values and formatted collective values once per criterion", () => {

@@ -1,6 +1,6 @@
 import re
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from schemas.scaffold_common import ScaffoldedFile
 
 
@@ -20,6 +20,8 @@ class ModelScaffoldPreviewRequest(BaseModel):
     moreInfoUrl: str | None = None
     modelKind: str
     evaluationStructureKey: str
+    supportsCreatorCriteriaWeighting: bool = False
+    supportsExpertCriteriaWeighting: bool = False
     supportsConsensus: bool = False
     supportsConsensusSimulation: bool = False
     isMultiCriteria: bool = True
@@ -30,6 +32,19 @@ class ModelScaffoldPreviewRequest(BaseModel):
     supportedExpressionDomains: list[dict] = Field(default_factory=list)
     parameters: list[dict] = Field(default_factory=list)
     includeExamples: bool = True
+
+    @model_validator(mode="after")
+    def validate_criteria_weighting_capabilities(self):
+        if (
+            self.modelKind == "criteriaWeighting"
+            and self.supportsCreatorCriteriaWeighting is not True
+            and self.supportsExpertCriteriaWeighting is not True
+        ):
+            raise ValueError(
+                "criteriaWeighting models must support creator-side or expert-side weighting"
+            )
+
+        return self
 
     @field_validator("apiModelKey")
     @classmethod

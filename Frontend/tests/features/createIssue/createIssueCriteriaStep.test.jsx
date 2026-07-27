@@ -138,6 +138,13 @@ describe("CriteriaStep manual equal weights", () => {
 
     renderWithProviders(<CriteriaStep />);
 
+    expect(screen.getByRole("button", { name: "Equal weights" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Assign each criterion a weight between 0 and 1. Submitted weights must sum to 1."
+      )
+    ).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Equal weights" }));
 
     expect(setDefaultModelParams).toHaveBeenCalledWith(false);

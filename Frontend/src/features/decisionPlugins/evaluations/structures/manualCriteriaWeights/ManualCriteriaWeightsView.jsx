@@ -3,7 +3,6 @@ import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import { manualCriteriaWeightsViewSx } from "./ManualCriteriaWeightsView.styles";
 import WeightField from "./components/WeightField";
-import { buildEmptyPayload } from "./operations/buildEmptyPayload";
 import { resolveCollective } from "./operations/resolveCollective";
 import { resolveCriteria } from "./operations/resolveCriteria";
 import { updateWeight } from "./operations/updateWeight";
@@ -19,16 +18,10 @@ const ManualCriteriaWeightsView = ({
   readOnly,
   loading,
 }) => {
-  const sourceCriteria =
-    decisionContext?.leafCriteria === undefined
-      ? EMPTY_ITEMS
-      : decisionContext.leafCriteria;
   const criteriaResolution = useMemo(() => {
     try {
       return {
-        criteria: resolveCriteria({
-          decisionContext: { leafCriteria: sourceCriteria },
-        }),
+        criteria: resolveCriteria({ decisionContext }),
         message: "",
       };
     } catch (error) {
@@ -40,7 +33,7 @@ const ManualCriteriaWeightsView = ({
             : "Manual-weight criteria are invalid.",
       };
     }
-  }, [sourceCriteria]);
+  }, [decisionContext]);
   const criteria = criteriaResolution.criteria || EMPTY_ITEMS;
   const evaluationResolution = useMemo(() => {
     if (!criteriaResolution.criteria) {
@@ -48,10 +41,7 @@ const ManualCriteriaWeightsView = ({
     }
 
     try {
-      const payload =
-        evaluation === null || evaluation === undefined
-          ? buildEmptyPayload({ criteria })
-          : validateEvaluation({ criteria, evaluation });
+      const payload = validateEvaluation({ criteria, evaluation });
 
       return { payload, message: "" };
     } catch (error) {

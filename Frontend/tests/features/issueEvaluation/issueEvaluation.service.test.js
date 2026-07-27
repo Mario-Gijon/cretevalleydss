@@ -41,16 +41,12 @@ describe("issueEvaluation.service", () => {
     expect(getIssueEvaluation).toHaveBeenCalledWith(issue, "alternativeEvaluation");
   });
 
-  it("normalizes optional evaluation data without accepting a missing context", () => {
+  it("rejects missing context or missing canonical evaluation data", () => {
     const decisionContext = { issue: { id: "issue-2" } };
 
-    expect(
+    expect(() =>
       normalizeIssueEvaluationResponse({ data: { decisionContext } })
-    ).toEqual({
-      decisionContext,
-      evaluation: {},
-      collectiveEvaluation: null,
-    });
+    ).toThrow("Missing or invalid evaluation payload");
     expect(() =>
       normalizeIssueEvaluationResponse({ data: { payload: { stale: true } } })
     ).toThrow("Missing decisionContext in evaluation response.");

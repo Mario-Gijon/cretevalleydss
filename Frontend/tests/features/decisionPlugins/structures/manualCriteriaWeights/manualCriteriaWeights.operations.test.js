@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEmptyPayload } from "../../../../../src/features/decisionPlugins/evaluations/structures/manualCriteriaWeights/operations/buildEmptyPayload.js";
 import { resolveCollective } from "../../../../../src/features/decisionPlugins/evaluations/structures/manualCriteriaWeights/operations/resolveCollective.js";
 import { resolveCriteria } from "../../../../../src/features/decisionPlugins/evaluations/structures/manualCriteriaWeights/operations/resolveCriteria.js";
 import { updateWeight } from "../../../../../src/features/decisionPlugins/evaluations/structures/manualCriteriaWeights/operations/updateWeight.js";
@@ -12,15 +11,12 @@ const criteria = [
   { id: "delivery", name: "Delivery", index: 2 },
 ];
 
-const emptyEvaluation = {
-  weightsByCriterion: { cost: "", quality: "", delivery: "" },
-};
 const completeEvaluation = {
   weightsByCriterion: { cost: 0.3, quality: 0.5, delivery: 0.2 },
 };
 
 describe("manualCriteriaWeights operations", () => {
-  it("resolves ordered criteria and builds blank canonical state", () => {
+  it("resolves ordered criteria without owning creator initialization", () => {
     expect(
       resolveCriteria({
         decisionContext: {
@@ -28,7 +24,6 @@ describe("manualCriteriaWeights operations", () => {
         },
       })
     ).toEqual(criteria);
-    expect(buildEmptyPayload({ criteria })).toEqual(emptyEvaluation);
   });
 
   it("validates exact canonical draft state", () => {

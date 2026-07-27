@@ -18,6 +18,17 @@ const isValidEvaluationStructure = (value) =>
   isNonEmptyString(value.stage) &&
   isReactComponentCandidate(value.View);
 
+const validateOptionalCapabilities = ({ structure, modulePath }) => {
+  if (
+    Object.hasOwn(structure, "buildInitialEvaluation") &&
+    typeof structure.buildInitialEvaluation !== "function"
+  ) {
+    throw new Error(
+      `${modulePath} buildInitialEvaluation must be a function when provided`
+    );
+  }
+};
+
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/structures\/([^/]+)\/index\.js$/);
   if (!match) {
@@ -58,6 +69,8 @@ const buildEvaluationStructureRegistry = () => {
       modulePath,
     });
     const folderName = extractFolderName(modulePath);
+
+    validateOptionalCapabilities({ structure, modulePath });
 
     if (structure.key !== folderName) {
       throw new Error(

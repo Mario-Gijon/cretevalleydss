@@ -15,6 +15,10 @@ import {
   modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
 } from "../../logic/createIssueCriteriaWeighting";
+import {
+  buildCriteriaWeightingInitializationIdentity,
+  buildCreatorCriteriaWeightingInitialization,
+} from "../../logic/createIssueCriteriaWeightingInitialization";
 import { resolveAssignedDomainIds } from "../../logic/createIssueAssignedDomains";
 import { collectLeafCriteriaByRoot } from "../../logic/createIssueCriteriaTree";
 import {
@@ -119,6 +123,25 @@ export const CriteriaWeightingPanel = ({
         (modelItem) => modelItem?.supportsCreatorCriteriaWeighting === true
       ),
     [visibleApiCriteriaWeightingModels]
+  );
+  const creatorApiCriteriaWeightingOptions = useMemo(
+    () =>
+      creatorApiCriteriaWeightingModels.map((modelItem) => {
+        const structureEntry = getEvaluationStructureEntryForStage({
+          structureKey: modelItem?.evaluationStructureKey || "",
+          stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        });
+        const canInitialize =
+          Boolean(structureEntry?.View) &&
+          typeof structureEntry?.buildInitialEvaluation === "function";
+
+        return {
+          model: modelItem,
+          structureEntry,
+          canInitialize,
+        };
+      }),
+    [creatorApiCriteriaWeightingModels]
   );
   const expertApiCriteriaWeightingModels = useMemo(
     () =>
@@ -283,7 +306,8 @@ export const CriteriaWeightingPanel = ({
     modelUsesWeights,
     setCriteriaWeightingConfig,
   ]);
-  const safeConfig = criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
+  const safeConfig =
+    criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
 
   const criteriaWeightingDecisionContext = useMemo(() => {
     if (!selectedCriteriaWeightingStructureEntry) {
@@ -303,7 +327,8 @@ export const CriteriaWeightingPanel = ({
       model: selectedApiCriteriaWeightingModel,
       parameters: {
         modelParameters: {},
-        criteriaWeightingParameters: safeConfig?.criteriaWeightingParameters || {},
+        criteriaWeightingParameters:
+          safeConfig?.criteriaWeightingParameters || {},
       },
       alternatives: [],
       criteriaTree: criteria,
@@ -316,13 +341,84 @@ export const CriteriaWeightingPanel = ({
     leafCriteria,
     safeConfig?.criteriaWeightingParameters,
   ]);
+  const creatorInitializationIdentity = useMemo(() => {
+    if (
+      mode !== CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ||
+      !criteriaWeightingDecisionContext ||
+      !selectedApiCriteriaWeightingModel ||
+      !selectedCriteriaWeightingStructureEntry?.View ||
+      typeof selectedCriteriaWeightingStructureEntry
+        ?.buildInitialEvaluation !== "function"
+    ) {
+      return null;
+    }
+
+    return buildCriteriaWeightingInitializationIdentity({
+      criteriaWeightingModel: selectedApiCriteriaWeightingModel,
+      structureEntry: selectedCriteriaWeightingStructureEntry,
+      decisionContext: criteriaWeightingDecisionContext,
+    });
+  }, [
+    criteriaWeightingDecisionContext,
+    mode,
+    selectedApiCriteriaWeightingModel,
+    selectedCriteriaWeightingStructureEntry,
+  ]);
+
+  useEffect(() => {
+    if (!setCriteriaWeightingConfig || !creatorInitializationIdentity) {
+      return;
+    }
+
+    if (
+      safeConfig?.initializationIdentity ===
+        creatorInitializationIdentity &&
+      safeConfig?.payload &&
+      typeof safeConfig.payload === "object" &&
+      !Array.isArray(safeConfig.payload)
+    ) {
+      return;
+    }
+
+    const initialization = buildCreatorCriteriaWeightingInitialization({
+      criteriaWeightingModel: selectedApiCriteriaWeightingModel,
+      structureEntry: selectedCriteriaWeightingStructureEntry,
+      decisionContext: criteriaWeightingDecisionContext,
+    });
+
+    setCriteriaWeightingConfig({
+      ...safeConfig,
+      payload: initialization.evaluation,
+      initializationIdentity: creatorInitializationIdentity,
+    });
+  }, [
+    criteriaWeightingDecisionContext,
+    creatorInitializationIdentity,
+    safeConfig,
+    selectedApiCriteriaWeightingModel,
+    selectedCriteriaWeightingStructureEntry,
+    setCriteriaWeightingConfig,
+  ]);
+
   const criteriaWeightingEvaluation = useMemo(() => {
     if (!criteriaWeightingDecisionContext) {
       return null;
     }
+    if (
+      mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
+      safeConfig?.initializationIdentity !== creatorInitializationIdentity
+    ) {
+      return null;
+    }
 
-    return safeConfig?.payload ?? {};
-  }, [criteriaWeightingDecisionContext, safeConfig?.payload]);
+    return safeConfig?.payload ?? null;
+  }, [
+    criteriaWeightingDecisionContext,
+    creatorInitializationIdentity,
+    mode,
+    safeConfig?.initializationIdentity,
+    safeConfig?.payload,
+  ]);
   if (!modelUsesWeights) {
     return null;
   }
@@ -424,7 +520,8 @@ export const CriteriaWeightingPanel = ({
             }
           />
 
-          {creatorApiCriteriaWeightingModels.map((criteriaModel) => {
+          {creatorApiCriteriaWeightingOptions.map((creatorOption) => {
+            const criteriaModel = creatorOption.model;
             const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
             const selected =
               mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
@@ -438,17 +535,51 @@ export const CriteriaWeightingPanel = ({
                 title={getCriteriaWeightingModelLabel(criteriaModel)}
                 description="Compute now"
                 selected={selected}
-                disabled={isSingleCriterion}
-                onClick={() =>
-                  updateConfig(
-                    buildApiCriteriaWeightingConfig({
+                disabled={isSingleCriterion || !creatorOption.canInitialize}
+                onClick={() => {
+                  const decisionContext =
+                    buildDecisionContext({
+                      issue: {
+                        id: null,
+                        name: null,
+                        currentStage:
+                          EVALUATION_STAGES.CRITERIA_WEIGHTING,
+                        consensusPhase: 0,
+                        isConsensus: false,
+                      },
+                      stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+                      structure: creatorOption.structureEntry,
+                      model: criteriaModel,
+                      parameters: {
+                        modelParameters: {},
+                        criteriaWeightingParameters: {},
+                      },
+                      alternatives: [],
+                      criteriaTree: criteria,
+                      leafCriteria,
+                    });
+                  const initialization =
+                    buildCreatorCriteriaWeightingInitialization({
+                      criteriaWeightingModel: criteriaModel,
+                      structureEntry: creatorOption.structureEntry,
+                      decisionContext,
+                    });
+                  const nextConfig = buildApiCriteriaWeightingConfig({
                       mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
                       leafCriteria,
                       criteriaWeightingModel: criteriaModel,
-                    }),
+                    });
+
+                  updateConfig(
+                    {
+                      ...nextConfig,
+                      payload: initialization.evaluation,
+                      initializationIdentity:
+                        initialization.initializationIdentity,
+                    },
                     { markDirty: true }
-                  )
-                }
+                  );
+                }}
               />
             );
           })}
@@ -491,6 +622,24 @@ export const CriteriaWeightingPanel = ({
         </Alert>
       ) : null}
 
+      {!isFuzzyModel
+        ? creatorApiCriteriaWeightingOptions
+            .filter((option) => !option.canInitialize)
+            .map((option) => (
+              <Alert
+                severity="warning"
+                key={`${String(
+                  option.model?._id || option.model?.apiModelKey
+                )}-creator-unavailable`}
+              >
+                {getCriteriaWeightingModelLabel(option.model)} cannot be
+                computed during issue creation because its evaluation
+                structure does not expose both a View and
+                buildInitialEvaluation.
+              </Alert>
+            ))
+        : null}
+
       {manualByExpertsSelected ? (
         <Alert severity="info">
           Criteria weights will be collected from experts and aggregated before alternative evaluation.
@@ -505,27 +654,36 @@ export const CriteriaWeightingPanel = ({
 
       {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ? (
         SelectedCriteriaWeightingView &&
-        criteriaWeightingDecisionContext ? (
-          <SelectedCriteriaWeightingView
-            decisionContext={criteriaWeightingDecisionContext}
-            evaluation={criteriaWeightingEvaluation}
-            setEvaluation={(nextEvaluation) =>
-              updateConfig(
-                {
-                  ...safeConfig,
-                  payload: requireCompleteEvaluationObject(nextEvaluation),
-                },
-                { markDirty: true }
-              )
-            }
-            collectiveEvaluation={null}
-            readOnly={false}
-            loading={false}
-          />
+        criteriaWeightingDecisionContext &&
+        typeof selectedCriteriaWeightingStructureEntry
+          ?.buildInitialEvaluation === "function" ? (
+          criteriaWeightingEvaluation !== null ? (
+            <SelectedCriteriaWeightingView
+              decisionContext={criteriaWeightingDecisionContext}
+              evaluation={criteriaWeightingEvaluation}
+              setEvaluation={(nextEvaluation) =>
+                updateConfig(
+                  {
+                    ...safeConfig,
+                    payload: requireCompleteEvaluationObject(nextEvaluation),
+                  },
+                  { markDirty: true }
+                )
+              }
+              collectiveEvaluation={null}
+              readOnly={false}
+              loading={false}
+            />
+          ) : (
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Preparing the criteria weighting evaluation…
+            </Typography>
+          )
         ) : (
           <Alert severity="warning">
             This criteria weighting model cannot be computed during issue creation
-            because its structure does not expose a view.
+            because its structure does not expose both a View and
+            buildInitialEvaluation.
           </Alert>
         )
       ) : null}

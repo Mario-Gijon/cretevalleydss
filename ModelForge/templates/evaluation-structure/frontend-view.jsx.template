@@ -18,7 +18,7 @@ const {{ view_component_name }} = ({
   // evaluation is the complete current payload.
 
   // To replace the complete payload:
-  // const nextEvaluation = structuredClone(evaluation ?? {});
+  // const nextEvaluation = structuredClone(evaluation);
   // Modify nextEvaluation according to this structure.
   // setEvaluation(nextEvaluation);
 

@@ -17,6 +17,12 @@ const evaluation = {
   bestToOthers: { quality: 1, cost: 5, delivery: 3 },
   othersToWorst: { quality: 5, cost: 1, delivery: 3 },
 };
+const emptyEvaluation = {
+  bestCriterionId: "",
+  worstCriterionId: "",
+  bestToOthers: { quality: "", cost: "", delivery: "" },
+  othersToWorst: { quality: "", cost: "", delivery: "" },
+};
 
 const chooseOption = (selectorName, optionName) => {
   fireEvent.mouseDown(screen.getByRole("combobox", { name: selectorName }));
@@ -29,7 +35,7 @@ describe("BestWorstCriteriaView interaction", () => {
     renderWithProviders(
       <BestWorstCriteriaView
         decisionContext={decisionContext}
-        evaluation={null}
+        evaluation={emptyEvaluation}
         setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}

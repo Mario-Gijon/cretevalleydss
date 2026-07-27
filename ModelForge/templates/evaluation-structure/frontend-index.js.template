@@ -8,10 +8,12 @@
 
 import { EVALUATION_STAGES } from "../../evaluationStages";
 import {{ view_component_name }} from "./{{ view_component_name }}";
+{{ build_initial_evaluation_import }}
 
 export const {{ evaluation_structure_key }}Structure = Object.freeze({
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.{{ stage_constant }},
   implementationStatus: "scaffold",
   View: {{ view_component_name }},
+{{ build_initial_evaluation_registry_field }}
 });

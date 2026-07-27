@@ -3,6 +3,7 @@ import {
   saveIssueEvaluationDraft,
   submitIssueEvaluation,
 } from "../../../services/issue.service";
+import { isPlainObject } from "../../../utils/common/objects";
 
 export const normalizeIssueEvaluationResponse = (response) => {
   const data = response?.data;
@@ -10,10 +11,13 @@ export const normalizeIssueEvaluationResponse = (response) => {
   if (!data?.decisionContext) {
     throw new Error("Missing decisionContext in evaluation response.");
   }
+  if (!isPlainObject(data.payload)) {
+    throw new Error("Missing or invalid evaluation payload in evaluation response.");
+  }
 
   return {
     decisionContext: data.decisionContext,
-    evaluation: data.payload ?? {},
+    evaluation: data.payload,
     collectiveEvaluation: data.collectivePayload ?? null,
   };
 };

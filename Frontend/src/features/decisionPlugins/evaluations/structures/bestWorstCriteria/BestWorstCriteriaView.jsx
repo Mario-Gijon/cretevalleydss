@@ -4,7 +4,6 @@ import { Alert, Divider, Stack, Typography } from "@mui/material";
 import { bestWorstCriteriaViewSx } from "./BestWorstCriteriaView.styles";
 import CollectiveWeights from "./components/CollectiveWeights";
 import ComparisonSection from "./components/ComparisonSection";
-import { buildEmptyPayload } from "./operations/buildEmptyPayload";
 import { resolveCollective } from "./operations/resolveCollective";
 import { resolveCriteria } from "./operations/resolveCriteria";
 import { updateComparison } from "./operations/updateComparison";
@@ -21,16 +20,10 @@ const BestWorstCriteriaView = ({
   readOnly,
   loading,
 }) => {
-  const sourceCriteria =
-    decisionContext?.leafCriteria === undefined
-      ? EMPTY_ITEMS
-      : decisionContext.leafCriteria;
   const criteriaResolution = useMemo(() => {
     try {
       return {
-        criteria: resolveCriteria({
-          decisionContext: { leafCriteria: sourceCriteria },
-        }),
+        criteria: resolveCriteria({ decisionContext }),
         message: "",
       };
     } catch (error) {
@@ -40,7 +33,7 @@ const BestWorstCriteriaView = ({
           error instanceof Error ? error.message : "BWM criteria are invalid.",
       };
     }
-  }, [sourceCriteria]);
+  }, [decisionContext]);
   const criteria = criteriaResolution.criteria || EMPTY_ITEMS;
   const evaluationResolution = useMemo(() => {
     if (!criteriaResolution.criteria) {
@@ -48,10 +41,7 @@ const BestWorstCriteriaView = ({
     }
 
     try {
-      const payload =
-        evaluation === null || evaluation === undefined
-          ? buildEmptyPayload({ criteria })
-          : validateEvaluation({ criteria, evaluation });
+      const payload = validateEvaluation({ criteria, evaluation });
 
       return { payload, message: "" };
     } catch (error) {

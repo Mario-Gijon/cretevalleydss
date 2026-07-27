@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEmptyPayload } from "../../../../../src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/buildEmptyPayload.js";
+import { buildInitialEvaluation } from "../../../../../src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/buildInitialEvaluation.js";
 import { resolveCollective } from "../../../../../src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/resolveCollective.js";
 import { resolveCriteria } from "../../../../../src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/resolveCriteria.js";
 import { updateComparison } from "../../../../../src/features/decisionPlugins/evaluations/structures/bestWorstCriteria/operations/updateComparison.js";
@@ -28,15 +28,46 @@ const completeEvaluation = {
 };
 
 describe("bestWorstCriteria operations", () => {
-  it("resolves canonical criteria and builds a selection-free empty payload", () => {
+  it("resolves canonical criteria and initializes every leaf without selections", () => {
+    const decisionContext = {
+      issue: {
+        id: null,
+        name: null,
+        currentStage: "criteriaWeighting",
+      },
+      alternatives: [],
+      leafCriteria: criteria.map(({ id, name }) => ({ id, name })),
+      consensus: {
+        phase: 0,
+        currentCollectiveEvaluations: {},
+        previousCollectiveEvaluations: {},
+      },
+    };
+
     expect(
       resolveCriteria({
-        decisionContext: {
-          leafCriteria: criteria.map(({ id, name }) => ({ id, name })),
-        },
+        decisionContext,
       })
     ).toEqual(criteria);
-    expect(buildEmptyPayload({ criteria })).toEqual(emptyEvaluation);
+    expect(buildInitialEvaluation({ decisionContext })).toEqual(emptyEvaluation);
+    expect(buildInitialEvaluation({ decisionContext }).bestCriterionId).toBe("");
+    expect(buildInitialEvaluation({ decisionContext }).worstCriterionId).toBe("");
+    expect(Object.keys(buildInitialEvaluation({ decisionContext }).bestToOthers))
+      .toEqual(criteria.map((criterion) => criterion.id));
+  });
+
+  it("rejects malformed creator-side criteria", () => {
+    expect(() =>
+      buildInitialEvaluation({
+        decisionContext: {
+          issue: { id: null },
+          leafCriteria: [
+            { id: "duplicate", name: "First" },
+            { id: "duplicate", name: "Second" },
+          ],
+        },
+      })
+    ).toThrow('criterion id "duplicate" is duplicated');
   });
 
   it("validates canonical state and rejects legacy or partial payloads", () => {

@@ -236,7 +236,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
                   }}
                   stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
                   structureKey={evaluationStructureKey}
-                  evaluation={detail.expertEvaluations?.evaluations || {}}
+                  evaluation={detail.expertEvaluations?.evaluations ?? null}
                   collectiveEvaluation={
                     detail.showExpertCollective &&
                     detailView.hasExpertCollectiveEvaluations

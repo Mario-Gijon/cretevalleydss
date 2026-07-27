@@ -82,6 +82,12 @@ def _build_placeholder_values(request: ModelScaffoldPreviewRequest) -> dict[str,
         "evaluation_structure_key_literal": _format_python_string_literal(
             request.evaluationStructureKey
         ),
+        "supports_creator_criteria_weighting": repr(
+            request.supportsCreatorCriteriaWeighting
+        ),
+        "supports_expert_criteria_weighting": repr(
+            request.supportsExpertCriteriaWeighting
+        ),
         "supports_consensus": repr(request.supportsConsensus),
         "supports_consensus_simulation": repr(request.supportsConsensusSimulation),
         "is_multi_criteria": repr(request.isMultiCriteria),

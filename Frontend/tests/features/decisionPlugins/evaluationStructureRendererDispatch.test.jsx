@@ -31,8 +31,8 @@ const FuturePluginView = ({
     <div>
       <span>Future plugin rendered</span>
       <span>{decisionContext.marker}</span>
-      <span>{evaluation.value}</span>
-      <span>{collectiveEvaluation.collective}</span>
+      <span>{evaluation?.value || "no evaluation"}</span>
+      <span>{collectiveEvaluation?.collective || "no collective"}</span>
       <span>{String(readOnly)}</span>
     </div>
   );
@@ -91,5 +91,47 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders an absence error instead of converting a missing evaluation to an object", () => {
+    mockGetEvaluationStructureEntryForStage.mockReturnValue({
+      key: "futureStructure",
+      stage: "alternativeEvaluation",
+      View: FuturePluginView,
+    });
+
+    renderWithProviders(
+      <EvaluationStructureRenderer
+        decisionContext={{ marker: "canonical-context" }}
+        stage="alternativeEvaluation"
+        structureKey="futureStructure"
+        evaluation={null}
+      />
+    );
+
+    expect(
+      screen.getByText("Evaluation payload is unavailable.")
+    ).toBeInTheDocument();
+    expect(mockViewState.lastProps).toBeNull();
+  });
+
+  it("passes null unchanged during loading", () => {
+    mockGetEvaluationStructureEntryForStage.mockReturnValue({
+      key: "futureStructure",
+      stage: "alternativeEvaluation",
+      View: FuturePluginView,
+    });
+
+    renderWithProviders(
+      <EvaluationStructureRenderer
+        decisionContext={{ marker: "canonical-context" }}
+        stage="alternativeEvaluation"
+        structureKey="futureStructure"
+        evaluation={null}
+        loading
+      />
+    );
+
+    expect(mockViewState.lastProps.evaluation).toBeNull();
   });
 });

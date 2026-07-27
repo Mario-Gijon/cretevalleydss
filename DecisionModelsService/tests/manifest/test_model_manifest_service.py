@@ -1,5 +1,9 @@
 import pytest
 
+from models.bwm.definition import MODEL_DEFINITION as BWM_MODEL_DEFINITION
+from models.manual_criteria_weights.definition import (
+    MODEL_DEFINITION as MANUAL_CRITERIA_WEIGHTS_MODEL_DEFINITION,
+)
 from services import model_manifest_service
 from services.model_manifest_service import (
     _build_manifest_entry,
@@ -192,6 +196,23 @@ def test_scaffold_implementation_status_is_not_publicly_usable(model_definition_
 
     assert manifest_entry["implementationStatus"] == "scaffold"
     assert manifest_entry["publicUsable"] is False
+
+
+@pytest.mark.parametrize(
+    "model",
+    [BWM_MODEL_DEFINITION, MANUAL_CRITERIA_WEIGHTS_MODEL_DEFINITION],
+)
+def test_criteria_weighting_manifest_preserves_creator_and_expert_capabilities(
+    model,
+):
+    manifest_entry = _build_manifest_entry(model)
+
+    assert model.supports_creator_criteria_weighting is True
+    assert model.supports_expert_criteria_weighting is True
+    assert manifest_entry["supportsCreatorCriteriaWeighting"] is True
+    assert manifest_entry["supportsExpertCriteriaWeighting"] is True
+    assert "supportsCreateIssue" not in manifest_entry
+    assert "creatorExecutionEnabled" not in manifest_entry
 
 
 def test_build_model_manifest_returns_models_wrapper(monkeypatch, model_definition_factory):

@@ -147,6 +147,99 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
         assert all(forbidden_path_part not in path for path in preview_paths)
 
 
+def test_creator_criteria_weighting_package_scaffolds_explicit_initialization_todo(
+    client_factory,
+    project_root: Path,
+) -> None:
+    payload = {
+        "model": {
+            "apiModelKey": "creator_weighting",
+            "displayName": "Creator Weighting",
+            "smallDescription": "Creator weighting scaffold",
+            "extendedDescription": "Creator weighting scaffold for initialization",
+            "modelKind": "criteriaWeighting",
+            "evaluationStructureKey": "creatorWeighting",
+            "supportsCreatorCriteriaWeighting": True,
+            "supportsExpertCriteriaWeighting": True,
+            "parameters": [],
+            "includeExamples": True,
+        },
+        "parameterStructures": [],
+    }
+
+    with client_factory(project_root) as client:
+        response = client.post("/scaffold/model-package/preview", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    model_item = next(item for item in body["items"] if item["kind"] == "model")
+    structure_item = next(
+        item for item in body["items"] if item["kind"] == "evaluation-structure"
+    )
+    definition = next(
+        file["content"]
+        for file in model_item["files"]
+        if file["path"].endswith("/definition.py")
+    )
+    frontend_index = next(
+        file["content"]
+        for file in structure_item["files"]
+        if file["path"].endswith("/index.js")
+        and file["path"].startswith("Frontend/")
+    )
+    initialization_file = next(
+        file
+        for file in structure_item["files"]
+        if file["path"].endswith("/operations/buildInitialEvaluation.js")
+    )
+
+    assert "supports_creator_criteria_weighting=True" in definition
+    assert "supports_expert_criteria_weighting=True" in definition
+    assert 'import { buildInitialEvaluation } from "./operations/buildInitialEvaluation";' in frontend_index
+    assert "  buildInitialEvaluation," in frontend_index
+    assert "ModelForge does not guess evaluation payload shapes" in initialization_file[
+        "content"
+    ]
+    assert "must be implemented before creator-side use" in initialization_file[
+        "content"
+    ]
+
+
+def test_manual_creator_weighting_package_keeps_special_editor_without_initializer(
+    client_factory,
+    project_root: Path,
+) -> None:
+    payload = {
+        "model": {
+            "apiModelKey": "manual_criteria_weights",
+            "displayName": "Manual Criteria Weights",
+            "smallDescription": "Manual weighting scaffold",
+            "extendedDescription": "Manual weighting uses the special creator editor",
+            "modelKind": "criteriaWeighting",
+            "evaluationStructureKey": "manualCriteriaWeights",
+            "supportsCreatorCriteriaWeighting": True,
+            "supportsExpertCriteriaWeighting": True,
+            "parameters": [],
+            "includeExamples": True,
+        },
+        "parameterStructures": [],
+    }
+
+    with client_factory(project_root) as client:
+        response = client.post("/scaffold/model-package/preview", json=payload)
+
+    assert response.status_code == 200
+    structure_item = next(
+        item
+        for item in response.json()["items"]
+        if item["kind"] == "evaluation-structure"
+    )
+    assert all(
+        not file["path"].endswith("/operations/buildInitialEvaluation.js")
+        for file in structure_item["files"]
+    )
+
+
 def test_parameter_structure_preview_reports_expected_paths_without_writing_files(
     client_factory,
     project_root: Path,
