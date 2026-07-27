@@ -9,6 +9,9 @@ import pytest
 from issue_scenario_lab.config import UserCredentials
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
+from issue_scenario_lab.scenarios.no_consensus_basic import (
+    _validate_evaluation_response,
+)
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import (
     SCENARIO_ID,
     _required_parameters,
@@ -16,6 +19,7 @@ from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import (
     _select_weighting_model,
     _validate_finished,
     _validate_ranking,
+    _weight_context,
     generate,
 )
 
@@ -113,7 +117,7 @@ class CriteriaClient:
             "decisionContext": {
                 "issue": {"id": "issue", "currentStage": "criteriaWeighting", "isConsensus": False},
                 "structure": {"key": "manualCriteriaWeights", "stage": "criteriaWeighting"},
-                "model": {"apiModelKey": "topsis"},
+                "model": {"apiModelKey": "manual_criteria_weights"},
                 "criteriaTree": [{"id": "group"}],
                 "leafCriteria": [{"id": "quality", "name": "Quality"}, {"id": "cost", "name": "Cost"}],
             },
@@ -356,6 +360,51 @@ def test_complete_topsis_manual_weighting_flow_writes_minimal_manifest(tmp_path:
     submissions = [call for call in sessions.state["calls"] if call[2].endswith("criteriaWeighting/submit")]
     assert submissions[0][3]["payload"]["weightsByCriterion"] == {"quality": 0.7, "cost": 0.3}
     assert submissions[0][3] != submissions[1][3]
+
+
+def test_criteria_weighting_context_requires_manual_criteria_weights() -> None:
+    response = CriteriaSessions().clients["owner"]._weight_context()
+
+    context, _ = _weight_context(response, "issue")
+
+    assert context["model"]["apiModelKey"] == "manual_criteria_weights"
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        {"apiModelKey": "topsis"},
+        None,
+        "manual_criteria_weights",
+        {},
+    ],
+)
+def test_criteria_weighting_context_rejects_incompatible_model_metadata(
+    model: Any,
+) -> None:
+    response = CriteriaSessions().clients["owner"]._weight_context()
+    decision_context = response["decisionContext"]
+    if model is None:
+        decision_context.pop("model")
+    else:
+        decision_context["model"] = model
+
+    with pytest.raises(
+        ScenarioLabError,
+        match="incompatible with Manual Criteria Weights",
+    ):
+        _weight_context(response, "issue")
+
+
+def test_alternative_context_still_rejects_non_topsis_model() -> None:
+    response = CriteriaSessions().clients["owner"]._alternative_context()
+    _validate_evaluation_response(response, "issue", model_key="topsis")
+
+    response["decisionContext"]["model"] = {
+        "apiModelKey": "manual_criteria_weights"
+    }
+    with pytest.raises(ScenarioLabError, match="incompatible with topsis"):
+        _validate_evaluation_response(response, "issue", model_key="topsis")
 
 
 @pytest.mark.parametrize(("field", "value"), [("usesCriteriaWeights", False), ("usesCriterionTypes", False), ("evaluationStructureKey", "wrong")])

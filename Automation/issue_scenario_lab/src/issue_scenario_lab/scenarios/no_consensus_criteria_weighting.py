@@ -163,8 +163,14 @@ def _weight_context(response: Any, issue_id: str) -> tuple[dict[str, Any], tuple
     if not isinstance(structure, dict) or structure.get("key") != "manualCriteriaWeights" or structure.get("stage") != CRITERIA_STAGE:
         raise ScenarioLabError("criteria-weighting decisionContext structure is incompatible")
     model = context.get("model")
-    if model is not None and (not isinstance(model, dict) or ("apiModelKey" in model and model.get("apiModelKey") != MAIN_MODEL_KEY)):
-        raise ScenarioLabError("criteria-weighting decisionContext model is incompatible with TOPSIS")
+    if (
+        not isinstance(model, dict)
+        or model.get("apiModelKey") != WEIGHTING_MODEL_KEY
+    ):
+        raise ScenarioLabError(
+            "criteria-weighting decisionContext model is incompatible with "
+            "Manual Criteria Weights"
+        )
     criteria = _items(context, "leafCriteria")
     by_name = {item.get("name"): item for item in criteria}
     if len(criteria) != 2 or set(by_name) != {"Quality", "Cost"} or any(not _id(item) for item in criteria) or len({_id(item) for item in criteria}) != 2:
