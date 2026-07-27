@@ -172,15 +172,6 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
             lic: list[float] = []
             for criterion in criteria:
                 criterion_id = criterion["id"]
-                criterion_name = criterion["name"]
-                if criterion_id not in best_to_others:
-                    return error_response(
-                        f"Invalid BWM payload for expert '{expert_key}': missing bestToOthers['{criterion_id}'] for '{criterion_name}'"
-                    )
-                if criterion_id not in others_to_worst:
-                    return error_response(
-                        f"Invalid BWM payload for expert '{expert_key}': missing othersToWorst['{criterion_id}'] for '{criterion_name}'"
-                    )
 
                 try:
                     mic.append(
@@ -217,7 +208,11 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
         if len(experts_data) == 0:
             return error_response("BWM requires completed evaluations with bestToOthers/othersToWorst")
 
-        model_parameters = payload.modelParameters if _is_plain_object(payload.modelParameters) else {}
+        model_parameters = (
+            payload.modelParameters
+            if _is_plain_object(payload.modelParameters)
+            else {}
+        )
         eps_penalty = model_parameters.get("eps_penalty", 1)
         eps_penalty = float(eps_penalty) if eps_penalty is not None else 1
 

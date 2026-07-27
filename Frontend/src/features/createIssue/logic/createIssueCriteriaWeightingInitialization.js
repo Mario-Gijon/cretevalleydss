@@ -1,7 +1,36 @@
 import { isPlainObject } from "../../../utils/common/objects";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/registry";
+import { buildDecisionContext } from "../../issueEvaluation/context";
 
 const toCanonicalId = (value) =>
   typeof value === "string" ? value.trim() : "";
+
+export const buildCriteriaWeightingDecisionContext = ({
+  criteriaWeightingModel,
+  structureEntry,
+  criteriaWeightingParameters = {},
+  criteriaTree = [],
+  leafCriteria = [],
+}) =>
+  buildDecisionContext({
+    issue: {
+      id: null,
+      name: null,
+      currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+      consensusPhase: 0,
+      isConsensus: false,
+    },
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+    structure: structureEntry,
+    model: criteriaWeightingModel,
+    parameters: {
+      modelParameters: {},
+      criteriaWeightingParameters,
+    },
+    alternatives: [],
+    criteriaTree,
+    leafCriteria,
+  });
 
 export const buildCriteriaWeightingInitializationIdentity = ({
   criteriaWeightingModel,

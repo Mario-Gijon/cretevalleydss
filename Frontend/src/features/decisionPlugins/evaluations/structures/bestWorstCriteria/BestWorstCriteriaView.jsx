@@ -37,7 +37,7 @@ const BestWorstCriteriaView = ({
   const criteria = criteriaResolution.criteria || EMPTY_ITEMS;
   const evaluationResolution = useMemo(() => {
     if (!criteriaResolution.criteria) {
-      return { payload: null, message: criteriaResolution.message };
+      return { payload: null, message: "" };
     }
 
     try {
@@ -51,12 +51,7 @@ const BestWorstCriteriaView = ({
           error instanceof Error ? error.message : "BWM evaluation is invalid.",
       };
     }
-  }, [
-    criteria,
-    criteriaResolution.criteria,
-    criteriaResolution.message,
-    evaluation,
-  ]);
+  }, [criteria, criteriaResolution.criteria, evaluation]);
   const collectiveResolution = useMemo(() => {
     try {
       return {
@@ -147,9 +142,7 @@ const BestWorstCriteriaView = ({
       {collectiveResolution.payload ? (
         <CollectiveWeights
           criteria={criteria}
-          weightsByCriterion={
-            collectiveResolution.payload.weightsByCriterion
-          }
+          weightsByCriterion={collectiveResolution.payload.weightsByCriterion}
         />
       ) : null}
 

@@ -20,6 +20,9 @@ import AlternativeEvaluationDialogShell from "./AlternativeEvaluationDialogShell
 import AlternativeEvaluationSaveDialog from "./AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "./AlternativeEvaluationSubmitDialog";
 
+const serializeEvaluationSnapshot = (evaluation) =>
+  evaluation === null ? null : JSON.stringify(evaluation);
+
 const EvaluationStructureDialog = ({
   issue,
   stage,
@@ -88,19 +91,20 @@ const EvaluationStructureDialog = ({
           evaluation: nextEvaluation,
           collectiveEvaluation: nextCollectiveEvaluation,
         } = await fetchIssueEvaluation(issueId, stage);
+        const canonicalEvaluation =
+          requireCompleteEvaluationObject(nextEvaluation);
 
         setDecisionContext(responseDecisionContext);
-        setEvaluationState(nextEvaluation);
+        setEvaluationState(canonicalEvaluation);
         setCollectiveEvaluation(nextCollectiveEvaluation);
         setShowCollective(nextCollectiveEvaluation !== null);
-        setInitialSnapshot(JSON.stringify(nextEvaluation));
+        setInitialSnapshot(
+          serializeEvaluationSnapshot(canonicalEvaluation)
+        );
       } catch {
         const message =
           "Could not load evaluation context for this evaluation.";
-        showSnackbarAlert(
-          message,
-          "error"
-        );
+        showSnackbarAlert(message, "error");
         setDecisionContext(fallbackDecisionContext);
         setEvaluationState(null);
         setCollectiveEvaluation(null);
@@ -116,7 +120,16 @@ const EvaluationStructureDialog = ({
   }, [fallbackDecisionContext, isOpen, issueId, showSnackbarAlert, stage]);
 
   const handleCloseRequest = () => {
-    if (JSON.stringify(evaluation) !== initialSnapshot) {
+    if (
+      evaluationLoading ||
+      evaluation === null ||
+      initialSnapshot === null
+    ) {
+      setIsOpen(false);
+      return;
+    }
+
+    if (serializeEvaluationSnapshot(evaluation) !== initialSnapshot) {
       setOpenSaveDialog(true);
       return;
     }
@@ -125,6 +138,10 @@ const EvaluationStructureDialog = ({
   };
 
   const handleSave = async () => {
+    if (evaluation === null || evaluationLoading) {
+      return;
+    }
+
     setLoading(true);
     setOpenSaveDialog(false);
 
@@ -145,10 +162,19 @@ const EvaluationStructureDialog = ({
   };
 
   const handleOpenSubmit = () => {
+    if (evaluation === null || evaluationLoading) {
+      return;
+    }
+
     setOpenSubmitDialog(true);
   };
 
   const handleSubmit = async () => {
+    if (evaluation === null || evaluationLoading) {
+      setOpenSubmitDialog(false);
+      return;
+    }
+
     setOpenSubmitDialog(false);
     setLoading(true);
 

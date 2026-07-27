@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildCriteriaWeightingDecisionContext,
   buildCriteriaWeightingInitializationIdentity,
   buildCreatorCriteriaWeightingInitialization,
 } from "../../../src/features/createIssue/logic/createIssueCriteriaWeightingInitialization.js";
@@ -19,22 +20,9 @@ const leafCriteria = [
 ];
 
 const buildContext = (criteria = leafCriteria) =>
-  buildDecisionContext({
-    issue: {
-      id: null,
-      name: null,
-      currentStage: "criteriaWeighting",
-      consensusPhase: 0,
-      isConsensus: false,
-    },
-    stage: "criteriaWeighting",
-    structure: bestWorstCriteriaStructure,
-    model: bwmModel,
-    parameters: {
-      modelParameters: {},
-      criteriaWeightingParameters: {},
-    },
-    alternatives: [],
+  buildCriteriaWeightingDecisionContext({
+    criteriaWeightingModel: bwmModel,
+    structureEntry: bestWorstCriteriaStructure,
     criteriaTree: criteria,
     leafCriteria: criteria,
   });

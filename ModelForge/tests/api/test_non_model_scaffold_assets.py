@@ -195,7 +195,10 @@ def test_creator_criteria_weighting_package_scaffolds_explicit_initialization_to
 
     assert "supports_creator_criteria_weighting=True" in definition
     assert "supports_expert_criteria_weighting=True" in definition
-    assert 'import { buildInitialEvaluation } from "./operations/buildInitialEvaluation";' in frontend_index
+    assert (
+        'import { buildInitialEvaluation } from "./operations/buildInitialEvaluation";'
+        in frontend_index
+    )
     assert "  buildInitialEvaluation," in frontend_index
     assert "ModelForge does not guess evaluation payload shapes" in initialization_file[
         "content"

@@ -37,7 +37,7 @@ const ManualCriteriaWeightsView = ({
   const criteria = criteriaResolution.criteria || EMPTY_ITEMS;
   const evaluationResolution = useMemo(() => {
     if (!criteriaResolution.criteria) {
-      return { payload: null, message: criteriaResolution.message };
+      return { payload: null, message: "" };
     }
 
     try {
@@ -53,7 +53,7 @@ const ManualCriteriaWeightsView = ({
             : "Manual-weight evaluation is invalid.",
       };
     }
-  }, [criteria, criteriaResolution.criteria, criteriaResolution.message, evaluation]);
+  }, [criteria, criteriaResolution.criteria, evaluation]);
   const collectiveResolution = useMemo(() => {
     try {
       return {
@@ -120,29 +120,30 @@ const ManualCriteriaWeightsView = ({
       <Box sx={manualCriteriaWeightsViewSx.content}>
         <Stack spacing={1.25}>
           <Typography variant="subtitle1" sx={manualCriteriaWeightsViewSx.title}>
-            Assign each criterion a weight between 0 and 1. Submitted weights must sum to 1.
+            Assign each criterion a weight between 0 and 1. Submitted weights
+            must sum to 1.
           </Typography>
 
-          <Box sx={manualCriteriaWeightsViewSx.content}>
-            <Stack spacing={1.1} sx={manualCriteriaWeightsViewSx.fields}>
-              {criteria.map((criterion) => (
-                <WeightField
-                  key={criterion.id}
-                  criterion={criterion}
-                  value={currentEvaluation.weightsByCriterion[criterion.id]}
-                  collectiveValue={
-                    collectiveResolution.payload
-                      ? collectiveResolution.payload.weightsByCriterion[criterion.id]
-                      : null
-                  }
-                  permitEdit={permitEdit}
-                  onChange={(rawValue) =>
-                    handleWeightChange({ criterionId: criterion.id, rawValue })
-                  }
-                />
-              ))}
-            </Stack>
-          </Box>
+          <Stack spacing={1.1} sx={manualCriteriaWeightsViewSx.fields}>
+            {criteria.map((criterion) => (
+              <WeightField
+                key={criterion.id}
+                criterion={criterion}
+                value={currentEvaluation.weightsByCriterion[criterion.id]}
+                collectiveValue={
+                  collectiveResolution.payload
+                    ? collectiveResolution.payload.weightsByCriterion[
+                        criterion.id
+                      ]
+                    : null
+                }
+                permitEdit={permitEdit}
+                onChange={(rawValue) =>
+                  handleWeightChange({ criterionId: criterion.id, rawValue })
+                }
+              />
+            ))}
+          </Stack>
         </Stack>
       </Box>
     </Stack>

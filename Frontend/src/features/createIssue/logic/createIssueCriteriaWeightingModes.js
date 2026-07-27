@@ -61,7 +61,9 @@ export const buildApiCriteriaWeightingConfig = ({
   const structureKey = String(
     criteriaWeightingModel?.evaluationStructureKey || ""
   ).trim();
-  const modelId = String(criteriaWeightingModel?._id || criteriaWeightingModel?.id || "").trim();
+  const modelId = String(
+    criteriaWeightingModel?._id || criteriaWeightingModel?.id || ""
+  ).trim();
   const modelKey = String(criteriaWeightingModel?.apiModelKey || "").trim();
 
   return {

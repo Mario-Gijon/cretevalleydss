@@ -1,8 +1,8 @@
 """Implementación del modelo Best-Worst Method (BWM)."""
 
+import math
 from typing import Any
 
-import math
 import numpy as np
 from pyDecision.algorithm import bw_method
 
@@ -28,7 +28,9 @@ def _to_weight_list(raw_weights: Any, expert_key: str) -> list[float]:
 
     total = sum(weights)
     if not math.isfinite(total) or total <= 0:
-        raise ValueError(f"BWM returned weights with non-positive total for expert '{expert_key}'")
+        raise ValueError(
+            f"BWM returned weights with non-positive total for expert '{expert_key}'"
+        )
 
     return weights
 

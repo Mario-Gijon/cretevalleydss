@@ -55,6 +55,7 @@ import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { CriteriaWeightingPanel } from "./components/CriteriaWeightingPanel";
 
 const WEIGHT_SUM_TOLERANCE = 0.01;
+const EMPTY_WEIGHTS_BY_CRITERION = Object.freeze({});
 
 const applyTypeToBranch = (criterion, type) => ({
   ...criterion,
@@ -151,13 +152,19 @@ export const CriteriaStep = () => {
   const reversed = useMemo(() => criteria.slice().reverse(), [criteria]);
   const leafCount = useMemo(() => countLeafCriteria(criteria), [criteria]);
   const leafCriteria = useMemo(() => getLeafCriteria(criteria), [criteria]);
-  const leafCriterionItems = leafCriteria
-    .map((criterion) => ({
-      id: typeof criterion?.id === "string" ? criterion.id.trim() : "",
-      name: criterion?.name,
-    }))
-    .filter((criterion) => criterion.id && criterion.name);
-  const criterionNames = leafCriterionItems.map((criterion) => criterion.name);
+  const leafCriterionItems = useMemo(
+    () =>
+      leafCriteria
+        .map((criterion) => ({
+          id:
+            typeof criterion?.id === "string"
+              ? criterion.id.trim()
+              : "",
+          name: criterion?.name,
+        }))
+        .filter((criterion) => criterion.id && criterion.name),
+    [leafCriteria]
+  );
   const isSingleCriterion = leafCriterionItems.length === 1;
 
   const assignedDomainIds = useMemo(
@@ -170,7 +177,10 @@ export const CriteriaStep = () => {
   );
   const assignedDomains = useMemo(() => {
     const domainById = new Map(
-      [...(Array.isArray(globalDomains) ? globalDomains : []), ...(Array.isArray(expressionDomains) ? expressionDomains : [])]
+      [
+        ...(Array.isArray(globalDomains) ? globalDomains : []),
+        ...(Array.isArray(expressionDomains) ? expressionDomains : []),
+      ]
         .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
         .filter(([id]) => id.length > 0)
     );
@@ -184,15 +194,23 @@ export const CriteriaStep = () => {
     : null;
 
   const mode = normalizeMode(criteriaWeightingConfig?.mode);
-  
-  const weightsByCriterion = criteriaWeightingConfig?.payload?.weightsByCriterion || {};
+  const weightsByCriterion =
+    criteriaWeightingConfig?.payload?.weightsByCriterion ||
+    EMPTY_WEIGHTS_BY_CRITERION;
 
-  const creatorWeightMode =
-    showCriteriaWeighting && mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL
-      ? "manual"
-      : showCriteriaWeighting && isFuzzyModel && mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY
-        ? "fuzzy"
-        : null;
+  let creatorWeightMode = null;
+  if (
+    showCriteriaWeighting &&
+    mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL
+  ) {
+    creatorWeightMode = "manual";
+  } else if (
+    showCriteriaWeighting &&
+    isFuzzyModel &&
+    mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY
+  ) {
+    creatorWeightMode = "fuzzy";
+  }
 
   const manualWeightStatus = useMemo(() => {
     if (creatorWeightMode !== "manual") return null;
@@ -220,12 +238,11 @@ export const CriteriaStep = () => {
         ? `Weights sum: ${total.toFixed(4)}`
         : `Weights sum: ${total.toFixed(4)} · must be 1`,
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [creatorWeightMode, criterionNames, weightsByCriterion]);
+  }, [creatorWeightMode, leafCriterionItems, weightsByCriterion]);
 
   const equalWeightsActive = useMemo(() => {
     if (creatorWeightMode !== "manual") return false;
-    if (criterionNames.length === 0) return false;
+    if (leafCriterionItems.length === 0) return false;
 
     const equalWeights = buildCreateIssueEqualManualWeights(leafCriterionItems);
 
@@ -239,7 +256,6 @@ export const CriteriaStep = () => {
         Math.abs(current - expected) <= 0.000001
       );
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creatorWeightMode, leafCriterionItems, weightsByCriterion]);
 
   const updateWeightsConfigFromUser = (nextConfig) => {
@@ -266,7 +282,7 @@ export const CriteriaStep = () => {
     updateWeightsConfigFromUser({
       ...(criteriaWeightingConfig || {}),
       payload: {
-      ...(criteriaWeightingConfig?.payload || {}),
+        ...(criteriaWeightingConfig?.payload || {}),
         weightsByCriterion: buildCreateIssueEqualManualWeights(leafCriterionItems),
       },
     });
@@ -482,7 +498,7 @@ export const CriteriaStep = () => {
         />
       ) : null}
 
-      {creatorWeightMode === "manual" && criterionNames.length > 1 ? (
+      {creatorWeightMode === "manual" && leafCriterionItems.length > 1 ? (
         <Stack direction="row" justifyContent="flex-end">
           <ToggleButton
             value="equalWeights"

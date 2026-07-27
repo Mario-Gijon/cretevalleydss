@@ -112,16 +112,6 @@ def run_manual_criteria_weights(
             expert_weights: dict[str, float] = {}
             for criterion in criteria:
                 criterion_id = criterion["id"]
-                criterion_name = criterion["name"]
-
-                if criterion_id not in weights_by_criterion:
-                    return {
-                        "success": False,
-                        "message": (
-                            "Manual criteria weights payload is missing "
-                            f"weightsByCriterion['{criterion_id}'] for '{criterion_name}'"
-                        ),
-                    }
 
                 expert_weights[criterion_id] = _validate_weight(
                     weights_by_criterion[criterion_id],

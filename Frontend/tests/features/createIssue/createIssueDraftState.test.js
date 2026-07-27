@@ -24,6 +24,12 @@ describe("createIssueDraftState", () => {
 
   it("persists and restores the stored create-issue draft fields", () => {
     const storageKey = "create-issue-draft-roundtrip";
+    const criteriaWeightingConfig = {
+      mode: "creatorApiModel",
+      payload: { bestCriterionId: "" },
+      initializationIdentity:
+        '["bwm-model","bestWorstCriteria",["criterion-1"]]',
+    };
     const storedData = buildStoredCreateIssueData({
       activeStep: 5,
       completed: { 0: true, 1: true },
@@ -39,7 +45,7 @@ describe("createIssueDraftState", () => {
       issueDescription: "Detailed issue summary",
       expressionDomainConfig: { mode: "global", globalDomainId: "domain-1" },
       paramValues: { threshold: 0.7 },
-      criteriaWeightingConfig: { mode: "expertManual", payload: {} },
+      criteriaWeightingConfig,
       closureDate: new Date("2026-07-15T00:00:00.000Z"),
       consensusMaxPhases: 4,
       consensusThreshold: 0.85,
@@ -63,7 +69,7 @@ describe("createIssueDraftState", () => {
       issueDescription: "Detailed issue summary",
       expressionDomainConfig: { mode: "global", globalDomainId: "domain-1" },
       paramValues: { threshold: 0.7 },
-      criteriaWeightingConfig: { mode: "expertManual", payload: {} },
+      criteriaWeightingConfig,
       closureDate: "2026-07-15T00:00:00.000Z",
       consensusMaxPhases: 4,
       consensusThreshold: 0.85,

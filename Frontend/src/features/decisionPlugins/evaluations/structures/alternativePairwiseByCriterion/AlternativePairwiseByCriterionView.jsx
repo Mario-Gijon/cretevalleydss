@@ -99,11 +99,7 @@ const AlternativePairwiseByCriterionView = ({
   }
 
   if (!evaluationResolution.payload) {
-    return (
-      <Alert severity="error">
-        {evaluationResolution.message || "Pairwise evaluation payload is invalid."}
-      </Alert>
-    );
+    return <Alert severity="error">{evaluationResolution.message}</Alert>;
   }
 
   const handleValueChange = ({

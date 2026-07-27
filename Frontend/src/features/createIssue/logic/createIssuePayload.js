@@ -1,11 +1,10 @@
 import { getLeafCriteria } from "../../../utils/criteria.utils";
+import { isPlainObject } from "../../../utils/common/objects";
 import {
   resolveExpressionDomainOptions,
   validateExpressionDomainConfig,
 } from "../../../utils/domainAssignments.utils";
-import {
-  pruneCreateIssueParameterValues,
-} from "../../modelParameters/draft";
+import { pruneCreateIssueParameterValues } from "../../modelParameters/draft";
 import {
   CREATE_ISSUE_CRITERIA_WEIGHTING_MODES,
   modelUsesCriteriaWeights,
@@ -19,6 +18,17 @@ import {
 } from "./createIssueExpertWeights";
 import { normalizeCreateIssueAlternatives } from "./createIssueAlternativeIds";
 
+const CRITERIA_WEIGHTING_REQUEST_FIELDS = Object.freeze([
+  "mode",
+  "source",
+  "method",
+  "structureKey",
+  "criteriaWeightingModelId",
+  "criteriaWeightingModelKey",
+  "criteriaWeightingParameters",
+  "payload",
+]);
+
 const normalizeConsensusMaxPhases = (value) =>
   value === null || value === undefined || value === "" ? null : Number(value);
 
@@ -28,6 +38,18 @@ const normalizeCriteriaWeightingParameters = (criteriaWeightingConfig) =>
   !Array.isArray(criteriaWeightingConfig.criteriaWeightingParameters)
     ? criteriaWeightingConfig.criteriaWeightingParameters
     : {};
+
+const buildCriteriaWeightingRequestConfig = (criteriaWeightingConfig) => {
+  if (!isPlainObject(criteriaWeightingConfig)) {
+    return criteriaWeightingConfig;
+  }
+
+  return Object.fromEntries(
+    CRITERIA_WEIGHTING_REQUEST_FIELDS
+      .filter((field) => Object.hasOwn(criteriaWeightingConfig, field))
+      .map((field) => [field, criteriaWeightingConfig[field]])
+  );
+};
 
 export const buildCreateIssueRequestPayload = ({
   allData,
@@ -212,6 +234,10 @@ export const buildCreateIssueRequestPayload = ({
 
   const issueInfoPayload = { ...allData };
   delete issueInfoPayload.expertWeights;
+  issueInfoPayload.criteriaWeightingConfig =
+    buildCriteriaWeightingRequestConfig(
+      issueInfoPayload.criteriaWeightingConfig
+    );
   issueInfoPayload.isConsensus = modelRequiresConsensus;
   issueInfoPayload.simulateConsensus =
     modelRequiresConsensus &&

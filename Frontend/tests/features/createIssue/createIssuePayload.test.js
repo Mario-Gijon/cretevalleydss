@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildCreateIssueRequestPayload } from "../../../src/features/createIssue/logic/createIssuePayload.js";
-import {
-  buildCreateIssueEqualManualWeights,
-} from "../../../src/features/createIssue/logic/createIssueCriteriaWeighting.js";
+import { buildCreateIssueEqualManualWeights } from "../../../src/features/createIssue/logic/createIssueCriteriaWeighting.js";
 import {
   createIssueAlternativesFixture,
   createIssueCriteriaTreeFixture,
@@ -311,6 +309,39 @@ describe("createIssuePayload", () => {
     expect(result.ok).toBe(true);
     expect(result.payload.criteriaWeightingConfig.payload.weightsByCriterion).toEqual(
       weightsByCriterion
+    );
+  });
+
+  it("omits Create Issue UI metadata from the final weighting request", () => {
+    const criteriaWeightingConfig = {
+      ...createIssueManualCriteriaWeightingConfigFixture,
+      initializationIdentity:
+        '["bwm-model","bestWorstCriteria",["criterion-cost","criterion-speed"]]',
+      transientWarning: "UI-only metadata",
+    };
+
+    const result = buildCreateIssueRequestPayload(
+      buildPayloadInput({
+        allData: { criteriaWeightingConfig },
+        criteriaWeightingConfig,
+      })
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.criteriaWeightingConfig).toEqual(
+      createIssueManualCriteriaWeightingConfigFixture
+    );
+    expect(
+      result.payload.criteriaWeightingConfig.payload
+    ).toEqual(createIssueManualCriteriaWeightingConfigFixture.payload);
+    expect(result.payload.criteriaWeightingConfig).not.toHaveProperty(
+      "initializationIdentity"
+    );
+    expect(result.payload.criteriaWeightingConfig).not.toHaveProperty(
+      "transientWarning"
+    );
+    expect(criteriaWeightingConfig).toHaveProperty(
+      "initializationIdentity"
     );
   });
 });

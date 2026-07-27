@@ -275,6 +275,67 @@ describe("EvaluationStructureDialog", () => {
     ).toBeInTheDocument();
   });
 
+  it("turns a successful response without an evaluation into a terminal load error", async () => {
+    mockFetchIssueEvaluation.mockResolvedValue({
+      decisionContext: evaluationResponseFixture.data.decisionContext,
+      evaluation: null,
+      collectiveEvaluation: null,
+    });
+
+    renderDialog();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("shell-loading")).toHaveTextContent("false");
+      expect(
+        screen.getByText(
+          "Could not load evaluation context for this evaluation."
+        )
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "request-close" })
+    );
+
+    expect(setIsOpen).toHaveBeenCalledWith(false);
+    expect(screen.queryByText("Save changes?")).not.toBeInTheDocument();
+    expect(mockSaveIssueEvaluation).not.toHaveBeenCalled();
+    expect(mockSubmitIssueEvaluationPayload).not.toHaveBeenCalled();
+  });
+
+  it("closes without offering to save while the evaluation is loading", async () => {
+    mockFetchIssueEvaluation.mockReturnValue(new Promise(() => {}));
+
+    renderDialog();
+    expect(screen.getByTestId("shell-loading")).toHaveTextContent("true");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "request-close" })
+    );
+
+    expect(setIsOpen).toHaveBeenCalledWith(false);
+    expect(screen.queryByText("Save changes?")).not.toBeInTheDocument();
+    expect(mockSaveIssueEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("closes after a failed load without treating null state as modified", async () => {
+    mockFetchIssueEvaluation.mockRejectedValue(new Error("network"));
+
+    renderDialog();
+    await screen.findByText(
+      "Could not load evaluation context for this evaluation."
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "request-close" })
+    );
+
+    expect(setIsOpen).toHaveBeenCalledWith(false);
+    expect(screen.queryByText("Save changes?")).not.toBeInTheDocument();
+    expect(mockSaveIssueEvaluation).not.toHaveBeenCalled();
+  });
+
   it("closes directly when the payload is unchanged", async () => {
     renderDialog();
     await waitFor(() => expect(mockFetchIssueEvaluation).toHaveBeenCalled());

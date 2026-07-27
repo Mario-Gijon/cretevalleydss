@@ -2,20 +2,23 @@ import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
 } from "../../../decisionPlugins/evaluations/index.js";
-import { getExpressionDomainTypeOrThrow } from "../../../expressionDomains/expressionDomainTypeCatalog.js";
 import {
   createBadRequestError,
   createInternalError,
 } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
-import { normalizeCreatorFuzzyWeightsOrThrow, normalizeCreatorManualWeightsOrThrow } from "./validateCriteriaWeightPayload.js";
+import { isPlainObject } from "../../../../utils/common/objects.js";
+import { getExpressionDomainTypeOrThrow } from "../../../expressionDomains/expressionDomainTypeCatalog.js";
 import { resolveCriteriaWeightingModeConfigOrThrow } from "./resolveCriteriaWeightMode.js";
 import {
   loadCriteriaWeightingApiModelContextOrThrow,
   normalizeCreatorApiCriteriaWeightingPayloadOrThrow,
   resolveCreatorApiCriteriaWeightingModelWeightsOrThrow,
 } from "./runCriteriaWeightApiModel.js";
-import { isPlainObject } from "../../../../utils/common/objects.js";
+import {
+  normalizeCreatorFuzzyWeightsOrThrow,
+  normalizeCreatorManualWeightsOrThrow,
+} from "./validateCriteriaWeightPayload.js";
 
 const isApiBackedCriteriaWeightingMode = (resolvedConfig) =>
   resolvedConfig.method === "apiModel" || resolvedConfig.mode === "expertManual";
@@ -121,54 +124,54 @@ const buildNoCriteriaWeightingResolution = () =>
     isCriteriaWeightingRequired: false,
   });
 
-const remapCriterionIdOrThrow = ({
-  criterionId,
-  idMap,
-  field,
-}) => {
+const remapCriterionIdOrThrow = ({ criterionId, idMap, field }) => {
   const normalizedCriterionId = String(criterionId || "").trim();
   if (!normalizedCriterionId) {
-    throw createBadRequestError("Criterion id is required for criteria weighting payload", {
-      field,
-    });
+    throw createBadRequestError(
+      "Criterion id is required for criteria weighting payload",
+      { field }
+    );
   }
 
   const persistedCriterionId = idMap.get(normalizedCriterionId);
   if (!persistedCriterionId) {
-    throw createBadRequestError("Unable to remap criteria weighting payload to persisted criteria", {
-      field,
-      details: {
-        criterionId: normalizedCriterionId,
+    throw createBadRequestError(
+      "Unable to remap criteria weighting payload to persisted criteria",
+      {
+        field,
+        details: {
+          criterionId: normalizedCriterionId,
+        },
       },
-    });
+    );
   }
 
   return persistedCriterionId;
 };
 
-const remapBestWorstCriteriaPayloadOrThrow = ({
-  payload,
-  idMap,
-}) => {
+const remapBestWorstCriteriaPayloadOrThrow = ({ payload, idMap }) => {
   if (!isPlainObject(payload)) {
-    throw createBadRequestError("criteriaWeightingConfig.payload must be an object", {
-      field: "criteriaWeightingConfig.payload",
-    });
+    throw createBadRequestError(
+      "criteriaWeightingConfig.payload must be an object",
+      { field: "criteriaWeightingConfig.payload" }
+    );
   }
 
   const bestToOthers = payload.bestToOthers;
   const othersToWorst = payload.othersToWorst;
 
   if (!isPlainObject(bestToOthers)) {
-    throw createBadRequestError("criteriaWeightingConfig.payload.bestToOthers must be an object", {
-      field: "criteriaWeightingConfig.payload.bestToOthers",
-    });
+    throw createBadRequestError(
+      "criteriaWeightingConfig.payload.bestToOthers must be an object",
+      { field: "criteriaWeightingConfig.payload.bestToOthers" }
+    );
   }
 
   if (!isPlainObject(othersToWorst)) {
-    throw createBadRequestError("criteriaWeightingConfig.payload.othersToWorst must be an object", {
-      field: "criteriaWeightingConfig.payload.othersToWorst",
-    });
+    throw createBadRequestError(
+      "criteriaWeightingConfig.payload.othersToWorst must be an object",
+      { field: "criteriaWeightingConfig.payload.othersToWorst" }
+    );
   }
 
   const remappedBestCriterionId = remapCriterionIdOrThrow({

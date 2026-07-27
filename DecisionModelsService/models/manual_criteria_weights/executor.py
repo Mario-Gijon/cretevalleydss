@@ -93,7 +93,11 @@ def execute_manual_criteria_weights(
         criteria = _normalize_criteria(payload)
         results = run_manual_criteria_weights(
             criteria=criteria,
-            evaluations=payload.evaluations if isinstance(payload.evaluations, list) else [],
+            evaluations=(
+                payload.evaluations
+                if isinstance(payload.evaluations, list)
+                else []
+            ),
         )
 
         if not results.get("success", False):
@@ -105,7 +109,9 @@ def execute_manual_criteria_weights(
         data = results.get("data", {})
         expert_weights_by_expert = data.get("expertWeightsByExpert", {})
         if not isinstance(expert_weights_by_expert, dict):
-            return error_response("Manual criteria weights did not return expert weights")
+            return error_response(
+                "Manual criteria weights did not return expert weights"
+            )
 
         try:
             weights_by_criterion, consensus_metadata = _resolve_final_weights(
