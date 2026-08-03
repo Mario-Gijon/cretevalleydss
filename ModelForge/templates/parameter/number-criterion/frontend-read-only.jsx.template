@@ -1,0 +1,10 @@
+import { Stack, Typography } from "@mui/material";
+import { buildNumberCriterionRows, resolveNumberCriterionRowValue } from "./numberCriterionValues";
+
+export const NumberCriterionParameterReadOnly = ({ value, parameterContext }) => {
+  const rows = buildNumberCriterionRows(parameterContext);
+  if (!rows.length) return <Typography variant="body2">—</Typography>;
+  return <Stack direction="row" spacing={1}>{rows.map((row) => <Typography key={row.key} variant="body2">{resolveNumberCriterionRowValue({ value, rowKey: row.key }) ?? "—"}</Typography>)}</Stack>;
+};
+
+export default NumberCriterionParameterReadOnly;

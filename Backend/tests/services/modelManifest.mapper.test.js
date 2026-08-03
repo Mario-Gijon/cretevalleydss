@@ -45,6 +45,17 @@ const buildIntervalGlobal = (overrides = {}) => ({
   ...overrides,
 });
 
+const buildNumberCriterion = (overrides = {}) => ({
+  key: "threshold",
+  label: "Threshold",
+  parameterStructureKey: "numberCriterion",
+  required: true,
+  scope: "perCriterion",
+  default: 0,
+  restrictions: { min: 0, max: 1 },
+  ...overrides,
+});
+
 describe("model manifest parameter mapping", () => {
   it("preserves every canonical numberGlobal metadata field", () => {
     expect(
@@ -175,6 +186,32 @@ describe("syncable manifest parameter definitions", () => {
     ).toEqual([
       expect.stringContaining("parameters[0] (agreement): default must satisfy ordered rule"),
     ]);
+  });
+
+  it.each([
+    buildNumberCriterion(),
+    buildNumberCriterion({ default: -0.125, restrictions: { min: -1, max: null } }),
+    (() => {
+      const parameter = buildNumberCriterion();
+      delete parameter.default;
+      return parameter;
+    })(),
+  ])("dispatches canonical numberCriterion metadata", (parameter) => {
+    expect(validateSyncableManifestModel(buildManifest([parameter]))).toEqual([]);
+  });
+
+  it.each([
+    { scope: "global" },
+    { restrictions: { max: 1 } },
+    { restrictions: { min: 0 } },
+    { restrictions: { min: "0", max: 1 } },
+    { restrictions: { min: 2, max: 1 } },
+    { default: "0" },
+    { default: 2 },
+  ])("rejects invalid numberCriterion consumed metadata", (overrides) => {
+    expect(
+      validateSyncableManifestModel(buildManifest([buildNumberCriterion(overrides)]))
+    ).toEqual([expect.stringContaining("parameters[0] (threshold):")]);
   });
 
   it("reports generic parameter errors and unknown structures", () => {

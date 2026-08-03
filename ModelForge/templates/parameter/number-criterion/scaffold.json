@@ -1,0 +1,9 @@
+[
+  {"template": "number-criterion/backend-index.js.template", "output": "index.js", "target": "backend"},
+  {"template": "number-criterion/backend-validate-definition.js.template", "output": "validateDefinition.js", "target": "backend"},
+  {"template": "number-criterion/backend-validate-and-normalize.js.template", "output": "validateAndNormalize.js", "target": "backend"},
+  {"template": "number-criterion/frontend-index.js.template", "output": "index.js", "target": "frontend"},
+  {"template": "number-criterion/frontend-values.js.template", "output": "numberCriterionValues.js", "target": "frontend"},
+  {"template": "number-criterion/frontend-field.jsx.template", "output": "NumberCriterionParameterField.jsx", "target": "frontend"},
+  {"template": "number-criterion/frontend-read-only.jsx.template", "output": "NumberCriterionParameterReadOnly.jsx", "target": "frontend"}
+]

@@ -308,6 +308,32 @@ def test_interval_global_preview_uses_the_registered_forge_capability(
     ]
 
 
+def test_number_criterion_preview_uses_its_colocated_descriptor(
+    client_factory,
+    project_root: Path,
+) -> None:
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/parameter/preview",
+            json={"parameterStructureKey": "numberCriterion"},
+        )
+
+    assert response.status_code == 200
+    files = {item["path"]: item["content"] for item in response.json()["files"]}
+    backend_base = "Backend/modules/decisionPlugins/modelParameters/structures/numberCriterion"
+    frontend_base = "Frontend/src/features/decisionPlugins/modelParameters/fields/numberCriterion"
+    assert f"{backend_base}/validateDefinition.js" in files
+    assert f"{backend_base}/validateAndNormalize.js" in files
+    assert f"{frontend_base}/numberCriterionValues.js" in files
+    assert "validateDefinition: validateNumberCriterionDefinition" in files[
+        f"{backend_base}/index.js"
+    ]
+    assert "validateNumberCriterionDefinition(parameter)" not in files[
+        f"{backend_base}/validateAndNormalize.js"
+    ]
+    assert "scenarioKind" not in files[f"{frontend_base}/index.js"]
+
+
 def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_temp_root(
     client_factory,
     monkeypatch,

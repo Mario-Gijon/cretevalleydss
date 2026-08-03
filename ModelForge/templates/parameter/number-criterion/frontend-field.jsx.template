@@ -1,0 +1,14 @@
+import { Stack, TextField, Typography } from "@mui/material";
+import { buildNumberCriterionDraft, buildNumberCriterionRows, resolveNumberCriterionRowValue } from "./numberCriterionValues";
+
+export const NumberCriterionParameterField = ({ parameter, value, onChange, disabled = false, error = "", parameterContext }) => {
+  const rows = buildNumberCriterionRows(parameterContext);
+  const label = parameter?.label || "Parameter";
+  const restrictions = parameter?.restrictions || {};
+  const min = Number.isFinite(restrictions.min) ? restrictions.min : undefined;
+  const max = Number.isFinite(restrictions.max) ? restrictions.max : undefined;
+  if (!rows.length) return <Typography variant="body2">No criteria available for {label}.</Typography>;
+  return <Stack direction="row" spacing={1}>{rows.map((row) => <TextField key={row.key} type="number" value={resolveNumberCriterionRowValue({ value, rowKey: row.key })} onChange={(event) => onChange({ ...buildNumberCriterionDraft({ rows, value }), [row.key]: event.target.value })} inputProps={{ "aria-label": `${label} for ${row.name}`, min, max, step: "any" }} disabled={disabled} error={Boolean(error)} />)}</Stack>;
+};
+
+export default NumberCriterionParameterField;

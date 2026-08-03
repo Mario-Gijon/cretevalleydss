@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import NumberCriterionParameterField from "../../../src/features/decisionPlugins/modelParameters/fields/numberCriterion/NumberCriterionParameterField.jsx";
+import NumberCriterionParameterReadOnly from "../../../src/features/decisionPlugins/modelParameters/fields/numberCriterion/NumberCriterionParameterReadOnly.jsx";
 import SelectCriterionParameterField from "../../../src/features/decisionPlugins/modelParameters/fields/selectCriterion/SelectCriterionParameterField.jsx";
 
 const parameterContext = {
@@ -23,7 +24,7 @@ describe("criterion parameter fields", () => {
       />
     );
 
-    fireEvent.change(screen.getAllByRole("textbox")[0], {
+    fireEvent.change(screen.getAllByRole("spinbutton")[0], {
       target: { value: "0.125" },
     });
 
@@ -31,6 +32,21 @@ describe("criterion parameter fields", () => {
       cost: "0.125",
       quality: "0.25",
     });
+  });
+
+  it("uses raw scalar and map drafts without a local default fallback", () => {
+    render(
+      <NumberCriterionParameterField
+        parameter={{ label: "Threshold", default: 99, restrictions: { min: -1, max: 2 } }}
+        value={{ cost: "-0.123456789" }}
+        onChange={vi.fn()}
+        parameterContext={parameterContext}
+      />
+    );
+
+    expect(screen.getByRole("spinbutton", { name: "Threshold for Cost" })).toHaveValue(-0.123456789);
+    expect(screen.getByRole("spinbutton", { name: "Threshold for Quality" })).toHaveValue(null);
+    expect(screen.getByRole("spinbutton", { name: "Threshold for Cost" })).toHaveAttribute("step", "any");
   });
 
   it("expands a scalar selection default before the first criterion edit", () => {
@@ -57,5 +73,20 @@ describe("criterion parameter fields", () => {
       cost: "strict",
       quality: "standard",
     });
+  });
+});
+
+describe("NumberCriterionParameterReadOnly", () => {
+  it("renders supplied values exactly and ignores the declared default", () => {
+    render(
+      <NumberCriterionParameterReadOnly
+        parameter={{ default: 99 }}
+        value={{ cost: 0.123456789 }}
+        parameterContext={parameterContext}
+      />
+    );
+
+    expect(screen.getByText("0.123456789")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
   });
 });

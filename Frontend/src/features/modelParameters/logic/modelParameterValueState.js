@@ -3,7 +3,7 @@ import { buildParameterContext } from "./buildModelParameterContext";
 import {
   buildCriterionParameterRows,
   isCriteriaWeightLikeParameter,
-  isCriterionMapParameter,
+  isPerCriterionParameter,
 } from "./modelParameterCriteria";
 
 const readModelParameters = (selectedModel) =>
@@ -42,7 +42,7 @@ export const buildCreateIssueParameterDefaults = ({ selectedModel, leafCriteria 
   return parameters.reduce((accumulator, parameter) => {
     const key = parameter.key;
 
-    if (isCriterionMapParameter(parameter)) {
+    if (isPerCriterionParameter(parameter)) {
       accumulator[key] = buildCriterionMapDefault(parameter, parameterContext);
       return accumulator;
     }
@@ -69,7 +69,7 @@ export const updateCreateIssueParameterValues = ({
   parameters.forEach((parameter) => {
     const key = parameter.key;
 
-    if (!isCriterionMapParameter(parameter)) {
+    if (!isPerCriterionParameter(parameter)) {
       next[key] = Object.prototype.hasOwnProperty.call(previousValues, key)
         ? previousValues[key]
         : parameter.default ?? "";

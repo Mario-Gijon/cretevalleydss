@@ -9,6 +9,7 @@ describe("model parameter structure registry", () => {
     const numberGlobal = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("numberGlobal");
     const selectGlobal = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("selectGlobal");
     const intervalGlobal = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("intervalGlobal");
+    const numberCriterion = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("numberCriterion");
 
     expect(numberGlobal).toMatchObject({
       key: "numberGlobal",
@@ -22,6 +23,11 @@ describe("model parameter structure registry", () => {
     });
     expect(intervalGlobal).toMatchObject({
       key: "intervalGlobal",
+      validateAndNormalize: expect.any(Function),
+      validateDefinition: expect.any(Function),
+    });
+    expect(numberCriterion).toMatchObject({
+      key: "numberCriterion",
       validateAndNormalize: expect.any(Function),
       validateDefinition: expect.any(Function),
     });

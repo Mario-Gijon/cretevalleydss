@@ -1,80 +1,22 @@
 import { Box, Typography } from "@mui/material";
 import {
-  buildCriterionParameterRows,
-  resolveCriterionRowValue,
-} from "../../../../modelParameters/logic/modelParameterCriteria";
+  buildNumberCriterionRows,
+  resolveNumberCriterionRowValue,
+} from "./numberCriterionValues";
 
-const formatNumber = (value) => {
-  const parsed = Number(value);
+const displayValue = (value) =>
+  value === null || value === undefined || value === "" ? "—" : String(value);
 
-  if (!Number.isFinite(parsed)) {
-    return value === null || value === undefined || value === "" ? "—" : String(value);
-  }
-
-  return Number(parsed.toFixed(3)).toString();
-};
-
-export const NumberCriterionParameterReadOnly = ({
-  parameter,
-  value,
-  parameterContext,
-}) => {
-  const rows = buildCriterionParameterRows({ parameterContext });
-
+export const NumberCriterionParameterReadOnly = ({ value, parameterContext }) => {
+  const rows = buildNumberCriterionRows(parameterContext);
   if (rows.length === 0) {
-    return (
-      <Typography variant="body2" sx={{ fontWeight: 800 }}>
-        —
-      </Typography>
-    );
+    return <Typography variant="body2" sx={{ fontWeight: 800 }}>—</Typography>;
   }
 
   return (
-    <Box
-      sx={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${rows.length}, max-content)`,
-        columnGap: 1,
-        rowGap: 0.75,
-        alignItems: "start",
-        width: "fit-content",
-        maxWidth: "100%",
-        overflowX: "auto",
-      }}
-    >
-      {rows.map((row) => (
-        <Typography
-          key={`label-${row.key}`}
-          variant="caption"
-          sx={{
-            color: "text.secondary",
-            fontWeight: 700,
-            textAlign: "center",
-          }}
-        >
-          {row.name}
-        </Typography>
-      ))}
-
-      {rows.map((row) => (
-        <Typography
-          key={`value-${row.key}`}
-          variant="body2"
-          sx={{
-            fontWeight: 850,
-            whiteSpace: "nowrap",
-            textAlign: "center",
-          }}
-        >
-          {formatNumber(
-            resolveCriterionRowValue({
-              value,
-              defaultValue: parameter.default,
-              rowKey: row.key,
-            })
-          )}
-        </Typography>
-      ))}
+    <Box sx={{ display: "grid", gridTemplateColumns: `repeat(${rows.length}, max-content)`, columnGap: 1, rowGap: 0.75, alignItems: "start", width: "fit-content", maxWidth: "100%", overflowX: "auto" }}>
+      {rows.map((row) => <Typography key={`label-${row.key}`} variant="caption" sx={{ color: "text.secondary", fontWeight: 700, textAlign: "center" }}>{row.name}</Typography>)}
+      {rows.map((row) => <Typography key={`value-${row.key}`} variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap", textAlign: "center" }}>{displayValue(resolveNumberCriterionRowValue({ value, rowKey: row.key }))}</Typography>)}
     </Box>
   );
 };

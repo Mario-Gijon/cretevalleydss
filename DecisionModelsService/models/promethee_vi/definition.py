@@ -43,11 +43,8 @@ MODEL_DEFINITION = ModelDefinition(
             "required": True,
             "default": 0.05,
             "restrictions": {
-                "valueType": "number",
-                "requiredForEachCriterion": True,
                 "min": 0,
                 "max": None,
-                "allowed": None,
             },
         },
         {
@@ -58,11 +55,8 @@ MODEL_DEFINITION = ModelDefinition(
             "required": True,
             "default": 0.10,
             "restrictions": {
-                "valueType": "number",
-                "requiredForEachCriterion": True,
                 "min": 0,
                 "max": None,
-                "allowed": None,
             },
         },
         {
@@ -73,11 +67,8 @@ MODEL_DEFINITION = ModelDefinition(
             "required": True,
             "default": 0.20,
             "restrictions": {
-                "valueType": "number",
-                "requiredForEachCriterion": True,
                 "min": 0,
                 "max": None,
-                "allowed": None,
             },
         },
         {
@@ -101,11 +92,8 @@ MODEL_DEFINITION = ModelDefinition(
             "required": True,
             "default": 1,
             "restrictions": {
-                "valueType": "number",
-                "requiredForEachCriterion": True,
                 "min": 0,
                 "max": None,
-                "allowed": None,
             },
         },
         {
@@ -116,11 +104,8 @@ MODEL_DEFINITION = ModelDefinition(
             "required": True,
             "default": 1,
             "restrictions": {
-                "valueType": "number",
-                "requiredForEachCriterion": True,
                 "min": 0,
                 "max": None,
-                "allowed": None,
             },
         },
         {

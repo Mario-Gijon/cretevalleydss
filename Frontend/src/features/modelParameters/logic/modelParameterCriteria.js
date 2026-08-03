@@ -1,17 +1,21 @@
 import { isPlainObject } from "../../../utils/common/objects";
 
-export const isCriterionMapParameter = (parameter) =>
-  parameter.parameterStructureKey === "numberCriterion" ||
-  parameter.parameterStructureKey === "selectCriterion";
+export const isPerCriterionParameter = (parameter) =>
+  parameter?.scope === "perCriterion";
 
 export const isCriteriaWeightLikeParameter = (parameter) =>
   parameter.semanticRole === "criteriaWeights";
 
 export const buildCriterionParameterRows = ({ parameterContext }) =>
-  parameterContext.leafCriteria.map((criterion) => ({
-    key: criterion.id,
-    name: criterion.name,
-  }));
+  (Array.isArray(parameterContext?.leafCriteria)
+    ? parameterContext.leafCriteria
+    : []
+  )
+    .map((criterion) => {
+      const key = typeof criterion?.id === "string" ? criterion.id.trim() : "";
+      return key ? { key, name: criterion?.name || key } : null;
+    })
+    .filter(Boolean);
 
 export const resolveCriterionRowValue = ({ value, defaultValue, rowKey }) => {
   if (isPlainObject(value) && Object.prototype.hasOwnProperty.call(value, rowKey)) {
