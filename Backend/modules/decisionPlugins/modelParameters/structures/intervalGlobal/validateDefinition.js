@@ -7,8 +7,6 @@ const satisfiesOrder = ([lower, upper], ordered) =>
   ordered === "strictIncreasing" ? lower < upper : lower <= upper;
 
 export const validateIntervalGlobalDefinition = (parameter) => {
-  if (parameter?.scope !== "global") return "scope must be 'global'";
-
   const restrictions = parameter?.restrictions;
   if (!isPlainObject(restrictions)) return "restrictions must be a plain object";
   if (!hasOwnKey(restrictions, "min") || !hasOwnKey(restrictions, "max") || !hasOwnKey(restrictions, "ordered")) {

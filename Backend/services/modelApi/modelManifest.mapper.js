@@ -115,7 +115,6 @@ export const normalizeParameter = (parameter = {}) => {
     label: normalizeNonEmptyString(parameter?.label),
     description: normalizeNonEmptyString(parameter?.description),
     valueType: normalizeNonEmptyString(parameter?.valueType),
-    scope: normalizeNonEmptyString(parameter?.scope),
     parameterStructureKey,
     required: parameter?.required === true,
     ...(hasCanonicalDefault ? { default: parameter.default } : {}),
@@ -228,6 +227,11 @@ const validateManifestParameters = (manifestModel) => {
     }
     if (typeof parameter?.required !== "boolean") {
       errors.push(`${parameterPath}${key ? ` (${key})` : ""}.required`);
+    }
+    if (hasOwnKey(parameter || {}, "scope")) {
+      errors.push(
+        `${parameterPath}${key ? ` (${key})` : ""}: scope is not supported; parameterStructureKey defines the parameter structure`
+      );
     }
 
     if (!parameterStructureKey) {

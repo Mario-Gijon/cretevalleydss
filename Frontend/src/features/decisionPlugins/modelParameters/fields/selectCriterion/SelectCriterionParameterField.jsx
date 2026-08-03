@@ -1,8 +1,6 @@
+import { useEffect } from "react";
 import { Box, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import {
-  buildCriterionParameterRows,
-  resolveCriterionRowValue,
-} from "../../../../modelParameters/logic/modelParameterCriteria";
+import { buildSelectCriterionDraft, buildSelectCriterionRows, resolveSelectCriterionRowValue, selectCriterionMapsEqual } from "./selectCriterionValues";
 
 const FIELD_HEIGHT = 36;
 
@@ -53,9 +51,15 @@ export const SelectCriterionParameterField = ({
   error = "",
   parameterContext,
 }) => {
-  const rows = buildCriterionParameterRows({ parameterContext });
+  const rows = buildSelectCriterionRows(parameterContext);
   const allowed = requireAllowedValues(parameter);
-  const { label, default: defaultValue = "" } = parameter;
+  const { label } = parameter;
+
+  useEffect(() => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+    const reconciled = buildSelectCriterionDraft({ rows, value });
+    if (!selectCriterionMapsEqual(value, reconciled)) onChange(reconciled);
+  }, [onChange, rows, value]);
 
   if (rows.length === 0) {
     return (
@@ -96,22 +100,10 @@ export const SelectCriterionParameterField = ({
             variant="outlined"
             color="secondary"
             size="small"
-            value={resolveCriterionRowValue({
-              value,
-              defaultValue,
-              rowKey: row.key,
-            })}
+            value={resolveSelectCriterionRowValue({ value, rowKey: row.key })}
             onChange={(event) => {
-              const currentByCriterion = rows.reduce((result, currentRow) => {
-                result[currentRow.key] = resolveCriterionRowValue({
-                  value,
-                  defaultValue,
-                  rowKey: currentRow.key,
-                });
-                return result;
-              }, {});
               onChange({
-                ...currentByCriterion,
+                ...buildSelectCriterionDraft({ rows, value }),
                 [row.key]: event.target.value,
               });
             }}

@@ -8,7 +8,6 @@ const valueMatchesType = (value, valueType) => {
 };
 
 export const validateSelectGlobalDefinition = (parameter) => {
-  if (parameter?.scope !== "global") return "scope must be 'global'";
 
   const { valueType, restrictions } = parameter;
   if (!new Set(["string", "number", "integer", "boolean"]).has(valueType)) {

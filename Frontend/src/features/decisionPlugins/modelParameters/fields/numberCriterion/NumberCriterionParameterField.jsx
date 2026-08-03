@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { Box, Stack, TextField, Typography } from "@mui/material";
 import {
   buildNumberCriterionDraft,
   buildNumberCriterionRows,
   resolveNumberCriterionRowValue,
+  reconcileNumberCriterionMap,
+  numberCriterionMapsEqual,
 } from "./numberCriterionValues";
 
 const FIELD_HEIGHT = 36;
@@ -26,6 +29,12 @@ export const NumberCriterionParameterField = ({
   const restrictions = parameter?.restrictions || {};
   const min = Number.isFinite(restrictions.min) ? restrictions.min : undefined;
   const max = Number.isFinite(restrictions.max) ? restrictions.max : undefined;
+
+  useEffect(() => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+    const reconciled = reconcileNumberCriterionMap({ rows, value });
+    if (!numberCriterionMapsEqual(value, reconciled)) onChange(reconciled);
+  }, [onChange, rows, value]);
 
   if (rows.length === 0) {
     return <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 750 }}>No criteria available for {label}.</Typography>;

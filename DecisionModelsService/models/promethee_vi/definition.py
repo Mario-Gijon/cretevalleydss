@@ -38,7 +38,6 @@ MODEL_DEFINITION = ModelDefinition(
         {
             "key": "q",
             "label": "Q thresholds",
-            "scope": "perCriterion",
             "parameterStructureKey": "numberCriterion",
             "required": True,
             "default": 0.05,
@@ -50,7 +49,6 @@ MODEL_DEFINITION = ModelDefinition(
         {
             "key": "s",
             "label": "S thresholds",
-            "scope": "perCriterion",
             "parameterStructureKey": "numberCriterion",
             "required": True,
             "default": 0.10,
@@ -62,7 +60,6 @@ MODEL_DEFINITION = ModelDefinition(
         {
             "key": "p",
             "label": "P thresholds",
-            "scope": "perCriterion",
             "parameterStructureKey": "numberCriterion",
             "required": True,
             "default": 0.20,
@@ -74,7 +71,6 @@ MODEL_DEFINITION = ModelDefinition(
         {
             "key": "f",
             "label": "Preference functions",
-            "scope": "perCriterion",
             "parameterStructureKey": "selectCriterion",
             "required": True,
             "default": "t5",
@@ -87,7 +83,6 @@ MODEL_DEFINITION = ModelDefinition(
         {
             "key": "w_lower",
             "label": "Lower weight bounds",
-            "scope": "perCriterion",
             "parameterStructureKey": "numberCriterion",
             "required": True,
             "default": 1,
@@ -99,7 +94,6 @@ MODEL_DEFINITION = ModelDefinition(
         {
             "key": "w_upper",
             "label": "Upper weight bounds",
-            "scope": "perCriterion",
             "parameterStructureKey": "numberCriterion",
             "required": True,
             "default": 1,
@@ -112,7 +106,6 @@ MODEL_DEFINITION = ModelDefinition(
             "key": "iterations",
             "label": "Iterations",
             "valueType": "integer",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,
             "default": 1000,

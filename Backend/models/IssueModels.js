@@ -46,11 +46,6 @@ const parameterSchema = new Schema(
       trim: true,
       default: null,
     },
-    scope: {
-      type: String,
-      trim: true,
-      default: null,
-    },
     parameterStructureKey: {
       type: String,
       trim: true,

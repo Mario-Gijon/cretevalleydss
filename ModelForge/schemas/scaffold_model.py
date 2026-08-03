@@ -43,9 +43,6 @@ def _validate_number_global_parameter(parameter: dict, index: int) -> None:
         raise ValueError(f"{prefix}.key must be a non-empty string")
     if not _is_non_empty_string(parameter.get("label")):
         raise ValueError(f"{prefix}.label must be a non-empty string")
-    if parameter.get("scope") != "global":
-        raise ValueError(f"{prefix}.scope must be global for numberGlobal")
-
     value_type = parameter.get("valueType")
     if value_type not in NUMBER_GLOBAL_VALUE_TYPES:
         raise ValueError(

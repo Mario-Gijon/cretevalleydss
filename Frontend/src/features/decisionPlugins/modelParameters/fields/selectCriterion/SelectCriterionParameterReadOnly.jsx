@@ -1,8 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import {
-  buildCriterionParameterRows,
-  resolveCriterionRowValue,
-} from "../../../../modelParameters/logic/modelParameterCriteria";
+import { buildSelectCriterionRows, resolveSelectCriterionRowValue } from "./selectCriterionValues";
 
 const formatValue = (value) =>
   value === null || value === undefined || value === "" ? "—" : String(value);
@@ -12,7 +9,7 @@ export const SelectCriterionParameterReadOnly = ({
   value,
   parameterContext,
 }) => {
-  const rows = buildCriterionParameterRows({ parameterContext });
+  const rows = buildSelectCriterionRows(parameterContext);
 
   if (rows.length === 0) {
     return (
@@ -60,11 +57,7 @@ export const SelectCriterionParameterReadOnly = ({
           }}
         >
           {formatValue(
-            resolveCriterionRowValue({
-              value,
-              defaultValue: parameter.default,
-              rowKey: row.key,
-            })
+            resolveSelectCriterionRowValue({ value, rowKey: row.key })
           )}
         </Typography>
       ))}

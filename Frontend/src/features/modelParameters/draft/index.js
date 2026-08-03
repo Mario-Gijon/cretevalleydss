@@ -1,5 +1,5 @@
-export { isCriteriaWeightLikeParameter } from "../logic/modelParameterCriteria.js";
 export {
+  isCriteriaWeightLikeParameter,
   getCreateIssueModelParameters,
   buildCreateIssueParameterDefaults,
   updateCreateIssueParameterValues,

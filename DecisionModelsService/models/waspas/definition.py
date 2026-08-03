@@ -39,7 +39,6 @@ MODEL_DEFINITION = ModelDefinition(
             "key": "lambda",
             "label": "Lambda",
             "valueType": "number",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,
             "default": 0.5,

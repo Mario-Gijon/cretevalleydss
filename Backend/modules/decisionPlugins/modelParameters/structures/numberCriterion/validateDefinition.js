@@ -4,10 +4,6 @@ const isFiniteNumberOrNull = (value) =>
   value === null || (typeof value === "number" && Number.isFinite(value));
 
 export const validateNumberCriterionDefinition = (parameter) => {
-  if (parameter?.scope !== "perCriterion") {
-    return "scope must be 'perCriterion'";
-  }
-
   const restrictions = parameter?.restrictions;
   if (!isPlainObject(restrictions)) return "restrictions must be a plain object";
   if (!hasOwnKey(restrictions, "min") || !hasOwnKey(restrictions, "max")) {

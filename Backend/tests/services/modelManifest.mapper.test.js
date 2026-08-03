@@ -27,7 +27,6 @@ const buildNumberGlobal = (overrides = {}) => ({
   label: "Alpha",
   parameterStructureKey: "numberGlobal",
   required: true,
-  scope: "global",
   valueType: "number",
   restrictions: { min: 0, max: 1, allowed: null },
   default: 0.5,
@@ -39,7 +38,6 @@ const buildIntervalGlobal = (overrides = {}) => ({
   label: "Agreement interval",
   parameterStructureKey: "intervalGlobal",
   required: true,
-  scope: "global",
   default: [0.3, 0.8],
   restrictions: { min: 0, max: 1, ordered: "strictIncreasing" },
   ...overrides,
@@ -50,7 +48,6 @@ const buildNumberCriterion = (overrides = {}) => ({
   label: "Threshold",
   parameterStructureKey: "numberCriterion",
   required: true,
-  scope: "perCriterion",
   default: 0,
   restrictions: { min: 0, max: 1 },
   ...overrides,
@@ -63,7 +60,6 @@ describe("model manifest parameter mapping", () => {
         key: "iterations",
         label: "Iterations",
         valueType: "integer",
-        scope: "global",
         parameterStructureKey: "numberGlobal",
         required: true,
         default: 1000,
@@ -77,7 +73,6 @@ describe("model manifest parameter mapping", () => {
       key: "iterations",
       label: "Iterations",
       valueType: "integer",
-      scope: "global",
       parameterStructureKey: "numberGlobal",
       required: true,
       default: 1000,
@@ -94,7 +89,6 @@ describe("model manifest parameter mapping", () => {
       key: "optionalAlpha",
       label: "Optional alpha",
       valueType: "number",
-      scope: "global",
       parameterStructureKey: "selectGlobal",
       required: false,
       restrictions: {
@@ -150,7 +144,6 @@ describe("syncable manifest parameter definitions", () => {
             label: "Choice",
             parameterStructureKey: "selectGlobal",
             required: true,
-            scope: "global",
             valueType,
             default: defaultValue,
             restrictions: { allowed },
@@ -201,7 +194,6 @@ describe("syncable manifest parameter definitions", () => {
   });
 
   it.each([
-    { scope: "global" },
     { restrictions: { max: 1 } },
     { restrictions: { min: 0 } },
     { restrictions: { min: "0", max: 1 } },
@@ -232,5 +224,16 @@ describe("syncable manifest parameter definitions", () => {
         "parameters[2].key (duplicate: alpha)",
       ])
     );
+  });
+
+  it("rejects obsolete scope metadata and does not project it", () => {
+    expect(normalizeParameter({ key: "alpha", scope: "global" })).not.toHaveProperty("scope");
+    expect(
+      validateSyncableManifestModel(
+        buildManifest([buildNumberGlobal({ scope: "global" })])
+      )
+    ).toEqual([
+      "parameters[0] (alpha): scope is not supported; parameterStructureKey defines the parameter structure",
+    ]);
   });
 });

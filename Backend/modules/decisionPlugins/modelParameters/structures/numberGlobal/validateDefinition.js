@@ -14,10 +14,6 @@ const satisfiesRestrictions = ({ value, restrictions }) => {
 };
 
 export const validateNumberGlobalDefinition = (parameter) => {
-  if (parameter?.scope !== "global") {
-    return "scope must be 'global'";
-  }
-
   const { valueType, restrictions } = parameter;
   if (valueType !== "number" && valueType !== "integer") {
     return "valueType must be 'number' or 'integer'";
