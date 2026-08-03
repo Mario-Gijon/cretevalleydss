@@ -51,4 +51,15 @@ describe("model-parameter Decision Plugin public registry", () => {
     expect(entry.FieldComponent).toBeTruthy();
     expect(entry.ReadOnlyComponent).toBeTruthy();
   });
+
+  it("dispatches selectGlobal through its canonical registry entry", () => {
+    const entry = resolveParameterFieldEntry({
+      key: "choice",
+      parameterStructureKey: "selectGlobal",
+    });
+
+    expect(entry).toBe(PARAMETER_FIELD_REGISTRY.selectGlobal);
+    expect(entry.FieldComponent).toBeTruthy();
+    expect(entry.ReadOnlyComponent).toBeTruthy();
+  });
 });
