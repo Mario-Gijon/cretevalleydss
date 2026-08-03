@@ -49,9 +49,9 @@ describe("criterion parameter fields", () => {
       />
     );
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "strict" },
-    });
+    const combobox = screen.getAllByRole("combobox")[0];
+    fireEvent.mouseDown(combobox);
+    fireEvent.click(screen.getByRole("option", { name: "strict" }));
 
     expect(onChange).toHaveBeenLastCalledWith({
       cost: "strict",
