@@ -61,30 +61,43 @@ describe("SelectGlobalParameterField", () => {
     expect(typeof onChange.mock.calls.at(-1)[0]).toBe("number");
   });
 
-  it("renders numeric, string, and boolean options visibly", () => {
-    const { combobox } = renderField({
-      parameter: buildParameter({ valueType: "number", restrictions: { allowed: [0, 1] } }),
+  it.each([
+    {
+      name: "number",
+      parameter: buildParameter({
+        valueType: "number",
+        restrictions: { allowed: [0, 1] },
+      }),
       value: 0,
-    });
-    expect(getSelectInput(combobox)).toHaveValue("0");
-    openOptions(combobox);
-    expect(screen.getByRole("option", { name: "0" })).toBeVisible();
-    expect(screen.getByRole("option", { name: "1" })).toBeVisible();
-
-    renderField({
-      parameter: buildParameter({ valueType: "string", restrictions: { allowed: ["alpha", "beta"] } }),
+      expectedOptions: ["0", "1"],
+    },
+    {
+      name: "string",
+      parameter: buildParameter({
+        valueType: "string",
+        restrictions: { allowed: ["alpha", "beta"] },
+      }),
       value: "alpha",
-    });
-    openOptions(screen.getAllByRole("combobox", { name: "Choice" })[1]);
-    expect(screen.getByRole("option", { name: "beta" })).toBeVisible();
-
-    renderField({
-      parameter: buildParameter({ valueType: "boolean", restrictions: { allowed: [true, false] } }),
+      expectedOptions: ["alpha", "beta"],
+    },
+    {
+      name: "boolean",
+      parameter: buildParameter({
+        valueType: "boolean",
+        restrictions: { allowed: [true, false] },
+      }),
       value: false,
+      expectedOptions: ["true", "false"],
+    },
+  ])("renders $name options visibly", ({ parameter, value, expectedOptions }) => {
+    const { combobox } = renderField({ parameter, value });
+
+    expect(getSelectInput(combobox)).toHaveValue(String(value));
+    openOptions(combobox);
+
+    expectedOptions.forEach((option) => {
+      expect(screen.getByRole("option", { name: option })).toBeVisible();
     });
-    openOptions(screen.getAllByRole("combobox", { name: "Choice" })[2]);
-    expect(screen.getAllByRole("option", { name: "true" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("option", { name: "false" }).length).toBeGreaterThan(0);
   });
 
   it.each([
