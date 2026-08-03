@@ -1,13 +1,13 @@
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import { createBadRequestError } from "../../utils/common/errors.js";
 import {
   extractLeafCriteriaMetadata,
 } from "./criteriaMetadata.js";
 import {
   getValueType,
   isMissingParameterValue,
-  normalizeNonEmptyString,
   resolveParameterKey,
 } from "./parameterValues.js";
+import { normalizeNonEmptyString } from "../../utils/common/strings.js";
 import {
   throwInvalidModelParametersError,
   throwUnknownModelParametersError,
@@ -15,8 +15,8 @@ import {
 import {
   MODEL_PARAMETER_STRUCTURE_REGISTRY,
   resolveParameterStructureKey,
-} from "./parameterStructureRegistry.js";
-import { hasOwnKey } from "../../../utils/common/objects.js";
+} from "../decisionPlugins/modelParameters/parameterStructureRegistry.js";
+import { hasOwnKey } from "../../utils/common/objects.js";
 
 export const validateAndNormalizeModelParametersOrThrow = ({
   model,
@@ -122,8 +122,8 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    const handler = MODEL_PARAMETER_STRUCTURE_REGISTRY.get(parameterStructureKey);
-    if (!handler) {
+    const structure = MODEL_PARAMETER_STRUCTURE_REGISTRY.get(parameterStructureKey);
+    if (!structure) {
       addError({
         parameter: parameterKey,
         message: `uses unsupported parameter structure '${parameterStructureKey}'`,
@@ -132,7 +132,7 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    const result = handler({
+    const result = structure.validateAndNormalize({
       value,
       parameter,
       context: {

@@ -18,12 +18,12 @@ NUMBER_GLOBAL_TEMPLATE_MAP = [
         "index.js",
     ),
     (
-        "number-global/backend-validate-metadata.js.template",
-        "operations/validateMetadata.js",
+        "number-global/backend-validate-definition.js.template",
+        "validateDefinition.js",
     ),
     (
         "number-global/backend-validate-and-normalize.js.template",
-        "operations/validateAndNormalize.js",
+        "validateAndNormalize.js",
     ),
     (
         "number-global/frontend-index.js.template",

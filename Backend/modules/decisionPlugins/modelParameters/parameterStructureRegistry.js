@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { normalizeNonEmptyString } from "./parameterValues.js";
+import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,11 +10,21 @@ const STRUCTURES_ROOT = path.join(__dirname, "structures");
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
-const isValidParameterStructure = (value) =>
-  value !== null &&
-  typeof value === "object" &&
-  isNonEmptyString(value.key) &&
-  typeof value.validateAndNormalize === "function";
+const isValidParameterStructure = (value) => {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    !isNonEmptyString(value.key) ||
+    typeof value.validateAndNormalize !== "function"
+  ) {
+    return false;
+  }
+
+  return (
+    value.validateDefinition === undefined ||
+    typeof value.validateDefinition === "function"
+  );
+};
 
 const extractParameterStructureFromModule = ({ moduleExports, modulePath }) => {
   const structures = Object.entries(moduleExports).filter(([, value]) =>
@@ -72,7 +82,7 @@ const loadParameterStructures = async () => {
       );
     }
 
-    registry.set(structure.key, structure.validateAndNormalize);
+    registry.set(structure.key, structure);
   }
 
   return registry;

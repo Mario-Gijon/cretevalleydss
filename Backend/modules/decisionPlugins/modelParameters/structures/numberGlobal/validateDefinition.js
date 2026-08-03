@@ -1,0 +1,75 @@
+import { hasOwnKey, isPlainObject } from "../../../../../utils/common/objects.js";
+
+const isFiniteNumber = (value) =>
+  typeof value === "number" && Number.isFinite(value);
+
+const satisfiesRestrictions = ({ value, restrictions }) => {
+  if (restrictions.min !== null && value < restrictions.min) return false;
+  if (restrictions.max !== null && value > restrictions.max) return false;
+  return (
+    !Array.isArray(restrictions.allowed) ||
+    restrictions.allowed.length === 0 ||
+    restrictions.allowed.includes(value)
+  );
+};
+
+export const validateNumberGlobalDefinition = (parameter) => {
+  if (parameter?.scope !== "global") {
+    return "scope must be 'global'";
+  }
+
+  const { valueType, restrictions } = parameter;
+  if (valueType !== "number" && valueType !== "integer") {
+    return "valueType must be 'number' or 'integer'";
+  }
+  if (
+    !isPlainObject(restrictions) ||
+    !hasOwnKey(restrictions, "min") ||
+    !hasOwnKey(restrictions, "max") ||
+    !hasOwnKey(restrictions, "allowed")
+  ) {
+    return "restrictions must declare min, max, and allowed";
+  }
+
+  const { min, max, allowed } = restrictions;
+  if ((min !== null && !isFiniteNumber(min)) || (max !== null && !isFiniteNumber(max))) {
+    return "restrictions min and max must be finite numbers or null";
+  }
+  if (min !== null && max !== null && min > max) {
+    return "restrictions min must not exceed max";
+  }
+  if (allowed !== null && !Array.isArray(allowed)) {
+    return "restrictions allowed must be an array or null";
+  }
+
+  const values = [min, max, ...(Array.isArray(allowed) ? allowed : [])].filter(
+    (value) => value !== null
+  );
+  if (!values.every(isFiniteNumber)) {
+    return "restrictions allowed must contain finite numbers";
+  }
+  if (valueType === "integer" && !values.every(Number.isInteger)) {
+    return "integer restrictions must contain only integers";
+  }
+  if (
+    Array.isArray(allowed) &&
+    !allowed.every((value) => satisfiesRestrictions({ value, restrictions: { min, max, allowed: null } }))
+  ) {
+    return "restrictions allowed values must satisfy the range";
+  }
+
+  if (!hasOwnKey(parameter, "default")) return null;
+
+  const defaultValue = parameter.default;
+  if (!isFiniteNumber(defaultValue)) {
+    return "default must be a finite number";
+  }
+  if (valueType === "integer" && !Number.isInteger(defaultValue)) {
+    return "default must be an integer";
+  }
+  if (!satisfiesRestrictions({ value: defaultValue, restrictions })) {
+    return "default must satisfy restrictions";
+  }
+
+  return null;
+};

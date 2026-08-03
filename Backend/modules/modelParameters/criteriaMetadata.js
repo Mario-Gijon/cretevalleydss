@@ -1,4 +1,4 @@
-import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
+import { normalizeNonEmptyString } from "../../utils/common/strings.js";
 
 const normalizeCriterionLeafMetadata = (node) => {
   const idCandidate =

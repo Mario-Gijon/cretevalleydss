@@ -118,7 +118,15 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
     }
     backend_validation = generated_files[
         "Backend/modules/decisionPlugins/modelParameters/structures/"
-        "numberGlobal/operations/validateAndNormalize.js"
+        "numberGlobal/validateAndNormalize.js"
+    ]
+    backend_definition = generated_files[
+        "Backend/modules/decisionPlugins/modelParameters/structures/"
+        "numberGlobal/validateDefinition.js"
+    ]
+    backend_index = generated_files[
+        "Backend/modules/decisionPlugins/modelParameters/structures/"
+        "numberGlobal/index.js"
     ]
     frontend_field = generated_files[
         "Frontend/src/features/decisionPlugins/modelParameters/fields/"
@@ -127,6 +135,9 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
     assert "Number.isInteger(normalizedValue)" in backend_validation
     assert "normalizeNumberValue(value)" in backend_validation
     assert "Math.trunc" not in backend_validation
+    assert "validateNumberGlobalDefinition" not in backend_validation
+    assert "validateNumberGlobalDefinition" in backend_definition
+    assert "validateDefinition: validateNumberGlobalDefinition" in backend_index
     assert "onChange(event.target.value)" in frontend_field
     assert 'step: isInteger ? 1 : "any"' in frontend_field
     assert "handleTwoDecimals" not in frontend_field

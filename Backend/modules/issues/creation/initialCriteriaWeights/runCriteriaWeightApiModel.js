@@ -2,7 +2,7 @@ import { IssueModel } from "../../../../models/IssueModels.js";
 import {
   getEvaluationStructureOrThrow,
 } from "../../../decisionPlugins/evaluations/index.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../../../decisionPlugins/modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../../modelParameters/validateAndNormalizeModelParameters.js";
 import {
   createBadRequestError,
   createInternalError,

@@ -1,4 +1,4 @@
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import { createBadRequestError } from "../../utils/common/errors.js";
 
 export const throwInvalidModelParametersError = ({ modelName, parameterErrors }) => {
   const firstError = parameterErrors[0];

@@ -3,7 +3,7 @@ import {
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../../decisionPlugins/modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../modelParameters/validateAndNormalizeModelParameters.js";
 import {
   buildDefaultsResolved,
   mergeParamsResolved,

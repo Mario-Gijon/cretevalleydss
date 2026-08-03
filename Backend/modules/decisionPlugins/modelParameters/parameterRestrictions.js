@@ -1,4 +1,4 @@
-import { normalizeNonEmptyString } from "./parameterValues.js";
+import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
 export const isWithinRange = (value, restrictions = {}) => {
   if (typeof restrictions.min === "number" && value < restrictions.min) {

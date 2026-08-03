@@ -1,4 +1,4 @@
-import { normalizeNumberValue } from "../../parameterValues.js";
+import { normalizeNumberValue } from "../../../../modelParameters/parameterValues.js";
 import { isWithinRange, validateOrderedRule } from "../../parameterRestrictions.js";
 import { toInvalid, toValid } from "../../parameterValidationResult.js";
 

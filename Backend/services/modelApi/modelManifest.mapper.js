@@ -1,5 +1,8 @@
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../utils/common/strings.js";
+import {
+  MODEL_PARAMETER_STRUCTURE_REGISTRY,
+} from "../../modules/decisionPlugins/modelParameters/parameterStructureRegistry.js";
 
 export const MANIFEST_SYNC_SOURCE = "DecisionModelsService";
 
@@ -210,20 +213,43 @@ const validateManifestParameters = (manifestModel) => {
   parameters.forEach((parameter, index) => {
     const parameterPath = `parameters[${index}]`;
     const key = normalizeNonEmptyString(parameter?.key);
+    const label = normalizeNonEmptyString(parameter?.label);
     const parameterStructureKey = normalizeNonEmptyString(parameter?.parameterStructureKey);
 
     if (!key) {
       errors.push(`${parameterPath}.key`);
+    } else if (seenKeys.has(key)) {
+      errors.push(`${parameterPath}.key (duplicate: ${key})`);
+    }
+    if (key) seenKeys.add(key);
+
+    if (!label) {
+      errors.push(`${parameterPath}${key ? ` (${key})` : ""}.label`);
+    }
+    if (typeof parameter?.required !== "boolean") {
+      errors.push(`${parameterPath}${key ? ` (${key})` : ""}.required`);
+    }
+
+    if (!parameterStructureKey) {
+      errors.push(`${parameterPath}${key ? ` (${key})` : ""}.parameterStructureKey`);
       return;
     }
 
-    if (seenKeys.has(key)) {
-      errors.push(`${parameterPath}.key (duplicate: ${key})`);
+    const structure = MODEL_PARAMETER_STRUCTURE_REGISTRY.get(parameterStructureKey);
+    if (!structure) {
+      errors.push(
+        `${parameterPath}${key ? ` (${key})` : ""}.parameterStructureKey (unknown: ${parameterStructureKey})`
+      );
+      return;
     }
-    seenKeys.add(key);
 
-    if (!parameterStructureKey) {
-      errors.push(`${parameterPath}.parameterStructureKey`);
+    if (typeof structure.validateDefinition === "function") {
+      const definitionError = structure.validateDefinition(parameter);
+      if (definitionError) {
+        errors.push(
+          `${parameterPath}${key ? ` (${key})` : ""}: ${definitionError}`
+        );
+      }
     }
   });
 

@@ -1,6 +1,4 @@
-import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
-
-export { normalizeNonEmptyString };
+import { normalizeNonEmptyString } from "../../utils/common/strings.js";
 
 export const resolveParameterKey = (parameter) =>
   normalizeNonEmptyString(parameter?.key);

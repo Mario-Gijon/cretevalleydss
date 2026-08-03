@@ -1,8 +1,8 @@
 import {
   isAllowedValue,
-  normalizeNonEmptyString,
   normalizeNumberValue,
-} from "../parameterValues.js";
+} from "../../../modelParameters/parameterValues.js";
+import { normalizeNonEmptyString } from "../../../../utils/common/strings.js";
 import { isWithinRange } from "../parameterRestrictions.js";
 import { toInvalid, toValid } from "../parameterValidationResult.js";
 import { hasOwnKey, isPlainObject } from "../../../../utils/common/objects.js";

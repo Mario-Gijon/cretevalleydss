@@ -1,0 +1,23 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  MODEL_PARAMETER_STRUCTURE_REGISTRY,
+} from "../../../modules/decisionPlugins/modelParameters/parameterStructureRegistry.js";
+
+describe("model parameter structure registry", () => {
+  it("keeps complete structure objects and supports optional definition validators", () => {
+    const numberGlobal = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("numberGlobal");
+    const selectGlobal = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("selectGlobal");
+
+    expect(numberGlobal).toMatchObject({
+      key: "numberGlobal",
+      validateAndNormalize: expect.any(Function),
+      validateDefinition: expect.any(Function),
+    });
+    expect(selectGlobal).toMatchObject({
+      key: "selectGlobal",
+      validateAndNormalize: expect.any(Function),
+    });
+    expect(selectGlobal).not.toHaveProperty("validateDefinition");
+  });
+});

@@ -1,4 +1,4 @@
-import { isAllowedValue } from "../../parameterValues.js";
+import { isAllowedValue } from "../../../../modelParameters/parameterValues.js";
 import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
 export const validateSelectGlobalParameter = ({ value, parameter }) => {

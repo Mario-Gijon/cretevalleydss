@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { validateAndNormalizeModelParametersOrThrow } from "../../../modules/decisionPlugins/modelParameters/validateAndNormalizeModelParameters.js";
-import { validateAndNormalizeNumberGlobal } from "../../../modules/decisionPlugins/modelParameters/structures/numberGlobal/operations/validateAndNormalize.js";
-import { validateNumberGlobalMetadata } from "../../../modules/decisionPlugins/modelParameters/structures/numberGlobal/operations/validateMetadata.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../../modules/modelParameters/validateAndNormalizeModelParameters.js";
+import { validateAndNormalizeNumberGlobal } from "../../../modules/decisionPlugins/modelParameters/structures/numberGlobal/validateAndNormalize.js";
+import { validateNumberGlobalDefinition } from "../../../modules/decisionPlugins/modelParameters/structures/numberGlobal/validateDefinition.js";
 
 const buildParameter = (overrides = {}) => ({
   key: "alpha",
@@ -113,13 +113,25 @@ describe("numberGlobal parameter structure", () => {
       validateAndNormalizeNumberGlobal({ value: "4.5", parameter })
     ).toMatchObject({ ok: false, value: "4.5" });
   });
+
+  it("only consumes runtime value fields", () => {
+    expect(
+      validateAndNormalizeNumberGlobal({
+        value: "0.5",
+        parameter: {
+          valueType: "number",
+          restrictions: { min: null, max: null, allowed: null },
+        },
+      })
+    ).toEqual({ ok: true, value: 0.5 });
+  });
 });
 
-describe("numberGlobal metadata", () => {
+describe("numberGlobal definition", () => {
   it("accepts canonical number and integer metadata", () => {
-    expect(validateNumberGlobalMetadata(buildParameter())).toBeNull();
+    expect(validateNumberGlobalDefinition(buildParameter())).toBeNull();
     expect(
-      validateNumberGlobalMetadata(
+      validateNumberGlobalDefinition(
         buildParameter({
           valueType: "integer",
           default: 2,
@@ -130,17 +142,16 @@ describe("numberGlobal metadata", () => {
 
     const optionalWithoutDefault = buildParameter({ required: false });
     delete optionalWithoutDefault.default;
-    expect(validateNumberGlobalMetadata(optionalWithoutDefault)).toBeNull();
+    expect(validateNumberGlobalDefinition(optionalWithoutDefault)).toBeNull();
 
     const requiredWithoutDefault = buildParameter({ required: true });
     delete requiredWithoutDefault.default;
-    expect(validateNumberGlobalMetadata(requiredWithoutDefault)).toBeNull();
+    expect(validateNumberGlobalDefinition(requiredWithoutDefault)).toBeNull();
   });
 
   it.each([
     ["non-object metadata", null],
     ["wrong scope", { scope: "perCriterion" }],
-    ["wrong structure", { parameterStructureKey: "numberCriterion" }],
     ["missing valueType", { valueType: undefined }],
     ["unsupported valueType", { valueType: "decimal" }],
     ["present undefined default", { default: undefined }],
@@ -166,10 +177,6 @@ describe("numberGlobal metadata", () => {
       { restrictions: { min: 0, max: 1, allowed: [true] } },
     ],
     [
-      "duplicate allowed values",
-      { restrictions: { min: 0, max: 1, allowed: [0.5, 0.5] } },
-    ],
-    [
       "allowed outside range",
       { restrictions: { min: 0, max: 1, allowed: [2] } },
     ],
@@ -189,7 +196,7 @@ describe("numberGlobal metadata", () => {
     ],
   ])("rejects %s", (_label, overrides) => {
     const parameter = overrides === null ? null : buildParameter(overrides);
-    expect(validateNumberGlobalMetadata(parameter)).toEqual(
+    expect(validateNumberGlobalDefinition(parameter)).toEqual(
       expect.any(String)
     );
   });
@@ -207,76 +214,19 @@ describe("numberGlobal metadata", () => {
     ["object", {}],
   ])("rejects a present %s default", (_label, defaultValue) => {
     expect(
-      validateNumberGlobalMetadata(buildParameter({ default: defaultValue }))
+      validateNumberGlobalDefinition(buildParameter({ default: defaultValue }))
     ).toEqual(expect.any(String));
   });
 
-  it.each([
-    ["isInteger", { isInteger: true }],
-    ["numericType", { numericType: "integer" }],
-    ["type", { type: "integer" }],
-    ["minimum", { minimum: 0 }],
-    ["maximum", { maximum: 1 }],
-    ["options", { options: [0, 1] }],
-    [
-      "restrictions.valueType",
-      {
-        restrictions: {
-          min: null,
-          max: null,
-          allowed: null,
-          valueType: "integer",
-        },
-      },
-    ],
-    [
-      "restrictions.minimum",
-      {
-        restrictions: {
-          min: null,
-          max: null,
-          allowed: null,
-          minimum: 0,
-        },
-      },
-    ],
-    [
-      "restrictions.maximum",
-      {
-        restrictions: {
-          min: null,
-          max: null,
-          allowed: null,
-          maximum: 1,
-        },
-      },
-    ],
-    [
-      "restrictions.options",
-      {
-        restrictions: {
-          min: null,
-          max: null,
-          allowed: null,
-          options: [0, 1],
-        },
-      },
-    ],
-    [
-      "unknown restriction",
-      {
-        restrictions: {
-          min: null,
-          max: null,
-          allowed: null,
-          extra: true,
-        },
-      },
-    ],
-  ])("rejects the unsupported metadata field %s", (_label, overrides) => {
-    expect(validateNumberGlobalMetadata(buildParameter(overrides))).toEqual(
-      expect.any(String)
-    );
+  it("allows unrelated definition metadata and duplicate allowed values", () => {
+    expect(
+      validateNumberGlobalDefinition(
+        buildParameter({
+          numericType: "number",
+          restrictions: { min: 0, max: 1, allowed: [0.5, 0.5], extra: true },
+        })
+      )
+    ).toBeNull();
   });
 
   it.each([
@@ -287,7 +237,7 @@ describe("numberGlobal metadata", () => {
     ["object", [{ value: 0.5 }]],
   ])("rejects an allowed array containing a %s", (_label, allowed) => {
     expect(
-      validateNumberGlobalMetadata(
+      validateNumberGlobalDefinition(
         buildParameter({
           restrictions: { min: 0, max: 1, allowed },
         })
@@ -311,7 +261,7 @@ describe("numberGlobal metadata", () => {
     ],
   ])("rejects integer metadata with a %s", (_label, overrides) => {
     expect(
-      validateNumberGlobalMetadata(
+      validateNumberGlobalDefinition(
         buildParameter({
           valueType: "integer",
           default: 1,
@@ -325,7 +275,7 @@ describe("numberGlobal metadata", () => {
   it("accepts persisted document-like metadata while keeping restrictions plain", () => {
     const parameter = Object.assign(Object.create({ persisted: true }), buildParameter());
 
-    expect(validateNumberGlobalMetadata(parameter)).toBeNull();
+    expect(validateNumberGlobalDefinition(parameter)).toBeNull();
   });
 });
 
