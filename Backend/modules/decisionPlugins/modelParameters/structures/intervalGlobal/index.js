@@ -1,6 +1,8 @@
-import { validateIntervalGlobalParameter } from "./validate.js";
+import { validateAndNormalizeIntervalGlobal } from "./validateAndNormalize.js";
+import { validateIntervalGlobalDefinition } from "./validateDefinition.js";
 
 export const intervalGlobalParameterStructure = Object.freeze({
   key: "intervalGlobal",
-  validateAndNormalize: validateIntervalGlobalParameter,
+  validateDefinition: validateIntervalGlobalDefinition,
+  validateAndNormalize: validateAndNormalizeIntervalGlobal,
 });

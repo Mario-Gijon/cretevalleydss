@@ -12,32 +12,6 @@ export const isWithinRange = (value, restrictions = {}) => {
   return true;
 };
 
-export const validateOrderedRule = (values, orderedRule) => {
-  if (!orderedRule || values.length < 2) {
-    return true;
-  }
-
-  if (orderedRule === "strictIncreasing") {
-    for (let index = 1; index < values.length; index += 1) {
-      if (!(values[index - 1] < values[index])) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (orderedRule === "nonDecreasing") {
-    for (let index = 1; index < values.length; index += 1) {
-      if (!(values[index - 1] <= values[index])) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  return false;
-};
-
 export const resolveExpectedArrayLength = ({
   parameter,
   leafCriteria,
