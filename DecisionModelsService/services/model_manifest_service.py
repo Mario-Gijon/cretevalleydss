@@ -7,12 +7,9 @@ from registry.model_registry import get_model_definitions
 
 
 def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]:
-    """Normaliza un parámetro al contrato público sin alterar su forma base."""
+    """Copia un parámetro declarado al contrato público del manifest."""
 
-    normalized = dict(parameter)
-    normalized.pop("scope", None)
-
-    return normalized
+    return dict(parameter)
 
 
 def _build_supported_expression_domains(model: ModelDefinition) -> list[dict[str, Any]]:

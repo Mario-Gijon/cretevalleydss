@@ -47,7 +47,7 @@ def test_supported_domain_normalization(model_definition_factory):
     )
 
 
-def test_parameter_scope_is_omitted(model_definition_factory):
+def test_parameter_scope_is_not_injected(model_definition_factory):
     model = model_definition_factory(
         parameters=[
             {
@@ -60,6 +60,33 @@ def test_parameter_scope_is_omitted(model_definition_factory):
     parameters = _build_parameters(model)
 
     assert parameters == [{"key": "alpha", "label": "Alpha"}]
+
+
+def test_parameter_scope_is_not_silently_removed(model_definition_factory):
+    model = model_definition_factory(
+        parameters=[
+            {
+                "key": "legacy",
+                "label": "Legacy",
+                "scope": "global",
+            }
+        ]
+    )
+
+    assert _build_parameters(model) == [
+        {"key": "legacy", "label": "Legacy", "scope": "global"}
+    ]
+
+
+def test_parameter_metadata_is_copied_without_mutating_source(model_definition_factory):
+    source = {"key": "alpha", "label": "Alpha"}
+    model = model_definition_factory(parameters=[source])
+
+    result = _build_parameters(model)
+
+    assert result[0] == source
+    assert result[0] is not source
+    assert source == {"key": "alpha", "label": "Alpha"}
 
 
 def test_request_example_extraction_returns_first_valid_request_example_value(
