@@ -14,6 +14,14 @@ const satisfiesRestrictions = ({ value, restrictions }) => {
 };
 
 export const validateNumberGlobalDefinition = (parameter) => {
+  if (
+    parameter === null ||
+    typeof parameter !== "object" ||
+    Array.isArray(parameter)
+  ) {
+    return "parameter must be an object";
+  }
+
   const { valueType, restrictions } = parameter;
   if (valueType !== "number" && valueType !== "integer") {
     return "valueType must be 'number' or 'integer'";

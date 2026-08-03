@@ -150,6 +150,8 @@ describe("numberGlobal definition", () => {
 
   it.each([
     ["non-object metadata", null],
+    ["undefined metadata", undefined],
+    ["array metadata", []],
     ["missing valueType", { valueType: undefined }],
     ["unsupported valueType", { valueType: "decimal" }],
     ["present undefined default", { default: undefined }],
@@ -193,7 +195,10 @@ describe("numberGlobal definition", () => {
       },
     ],
   ])("rejects %s", (_label, overrides) => {
-    const parameter = overrides === null ? null : buildParameter(overrides);
+    const parameter =
+      overrides === null || overrides === undefined || Array.isArray(overrides)
+        ? overrides
+        : buildParameter(overrides);
     expect(validateNumberGlobalDefinition(parameter)).toEqual(
       expect.any(String)
     );
@@ -221,6 +226,7 @@ describe("numberGlobal definition", () => {
       validateNumberGlobalDefinition(
         buildParameter({
           numericType: "number",
+          default: 0.5,
           restrictions: { min: 0, max: 1, allowed: [0.5, 0.5], extra: true },
         })
       )
