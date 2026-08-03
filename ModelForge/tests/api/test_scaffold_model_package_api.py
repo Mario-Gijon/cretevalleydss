@@ -123,6 +123,9 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
         "Backend/modules/decisionPlugins/modelParameters/structures/"
         "numberGlobal/validateDefinition.js"
     ]
+    assert "parameter === null" in backend_definition
+    assert 'typeof parameter !== "object"' in backend_definition
+    assert "Array.isArray(parameter)" in backend_definition
     backend_index = generated_files[
         "Backend/modules/decisionPlugins/modelParameters/structures/"
         "numberGlobal/index.js"

@@ -11,7 +11,7 @@ import {
 } from "../../mocks/fixtures/createIssue.fixtures.js";
 
 describe("createIssueModelParameters", () => {
-  it("creates default parameter values from the model definitions", () => {
+  it("preserves raw default parameter values from the model definitions", () => {
     expect(
       setDefaults({
         selectedModel: basicCreateIssueModelFixture,
@@ -19,14 +19,11 @@ describe("createIssueModelParameters", () => {
       })
     ).toEqual({
       threshold: 0.4,
-      criterionScores: {
-        "criterion-cost": 1,
-        "criterion-speed": 1,
-      },
+      criterionScores: 1,
     });
   });
 
-  it("updates criterion-based parameter values when criteria change", () => {
+  it("preserves plugin-owned parameter values without interpreting criteria", () => {
     expect(
       updateParamValues(
         {
@@ -40,10 +37,7 @@ describe("createIssueModelParameters", () => {
       )
     ).toEqual({
       threshold: 0.8,
-      criterionScores: {
-        "criterion-cost": 9,
-        "criterion-speed": 1,
-      },
+      criterionScores: { "criterion-cost": 9 },
     });
 
     expect(
@@ -62,6 +56,7 @@ describe("createIssueModelParameters", () => {
       threshold: 0.8,
       criterionScores: {
         "criterion-cost": 9,
+        "criterion-speed": 7,
       },
     });
   });
@@ -77,9 +72,7 @@ describe("createIssueModelParameters", () => {
       )
     ).toEqual({
       threshold: 0.4,
-      criterionScores: {
-        "criterion-cost": 1,
-      },
+      criterionScores: 1,
     });
   });
 
@@ -137,7 +130,7 @@ describe("createIssueModelParameters", () => {
     ).toEqual({ zero: "-0.123456", iterations: "4.5" });
   });
 
-  it("initializes numberGlobal parameters without defaults as editable empty strings", () => {
+  it("omits parameters without defaults until drafts are explicitly supplied", () => {
     const selectedModel = {
       parameters: [
         {
@@ -161,13 +154,19 @@ describe("createIssueModelParameters", () => {
 
     expect(
       setDefaults({ selectedModel, criteria: createIssueLeafCriteriaFixture })
-    ).toEqual({ requiredAlpha: "", optionalIterations: "" });
+    ).toEqual({});
     expect(
       updateParamValues(
-        { requiredAlpha: "-0.125", optionalIterations: "" },
+        {
+          requiredAlpha: "-0.125",
+          optionalIterations: "",
+        },
         selectedModel,
         createIssueLeafCriteriaFixture
       )
-    ).toEqual({ requiredAlpha: "-0.125", optionalIterations: "" });
+    ).toEqual({
+      requiredAlpha: "-0.125",
+      optionalIterations: "",
+    });
   });
 });
