@@ -1,11 +1,8 @@
 import IntervalGlobalParameterField from "./IntervalGlobalParameterField";
 import IntervalGlobalParameterReadOnly from "./IntervalGlobalParameterReadOnly";
-import { intervalGlobalScenarioAdapter } from "./intervalGlobalScenarioAdapter";
 
 export const intervalGlobalParameterField = Object.freeze({
   key: "intervalGlobal",
-  scenarioKind: "interval",
-  scenario: intervalGlobalScenarioAdapter,
   FieldComponent: IntervalGlobalParameterField,
   ReadOnlyComponent: IntervalGlobalParameterReadOnly,
 });

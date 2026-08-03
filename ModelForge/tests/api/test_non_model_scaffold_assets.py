@@ -303,11 +303,9 @@ def test_interval_global_preview_uses_the_registered_forge_capability(
     assert f"{backend_base}/validateAndNormalize.js" in files
     assert f"{frontend_base}/IntervalGlobalParameterField.jsx" in files
     assert f"{frontend_base}/IntervalGlobalParameterReadOnly.jsx" in files
-    assert f"{frontend_base}/intervalGlobalScenarioAdapter.js" in files
     assert "validateDefinition: validateIntervalGlobalDefinition" in files[
         f"{backend_base}/index.js"
     ]
-    assert "scenarioKind: \"interval\"" in files[f"{frontend_base}/index.js"]
 
 
 def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_temp_root(

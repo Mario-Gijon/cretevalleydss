@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { createIssueScenario, removeIssueScenario } from "../../../services/issue.service";
-import { buildParamsResolved, cleanParamsForSend, modelUsesScenarioCriteriaWeights, validateParams, validateScenarioCriteriaWeights } from "../logic/buildFinishedScenarioParameters.js";
+import { buildParamsResolved, cleanParamsForSend, modelUsesScenarioCriteriaWeights, validateScenarioCriteriaWeights } from "../logic/buildFinishedScenarioParameters.js";
 import { getCompatReason, isModelCompatible } from "../logic/buildFinishedScenarioRuns.js";
 import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from "../logic/selectFinishedIssueExecution.js";
 import { SCENARIO_DESCRIPTION_MAX } from "../logic/scenarioDraft.constants.js";
@@ -112,11 +112,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
         return;
       }
       values = { ...values, weights: checked.normalized };
-    }
-    const validation = validateParams({ model: selectedModel, values, leafCount: leafCriteria.length, leafCriteria });
-    if (!validation.ok) {
-      showSnackbarAlert(validation.msg || "Invalid parameters.", "error");
-      return;
     }
     try {
       setAddLoading(true);

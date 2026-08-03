@@ -1,5 +1,4 @@
 import { Box, Stack, TextField, Typography } from "@mui/material";
-import { isPlainObject } from "../../../../../utils/common/objects";
 import {
   buildCriterionParameterRows,
   resolveCriterionRowValue,
@@ -110,9 +109,16 @@ export const NumberCriterionParameterField = ({
               rowKey: row.key,
             })}
             onChange={(event) => {
-              const previous = isPlainObject(value) ? value : {};
+              const currentByCriterion = rows.reduce((result, currentRow) => {
+                result[currentRow.key] = resolveCriterionRowValue({
+                  value,
+                  defaultValue,
+                  rowKey: currentRow.key,
+                });
+                return result;
+              }, {});
               onChange({
-                ...previous,
+                ...currentByCriterion,
                 [row.key]: normalizeNumberInput(event.target.value),
               });
             }}

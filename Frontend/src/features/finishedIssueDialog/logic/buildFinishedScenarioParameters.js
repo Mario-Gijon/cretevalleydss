@@ -1,5 +1,4 @@
 import { isPlainObject } from "../../../utils/common/objects";
-import { resolveParameterFieldEntry } from "../../decisionPlugins/modelParameters";
 
 const normalizeNonEmptyString = (value) => {
   if (typeof value !== "string") return null;
@@ -7,9 +6,23 @@ const normalizeNonEmptyString = (value) => {
   return normalized.length > 0 ? normalized : null;
 };
 
+const hasOwnKey = (value, key) =>
+  value !== null &&
+  typeof value === "object" &&
+  Object.prototype.hasOwnProperty.call(value, key);
+
+const cloneJsonCompatible = (value) => {
+  if (Array.isArray(value)) return value.map(cloneJsonCompatible);
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, cloneJsonCompatible(item)])
+    );
+  }
+  return value;
+};
+
 const filterOutWeightsParam = (param) =>
-  Boolean(param) &&
-  param?.semanticRole !== "criteriaWeights";
+  Boolean(param) && param?.semanticRole !== "criteriaWeights";
 
 export const SCENARIO_WEIGHTS_SUM_TOLERANCE = 0.001;
 
@@ -40,17 +53,11 @@ const resolveScenarioWeightRows = (leafCriteria = [], leafCount = 0) => {
       const name =
         normalizeNonEmptyString(criterion?.name) || `Criterion ${index + 1}`;
 
-      if (!id) {
-        return null;
-      }
-
-      return { id, name };
+      return id ? { id, name } : null;
     })
     .filter(Boolean);
 
-  if (rowsFromCriteria.length > 0) {
-    return rowsFromCriteria;
-  }
+  if (rowsFromCriteria.length > 0) return rowsFromCriteria;
 
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
   return Array.from({ length: safeLeafCount }, (_, index) => ({
@@ -66,37 +73,27 @@ const isFiniteWeightsByCriterion = ({ weights, rows }) =>
 
 const buildEqualScenarioWeights = (rows) => {
   if (!Array.isArray(rows) || rows.length === 0) return {};
-  if (rows.length === 1) {
-    return {
-      [rows[0].id]: 1,
-    };
-  }
+  if (rows.length === 1) return { [rows[0].id]: 1 };
 
   const baseWeight = Number((1 / rows.length).toFixed(6));
-  const weights = {};
   const consumed = baseWeight * (rows.length - 1);
-
-  rows.forEach((row, index) => {
+  return rows.reduce((weights, row, index) => {
     weights[row.id] =
       index === rows.length - 1
         ? Number((1 - consumed).toFixed(6))
         : baseWeight;
-  });
-
-  return weights;
+    return weights;
+  }, {});
 };
 
 const resolveScenarioWeightDefaults = ({ leafCriteria, leafCount, baseIssueWeights }) => {
   const rows = resolveScenarioWeightRows(leafCriteria, leafCount);
-
-  if (rows.length === 0) {
-    return {};
-  }
+  if (rows.length === 0) return {};
 
   if (isFiniteWeightsByCriterion({ weights: baseIssueWeights, rows })) {
-    return rows.reduce((accumulator, row) => {
-      accumulator[row.id] = Number(baseIssueWeights[row.id]);
-      return accumulator;
+    return rows.reduce((weights, row) => {
+      weights[row.id] = Number(baseIssueWeights[row.id]);
+      return weights;
     }, {});
   }
 
@@ -105,48 +102,20 @@ const resolveScenarioWeightDefaults = ({ leafCriteria, leafCount, baseIssueWeigh
 
 export const validateScenarioCriteriaWeights = ({ weights, leafCriteria = [], leafCount = 0 }) => {
   const rows = resolveScenarioWeightRows(leafCriteria, leafCount);
-
   if (rows.length === 0) {
-    return {
-      ok: false,
-      msg: "Leaf criteria are required to set scenario weights.",
-    };
+    return { ok: false, msg: "Leaf criteria are required to set scenario weights." };
   }
-
-  if (!isPlainObject(weights)) {
-    return {
-      ok: false,
-      msg: "Provide one weight for each criterion.",
-    };
-  }
-
-  const weightKeys = Object.keys(weights);
-  if (weightKeys.length !== rows.length) {
-    return {
-      ok: false,
-      msg: "Provide one weight for each criterion.",
-    };
+  if (!isPlainObject(weights) || Object.keys(weights).length !== rows.length) {
+    return { ok: false, msg: "Provide one weight for each criterion." };
   }
 
   const normalized = {};
-
   for (const row of rows) {
     const parsed = Number(weights[row.id]);
-
-    if (!Number.isFinite(parsed)) {
-      return {
-        ok: false,
-        msg: "All weights must be numeric.",
-      };
-    }
-
+    if (!Number.isFinite(parsed)) return { ok: false, msg: "All weights must be numeric." };
     if (parsed < 0 || parsed > 1) {
-      return {
-        ok: false,
-        msg: "Each weight must be between 0 and 1.",
-      };
+      return { ok: false, msg: "Each weight must be between 0 and 1." };
     }
-
     normalized[row.id] = parsed;
   }
 
@@ -154,26 +123,15 @@ export const validateScenarioCriteriaWeights = ({ weights, leafCriteria = [], le
     (accumulator, value) => accumulator + value,
     0
   );
-  if (
-    Math.abs(sum - 1) >
-    SCENARIO_WEIGHTS_SUM_TOLERANCE + Number.EPSILON
-  ) {
-    return {
-      ok: false,
-      msg: "Weights must sum to 1.",
-    };
+  if (Math.abs(sum - 1) > SCENARIO_WEIGHTS_SUM_TOLERANCE + Number.EPSILON) {
+    return { ok: false, msg: "Weights must sum to 1." };
   }
 
-  return {
-    ok: true,
-    normalized,
-  };
+  return { ok: true, normalized };
 };
 
 const buildSyntheticWeightsParameter = (model) => {
-  if (!modelUsesScenarioCriteriaWeights(model)) {
-    return null;
-  }
+  if (!modelUsesScenarioCriteriaWeights(model)) return null;
 
   return {
     key: "weights",
@@ -198,28 +156,6 @@ export const getScenarioParameterDefinitions = (model) => {
   return syntheticWeights ? [...params, syntheticWeights] : params;
 };
 
-const resolveParameterKind = (parameter) => {
-  if (parameter?.semanticRole === "criteriaWeights") {
-    return "criteriaWeights";
-  }
-
-  try {
-    const scenarioKind = resolveParameterFieldEntry(parameter)?.scenarioKind;
-    if (scenarioKind) return scenarioKind;
-  } catch {
-    // Unknown plugin structures remain unsupported for scenario editing.
-  }
-  return null;
-};
-
-const resolveScenarioAdapter = (parameter) => {
-  try {
-    return resolveParameterFieldEntry(parameter)?.scenario;
-  } catch {
-    return undefined;
-  }
-};
-
 export const buildPseudoParametersFromValues = (values) => {
   const source = values && typeof values === "object" ? values : {};
 
@@ -227,7 +163,6 @@ export const buildPseudoParametersFromValues = (values) => {
     .sort()
     .map((key) => {
       const value = source[key];
-
       const isFuzzyArray =
         Array.isArray(value) &&
         value.length > 0 &&
@@ -240,7 +175,6 @@ export const buildPseudoParametersFromValues = (values) => {
                 item === null || item === undefined || Number.isFinite(Number(item))
             )
         );
-
       const type = Number.isFinite(Number(value))
         ? "number"
         : isFuzzyArray
@@ -249,179 +183,16 @@ export const buildPseudoParametersFromValues = (values) => {
             ? "array"
             : "json";
 
-      return {
-        key,
-        label: key,
-        type,
-        default: value,
-        rawOnly: true,
-      };
+      return { key, label: key, type, default: value, rawOnly: true };
     });
 };
 
-const clamp = (number, min, max) => {
-  if (!Number.isFinite(number)) return number;
-  if (min != null && Number.isFinite(min) && number < min) return min;
-  if (max != null && Number.isFinite(max) && number > max) return max;
-  return number;
-};
-
-const normalizeValueType = (parameter) =>
-  String(parameter?.valueType || "").trim().toLowerCase();
-
-const parseByValueType = (rawValue, valueType) => {
-  if (rawValue === "" || rawValue === null || rawValue === undefined) return null;
-
-  if (valueType === "number" || valueType === "integer") {
-    const parsed = Number(rawValue);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  if (valueType === "boolean") {
-    if (rawValue === true || rawValue === false) return rawValue;
-    const normalized = String(rawValue).trim().toLowerCase();
-    if (normalized === "true") return true;
-    if (normalized === "false") return false;
-    return null;
-  }
-
-  return rawValue;
-};
-
-const enumValueIsAllowed = ({ value, allowed, valueType }) => {
-  if (!Array.isArray(allowed) || allowed.length === 0) return true;
-
-  if (valueType === "number" || valueType === "integer") {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) return false;
-    return allowed.some((allowedValue) => Number(allowedValue) === numericValue);
-  }
-
-  return allowed.some((allowedValue) => allowedValue === value);
-};
-
-const resolveCriterionMapLeafRows = (leafCriteria = []) => {
-  if (!Array.isArray(leafCriteria)) {
-    return [];
-  }
-
-  return leafCriteria
-    .map((criterion, index) => {
-      const key = normalizeNonEmptyString(
-        criterion?.id || criterion?._id
-      );
-      const name =
-        normalizeNonEmptyString(criterion?.name) || `Criterion ${index + 1}`;
-
-      if (!key) {
-        return null;
-      }
-
-      return { key, name };
-    })
-    .filter(Boolean);
-};
-
-const parseCriterionMapValueByRestrictions = ({ rawValue, restrictions }) => {
-  const valueType = normalizeNonEmptyString(restrictions?.valueType) || "number";
-
-  if (valueType === "number") {
-    const parsed = Number(rawValue);
-    if (!Number.isFinite(parsed)) {
-      return null;
-    }
-
-    if (
-      typeof restrictions?.min === "number" &&
-      parsed < Number(restrictions.min)
-    ) {
-      return null;
-    }
-
-    if (
-      typeof restrictions?.max === "number" &&
-      parsed > Number(restrictions.max)
-    ) {
-      return null;
-    }
-
-    return parsed;
-  }
-
-  if (valueType === "enum") {
-    const allowed = Array.isArray(restrictions?.allowed)
-      ? restrictions.allowed
-      : [];
-    if (!allowed.length) {
-      return null;
-    }
-
-    const allNumbers = allowed.every(
-      (item) => typeof item === "number" && Number.isFinite(item)
-    );
-    if (allNumbers) {
-      const parsed = Number(rawValue);
-      if (!Number.isFinite(parsed)) {
-        return null;
-      }
-      return allowed.includes(parsed) ? parsed : null;
-    }
-
-    const allStrings = allowed.every((item) => typeof item === "string");
-    if (allStrings) {
-      if (typeof rawValue !== "string") {
-        return null;
-      }
-      const normalized = rawValue.trim();
-      return allowed.includes(normalized) ? normalized : null;
-    }
-
-    return allowed.some((item) => Object.is(item, rawValue)) ? rawValue : null;
-  }
-
-  return null;
-};
-
-const buildCriterionMapFromDefaults = ({ param, leafCriteria }) => {
-  const rows = resolveCriterionMapLeafRows(leafCriteria);
-  const restrictions = isPlainObject(param?.restrictions)
-    ? param.restrictions
-    : {};
-  const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
-
-  const out = {};
-
-  for (const row of rows) {
-    let seed = null;
-    if (isPlainObject(param?.default) && Object.prototype.hasOwnProperty.call(param.default, row.key)) {
-      seed = param.default[row.key];
-    } else if (!isPlainObject(param?.default)) {
-      seed = param.default;
-    }
-
-    if (!requiredForEachCriterion && (seed === null || seed === undefined || seed === "")) {
-      continue;
-    }
-
-    const normalized = parseCriterionMapValueByRestrictions({
-      rawValue: seed,
-      restrictions,
-    });
-
-    if (normalized !== null) {
-      out[row.key] = normalized;
-      continue;
-    }
-
-    if (requiredForEachCriterion) {
-      out[row.key] = seed ?? "";
-    }
-  }
-
-  return out;
-};
-
-export const buildParamsResolved = ({ model, leafCount, leafCriteria = [], baseIssueWeights = {} }) => {
+export const buildParamsResolved = ({
+  model,
+  leafCount,
+  leafCriteria = [],
+  baseIssueWeights = {},
+}) => {
   const out = {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
   const defaultWeights = resolveScenarioWeightDefaults({
@@ -430,293 +201,44 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [], baseI
     baseIssueWeights,
   });
 
-  for (const param of getScenarioParameterDefinitions(model)) {
-    const key = param?.key;
+  for (const parameter of getScenarioParameterDefinitions(model)) {
+    const key = normalizeNonEmptyString(parameter?.key);
     if (!key) continue;
-    const scenarioAdapter = resolveScenarioAdapter(param);
-    if (typeof scenarioAdapter?.buildDefault === "function") {
-      out[key] = scenarioAdapter.buildDefault({ parameter: param });
-      continue;
-    }
-    const kind = resolveParameterKind(param);
 
-    if (kind === "number") out[key] = param.default ?? "";
-
-    if (kind === "enum") out[key] = param.default ?? "";
-
-    if (kind === "criteriaWeights") {
-      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
-
-      if (isWeightsByCriteria && safeLeafCount === 1) {
-        out[key] = defaultWeights;
-        continue;
-      }
-
-      if (isWeightsByCriteria && param?.default === "equal" && safeLeafCount > 0) {
-        out[key] = defaultWeights;
-        continue;
-      }
+    if (isCriteriaWeightsParameter(parameter)) {
       out[key] = defaultWeights;
+      continue;
     }
 
-    if (kind === "criterionMap") {
-      out[key] = buildCriterionMapFromDefaults({ param, leafCriteria });
+    if (hasOwnKey(parameter, "default")) {
+      out[key] = cloneJsonCompatible(parameter.default);
     }
   }
 
   return out;
 };
 
-export const cleanParamsForSend = ({
-  model,
-  values,
-  leafCount,
-  leafCriteria = [],
-}) => {
+export const cleanParamsForSend = ({ model, values, leafCount, leafCriteria = [] }) => {
   const out = {};
+  const source = values && typeof values === "object" ? values : {};
 
-  for (const param of getScenarioParameterDefinitions(model)) {
-    const name = param?.key;
-    if (!name) continue;
-    const scenarioAdapter = resolveScenarioAdapter(param);
-    if (typeof scenarioAdapter?.clean === "function") {
-      const result = scenarioAdapter.clean({
-        parameter: param,
-        value: values?.[name],
+  for (const parameter of getScenarioParameterDefinitions(model)) {
+    const key = normalizeNonEmptyString(parameter?.key);
+    if (!key) continue;
+
+    if (isCriteriaWeightsParameter(parameter)) {
+      out[key] = resolveScenarioWeightDefaults({
+        leafCriteria,
+        leafCount,
+        baseIssueWeights: source[key],
       });
-      if (result?.ok) out[name] = result.value;
-      continue;
-    }
-    const kind = resolveParameterKind(param);
-    const restrictions = param.restrictions || {};
-    const def = param.default;
-
-    if (kind === "number") {
-      const raw = values?.[name];
-      const value = raw === "" || raw == null ? def : raw;
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed)) continue;
-
-      if (Array.isArray(restrictions.allowed) && restrictions.allowed.length) {
-        if (!restrictions.allowed.includes(parsed)) continue;
-        out[name] = parsed;
-        continue;
-      }
-
-      out[name] = clamp(parsed, restrictions.min ?? null, restrictions.max ?? null);
       continue;
     }
 
-    if (kind === "criteriaWeights") {
-      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
-
-      if (isWeightsByCriteria && Number(leafCount) === 1) {
-        out[name] = resolveScenarioWeightDefaults({
-          leafCriteria,
-          leafCount,
-          baseIssueWeights: values?.[name],
-        });
-        continue;
-      }
-
-      if (isWeightsByCriteria) {
-        out[name] = resolveScenarioWeightDefaults({
-          leafCriteria,
-          leafCount,
-          baseIssueWeights: values?.[name],
-        });
-        continue;
-      }
-      continue;
-    }
-
-    if (kind === "enum") {
-      const valueType = normalizeValueType(param);
-      const raw = values?.[name];
-      const value = raw === "" || raw == null ? def : raw;
-      const parsed = parseByValueType(value, valueType);
-      if (parsed == null) continue;
-
-      if (!enumValueIsAllowed({ value: parsed, allowed: restrictions.allowed, valueType })) {
-        continue;
-      }
-
-      out[name] = parsed;
-      continue;
-    }
-
-    if (kind === "criterionMap") {
-      const rows = resolveCriterionMapLeafRows(leafCriteria);
-      const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
-      const source = isPlainObject(values?.[name]) ? values[name] : {};
-      const next = {};
-
-      for (const row of rows) {
-        const hasValue = Object.prototype.hasOwnProperty.call(source, row.key);
-        if (!hasValue) {
-          if (!requiredForEachCriterion) {
-            continue;
-          }
-          next[row.key] = "";
-          continue;
-        }
-
-        const normalized = parseCriterionMapValueByRestrictions({
-          rawValue: source[row.key],
-          restrictions,
-        });
-
-        if (normalized === null) {
-          continue;
-        }
-
-        next[row.key] = normalized;
-      }
-
-      out[name] = next;
-      continue;
+    if (hasOwnKey(source, key)) {
+      out[key] = cloneJsonCompatible(source[key]);
     }
   }
 
   return out;
-};
-
-export const validateParams = ({
-  model,
-  values,
-  leafCount,
-  leafCriteria = [],
-}) => {
-  for (const param of getScenarioParameterDefinitions(model)) {
-    const name = param?.key;
-    if (!name) continue;
-    const scenarioAdapter = resolveScenarioAdapter(param);
-    if (typeof scenarioAdapter?.validate === "function") {
-      const result = scenarioAdapter.validate({
-        parameter: param,
-        value: values?.[name],
-      });
-      if (!result?.ok) return result;
-      continue;
-    }
-    const kind = resolveParameterKind(param);
-    const restrictions = param.restrictions || {};
-    const value = values?.[name];
-
-    if (kind === "number") {
-      if (value === "" || value == null) continue;
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed)) {
-        return { ok: false, msg: `Parameter '${name}' must be a number.` };
-      }
-      if (
-        Array.isArray(restrictions.allowed) &&
-        restrictions.allowed.length &&
-        !restrictions.allowed.includes(parsed)
-      ) {
-        return {
-          ok: false,
-          msg: `Parameter '${name}' must be one of: ${restrictions.allowed.join(", ")}.`,
-        };
-      }
-      if (restrictions.min != null && parsed < restrictions.min) {
-        return { ok: false, msg: `Parameter '${name}' must be ≥ ${restrictions.min}.` };
-      }
-      if (restrictions.max != null && parsed > restrictions.max) {
-        return { ok: false, msg: `Parameter '${name}' must be ≤ ${restrictions.max}.` };
-      }
-      continue;
-    }
-
-    if (kind === "enum") {
-      const valueType = normalizeValueType(param);
-      const raw = value === "" || value == null ? param.default : value;
-      const parsed = parseByValueType(raw, valueType);
-
-      if ((value === "" || value == null) && param?.required && parsed == null) {
-        return { ok: false, msg: `Parameter '${name}' is required.` };
-      }
-
-      if (parsed == null) continue;
-
-      if (!enumValueIsAllowed({ value: parsed, allowed: restrictions.allowed, valueType })) {
-        return {
-          ok: false,
-          msg: `Parameter '${name}' must be one of: ${(restrictions.allowed || []).join(", ")}.`,
-        };
-      }
-      continue;
-    }
-
-    if (kind === "criteriaWeights") {
-      if (Number(leafCount) !== 1) {
-        const validation = validateScenarioCriteriaWeights({
-          weights: value,
-          leafCriteria,
-          leafCount,
-        });
-        if (!validation.ok) {
-          return validation;
-        }
-      }
-      continue;
-    }
-
-    if (kind === "criterionMap") {
-      const rows = resolveCriterionMapLeafRows(leafCriteria);
-      const source = values?.[name];
-      const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
-
-      if (!isPlainObject(source)) {
-        if (requiredForEachCriterion) {
-          return {
-            ok: false,
-            msg: `Parameter '${name}' must be an object keyed by criterion.`,
-          };
-        }
-        continue;
-      }
-
-      const allowedKeys = new Set(rows.map((row) => row.key));
-      const unknown = Object.keys(source).find((key) => !allowedKeys.has(key));
-      if (unknown) {
-        return {
-          ok: false,
-          msg: `Parameter '${name}' contains unknown criterion key '${unknown}'.`,
-        };
-      }
-
-      if (requiredForEachCriterion) {
-        const missing = rows.find(
-          (row) => !Object.prototype.hasOwnProperty.call(source, row.key)
-        );
-        if (missing) {
-          return {
-            ok: false,
-            msg: `Parameter '${name}' is missing '${missing.name}'.`,
-          };
-        }
-      }
-
-      for (const row of rows) {
-        if (!Object.prototype.hasOwnProperty.call(source, row.key)) {
-          continue;
-        }
-
-        const normalized = parseCriterionMapValueByRestrictions({
-          rawValue: source[row.key],
-          restrictions,
-        });
-
-        if (normalized === null) {
-          return {
-            ok: false,
-            msg: `Parameter '${name}' has invalid value for '${row.name}'.`,
-          };
-        }
-      }
-    }
-  }
-
-  return { ok: true };
 };

@@ -1,15 +1,10 @@
 import { Stack, Typography, TextField } from "@mui/material";
 import { intervalGlobalParameterFieldSx } from "./IntervalGlobalParameterField.styles";
 
-const ensurePair = (value) => {
-  const pair = Array.isArray(value) ? value.slice(0, 2) : [];
-  return [...pair, ...Array(2 - pair.length).fill("")];
-};
-
 export const IntervalGlobalParameterField = ({ parameter, value, onChange, disabled = false, error = "" }) => {
   const restrictions = parameter?.restrictions || {};
   const label = parameter?.label || "Interval";
-  const currentValues = ensurePair(value);
+  const currentValues = Array.isArray(value) ? value : [];
   const min = Number.isFinite(restrictions.min) ? restrictions.min : undefined;
   const max = Number.isFinite(restrictions.max) ? restrictions.max : undefined;
 
@@ -19,7 +14,8 @@ export const IntervalGlobalParameterField = ({ parameter, value, onChange, disab
         <Typography variant="body2" sx={intervalGlobalParameterFieldSx.label}>{label}:</Typography>
         <Stack direction="row" spacing={0.5} alignItems="center">
           <Typography variant="body2" sx={intervalGlobalParameterFieldSx.bracket}>[</Typography>
-          {currentValues.map((item, index) => {
+          {[0, 1].map((index) => {
+            const item = currentValues[index] ?? "";
             const inputLabel = `${label} ${index === 0 ? "lower" : "upper"} bound`;
             return (
               <TextField

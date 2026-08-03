@@ -58,6 +58,23 @@ const buildMockExecutionContext = () => {
   };
 };
 
+const buildIntervalParameter = (overrides = {}) => ({
+  key: "agreement",
+  label: "Agreement interval",
+  scope: "global",
+  parameterStructureKey: "intervalGlobal",
+  required: true,
+  default: [0.3, 0.8],
+  restrictions: { min: 0, max: 1, ordered: "strictIncreasing" },
+  ...overrides,
+});
+
+const buildIntervalScenarioModel = (parameter = buildIntervalParameter()) => ({
+  name: "Interval model",
+  parameters: [parameter],
+  usesCriteriaWeights: false,
+});
+
 describe("createIssueScenario input normalization", () => {
   beforeEach(() => {
     scenarioExecutionState.buildScenarioExecutionContext.mockReset();
@@ -74,6 +91,64 @@ describe("createIssueScenario input normalization", () => {
 
     expect(result).toEqual({ normalizedParams: {}, weightsUsed: null });
     expect(result).not.toHaveProperty("paramsUsed");
+  });
+
+  it("normalizes raw interval drafts through the registered Backend structure", () => {
+    expect(
+      buildScenarioParametersOrThrow({
+        targetModel: buildIntervalScenarioModel(),
+        paramOverrides: { agreement: ["0.125", "0.987654"] },
+        criteria: [],
+        alternatives: [],
+      })
+    ).toEqual({
+      normalizedParams: { agreement: [0.125, 0.987654] },
+      weightsUsed: null,
+    });
+  });
+
+  it("rejects reversed strict-increasing intervals through the Backend structure", () => {
+    expect(() =>
+      buildScenarioParametersOrThrow({
+        targetModel: buildIntervalScenarioModel(),
+        paramOverrides: { agreement: [0.8, 0.3] },
+        criteria: [],
+        alternatives: [],
+      })
+    ).toThrow("agreement must satisfy ordered rule 'strictIncreasing'");
+  });
+
+  it("uses declared defaults and preserves required or optional omission semantics", () => {
+    expect(
+      buildScenarioParametersOrThrow({
+        targetModel: buildIntervalScenarioModel(),
+        paramOverrides: {},
+        criteria: [],
+        alternatives: [],
+      }).normalizedParams
+    ).toEqual({ agreement: [0.3, 0.8] });
+
+    const requiredWithoutDefault = buildIntervalParameter();
+    delete requiredWithoutDefault.default;
+    expect(() =>
+      buildScenarioParametersOrThrow({
+        targetModel: buildIntervalScenarioModel(requiredWithoutDefault),
+        paramOverrides: {},
+        criteria: [],
+        alternatives: [],
+      })
+    ).toThrow("agreement is required");
+
+    const optionalWithoutDefault = buildIntervalParameter({ required: false });
+    delete optionalWithoutDefault.default;
+    expect(
+      buildScenarioParametersOrThrow({
+        targetModel: buildIntervalScenarioModel(optionalWithoutDefault),
+        paramOverrides: {},
+        criteria: [],
+        alternatives: [],
+      }).normalizedParams
+    ).toEqual({});
   });
 
   it("rejects an invalid targetModelId", async () => {
