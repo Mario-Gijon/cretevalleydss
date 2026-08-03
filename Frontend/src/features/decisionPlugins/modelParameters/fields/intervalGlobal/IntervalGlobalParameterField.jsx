@@ -1,10 +1,16 @@
 import { Stack, Typography, TextField } from "@mui/material";
 import { intervalGlobalParameterFieldSx } from "./IntervalGlobalParameterField.styles";
 
+const buildDraftPair = (value) => {
+  if (!Array.isArray(value)) return ["", ""];
+
+  return [value[0] ?? "", value[1] ?? ""];
+};
+
 export const IntervalGlobalParameterField = ({ parameter, value, onChange, disabled = false, error = "" }) => {
   const restrictions = parameter?.restrictions || {};
   const label = parameter?.label || "Interval";
-  const currentValues = Array.isArray(value) ? value : [];
+  const currentValues = buildDraftPair(value);
   const min = Number.isFinite(restrictions.min) ? restrictions.min : undefined;
   const max = Number.isFinite(restrictions.max) ? restrictions.max : undefined;
 

@@ -39,6 +39,34 @@ describe("IntervalGlobalParameterField", () => {
     expect(onChange).toHaveBeenLastCalledWith(["-0.5", ""]);
   });
 
+  it("emits an explicit pair when the supplied value is undefined", () => {
+    const { upper, onChange } = renderField({ value: undefined });
+
+    fireEvent.change(upper, { target: { value: "0.8" } });
+
+    expect(onChange).toHaveBeenLastCalledWith(["", "0.8"]);
+  });
+
+  it("preserves a supplied zero when completing a short pair", () => {
+    const { upper, onChange } = renderField({ value: [0] });
+
+    fireEvent.change(upper, { target: { value: "0.8" } });
+
+    expect(onChange).toHaveBeenLastCalledWith([0, "0.8"]);
+  });
+
+  it.each([
+    ["lower", (field) => field.lower],
+    ["upper", (field) => field.upper],
+  ])("emits exactly two entries when editing a historical long pair (%s)", (_endpoint, selectInput) => {
+    const field = renderField({ value: [0, 1, 99] });
+    fireEvent.change(selectInput(field), { target: { value: "0.8" } });
+
+    expect(field.onChange).toHaveBeenLastCalledWith(
+      _endpoint === "lower" ? ["0.8", 1] : [0, "0.8"]
+    );
+  });
+
   it("renders defensively with malformed restrictions", () => {
     expect(() => renderField({ parameter: { ...parameter, restrictions: null } })).not.toThrow();
   });
