@@ -29,6 +29,14 @@ const openOptions = (combobox) => {
   fireEvent.mouseDown(combobox);
 };
 
+const getSelectInput = (combobox) => {
+  const input = combobox.parentElement?.querySelector('input[aria-hidden="true"]');
+  if (!input) {
+    throw new Error("Expected the MUI Select hidden input");
+  }
+  return input;
+};
+
 describe("SelectGlobalParameterField", () => {
   it("renders integer options, preserves zero, and emits a numeric selection", () => {
     const onChange = vi.fn();
@@ -41,7 +49,7 @@ describe("SelectGlobalParameterField", () => {
       onChange,
     });
 
-    expect(combobox).toHaveValue("0");
+    expect(getSelectInput(combobox)).toHaveValue("0");
     openOptions(combobox);
     expect(screen.getByRole("option", { name: "0" })).toBeVisible();
     expect(screen.getByRole("option", { name: "1" })).toBeVisible();
@@ -58,7 +66,7 @@ describe("SelectGlobalParameterField", () => {
       parameter: buildParameter({ valueType: "number", restrictions: { allowed: [0, 1] } }),
       value: 0,
     });
-    expect(combobox).toHaveValue("0");
+    expect(getSelectInput(combobox)).toHaveValue("0");
     openOptions(combobox);
     expect(screen.getByRole("option", { name: "0" })).toBeVisible();
     expect(screen.getByRole("option", { name: "1" })).toBeVisible();
@@ -91,12 +99,12 @@ describe("SelectGlobalParameterField", () => {
       }),
       value,
     });
-    expect(combobox).toHaveValue(String(value));
+    expect(getSelectInput(combobox)).toHaveValue(String(value));
   });
 
   it("does not apply a local default when the supplied value is absent", () => {
     const { combobox } = renderField({ value: undefined });
-    expect(combobox).toHaveValue("");
+    expect(getSelectInput(combobox)).toHaveValue("");
   });
 
   it.each([
@@ -119,12 +127,15 @@ describe("SelectGlobalParameterField", () => {
     { restrictions: { allowed: [] } },
   ])("renders safely with malformed allowed metadata: %p", (overrides) => {
     expect(() => renderField({ parameter: buildParameter(overrides) })).not.toThrow();
-    expect(screen.getByRole("combobox", { name: "Choice" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Choice" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
   });
 
   it("supports disabled and error states with an accessible label", () => {
     const { combobox } = renderField({ disabled: true, error: "Choice is invalid" });
-    expect(combobox).toBeDisabled();
+    expect(combobox).toHaveAttribute("aria-disabled", "true");
     expect(combobox).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("Choice is invalid")).toBeInTheDocument();
   });
