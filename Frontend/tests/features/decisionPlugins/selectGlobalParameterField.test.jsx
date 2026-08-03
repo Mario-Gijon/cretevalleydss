@@ -30,6 +30,29 @@ const openOptions = (combobox) => {
 };
 
 describe("SelectGlobalParameterField", () => {
+  it("renders integer options, preserves zero, and emits a numeric selection", () => {
+    const onChange = vi.fn();
+    const { combobox } = renderField({
+      parameter: buildParameter({
+        valueType: "integer",
+        restrictions: { allowed: [0, 1, 4] },
+      }),
+      value: 0,
+      onChange,
+    });
+
+    expect(combobox).toHaveValue("0");
+    openOptions(combobox);
+    expect(screen.getByRole("option", { name: "0" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "1" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "4" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("option", { name: "4" }));
+
+    expect(onChange).toHaveBeenLastCalledWith(4);
+    expect(typeof onChange.mock.calls.at(-1)[0]).toBe("number");
+  });
+
   it("renders numeric, string, and boolean options visibly", () => {
     const { combobox } = renderField({
       parameter: buildParameter({ valueType: "number", restrictions: { allowed: [0, 1] } }),
