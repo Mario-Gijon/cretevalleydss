@@ -34,6 +34,17 @@ const buildNumberGlobal = (overrides = {}) => ({
   ...overrides,
 });
 
+const buildIntervalGlobal = (overrides = {}) => ({
+  key: "agreement",
+  label: "Agreement interval",
+  parameterStructureKey: "intervalGlobal",
+  required: true,
+  scope: "global",
+  default: [0.3, 0.8],
+  restrictions: { min: 0, max: 1, ordered: "strictIncreasing" },
+  ...overrides,
+});
+
 describe("model manifest parameter mapping", () => {
   it("preserves every canonical numberGlobal metadata field", () => {
     expect(
@@ -151,6 +162,19 @@ describe("syncable manifest parameter definitions", () => {
     expect(
       validateSyncableManifestModel(buildManifest([buildNumberGlobal(overrides)]))
     ).toEqual([expect.stringContaining("parameters[0] (alpha):")]);
+  });
+
+  it("dispatches intervalGlobal metadata through the registered definition validator", () => {
+    expect(
+      validateSyncableManifestModel(buildManifest([buildIntervalGlobal()]))
+    ).toEqual([]);
+    expect(
+      validateSyncableManifestModel(
+        buildManifest([buildIntervalGlobal({ default: [0.8, 0.3] })])
+      )
+    ).toEqual([
+      expect.stringContaining("parameters[0] (agreement): default must satisfy ordered rule"),
+    ]);
   });
 
   it("reports generic parameter errors and unknown structures", () => {

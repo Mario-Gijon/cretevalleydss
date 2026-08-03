@@ -281,6 +281,35 @@ def test_parameter_structure_preview_reports_expected_paths_without_writing_file
         assert not (project_root / relative_path).exists()
 
 
+def test_interval_global_preview_uses_the_registered_forge_capability(
+    client_factory,
+    project_root: Path,
+) -> None:
+    payload = {
+        "parameterStructureKey": "intervalGlobal",
+        "componentName": "IntervalGlobal",
+        "backendStructureExportName": "intervalGlobalParameterStructure",
+        "validateFunctionName": "validateIntervalGlobal",
+    }
+
+    with client_factory(project_root) as client:
+        response = client.post("/scaffold/parameter/preview", json=payload)
+
+    assert response.status_code == 200
+    files = {item["path"]: item["content"] for item in response.json()["files"]}
+    backend_base = "Backend/modules/decisionPlugins/modelParameters/structures/intervalGlobal"
+    frontend_base = "Frontend/src/features/decisionPlugins/modelParameters/fields/intervalGlobal"
+    assert f"{backend_base}/validateDefinition.js" in files
+    assert f"{backend_base}/validateAndNormalize.js" in files
+    assert f"{frontend_base}/IntervalGlobalParameterField.jsx" in files
+    assert f"{frontend_base}/IntervalGlobalParameterReadOnly.jsx" in files
+    assert f"{frontend_base}/intervalGlobalScenarioAdapter.js" in files
+    assert "validateDefinition: validateIntervalGlobalDefinition" in files[
+        f"{backend_base}/index.js"
+    ]
+    assert "scenarioKind: \"interval\"" in files[f"{frontend_base}/index.js"]
+
+
 def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_temp_root(
     client_factory,
     monkeypatch,

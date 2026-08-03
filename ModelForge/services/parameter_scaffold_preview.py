@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from schemas.scaffold_common import ScaffoldedFile
@@ -12,45 +13,28 @@ from services.template_renderer import render_template_strict
 PARAMETER_TEMPLATES_DIR = (
     Path(__file__).resolve().parent.parent / "templates" / "parameter"
 )
-NUMBER_GLOBAL_TEMPLATE_MAP = [
-    (
-        "number-global/backend-index.js.template",
-        "index.js",
-    ),
-    (
-        "number-global/backend-validate-definition.js.template",
-        "validateDefinition.js",
-    ),
-    (
-        "number-global/backend-validate-and-normalize.js.template",
-        "validateAndNormalize.js",
-    ),
-    (
-        "number-global/frontend-index.js.template",
-        "index.js",
-    ),
-    (
-        "number-global/frontend-field.jsx.template",
-        "NumberGlobalParameterField.jsx",
-    ),
-    (
-        "number-global/frontend-field.styles.js.template",
-        "NumberGlobalParameterField.styles.js",
-    ),
-    (
-        "number-global/frontend-read-only.jsx.template",
-        "NumberGlobalParameterReadOnly.jsx",
-    ),
-]
-SELECT_GLOBAL_TEMPLATE_MAP = [
-    ("select-global/backend-index.js.template", "index.js"),
-    ("select-global/backend-validate-definition.js.template", "validateDefinition.js"),
-    ("select-global/backend-validate-and-normalize.js.template", "validateAndNormalize.js"),
-]
-
-
 def _load_template(template_filename: str) -> str:
     return (PARAMETER_TEMPLATES_DIR / template_filename).read_text(encoding="utf-8")
+
+
+def _to_kebab_case(value: str) -> str:
+    return "".join(
+        f"-{character.lower()}" if character.isupper() else character
+        for character in value
+    )
+
+
+def _load_structure_scaffold_adapter(
+    parameter_structure_key: str,
+) -> list[dict[str, str]] | None:
+    adapter_path = (
+        PARAMETER_TEMPLATES_DIR
+        / _to_kebab_case(parameter_structure_key)
+        / "scaffold.json"
+    )
+    if not adapter_path.is_file():
+        return None
+    return json.loads(adapter_path.read_text(encoding="utf-8"))
 
 
 def _build_placeholder_values(
@@ -83,22 +67,18 @@ def build_parameter_scaffold_preview(
     )
     placeholders = _build_placeholder_values(request)
 
-    if names.parameter_structure_key in {"numberGlobal", "selectGlobal"}:
-        dedicated_templates = (
-            NUMBER_GLOBAL_TEMPLATE_MAP
-            if names.parameter_structure_key == "numberGlobal"
-            else SELECT_GLOBAL_TEMPLATE_MAP
-        )
+    dedicated_templates = _load_structure_scaffold_adapter(
+        names.parameter_structure_key
+    )
+    if dedicated_templates is not None:
         template_map = [
             (
-                template_name,
-                (
-                    f"{backend_target_base_path}/{relative_path}"
-                    if "/backend-" in template_name
-                    else f"{frontend_target_base_path}/{relative_path}"
-                ),
+                template["template"],
+                f"{backend_target_base_path}/{template['output']}"
+                if template["target"] == "backend"
+                else f"{frontend_target_base_path}/{template['output']}",
             )
-            for template_name, relative_path in dedicated_templates
+            for template in dedicated_templates
         ]
     else:
         template_map = [

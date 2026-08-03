@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { validateAndNormalizeModelParametersOrThrow } from "../../../modules/modelParameters/validateAndNormalizeModelParameters.js";
 import { validateAndNormalizeIntervalGlobal } from "../../../modules/decisionPlugins/modelParameters/structures/intervalGlobal/validateAndNormalize.js";
 import { validateIntervalGlobalDefinition } from "../../../modules/decisionPlugins/modelParameters/structures/intervalGlobal/validateDefinition.js";
 
@@ -57,5 +58,25 @@ describe("intervalGlobal runtime", () => {
   it("accepts equal endpoints only for non-decreasing intervals", () => {
     expect(validateAndNormalizeIntervalGlobal({ value: [0.5, 0.5], parameter: buildParameter() })).toMatchObject({ ok: false });
     expect(validateAndNormalizeIntervalGlobal({ value: [0.5, 0.5], parameter: buildParameter({ restrictions: { min: 0, max: 1, ordered: "nonDecreasing" } }) })).toEqual({ ok: true, value: [0.5, 0.5] });
+  });
+});
+
+describe("intervalGlobal generic resolver integration", () => {
+  it("dispatches the interval value through the registered runtime capability", () => {
+    expect(
+      validateAndNormalizeModelParametersOrThrow({
+        model: {
+          name: "Demo",
+          parameters: [
+            buildParameter({
+              key: "agreement",
+              parameterStructureKey: "intervalGlobal",
+            }),
+          ],
+        },
+        paramValues: { agreement: ["0.3", "0.8"] },
+        criteriaNodes: [],
+      })
+    ).toEqual({ agreement: [0.3, 0.8] });
   });
 });

@@ -1,4 +1,5 @@
 import { isPlainObject } from "../../../utils/common/objects";
+import { resolveParameterFieldEntry } from "../../decisionPlugins/modelParameters";
 
 const normalizeNonEmptyString = (value) => {
   if (typeof value !== "string") return null;
@@ -202,21 +203,21 @@ const resolveParameterKind = (parameter) => {
     return "criteriaWeights";
   }
 
-  const parameterStructureKey = normalizeNonEmptyString(
-    parameter?.parameterStructureKey
-  );
-
-  if (parameterStructureKey === "numberGlobal") return "number";
-  if (parameterStructureKey === "selectGlobal") return "enum";
-  if (parameterStructureKey === "intervalGlobal") return "interval";
-  if (
-    parameterStructureKey === "numberCriterion" ||
-    parameterStructureKey === "selectCriterion"
-  ) {
-    return "criterionMap";
+  try {
+    const scenarioKind = resolveParameterFieldEntry(parameter)?.scenarioKind;
+    if (scenarioKind) return scenarioKind;
+  } catch {
+    // Unknown plugin structures remain unsupported for scenario editing.
   }
-
   return null;
+};
+
+const resolveScenarioAdapter = (parameter) => {
+  try {
+    return resolveParameterFieldEntry(parameter)?.scenario;
+  } catch {
+    return undefined;
+  }
 };
 
 export const buildPseudoParametersFromValues = (values) => {
@@ -265,13 +266,6 @@ const clamp = (number, min, max) => {
   return number;
 };
 
-const ensureArrayLen = (arr, len, filler = "") => {
-  const next = Array.isArray(arr) ? [...arr] : [];
-  if (next.length < len) return [...next, ...Array(len - next.length).fill(filler)];
-  if (next.length > len) return next.slice(0, len);
-  return next;
-};
-
 const normalizeValueType = (parameter) =>
   String(parameter?.valueType || "").trim().toLowerCase();
 
@@ -304,30 +298,6 @@ const enumValueIsAllowed = ({ value, allowed, valueType }) => {
   }
 
   return allowed.some((allowedValue) => allowedValue === value);
-};
-
-const parseIntervalPair = (value) => {
-  if (!Array.isArray(value) || value.length !== 2) return null;
-  const left = Number(value[0]);
-  const right = Number(value[1]);
-  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
-  return [left, right];
-};
-
-const validateIntervalByRestrictions = ({ pair, restrictions }) => {
-  if (!Array.isArray(pair) || pair.length !== 2) return false;
-  const [left, right] = pair;
-  const min = restrictions?.min;
-  const max = restrictions?.max;
-
-  if (min != null && (left < Number(min) || right < Number(min))) return false;
-  if (max != null && (left > Number(max) || right > Number(max))) return false;
-
-  const ordered = restrictions?.ordered;
-  if (ordered === "strictIncreasing" && !(left < right)) return false;
-  if (ordered === "nonDecreasing" && !(left <= right)) return false;
-
-  return true;
 };
 
 const resolveCriterionMapLeafRows = (leafCriteria = []) => {
@@ -463,17 +433,16 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [], baseI
   for (const param of getScenarioParameterDefinitions(model)) {
     const key = param?.key;
     if (!key) continue;
+    const scenarioAdapter = resolveScenarioAdapter(param);
+    if (typeof scenarioAdapter?.buildDefault === "function") {
+      out[key] = scenarioAdapter.buildDefault({ parameter: param });
+      continue;
+    }
     const kind = resolveParameterKind(param);
 
     if (kind === "number") out[key] = param.default ?? "";
 
     if (kind === "enum") out[key] = param.default ?? "";
-
-    if (kind === "interval") {
-      const min = param?.restrictions?.min ?? "";
-      const max = param?.restrictions?.max ?? "";
-      out[key] = ensureArrayLen(Array.isArray(param.default) ? param.default : [min, max], 2, "");
-    }
 
     if (kind === "criteriaWeights") {
       const isWeightsByCriteria = isCriteriaWeightsParameter(param);
@@ -509,6 +478,15 @@ export const cleanParamsForSend = ({
   for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
+    const scenarioAdapter = resolveScenarioAdapter(param);
+    if (typeof scenarioAdapter?.clean === "function") {
+      const result = scenarioAdapter.clean({
+        parameter: param,
+        value: values?.[name],
+      });
+      if (result?.ok) out[name] = result.value;
+      continue;
+    }
     const kind = resolveParameterKind(param);
     const restrictions = param.restrictions || {};
     const def = param.default;
@@ -567,18 +545,6 @@ export const cleanParamsForSend = ({
       continue;
     }
 
-    if (kind === "interval") {
-      const fallback = Array.isArray(def)
-        ? def
-        : [restrictions.min ?? "", restrictions.max ?? ""];
-      const source = values?.[name] ?? fallback;
-      const parsed = parseIntervalPair(ensureArrayLen(source, 2, ""));
-      if (!parsed) continue;
-      if (!validateIntervalByRestrictions({ pair: parsed, restrictions })) continue;
-      out[name] = parsed;
-      continue;
-    }
-
     if (kind === "criterionMap") {
       const rows = resolveCriterionMapLeafRows(leafCriteria);
       const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
@@ -624,6 +590,15 @@ export const validateParams = ({
   for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
+    const scenarioAdapter = resolveScenarioAdapter(param);
+    if (typeof scenarioAdapter?.validate === "function") {
+      const result = scenarioAdapter.validate({
+        parameter: param,
+        value: values?.[name],
+      });
+      if (!result?.ok) return result;
+      continue;
+    }
     const kind = resolveParameterKind(param);
     const restrictions = param.restrictions || {};
     const value = values?.[name];
@@ -669,37 +644,6 @@ export const validateParams = ({
           ok: false,
           msg: `Parameter '${name}' must be one of: ${(restrictions.allowed || []).join(", ")}.`,
         };
-      }
-      continue;
-    }
-
-    if (kind === "interval") {
-      const fallback = Array.isArray(param.default)
-        ? param.default
-        : [restrictions.min ?? "", restrictions.max ?? ""];
-      const source = value == null ? fallback : value;
-      const parsed = parseIntervalPair(ensureArrayLen(source, 2, ""));
-
-      if (!parsed) {
-        return {
-          ok: false,
-          msg: `Parameter '${name}' must be an array of 2 finite numbers.`,
-        };
-      }
-
-      if (!validateIntervalByRestrictions({ pair: parsed, restrictions })) {
-        if (restrictions.ordered === "strictIncreasing") {
-          return { ok: false, msg: `Parameter '${name}' must satisfy left < right.` };
-        }
-        if (restrictions.ordered === "nonDecreasing") {
-          return { ok: false, msg: `Parameter '${name}' must satisfy left ≤ right.` };
-        }
-        if (restrictions.min != null) {
-          return { ok: false, msg: `Parameter '${name}' must be ≥ ${restrictions.min}.` };
-        }
-        if (restrictions.max != null) {
-          return { ok: false, msg: `Parameter '${name}' must be ≤ ${restrictions.max}.` };
-        }
       }
       continue;
     }

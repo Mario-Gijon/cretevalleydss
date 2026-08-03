@@ -1,0 +1,9 @@
+[
+  {"template": "number-global/backend-index.js.template", "output": "index.js", "target": "backend"},
+  {"template": "number-global/backend-validate-definition.js.template", "output": "validateDefinition.js", "target": "backend"},
+  {"template": "number-global/backend-validate-and-normalize.js.template", "output": "validateAndNormalize.js", "target": "backend"},
+  {"template": "number-global/frontend-index.js.template", "output": "index.js", "target": "frontend"},
+  {"template": "number-global/frontend-field.jsx.template", "output": "NumberGlobalParameterField.jsx", "target": "frontend"},
+  {"template": "number-global/frontend-field.styles.js.template", "output": "NumberGlobalParameterField.styles.js", "target": "frontend"},
+  {"template": "number-global/frontend-read-only.jsx.template", "output": "NumberGlobalParameterReadOnly.jsx", "target": "frontend"}
+]
