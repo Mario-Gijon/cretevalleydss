@@ -6,7 +6,6 @@ import NumberGlobalParameterField from "../../../src/features/decisionPlugins/mo
 const buildParameter = (overrides = {}) => ({
   key: "alpha",
   label: "Alpha",
-  scope: "global",
   parameterStructureKey: "numberGlobal",
   valueType: "number",
   required: true,

@@ -43,7 +43,6 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
       name: "Alpha",
       label: "Alpha",
       valueType: "number",
-      scope: "global",
       parameterStructureKey: "numberGlobal",
       required: true,
       default: 0.5,

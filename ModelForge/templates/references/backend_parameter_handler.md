@@ -20,7 +20,6 @@ const handlerInputExample = {
   parameter: {
     key: "beta",
     label: "Beta",
-    scope: "global",
     parameterStructureKey: "numberGlobal",
     valueType: "number",
     required: true,

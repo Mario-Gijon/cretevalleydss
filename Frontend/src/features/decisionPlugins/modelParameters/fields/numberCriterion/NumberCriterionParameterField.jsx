@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Box, Stack, TextField, Typography } from "@mui/material";
 import {
   buildNumberCriterionDraft,
@@ -7,6 +7,7 @@ import {
   reconcileNumberCriterionMap,
   numberCriterionMapsEqual,
 } from "./numberCriterionValues";
+import { isPlainObject } from "../../../../../utils/common/objects";
 
 const FIELD_HEIGHT = 36;
 
@@ -24,14 +25,19 @@ export const NumberCriterionParameterField = ({
   error = "",
   parameterContext,
 }) => {
-  const rows = buildNumberCriterionRows(parameterContext);
+  const leafCriteria = parameterContext?.leafCriteria;
+  const rows = useMemo(
+    () => buildNumberCriterionRows({ leafCriteria }),
+    [leafCriteria]
+  );
   const label = parameter?.label || "Parameter";
   const restrictions = parameter?.restrictions || {};
   const min = Number.isFinite(restrictions.min) ? restrictions.min : undefined;
   const max = Number.isFinite(restrictions.max) ? restrictions.max : undefined;
 
   useEffect(() => {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+    if (rows.length === 0) return;
+    if (!isPlainObject(value)) return;
     const reconciled = reconcileNumberCriterionMap({ rows, value });
     if (!numberCriterionMapsEqual(value, reconciled)) onChange(reconciled);
   }, [onChange, rows, value]);

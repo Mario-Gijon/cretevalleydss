@@ -32,7 +32,6 @@ export const adminCatalogModelsFixture = [
         key: "alpha",
         label: "Alpha",
         valueType: "number",
-        scope: "global",
         parameterStructureKey: "numberGlobal",
         required: true,
         default: 0.5,

@@ -328,6 +328,22 @@ def test_number_criterion_preview_uses_its_colocated_descriptor(
     assert "validateDefinition: validateNumberCriterionDefinition" in files[
         f"{backend_base}/index.js"
     ]
+    frontend_field = files[
+        "Frontend/src/features/decisionPlugins/modelParameters/fields/"
+        "numberCriterion/NumberCriterionParameterField.jsx"
+    ]
+    frontend_values = files[
+        "Frontend/src/features/decisionPlugins/modelParameters/fields/"
+        "numberCriterion/numberCriterionValues.js"
+    ]
+    assert "useEffect" in frontend_field
+    assert "useMemo" in frontend_field
+    assert "rows.length === 0" in frontend_field
+    assert "isPlainObject(value)" in frontend_field
+    assert "numberCriterionMapsEqual" in frontend_field
+    assert "reconcileNumberCriterionMap" in frontend_values
+    assert "scope" not in frontend_field
+    assert "scope" not in frontend_values
     assert "validateNumberCriterionDefinition(parameter)" not in files[
         f"{backend_base}/validateAndNormalize.js"
     ]

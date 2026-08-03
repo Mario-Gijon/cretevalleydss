@@ -5,7 +5,6 @@ import { validateAndNormalizeIntervalGlobal } from "../../../modules/decisionPlu
 import { validateIntervalGlobalDefinition } from "../../../modules/decisionPlugins/modelParameters/structures/intervalGlobal/validateDefinition.js";
 
 const buildParameter = (overrides = {}) => ({
-  scope: "global",
   restrictions: { min: 0, max: 1, ordered: "strictIncreasing" },
   default: [0.3, 0.8],
   ...overrides,
@@ -20,7 +19,6 @@ describe("intervalGlobal definition", () => {
   });
 
   it.each([
-    { scope: "criterion" },
     { restrictions: null },
     { restrictions: { max: 1, ordered: "strictIncreasing" } },
     { restrictions: { min: 0, ordered: "strictIncreasing" } },

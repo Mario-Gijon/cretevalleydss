@@ -7,7 +7,6 @@ const parameter = {
   key: "alpha",
   label: "Alpha",
   valueType: "number",
-  scope: "global",
   parameterStructureKey: "numberGlobal",
   required: true,
   default: 9,

@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Box, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { buildSelectCriterionDraft, buildSelectCriterionRows, resolveSelectCriterionRowValue, selectCriterionMapsEqual } from "./selectCriterionValues";
+import { isPlainObject } from "../../../../../utils/common/objects";
 
 const FIELD_HEIGHT = 36;
 
@@ -51,12 +52,17 @@ export const SelectCriterionParameterField = ({
   error = "",
   parameterContext,
 }) => {
-  const rows = buildSelectCriterionRows(parameterContext);
+  const leafCriteria = parameterContext?.leafCriteria;
+  const rows = useMemo(
+    () => buildSelectCriterionRows({ leafCriteria }),
+    [leafCriteria]
+  );
   const allowed = requireAllowedValues(parameter);
   const { label } = parameter;
 
   useEffect(() => {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+    if (rows.length === 0) return;
+    if (!isPlainObject(value)) return;
     const reconciled = buildSelectCriterionDraft({ rows, value });
     if (!selectCriterionMapsEqual(value, reconciled)) onChange(reconciled);
   }, [onChange, rows, value]);

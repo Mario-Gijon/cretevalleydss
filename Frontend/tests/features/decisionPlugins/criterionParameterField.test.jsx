@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import NumberCriterionParameterField from "../../../src/features/decisionPlugins/modelParameters/fields/numberCriterion/NumberCriterionParameterField.jsx";
@@ -13,6 +13,70 @@ const parameterContext = {
 };
 
 describe("criterion parameter fields", () => {
+  it.each([
+    {
+      name: "number",
+      Component: NumberCriterionParameterField,
+      parameter: { label: "Threshold", restrictions: {} },
+      value: { cost: "0.25", stale: "0.5" },
+      expected: { cost: "0.25", quality: "" },
+    },
+    {
+      name: "select",
+      Component: SelectCriterionParameterField,
+      parameter: { key: "mode", label: "Mode", restrictions: { allowed: ["standard", "strict"] } },
+      value: { cost: "standard", stale: "old" },
+      expected: { cost: "standard", quality: "" },
+    },
+  ])("reconciles a stale $name map exactly once", async ({ Component, parameter, value, expected }) => {
+    const onChange = vi.fn();
+    render(<Component parameter={parameter} value={value} onChange={onChange} parameterContext={parameterContext} />);
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    expect(onChange).toHaveBeenLastCalledWith(expected);
+  });
+
+  it.each([
+    { name: "number", Component: NumberCriterionParameterField, parameter: { label: "Threshold", restrictions: {} }, value: { cost: "0.25", quality: "0.5" } },
+    { name: "select", Component: SelectCriterionParameterField, parameter: { key: "mode", label: "Mode", restrictions: { allowed: ["standard", "strict"] } }, value: { cost: "standard", quality: "strict" } },
+  ])("does not reconcile an already canonical $name map", async ({ Component, parameter, value }) => {
+    const onChange = vi.fn();
+    render(<Component parameter={parameter} value={value} onChange={onChange} parameterContext={parameterContext} />);
+
+    await waitFor(() => expect(onChange).not.toHaveBeenCalled());
+  });
+
+  it.each([
+    { name: "number", Component: NumberCriterionParameterField, parameter: { label: "Threshold", restrictions: {} } },
+    { name: "select", Component: SelectCriterionParameterField, parameter: { key: "mode", label: "Mode", restrictions: { allowed: ["standard", "strict"] } } },
+  ])("does not reconcile $name maps without visible criteria", async ({ Component, parameter }) => {
+    const onChange = vi.fn();
+    render(<Component parameter={parameter} value={{ stale: "old" }} onChange={onChange} parameterContext={{ leafCriteria: [] }} />);
+
+    await waitFor(() => expect(onChange).not.toHaveBeenCalled());
+  });
+
+  it.each([
+    { name: "number", Component: NumberCriterionParameterField, parameter: { label: "Threshold", restrictions: {} } },
+    { name: "select", Component: SelectCriterionParameterField, parameter: { key: "mode", label: "Mode", restrictions: { allowed: ["standard", "strict"] } } },
+  ])("does not reconcile a $name map when context is missing", async ({ Component, parameter }) => {
+    const onChange = vi.fn();
+    render(<Component parameter={parameter} value={{ stale: "old" }} onChange={onChange} />);
+
+    await waitFor(() => expect(onChange).not.toHaveBeenCalled());
+  });
+
+  it.each([
+    { name: "number", Component: NumberCriterionParameterField, parameter: { label: "Threshold", restrictions: {} }, value: "0.25" },
+    { name: "select", Component: SelectCriterionParameterField, parameter: { key: "mode", label: "Mode", restrictions: { allowed: ["standard", "strict"] } }, value: "standard" },
+  ])("does not convert scalar $name drafts before an edit", async ({ Component, parameter, value }) => {
+    const onChange = vi.fn();
+    const { rerender } = render(<Component parameter={parameter} value={value} onChange={onChange} parameterContext={parameterContext} />);
+    rerender(<Component parameter={parameter} value={value} onChange={onChange} parameterContext={{ leafCriteria: [{ id: "cost", name: "Cost" }] }} />);
+
+    await waitFor(() => expect(onChange).not.toHaveBeenCalled());
+  });
+
   it("expands a scalar number default before the first criterion edit", () => {
     const onChange = vi.fn();
     render(

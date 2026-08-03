@@ -7,7 +7,6 @@ import { validateNumberGlobalDefinition } from "../../../modules/decisionPlugins
 const buildParameter = (overrides = {}) => ({
   key: "alpha",
   label: "Alpha",
-  scope: "global",
   parameterStructureKey: "numberGlobal",
   valueType: "number",
   required: true,
@@ -151,7 +150,6 @@ describe("numberGlobal definition", () => {
 
   it.each([
     ["non-object metadata", null],
-    ["wrong scope", { scope: "perCriterion" }],
     ["missing valueType", { valueType: undefined }],
     ["unsupported valueType", { valueType: "decimal" }],
     ["present undefined default", { default: undefined }],

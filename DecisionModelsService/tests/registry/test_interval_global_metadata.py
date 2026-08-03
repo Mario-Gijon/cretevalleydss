@@ -14,7 +14,6 @@ def test_herrera_viedma_interval_global_metadata_is_canonical():
         {
             "key": "ag_lq",
             "label": "Agreement interval",
-            "scope": "global",
             "parameterStructureKey": "intervalGlobal",
             "required": True,
             "default": [0.3, 0.8],
@@ -29,7 +28,6 @@ def test_herrera_viedma_interval_global_metadata_is_canonical():
         {
             "key": "ex_lq",
             "label": "Expert interval",
-            "scope": "global",
             "parameterStructureKey": "intervalGlobal",
             "required": True,
             "default": [0.5, 1],

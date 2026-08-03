@@ -77,7 +77,6 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
             "key": "iterations",
             "label": "Iterations",
             "valueType": "integer",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,
             "default": 10,
@@ -106,7 +105,7 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
     )
     assert "'parameterStructureKey': 'numberGlobal'" in definition
     assert "'valueType': 'integer'" in definition
-    assert "'scope': 'global'" in definition
+    assert "'scope':" not in definition
 
     parameter_item = next(
         item
@@ -155,7 +154,6 @@ def test_model_package_preview_omits_number_global_defaults_when_not_provided(
             "key": "required_alpha",
             "label": "Required alpha",
             "valueType": "number",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,
             "restrictions": {"min": None, "max": None, "allowed": None},
@@ -164,7 +162,6 @@ def test_model_package_preview_omits_number_global_defaults_when_not_provided(
             "key": "required_iterations",
             "label": "Required iterations",
             "valueType": "integer",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,
             "restrictions": {"min": 1, "max": None, "allowed": None},
@@ -173,7 +170,6 @@ def test_model_package_preview_omits_number_global_defaults_when_not_provided(
             "key": "optional_alpha",
             "label": "Optional alpha",
             "valueType": "number",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": False,
             "restrictions": {"min": None, "max": None, "allowed": None},
@@ -209,7 +205,6 @@ def test_model_package_preview_rejects_noncanonical_number_global_metadata(
             "key": "iterations",
             "label": "Iterations",
             "valueType": "integer",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,
             "default": 4.5,
@@ -241,7 +236,6 @@ def test_model_package_preview_requires_number_global_value_type(
         {
             "key": "alpha",
             "label": "Alpha",
-            "scope": "global",
             "parameterStructureKey": "numberGlobal",
             "required": True,
             "default": 0.5,

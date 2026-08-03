@@ -8,3 +8,7 @@ export const buildNumberCriterionRows = (parameterContext) => (Array.isArray(par
 export const resolveNumberCriterionRowValue = ({ value, rowKey }) => isPlainObject(value) ? (Object.prototype.hasOwnProperty.call(value, rowKey) ? value[rowKey] : "") : (value ?? "");
 
 export const buildNumberCriterionDraft = ({ rows, value }) => Object.fromEntries(rows.map((row) => [row.key, resolveNumberCriterionRowValue({ value, rowKey: row.key })]));
+
+export const reconcileNumberCriterionMap = ({ rows, value }) => buildNumberCriterionDraft({ rows, value });
+
+export const numberCriterionMapsEqual = (left, right) => isPlainObject(left) && isPlainObject(right) && Object.keys(left).length === Object.keys(right).length && Object.keys(left).every((key) => Object.prototype.hasOwnProperty.call(right, key) && left[key] === right[key]);

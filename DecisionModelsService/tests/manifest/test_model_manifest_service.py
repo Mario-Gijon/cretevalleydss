@@ -47,7 +47,7 @@ def test_supported_domain_normalization(model_definition_factory):
     )
 
 
-def test_parameter_scope_defaults_to_global(model_definition_factory):
+def test_parameter_scope_is_omitted(model_definition_factory):
     model = model_definition_factory(
         parameters=[
             {
@@ -59,23 +59,7 @@ def test_parameter_scope_defaults_to_global(model_definition_factory):
 
     parameters = _build_parameters(model)
 
-    assert parameters == [{"key": "alpha", "label": "Alpha", "scope": "global"}]
-
-
-def test_existing_parameter_scope_is_preserved(model_definition_factory):
-    model = model_definition_factory(
-        parameters=[
-            {
-                "key": "beta",
-                "label": "Beta",
-                "scope": "perCriterion",
-            }
-        ]
-    )
-
-    parameters = _build_parameters(model)
-
-    assert parameters == [{"key": "beta", "label": "Beta", "scope": "perCriterion"}]
+    assert parameters == [{"key": "alpha", "label": "Alpha"}]
 
 
 def test_request_example_extraction_returns_first_valid_request_example_value(
@@ -183,7 +167,7 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
         {"typeKey": "linguisticFuzzy", "constraints": {}},
     ]
     assert manifest_entry["parameters"] == [
-        {"key": "lambda", "label": "Lambda", "scope": "global"}
+        {"key": "lambda", "label": "Lambda"}
     ]
     assert manifest_entry["request"]["example"] == {"payload": 1}
     assert manifest_entry["response"]["example"] == {"success": True}

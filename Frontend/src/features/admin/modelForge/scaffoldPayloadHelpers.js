@@ -181,7 +181,6 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
       ? new Set([
         ...PROTECTED_ADVANCED_FIELDS,
         "valueType",
-        "scope",
         "isInteger",
         "numericType",
         "minimum",
@@ -326,7 +325,6 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
     }
 
     payload.valueType = valueType;
-    payload.scope = "global";
     payload.restrictions = canonicalRestrictions;
   } else if (isSelectGlobal) {
     const valueType = String(parameter?.valueType || "").trim();
@@ -364,7 +362,6 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
       payload.default = parsedDefault;
     }
     payload.valueType = valueType;
-    payload.scope = "global";
     payload.restrictions = { allowed };
   } else {
     payload.default = defaultValue;

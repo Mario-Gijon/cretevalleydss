@@ -29,7 +29,6 @@ describe("numberGlobal Model Forge parameter payload", () => {
       label: "Iterations",
       parameterStructureKey: "numberGlobal",
       valueType: "integer",
-      scope: "global",
       required: true,
       default: 10,
       restrictions: {
@@ -92,7 +91,6 @@ describe("selectGlobal Model Forge parameter payload", () => {
       parameterStructureKey: "selectGlobal",
       required: true,
       valueType: "boolean",
-      scope: "global",
       default: false,
       restrictions: { allowed: [true, false] },
     });

@@ -10,7 +10,7 @@ def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]
     """Normaliza un parámetro al contrato público sin alterar su forma base."""
 
     normalized = dict(parameter)
-    normalized["scope"] = normalized.get("scope") or "global"
+    normalized.pop("scope", None)
 
     return normalized
 

@@ -129,7 +129,6 @@ const baseCreateIssueModel = {
       key: "threshold",
       label: "Threshold",
       valueType: "number",
-      scope: "global",
       default: 0.4,
       parameterStructureKey: "numberGlobal",
       required: true,
@@ -138,13 +137,11 @@ const baseCreateIssueModel = {
     {
       key: "criterionScores",
       default: 1,
-      scope: "perCriterion",
       parameterStructureKey: "numberCriterion",
     },
     {
       key: "criteriaWeightShadow",
       default: 0.5,
-      scope: "perCriterion",
       parameterStructureKey: "numberCriterion",
       semanticRole: "criteriaWeights",
     },

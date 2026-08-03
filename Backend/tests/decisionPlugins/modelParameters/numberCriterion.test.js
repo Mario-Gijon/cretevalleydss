@@ -12,7 +12,6 @@ const rows = [
 const buildParameter = (overrides = {}) => ({
   key: "threshold",
   label: "Threshold",
-  scope: "perCriterion",
   parameterStructureKey: "numberCriterion",
   required: true,
   default: 0.05,
@@ -21,6 +20,12 @@ const buildParameter = (overrides = {}) => ({
 });
 
 describe("numberCriterion definition", () => {
+  it("accepts a canonical definition without scope", () => {
+    const parameter = buildParameter();
+    expect(parameter).not.toHaveProperty("scope");
+    expect(validateNumberCriterionDefinition(parameter)).toBeNull();
+  });
+
   it.each([
     buildParameter(),
     buildParameter({ default: 0 }),
@@ -40,7 +45,6 @@ describe("numberCriterion definition", () => {
   });
 
   it.each([
-    { scope: "global" },
     { restrictions: null },
     { restrictions: { max: 1 } },
     { restrictions: { min: 0 } },

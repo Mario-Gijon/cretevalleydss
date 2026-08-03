@@ -4,7 +4,6 @@ import { validateAndNormalizeSelectGlobal } from "../../../modules/decisionPlugi
 import { validateSelectGlobalDefinition } from "../../../modules/decisionPlugins/modelParameters/structures/selectGlobal/validateDefinition.js";
 
 const buildParameter = (overrides = {}) => ({
-  scope: "global",
   valueType: "number",
   restrictions: { allowed: [0, 0.5, 1] },
   default: 0,
@@ -22,7 +21,6 @@ describe("selectGlobal definition", () => {
   });
 
   it.each([
-    { scope: "criterion" },
     { valueType: "enum" },
     { restrictions: null },
     { restrictions: {} },

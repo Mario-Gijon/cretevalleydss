@@ -22,7 +22,6 @@ const editablePropsExample = {
   parameter: {
     key: "beta",
     label: "Beta",
-    scope: "global",
     parameterStructureKey: "numberGlobal",
     valueType: "number",
     required: true,
@@ -84,7 +83,6 @@ const readOnlyPropsExample = {
   parameter: {
     key: "beta",
     label: "Beta",
-    scope: "global",
     parameterStructureKey: "numberGlobal",
     valueType: "number",
     required: true,

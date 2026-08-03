@@ -31,7 +31,7 @@ def test_all_current_number_global_parameters_declare_canonical_metadata():
 
     assert len(parameters) == 4
     for parameter in parameters:
-        assert parameter["scope"] == "global"
+        assert "scope" not in parameter
         assert parameter["valueType"] in {"number", "integer"}
         assert isinstance(parameter["required"], bool)
         assert set(parameter["restrictions"]) == {"min", "max", "allowed"}

@@ -61,7 +61,6 @@ const buildMockExecutionContext = () => {
 const buildIntervalParameter = (overrides = {}) => ({
   key: "agreement",
   label: "Agreement interval",
-  scope: "global",
   parameterStructureKey: "intervalGlobal",
   required: true,
   default: [0.3, 0.8],
