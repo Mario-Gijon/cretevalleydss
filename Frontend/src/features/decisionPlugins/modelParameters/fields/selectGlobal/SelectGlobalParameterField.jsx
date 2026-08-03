@@ -1,40 +1,7 @@
 import { Stack, Typography, TextField, MenuItem } from "@mui/material";
+import { selectGlobalParameterFieldSx } from "./SelectGlobalParameterField.styles";
 
-const FIELD_HEIGHT = 36;
-
-const requireAllowedValues = (parameter) => {
-  const allowed = parameter.restrictions?.allowed;
-
-  if (!Array.isArray(allowed)) {
-    throw new Error(
-      `[modelParameters] Missing allowed values for global parameter "${parameter.key}".`
-    );
-  }
-
-  return allowed;
-};
-
-const labelSx = {
-  height: FIELD_HEIGHT,
-  display: "flex",
-  alignItems: "center",
-  color: "text.secondary",
-  fontWeight: 750,
-  whiteSpace: "nowrap",
-  lineHeight: 1,
-};
-
-const textFieldSx = {
-  minWidth: 128,
-  "& .MuiOutlinedInput-root": {
-    height: FIELD_HEIGHT,
-  },
-  "& .MuiSelect-select": {
-    py: 0,
-    display: "flex",
-    alignItems: "center",
-  },
-};
+const getOptionKey = (option) => `${typeof option}:${String(option)}`;
 
 export const SelectGlobalParameterField = ({
   parameter,
@@ -43,13 +10,15 @@ export const SelectGlobalParameterField = ({
   disabled = false,
   error = "",
 }) => {
-  const allowed = requireAllowedValues(parameter);
-  const { label } = parameter;
+  const allowed = Array.isArray(parameter?.restrictions?.allowed)
+    ? parameter.restrictions.allowed
+    : [];
+  const label = parameter?.label || "Selection";
 
   return (
     <Stack spacing={0.35}>
       <Stack direction="row" spacing={1} alignItems="center">
-        <Typography variant="body2" sx={labelSx}>
+        <Typography variant="body2" sx={selectGlobalParameterFieldSx.label}>
           {label}:
         </Typography>
 
@@ -60,23 +29,19 @@ export const SelectGlobalParameterField = ({
           size="small"
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value)}
-          sx={textFieldSx}
-          disabled={disabled}
+          inputProps={{ "aria-label": label }}
+          sx={selectGlobalParameterFieldSx.input}
+          disabled={disabled || allowed.length === 0}
           error={Boolean(error)}
+          helperText={error || ""}
         >
-          {allowed.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
+          {allowed.map((option, index) => (
+            <MenuItem key={`${getOptionKey(option)}:${index}`} value={option}>
+              {String(option)}
             </MenuItem>
           ))}
         </TextField>
       </Stack>
-
-      {error ? (
-        <Typography variant="caption" color="error">
-          {error}
-        </Typography>
-      ) : null}
     </Stack>
   );
 };

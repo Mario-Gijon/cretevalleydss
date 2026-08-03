@@ -1,0 +1,42 @@
+import { normalizeNumberValue } from "../../../../modelParameters/parameterValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
+
+const normalizeBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return null;
+};
+
+export const validateAndNormalizeSelectGlobal = ({ value, parameter }) => {
+  const { valueType, restrictions } = parameter || {};
+  const allowed = restrictions?.allowed;
+  let normalizedValue;
+
+  if (valueType === "number" || valueType === "integer") {
+    normalizedValue = normalizeNumberValue(value);
+    if (normalizedValue === null) {
+      return toInvalid("must be a finite number", value);
+    }
+    if (valueType === "integer" && !Number.isInteger(normalizedValue)) {
+      return toInvalid("must be an integer", value);
+    }
+  } else if (valueType === "boolean") {
+    normalizedValue = normalizeBoolean(value);
+    if (normalizedValue === null) return toInvalid("must be a boolean", value);
+  } else if (valueType === "string") {
+    if (typeof value !== "string") return toInvalid("must be a string", value);
+    normalizedValue = value;
+  } else {
+    return toInvalid("uses an unsupported valueType", value);
+  }
+
+  if (!Array.isArray(allowed) || allowed.length === 0 || !allowed.includes(normalizedValue)) {
+    return toInvalid("must be one of the allowed values", normalizedValue);
+  }
+
+  return toValid(normalizedValue);
+};

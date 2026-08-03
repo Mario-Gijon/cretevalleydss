@@ -641,10 +641,10 @@ const ParameterCard = ({
           />
         </Box>
 
-        {parameter.parameterStructureKey === "numberGlobal" ? (
+        {["numberGlobal", "selectGlobal"].includes(parameter.parameterStructureKey) ? (
           <Stack spacing={0.65}>
             <Typography variant="caption" sx={{ fontWeight: 900 }}>
-              Numeric value type
+              {parameter.parameterStructureKey === "selectGlobal" ? "Selection value type" : "Numeric value type"}
             </Typography>
             <ToggleButtonGroup
               exclusive
@@ -659,6 +659,12 @@ const ParameterCard = ({
             >
               <ToggleButton value="number">Number</ToggleButton>
               <ToggleButton value="integer">Integer</ToggleButton>
+              {parameter.parameterStructureKey === "selectGlobal" ? (
+                <ToggleButton value="string">String</ToggleButton>
+              ) : null}
+              {parameter.parameterStructureKey === "selectGlobal" ? (
+                <ToggleButton value="boolean">Boolean</ToggleButton>
+              ) : null}
             </ToggleButtonGroup>
           </Stack>
         ) : null}

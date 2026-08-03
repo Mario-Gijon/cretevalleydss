@@ -72,6 +72,47 @@ describe("numberGlobal Model Forge parameter payload", () => {
   });
 });
 
+describe("selectGlobal Model Forge parameter payload", () => {
+  const buildRow = (overrides = {}) => ({
+    key: "choice",
+    label: "Choice",
+    parameterStructureKey: "selectGlobal",
+    valueType: "boolean",
+    required: true,
+    defaultMode: "literal",
+    defaultLiteralText: "false",
+    restrictionsOptionsText: "true, false",
+    ...overrides,
+  });
+
+  it("preserves typed allowed values and false defaults", () => {
+    expect(buildParameterRowPayloadOrThrow(buildRow(), 0)).toEqual({
+      key: "choice",
+      label: "Choice",
+      parameterStructureKey: "selectGlobal",
+      required: true,
+      valueType: "boolean",
+      scope: "global",
+      default: false,
+      restrictions: { allowed: [true, false] },
+    });
+  });
+
+  it("preserves numeric-looking string options and omits blank defaults", () => {
+    const payload = buildParameterRowPayloadOrThrow(
+      buildRow({
+        valueType: "string",
+        defaultLiteralText: "",
+        restrictionsOptionsText: "1, 0.5",
+      }),
+      0
+    );
+
+    expect(payload).toMatchObject({ restrictions: { allowed: ["1", "0.5"] } });
+    expect(payload).not.toHaveProperty("default");
+  });
+});
+
 describe("stripNullConstraintPlaceholders", () => {
   it("strips top-level null placeholders", () => {
     expect(

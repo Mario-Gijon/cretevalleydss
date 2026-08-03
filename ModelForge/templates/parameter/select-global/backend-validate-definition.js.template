@@ -1,0 +1,25 @@
+import { hasOwnKey, isPlainObject } from "../../../../../utils/common/objects.js";
+
+const valueMatchesType = (value, valueType) => {
+  if (valueType === "string") return typeof value === "string" && value !== "";
+  if (valueType === "number") return typeof value === "number" && Number.isFinite(value);
+  if (valueType === "integer") return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value);
+  return typeof value === "boolean";
+};
+
+export const validateSelectGlobalDefinition = (parameter) => {
+  if (parameter?.scope !== "global") return "scope must be 'global'";
+  const { valueType, restrictions } = parameter;
+  if (!["string", "number", "integer", "boolean"].includes(valueType)) {
+    return "valueType must be string, number, integer, or boolean";
+  }
+  if (!isPlainObject(restrictions)) return "restrictions must be a plain object";
+  const allowed = restrictions.allowed;
+  if (!Array.isArray(allowed) || allowed.length === 0) return "restrictions allowed must be a non-empty array";
+  if (!allowed.every((value) => valueMatchesType(value, valueType))) {
+    return `restrictions allowed must contain ${valueType} values`;
+  }
+  if (!hasOwnKey(parameter, "default")) return null;
+  if (!valueMatchesType(parameter.default, valueType)) return `default must be a ${valueType} value`;
+  return allowed.includes(parameter.default) ? null : "default must be one of the allowed values";
+};

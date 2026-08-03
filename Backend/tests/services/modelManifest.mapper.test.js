@@ -115,6 +115,30 @@ describe("syncable manifest parameter definitions", () => {
   });
 
   it.each([
+    ["number", [0, 1], 0],
+    ["integer", [0, 1], 0],
+    ["boolean", [false, true], false],
+    ["string", ["1", "two"], "1"],
+  ])("validates canonical selectGlobal %s definitions", (valueType, allowed, defaultValue) => {
+    expect(
+      validateSyncableManifestModel(
+        buildManifest([
+          {
+            key: "choice",
+            label: "Choice",
+            parameterStructureKey: "selectGlobal",
+            required: true,
+            scope: "global",
+            valueType,
+            default: defaultValue,
+            restrictions: { allowed },
+          },
+        ])
+      )
+    ).toEqual([]);
+  });
+
+  it.each([
     ["invalid valueType", { valueType: "decimal" }],
     ["invalid restrictions", { restrictions: { min: "0", max: 1, allowed: null } }],
     ["reversed range", { restrictions: { min: 2, max: 1, allowed: null } }],

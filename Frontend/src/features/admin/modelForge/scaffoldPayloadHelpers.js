@@ -74,6 +74,24 @@ export const parseOptionsList = (rawValue) =>
     .filter(Boolean)
     .map((item) => parseLiteralValue(item));
 
+const parseSelectGlobalValueOrThrow = ({ rawValue, valueType, label }) => {
+  const text = String(rawValue ?? "").trim();
+  if (!text) throw new Error(`${label} must not be empty`);
+  if (valueType === "string") return text;
+  if (valueType === "boolean") {
+    if (text.toLowerCase() === "true") return true;
+    if (text.toLowerCase() === "false") return false;
+    throw new Error(`${label} must be true or false`);
+  }
+
+  const value = Number(text);
+  if (!Number.isFinite(value)) throw new Error(`${label} must be a finite number`);
+  if (valueType === "integer" && !Number.isInteger(value)) {
+    throw new Error(`${label} must be an integer`);
+  }
+  return value;
+};
+
 export const buildParameterIdentifier = (parameter, index) =>
   String(parameter?.key || "").trim() || `Parameter ${index + 1}`;
 
@@ -83,6 +101,7 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
   const label = String(parameter?.label || "").trim();
   const parameterStructureKey = String(parameter?.parameterStructureKey || "").trim();
   const isNumberGlobal = parameterStructureKey === "numberGlobal";
+  const isSelectGlobal = parameterStructureKey === "selectGlobal";
 
   if (!key) throw new Error(`Parameter ${index + 1} is missing key`);
   if (!label) throw new Error(`Parameter ${index + 1} is missing label`);
@@ -158,7 +177,7 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
       throw new Error(`${identifier} advanced JSON must be a JSON object`);
     }
 
-    const protectedAdvancedFields = isNumberGlobal
+    const protectedAdvancedFields = isNumberGlobal || isSelectGlobal
       ? new Set([
         ...PROTECTED_ADVANCED_FIELDS,
         "valueType",
@@ -309,11 +328,49 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
     payload.valueType = valueType;
     payload.scope = "global";
     payload.restrictions = canonicalRestrictions;
+  } else if (isSelectGlobal) {
+    const valueType = String(parameter?.valueType || "").trim();
+    if (!["string", "number", "integer", "boolean"].includes(valueType)) {
+      throw new Error(`${identifier} selectGlobal valueType is invalid`);
+    }
+    const rawAllowed = String(parameter?.restrictionsOptionsText ?? "")
+      .split(/\n|,/)
+      .map((item) => item.trim());
+    if (rawAllowed.length === 0 || rawAllowed.some((item) => !item)) {
+      throw new Error(`${identifier} selectGlobal allowed values must not be empty`);
+    }
+    const allowed = rawAllowed.map((rawValue) =>
+      parseSelectGlobalValueOrThrow({
+        rawValue,
+        valueType,
+        label: `${identifier} allowed value`,
+      })
+    );
+    const hasDefault =
+      defaultMode !== "null" &&
+      !(defaultMode === "literal" && String(parameter?.defaultLiteralText ?? "").trim() === "");
+    if (hasDefault) {
+      if (defaultMode !== "literal") {
+        throw new Error(`${identifier} selectGlobal default must be a literal value`);
+      }
+      const parsedDefault = parseSelectGlobalValueOrThrow({
+        rawValue: parameter?.defaultLiteralText,
+        valueType,
+        label: `${identifier} default`,
+      });
+      if (!allowed.includes(parsedDefault)) {
+        throw new Error(`${identifier} default must be one of the allowed values`);
+      }
+      payload.default = parsedDefault;
+    }
+    payload.valueType = valueType;
+    payload.scope = "global";
+    payload.restrictions = { allowed };
   } else {
     payload.default = defaultValue;
   }
 
-  if (!isNumberGlobal && restrictions !== undefined) {
+  if (!isNumberGlobal && !isSelectGlobal && restrictions !== undefined) {
     payload.restrictions = restrictions;
   }
 

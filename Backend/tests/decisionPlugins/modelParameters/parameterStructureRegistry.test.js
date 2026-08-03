@@ -17,7 +17,7 @@ describe("model parameter structure registry", () => {
     expect(selectGlobal).toMatchObject({
       key: "selectGlobal",
       validateAndNormalize: expect.any(Function),
+      validateDefinition: expect.any(Function),
     });
-    expect(selectGlobal).not.toHaveProperty("validateDefinition");
   });
 });

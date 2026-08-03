@@ -42,6 +42,11 @@ NUMBER_GLOBAL_TEMPLATE_MAP = [
         "NumberGlobalParameterReadOnly.jsx",
     ),
 ]
+SELECT_GLOBAL_TEMPLATE_MAP = [
+    ("select-global/backend-index.js.template", "index.js"),
+    ("select-global/backend-validate-definition.js.template", "validateDefinition.js"),
+    ("select-global/backend-validate-and-normalize.js.template", "validateAndNormalize.js"),
+]
 
 
 def _load_template(template_filename: str) -> str:
@@ -78,17 +83,22 @@ def build_parameter_scaffold_preview(
     )
     placeholders = _build_placeholder_values(request)
 
-    if names.parameter_structure_key == "numberGlobal":
+    if names.parameter_structure_key in {"numberGlobal", "selectGlobal"}:
+        dedicated_templates = (
+            NUMBER_GLOBAL_TEMPLATE_MAP
+            if names.parameter_structure_key == "numberGlobal"
+            else SELECT_GLOBAL_TEMPLATE_MAP
+        )
         template_map = [
             (
                 template_name,
                 (
                     f"{backend_target_base_path}/{relative_path}"
-                    if template_name.startswith("number-global/backend-")
+                    if "/backend-" in template_name
                     else f"{frontend_target_base_path}/{relative_path}"
                 ),
             )
-            for template_name, relative_path in NUMBER_GLOBAL_TEMPLATE_MAP
+            for template_name, relative_path in dedicated_templates
         ]
     else:
         template_map = [
