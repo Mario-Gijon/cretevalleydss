@@ -131,6 +131,10 @@ describe("numberGlobal metadata", () => {
     const optionalWithoutDefault = buildParameter({ required: false });
     delete optionalWithoutDefault.default;
     expect(validateNumberGlobalMetadata(optionalWithoutDefault)).toBeNull();
+
+    const requiredWithoutDefault = buildParameter({ required: true });
+    delete requiredWithoutDefault.default;
+    expect(validateNumberGlobalMetadata(requiredWithoutDefault)).toBeNull();
   });
 
   it.each([
@@ -139,7 +143,7 @@ describe("numberGlobal metadata", () => {
     ["wrong structure", { parameterStructureKey: "numberCriterion" }],
     ["missing valueType", { valueType: undefined }],
     ["unsupported valueType", { valueType: "decimal" }],
-    ["missing required default", { default: undefined }],
+    ["present undefined default", { default: undefined }],
     ["non-object restrictions", { restrictions: [] }],
     [
       "incomplete restrictions",
@@ -188,6 +192,23 @@ describe("numberGlobal metadata", () => {
     expect(validateNumberGlobalMetadata(parameter)).toEqual(
       expect.any(String)
     );
+  });
+
+  it.each([
+    ["undefined", undefined],
+    ["null", null],
+    ["numeric string", "0.5"],
+    ["boolean", true],
+    ["false boolean", false],
+    ["NaN", Number.NaN],
+    ["infinity", Number.POSITIVE_INFINITY],
+    ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["array", []],
+    ["object", {}],
+  ])("rejects a present %s default", (_label, defaultValue) => {
+    expect(
+      validateNumberGlobalMetadata(buildParameter({ default: defaultValue }))
+    ).toEqual(expect.any(String));
   });
 
   it.each([
@@ -344,6 +365,14 @@ describe("numberGlobal generic resolver integration", () => {
   it("keeps required, optional, and unknown-key behavior generic", () => {
     const requiredWithoutDefault = buildParameter();
     delete requiredWithoutDefault.default;
+    expect(
+      validateAndNormalizeModelParametersOrThrow({
+        model: buildModel(requiredWithoutDefault),
+        paramValues: { alpha: "0.25" },
+        criteriaNodes: [],
+      })
+    ).toEqual({ alpha: 0.25 });
+
     expect(() =>
       validateAndNormalizeModelParametersOrThrow({
         model: buildModel(requiredWithoutDefault),
@@ -361,6 +390,14 @@ describe("numberGlobal generic resolver integration", () => {
         criteriaNodes: [],
       })
     ).toEqual({});
+
+    expect(() =>
+      validateAndNormalizeModelParametersOrThrow({
+        model: buildModel(optionalWithoutDefault),
+        paramValues: { alpha: "" },
+        criteriaNodes: [],
+      })
+    ).toThrow("alpha cannot be empty");
 
     expect(() =>
       validateAndNormalizeModelParametersOrThrow({

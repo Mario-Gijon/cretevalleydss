@@ -138,4 +138,40 @@ describe("createIssueModelParameters", () => {
       )
     ).toEqual({ zero: "-0.123456", iterations: "4.5" });
   });
+
+  it("initializes numberGlobal parameters without defaults as editable empty strings", () => {
+    const selectedModel = {
+      parameters: [
+        {
+          key: "requiredAlpha",
+          label: "Required alpha",
+          parameterStructureKey: "numberGlobal",
+          valueType: "number",
+          scope: "global",
+          required: true,
+          restrictions: { min: null, max: null, allowed: null },
+        },
+        {
+          key: "optionalIterations",
+          label: "Optional iterations",
+          parameterStructureKey: "numberGlobal",
+          valueType: "integer",
+          scope: "global",
+          required: false,
+          restrictions: { min: null, max: null, allowed: null },
+        },
+      ],
+    };
+
+    expect(
+      setDefaults({ selectedModel, criteria: createIssueLeafCriteriaFixture })
+    ).toEqual({ requiredAlpha: "", optionalIterations: "" });
+    expect(
+      updateParamValues(
+        { requiredAlpha: "-0.125", optionalIterations: "" },
+        selectedModel,
+        createIssueLeafCriteriaFixture
+      )
+    ).toEqual({ requiredAlpha: "-0.125", optionalIterations: "" });
+  });
 });

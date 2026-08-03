@@ -165,10 +165,8 @@ export const validateNumberGlobalMetadata = (parameter) => {
     }
   }
 
-  if (parameter.default === undefined) {
-    return parameter.required
-      ? "metadata required parameters must declare a default"
-      : null;
+  if (!hasOwnKey(parameter, "default")) {
+    return null;
   }
 
   if (!isFiniteNumber(parameter.default)) {

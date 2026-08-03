@@ -116,8 +116,6 @@ def _validate_number_global_parameter(parameter: dict, index: int) -> None:
             seen.add(allowed_value)
 
     if "default" not in parameter:
-        if parameter["required"]:
-            raise ValueError(f"{prefix}.default is required")
         return
 
     default = parameter["default"]

@@ -7,7 +7,6 @@ export const NumberGlobalParameterField = ({
   onChange,
   disabled = false,
   error = "",
-  parameterContext,
 }) => {
   const { restrictions = {}, label, valueType } = parameter;
   const isInteger = valueType === "integer";
@@ -17,8 +16,6 @@ export const NumberGlobalParameterField = ({
   const max = Number.isFinite(restrictions.max)
     ? restrictions.max
     : undefined;
-
-  void parameterContext;
 
   return (
     <Stack spacing={0.35}>

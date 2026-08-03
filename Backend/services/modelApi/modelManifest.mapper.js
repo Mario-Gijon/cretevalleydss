@@ -103,6 +103,8 @@ export const normalizeParameter = (parameter = {}) => {
   const parameterStructureKey = normalizeNonEmptyString(
     parameter?.parameterStructureKey
   );
+  const hasCanonicalDefault =
+    hasOwnKey(parameter || {}, "default") && parameter.default !== undefined;
 
   return {
     key,
@@ -113,11 +115,7 @@ export const normalizeParameter = (parameter = {}) => {
     scope: normalizeNonEmptyString(parameter?.scope),
     parameterStructureKey,
     required: parameter?.required === true,
-    ...(hasOwnKey(parameter || {}, "default")
-      ? { default: parameter.default }
-      : parameterStructureKey === "numberGlobal"
-        ? {}
-        : { default: null }),
+    ...(hasCanonicalDefault ? { default: parameter.default } : {}),
     restrictions: normalizeDynamicObject(parameter?.restrictions),
   };
 };

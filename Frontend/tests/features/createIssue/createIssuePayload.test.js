@@ -119,6 +119,45 @@ describe("createIssuePayload", () => {
     });
   });
 
+  it("keeps supplied numberGlobal drafts raw and allows an optional omitted value", () => {
+    const selectedModel = {
+      ...basicCreateIssueModelFixture,
+      parameters: [
+        {
+          key: "requiredAlpha",
+          label: "Required alpha",
+          parameterStructureKey: "numberGlobal",
+          valueType: "number",
+          scope: "global",
+          required: true,
+          restrictions: { min: null, max: null, allowed: null },
+        },
+        {
+          key: "optionalIterations",
+          label: "Optional iterations",
+          parameterStructureKey: "numberGlobal",
+          valueType: "integer",
+          scope: "global",
+          required: false,
+          restrictions: { min: null, max: null, allowed: null },
+        },
+      ],
+    };
+    const result = buildCreateIssueRequestPayload(
+      buildPayloadInput({
+        selectedModel,
+        paramValues: { requiredAlpha: "-0.125" },
+        allData: {
+          selectedModel,
+          paramValues: { requiredAlpha: "-0.125" },
+        },
+      })
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.paramValues).toEqual({ requiredAlpha: "-0.125" });
+  });
+
   it("rejects requests without a selected model", () => {
     expect(
       buildCreateIssueRequestPayload(

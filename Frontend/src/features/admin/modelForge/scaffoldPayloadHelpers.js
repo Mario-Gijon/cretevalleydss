@@ -278,7 +278,14 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
       );
     }
 
-    if (defaultMode !== "null") {
+    const hasDefault =
+      defaultMode !== "null" &&
+      !(
+        defaultMode === "literal" &&
+        String(parameter?.defaultLiteralText ?? "").trim() === ""
+      );
+
+    if (hasDefault) {
       if (typeof defaultValue !== "number" || !Number.isFinite(defaultValue)) {
         throw new Error(`${identifier} default must be a finite number`);
       }
@@ -297,8 +304,6 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
         throw new Error(`${identifier} default must satisfy restrictions`);
       }
       payload.default = defaultValue;
-    } else if (parameter?.required === true) {
-      throw new Error(`${identifier} required numberGlobal default is missing`);
     }
 
     payload.valueType = valueType;

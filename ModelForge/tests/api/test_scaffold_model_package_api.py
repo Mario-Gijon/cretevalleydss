@@ -133,6 +133,60 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
     assert "Math.trunc" not in frontend_field
 
 
+def test_model_package_preview_omits_number_global_defaults_when_not_provided(
+    client_factory,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    model = valid_model_package_payload["model"]
+    model["parameters"] = [
+        {
+            "key": "required_alpha",
+            "label": "Required alpha",
+            "valueType": "number",
+            "scope": "global",
+            "parameterStructureKey": "numberGlobal",
+            "required": True,
+            "restrictions": {"min": None, "max": None, "allowed": None},
+        },
+        {
+            "key": "required_iterations",
+            "label": "Required iterations",
+            "valueType": "integer",
+            "scope": "global",
+            "parameterStructureKey": "numberGlobal",
+            "required": True,
+            "restrictions": {"min": 1, "max": None, "allowed": None},
+        },
+        {
+            "key": "optional_alpha",
+            "label": "Optional alpha",
+            "valueType": "number",
+            "scope": "global",
+            "parameterStructureKey": "numberGlobal",
+            "required": False,
+            "restrictions": {"min": None, "max": None, "allowed": None},
+        },
+    ]
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/preview",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 200
+    model_item = next(
+        item for item in response.json()["items"] if item["kind"] == "model"
+    )
+    definition = next(
+        file["content"]
+        for file in model_item["files"]
+        if file["path"].endswith("/definition.py")
+    )
+    assert "'default':" not in definition
+
+
 def test_model_package_preview_rejects_noncanonical_number_global_metadata(
     client_factory,
     project_root: Path,

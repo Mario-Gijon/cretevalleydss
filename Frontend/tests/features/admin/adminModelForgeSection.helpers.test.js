@@ -48,6 +48,28 @@ describe("numberGlobal Model Forge parameter payload", () => {
       )
     ).toThrow("integer default must be an integer");
   });
+
+  it.each([
+    ["required number", { valueType: "number", required: true }],
+    ["required integer", { valueType: "integer", required: true }],
+    ["optional number", { valueType: "number", required: false }],
+  ])("omits the default for a %s when no default is selected", (_label, overrides) => {
+    const payload = buildParameterRowPayloadOrThrow(
+      buildRow({ defaultMode: "null", ...overrides }),
+      0
+    );
+
+    expect(payload).not.toHaveProperty("default");
+  });
+
+  it("omits a blank numberGlobal default input", () => {
+    const payload = buildParameterRowPayloadOrThrow(
+      buildRow({ defaultLiteralText: "   " }),
+      0
+    );
+
+    expect(payload).not.toHaveProperty("default");
+  });
 });
 
 describe("stripNullConstraintPlaceholders", () => {

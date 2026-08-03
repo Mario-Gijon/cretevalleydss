@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { normalizeParameter } from "../../services/modelApi/modelManifest.mapper.js";
 
-describe("model manifest numberGlobal mapping", () => {
+describe("model manifest parameter mapping", () => {
   it("preserves every canonical numberGlobal metadata field", () => {
     expect(
       normalizeParameter({
@@ -35,13 +35,13 @@ describe("model manifest numberGlobal mapping", () => {
     });
   });
 
-  it("preserves omission of a genuinely optional default", () => {
+  it("preserves default omission independently of parameter structure", () => {
     const normalized = normalizeParameter({
       key: "optionalAlpha",
       label: "Optional alpha",
       valueType: "number",
       scope: "global",
-      parameterStructureKey: "numberGlobal",
+      parameterStructureKey: "selectGlobal",
       required: false,
       restrictions: {
         min: null,
@@ -51,5 +51,25 @@ describe("model manifest numberGlobal mapping", () => {
     });
 
     expect(normalized).not.toHaveProperty("default");
+  });
+
+  it("omits an undefined source default while preserving JSON-compatible values", () => {
+    expect(
+      normalizeParameter({
+        key: "alpha",
+        label: "Alpha",
+        parameterStructureKey: "selectGlobal",
+        default: undefined,
+      })
+    ).not.toHaveProperty("default");
+
+    expect(
+      normalizeParameter({
+        key: "choice",
+        label: "Choice",
+        parameterStructureKey: "selectGlobal",
+        default: null,
+      })
+    ).toHaveProperty("default", null);
   });
 });
