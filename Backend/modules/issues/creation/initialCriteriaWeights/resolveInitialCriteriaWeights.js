@@ -7,7 +7,6 @@ import {
   createInternalError,
 } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
-import { isPlainObject } from "../../../../utils/common/objects.js";
 import { getExpressionDomainTypeOrThrow } from "../../../expressionDomains/expressionDomainTypeCatalog.js";
 import { resolveCriteriaWeightingModeConfigOrThrow } from "./resolveCriteriaWeightMode.js";
 import {
@@ -124,103 +123,6 @@ const buildNoCriteriaWeightingResolution = () =>
     isCriteriaWeightingRequired: false,
   });
 
-const remapCriterionIdOrThrow = ({ criterionId, idMap, field }) => {
-  const normalizedCriterionId = String(criterionId || "").trim();
-  if (!normalizedCriterionId) {
-    throw createBadRequestError(
-      "Criterion id is required for criteria weighting payload",
-      { field }
-    );
-  }
-
-  const persistedCriterionId = idMap.get(normalizedCriterionId);
-  if (!persistedCriterionId) {
-    throw createBadRequestError(
-      "Unable to remap criteria weighting payload to persisted criteria",
-      {
-        field,
-        details: {
-          criterionId: normalizedCriterionId,
-        },
-      },
-    );
-  }
-
-  return persistedCriterionId;
-};
-
-const remapBestWorstCriteriaPayloadOrThrow = ({ payload, idMap }) => {
-  if (!isPlainObject(payload)) {
-    throw createBadRequestError(
-      "criteriaWeightingConfig.payload must be an object",
-      { field: "criteriaWeightingConfig.payload" }
-    );
-  }
-
-  const bestToOthers = payload.bestToOthers;
-  const othersToWorst = payload.othersToWorst;
-
-  if (!isPlainObject(bestToOthers)) {
-    throw createBadRequestError(
-      "criteriaWeightingConfig.payload.bestToOthers must be an object",
-      { field: "criteriaWeightingConfig.payload.bestToOthers" }
-    );
-  }
-
-  if (!isPlainObject(othersToWorst)) {
-    throw createBadRequestError(
-      "criteriaWeightingConfig.payload.othersToWorst must be an object",
-      { field: "criteriaWeightingConfig.payload.othersToWorst" }
-    );
-  }
-
-  const remappedBestCriterionId = remapCriterionIdOrThrow({
-    criterionId: payload.bestCriterionId,
-    idMap,
-    field: "criteriaWeightingConfig.payload.bestCriterionId",
-  });
-  const remappedWorstCriterionId = remapCriterionIdOrThrow({
-    criterionId: payload.worstCriterionId,
-    idMap,
-    field: "criteriaWeightingConfig.payload.worstCriterionId",
-  });
-
-  const remappedBestToOthers = Object.entries(bestToOthers).reduce(
-    (accumulator, [criterionId, value]) => {
-      accumulator[
-        remapCriterionIdOrThrow({
-          criterionId,
-          idMap,
-          field: `criteriaWeightingConfig.payload.bestToOthers.${criterionId}`,
-        })
-      ] = value;
-      return accumulator;
-    },
-    {}
-  );
-
-  const remappedOthersToWorst = Object.entries(othersToWorst).reduce(
-    (accumulator, [criterionId, value]) => {
-      accumulator[
-        remapCriterionIdOrThrow({
-          criterionId,
-          idMap,
-          field: `criteriaWeightingConfig.payload.othersToWorst.${criterionId}`,
-        })
-      ] = value;
-      return accumulator;
-    },
-    {}
-  );
-
-  return {
-    bestCriterionId: remappedBestCriterionId,
-    worstCriterionId: remappedWorstCriterionId,
-    bestToOthers: remappedBestToOthers,
-    othersToWorst: remappedOthersToWorst,
-  };
-};
-
 const remapDeferredCriteriaWeightingPayloadOrThrow = ({
   resolvedCriteriaWeighting,
   idMap,
@@ -229,19 +131,23 @@ const remapDeferredCriteriaWeightingPayloadOrThrow = ({
     return null;
   }
 
-  if (resolvedCriteriaWeighting.criteriaWeightsStructureKey === "bestWorstCriteria") {
-    return remapBestWorstCriteriaPayloadOrThrow({
-      payload: resolvedCriteriaWeighting.deferredPayload,
-      idMap,
-    });
+  const structure = getEvaluationStructureOrThrow(
+    resolvedCriteriaWeighting.criteriaWeightsStructureKey
+  );
+
+  if (typeof structure.remapCriterionIds !== "function") {
+    throw createInternalError(
+      `Evaluation structure '${structure.key}' does not support deferred criterion-ID remapping`,
+      {
+        field: "criteriaWeightingConfig.structureKey",
+      }
+    );
   }
 
-  throw createInternalError(
-    `Unsupported deferred criteria weighting structure '${resolvedCriteriaWeighting.criteriaWeightsStructureKey}'`,
-    {
-      field: "criteriaWeightingConfig.structureKey",
-    }
-  );
+  return structure.remapCriterionIds({
+    payload: resolvedCriteriaWeighting.deferredPayload,
+    criterionIdMap: idMap,
+  });
 };
 
 const resolveApiModelMetadata = ({

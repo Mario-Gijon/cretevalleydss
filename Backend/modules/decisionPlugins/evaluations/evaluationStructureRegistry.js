@@ -10,18 +10,28 @@ const STRUCTURES_ROOT = path.join(__dirname, "structures");
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
-const isValidEvaluationStructure = (value) =>
-  value !== null &&
-  typeof value === "object" &&
-  isNonEmptyString(value.key) &&
-  isNonEmptyString(value.stage) &&
-  typeof value.get === "function" &&
-  typeof value.save === "function";
+const isValidEvaluationStructure = (value) => {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    !isNonEmptyString(value.key) ||
+    !isNonEmptyString(value.stage) ||
+    typeof value.get !== "function" ||
+    typeof value.save !== "function"
+  ) {
+    return false;
+  }
+
+  return (
+    value.remapCriterionIds === undefined ||
+    typeof value.remapCriterionIds === "function"
+  );
+};
 
 const assertValidEvaluationStructure = ({ structure, modulePath }) => {
   if (!isValidEvaluationStructure(structure)) {
     throw new Error(
-      `${modulePath} must export exactly one valid evaluation structure object`
+      `${modulePath} must export exactly one valid evaluation structure object; optional remapCriterionIds must be a function`
     );
   }
 };

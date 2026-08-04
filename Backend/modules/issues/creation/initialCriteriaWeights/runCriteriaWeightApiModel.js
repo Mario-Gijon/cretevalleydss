@@ -102,6 +102,7 @@ export const normalizeCreatorApiCriteriaWeightingPayloadOrThrow = async ({
   criteriaWeightingModel,
   criteriaWeightingRuntime,
   criteriaWeightingParameters,
+  creatorDecisionContext = null,
 }) => {
   const criteriaWeightingStructure = getEvaluationStructureOrThrow(
     criteriaWeightingRuntime.criteriaWeightsStructureKey
@@ -113,7 +114,8 @@ export const normalizeCreatorApiCriteriaWeightingPayloadOrThrow = async ({
     });
   }
 
-  const creatorDecisionContext =
+  const normalizedCreatorDecisionContext =
+    creatorDecisionContext ??
     buildCreatorDecisionContext({
       criteriaWeightingStructure,
       criteriaWeightingModel,
@@ -125,7 +127,7 @@ export const normalizeCreatorApiCriteriaWeightingPayloadOrThrow = async ({
     await criteriaWeightingStructure.save({
       mode: "submit",
       payload,
-      decisionContext: creatorDecisionContext,
+      decisionContext: normalizedCreatorDecisionContext,
     });
 
   return normalizedCreatorPayload;
@@ -179,6 +181,7 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     criteriaWeightingModel,
     criteriaWeightingRuntime,
     criteriaWeightingParameters,
+    creatorDecisionContext,
   });
 
   const requestPayload = {
@@ -195,24 +198,24 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     ],
     context: {
       issue: {
-        id: creatorCriteriaWeightingEvaluationContext.issue.id,
-        name: creatorCriteriaWeightingEvaluationContext.issue.name,
-        currentStage: creatorCriteriaWeightingEvaluationContext.issue.currentStage,
+        id: creatorDecisionContext.issue.id,
+        name: creatorDecisionContext.issue.name,
+        currentStage: creatorDecisionContext.issue.currentStage,
         consensusThreshold:
-          creatorCriteriaWeightingEvaluationContext.issue.consensusThreshold,
+          creatorDecisionContext.issue.consensusThreshold,
         consensusMaxPhases:
-          creatorCriteriaWeightingEvaluationContext.issue.consensusMaxPhases,
+          creatorDecisionContext.issue.consensusMaxPhases,
       },
-      criteria: creatorCriteriaWeightingEvaluationContext.leafCriteria.map(
+      criteria: creatorDecisionContext.leafCriteria.map(
         (criterion) => ({
           id: criterion.id,
           name: criterion.name,
           type: criterion.type || null,
         })
       ),
-      consensusPhase: creatorCriteriaWeightingEvaluationContext.consensus.phase,
+      consensusPhase: creatorDecisionContext.consensus.phase,
       previousStageResult: null,
-      structure: creatorCriteriaWeightingEvaluationContext.structure,
+      structure: creatorDecisionContext.structure,
     },
   };
 
