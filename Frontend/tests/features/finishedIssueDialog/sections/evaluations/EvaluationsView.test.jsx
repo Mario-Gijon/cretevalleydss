@@ -190,7 +190,7 @@ describe("EvaluationsView", () => {
     });
     renderView(data, { ...selection, showCollective: true });
 
-    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", collectiveEvaluation: { weights: true } }));
+    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", collectiveEvaluation: { weightsByCriterion: {} } }));
     expect(rendererSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         stage: "alternativeEvaluation",

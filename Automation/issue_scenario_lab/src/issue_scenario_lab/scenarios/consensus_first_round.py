@@ -29,7 +29,6 @@ def _parameter(model: dict[str, Any], key: str, structure: str) -> dict[str, Any
     entries = [item for item in model.get("parameters", []) if isinstance(item, dict) and item.get("key") == key]
     if (
         len(entries) != 1
-        or entries[0].get("scope") != "global"
         or entries[0].get("parameterStructureKey") != structure
         or entries[0].get("required") is not True
     ):

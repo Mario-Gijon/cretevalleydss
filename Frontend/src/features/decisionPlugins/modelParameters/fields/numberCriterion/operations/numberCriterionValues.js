@@ -1,4 +1,4 @@
-import { isPlainObject } from "../../../../../utils/common/objects";
+import { isPlainObject } from "../../../../../../utils/common/objects";
 
 export const buildNumberCriterionRows = (parameterContext) =>
   (Array.isArray(parameterContext?.leafCriteria) ? parameterContext.leafCriteria : [])

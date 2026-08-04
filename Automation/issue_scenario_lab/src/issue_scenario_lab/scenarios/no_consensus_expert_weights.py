@@ -41,8 +41,7 @@ def _lambda_parameter(model: dict[str, Any]) -> dict[str, Any]:
     parameter = matches[0]
     restrictions = parameter.get("restrictions")
     if (
-        parameter.get("scope") != "global"
-        or parameter.get("parameterStructureKey") != "numberGlobal"
+        parameter.get("parameterStructureKey") != "numberGlobal"
         or parameter.get("required") is not True
         or not isinstance(restrictions, dict)
     ):

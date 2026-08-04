@@ -1,7 +1,5 @@
-import {
-  EVALUATION_STAGES,
-  getEvaluationStructureEntryForStage,
-} from "../../../decisionPlugins/evaluations";
+import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
+import { getEvaluationStructureEntryForStage } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry";
 
 export const pickInitialAdminIssueExpertId = (rows = []) => {
   if (!Array.isArray(rows) || rows.length === 0) return "";

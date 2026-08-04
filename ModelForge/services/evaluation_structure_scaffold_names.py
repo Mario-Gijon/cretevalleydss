@@ -13,6 +13,7 @@ class EvaluationStructureScaffoldNames:
     backend_structure_export_name: str
     get_function_name: str
     save_function_name: str
+    remap_criterion_ids_function_name: str
 
 
 def _to_pascal_case(evaluation_structure_key: str) -> str:
@@ -45,4 +46,7 @@ def build_evaluation_structure_scaffold_names(
         ),
         get_function_name=f"get{component_name}Payload",
         save_function_name=f"save{component_name}Payload",
+        remap_criterion_ids_function_name=(
+            f"remap{component_name}CriterionIds"
+        ),
     )

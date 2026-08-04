@@ -109,6 +109,7 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
 
     assert "get: getPairwiseMatrixPayload" in backend
     assert "save: savePairwiseMatrixPayload" in backend
+    assert "remapCriterionIds" not in backend
     assert "getPairwiseMatrixPayload" in backend_get
     assert "return payload ?? {};" in backend_get
     assert "savePairwiseMatrixPayload" in backend_save
@@ -145,9 +146,10 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
         "utils.js",
     ):
         assert all(forbidden_path_part not in path for path in preview_paths)
+    assert all("buildInitialEvaluation" not in path for path in preview_paths)
 
 
-def test_creator_criteria_weighting_package_scaffolds_explicit_initialization_todo(
+def test_creator_criteria_weighting_package_scaffolds_explicit_creator_operations(
     client_factory,
     project_root: Path,
 ) -> None:
@@ -176,6 +178,15 @@ def test_creator_criteria_weighting_package_scaffolds_explicit_initialization_to
     structure_item = next(
         item for item in body["items"] if item["kind"] == "evaluation-structure"
     )
+    assert [file["path"] for file in structure_item["files"]] == [
+        "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/index.js",
+        "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/creatorWeighting.get.js",
+        "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/creatorWeighting.save.js",
+        "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/operations/remapCriterionIds.js",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/index.js",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/CreatorWeightingView.jsx",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/operations/buildInitialEvaluation.js",
+    ]
     definition = next(
         file["content"]
         for file in model_item["files"]
@@ -192,6 +203,17 @@ def test_creator_criteria_weighting_package_scaffolds_explicit_initialization_to
         for file in structure_item["files"]
         if file["path"].endswith("/operations/buildInitialEvaluation.js")
     )
+    backend_index = next(
+        file["content"]
+        for file in structure_item["files"]
+        if file["path"].endswith("/index.js")
+        and file["path"].startswith("Backend/")
+    )
+    remapping_file = next(
+        file
+        for file in structure_item["files"]
+        if file["path"].endswith("/operations/remapCriterionIds.js")
+    )
 
     assert "supports_creator_criteria_weighting=True" in definition
     assert "supports_expert_criteria_weighting=True" in definition
@@ -200,12 +222,23 @@ def test_creator_criteria_weighting_package_scaffolds_explicit_initialization_to
         in frontend_index
     )
     assert "  buildInitialEvaluation," in frontend_index
+    assert "remapCreatorWeightingCriterionIds," in backend_index
+    assert 'from "./operations/remapCriterionIds.js";' in backend_index
+    assert "remapCriterionIds: remapCreatorWeightingCriterionIds," in backend_index
     assert "ModelForge does not guess evaluation payload shapes" in initialization_file[
         "content"
     ]
     assert "must be implemented before creator-side use" in initialization_file[
         "content"
     ]
+    remapping_content = remapping_file["content"]
+    assert "criterionIdMap" in remapping_content
+    assert "temporary criterion IDs" in remapping_content
+    assert "persisted criterion IDs" in remapping_content
+    assert "ModelForge does not guess" in remapping_content
+    assert "must be implemented before creator-side use" in remapping_content
+    assert "explicitly return payload unchanged" in remapping_content
+    assert "throw new Error" in remapping_content
 
 
 def test_manual_creator_weighting_package_keeps_special_editor_without_initializer(
@@ -241,6 +274,60 @@ def test_manual_creator_weighting_package_keeps_special_editor_without_initializ
         not file["path"].endswith("/operations/buildInitialEvaluation.js")
         for file in structure_item["files"]
     )
+    assert all(
+        not file["path"].endswith("/operations/remapCriterionIds.js")
+        for file in structure_item["files"]
+    )
+    backend_index = next(
+        file["content"]
+        for file in structure_item["files"]
+        if file["path"].endswith("/index.js")
+        and file["path"].startswith("Backend/")
+    )
+    assert "remapCriterionIds" not in backend_index
+
+
+def test_expert_only_criteria_weighting_package_omits_creator_operations(
+    client_factory,
+    project_root: Path,
+) -> None:
+    payload = {
+        "model": {
+            "apiModelKey": "expert_weighting",
+            "displayName": "Expert Weighting",
+            "smallDescription": "Expert weighting scaffold",
+            "extendedDescription": "Expert-only criteria weighting scaffold",
+            "modelKind": "criteriaWeighting",
+            "evaluationStructureKey": "expertWeighting",
+            "supportsCreatorCriteriaWeighting": False,
+            "supportsExpertCriteriaWeighting": True,
+            "parameters": [],
+            "includeExamples": True,
+        },
+        "parameterStructures": [],
+    }
+
+    with client_factory(project_root) as client:
+        response = client.post("/scaffold/model-package/preview", json=payload)
+
+    assert response.status_code == 200
+    structure_item = next(
+        item
+        for item in response.json()["items"]
+        if item["kind"] == "evaluation-structure"
+    )
+    assert all(
+        "/operations/" not in file["path"]
+        for file in structure_item["files"]
+    )
+    backend_index = next(
+        file["content"]
+        for file in structure_item["files"]
+        if file["path"].endswith("/index.js")
+        and file["path"].startswith("Backend/")
+    )
+    assert "buildInitialEvaluation" not in backend_index
+    assert "remapCriterionIds" not in backend_index
 
 
 def test_parameter_structure_preview_reports_expected_paths_without_writing_files(
@@ -475,6 +562,11 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "pairwiseMatrixStructure" in evaluation_backend_source
     assert "get: getPairwiseMatrixPayload" in evaluation_backend_source
     assert "save: savePairwiseMatrixPayload" in evaluation_backend_source
+    assert "remapCriterionIds" not in evaluation_backend_source
+    assert not (
+        project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/operations"
+    ).exists()
     assert "getPairwiseMatrixPayload" in evaluation_backend_get_source
     assert "return payload ?? {};" in evaluation_backend_get_source
     assert "savePairwiseMatrixPayload" in evaluation_backend_save_source
@@ -503,9 +595,6 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert 'parameterStructureKey: "scoreRange"' in parameter_backend_validate_source
     assert "Implementation guide" in parameter_backend_validate_source
     assert "typeKey" in parameter_backend_validate_source
-    assert "definition depends on typeKey" in parameter_backend_validate_source
-    assert "numericRange" not in parameter_backend_validate_source
-    assert "linguisticLabels" not in parameter_backend_validate_source
     assert "scoreRangeParameterField" in parameter_frontend_index_source
     assert "Implementation guide" in parameter_frontend_index_source
     assert "ScoreRangeParameterField" in parameter_field_source
@@ -514,15 +603,31 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "https://mui.com/material-ui/" in parameter_field_source
     assert "typeKey" in parameter_field_source
     assert "definition depends on typeKey" in parameter_field_source
-    assert "numericRange" not in parameter_field_source
-    assert "linguisticLabels" not in parameter_field_source
     assert "ScoreRangeParameterReadOnly" in parameter_readonly_source
     assert "Implementation guide" in parameter_readonly_source
     assert "https://mui.com/material-ui/" in parameter_readonly_source
     assert "typeKey" in parameter_readonly_source
     assert "definition depends on typeKey" in parameter_readonly_source
-    assert "numericRange" not in parameter_readonly_source
-    assert "linguisticLabels" not in parameter_readonly_source
+    for generated_source in (
+        parameter_backend_validate_source,
+        parameter_field_source,
+        parameter_readonly_source,
+    ):
+        for forbidden_access in (
+            ".numericRange",
+            '["numericRange"]',
+            "['numericRange']",
+            ".linguisticLabels",
+            '["linguisticLabels"]',
+            "['linguisticLabels']",
+        ):
+            assert forbidden_access not in generated_source
+        assert (
+            "expressionDomain.definition depends on typeKey"
+            in generated_source
+        )
+        assert "Do not assume numericRange or" in generated_source
+        assert "linguisticLabels." in generated_source
 
 
 def test_model_package_apply_rejects_partial_existing_evaluation_structure(

@@ -4,12 +4,12 @@ import {
   EVALUATION_STAGES,
 } from "../../evaluationStages.js";
 import { {{ get_function_name }} } from "./{{ evaluation_structure_key }}.get.js";
-import { {{ save_function_name }} } from "./{{ evaluation_structure_key }}.save.js";
+import { {{ save_function_name }} } from "./{{ evaluation_structure_key }}.save.js";{{ remap_criterion_ids_import }}
 
 export const {{ backend_structure_export_name }} = Object.freeze({
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.{{ stage_constant }},
   implementationStatus: "scaffold",
   get: {{ get_function_name }},
-  save: {{ save_function_name }},
+  save: {{ save_function_name }},{{ remap_criterion_ids_registry_field }}
 });

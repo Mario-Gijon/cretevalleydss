@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Alert, Box } from "@mui/material";
 
-import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations";
+import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
 import { buildDecisionContext } from "../logic/buildDecisionContext";
 import { requireCompleteEvaluationObject } from "../logic/requireCompleteEvaluationObject";
 

@@ -38,7 +38,6 @@ def _waspas_model() -> dict[str, Any]:
         "parameters": [
             {
                 "key": "lambda",
-                "scope": "global",
                 "parameterStructureKey": "numberGlobal",
                 "required": True,
                 "default": 0.5,

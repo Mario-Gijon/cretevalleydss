@@ -25,8 +25,22 @@ const buildParameter = (overrides = {}) => ({
   ...overrides,
 });
 
-const runtime = ({ value, parameter = buildParameter(), context = { leafCriteria: rows } }) =>
-  validateAndNormalizeSelectCriterion({ value, parameter, context });
+const defaultContext = { leafCriteria: rows };
+
+const runtime = (options = {}) => {
+  const parameter = Object.hasOwn(options, "parameter")
+    ? options.parameter
+    : buildParameter();
+  const context = Object.hasOwn(options, "context")
+    ? options.context
+    : defaultContext;
+
+  return validateAndNormalizeSelectCriterion({
+    value: options.value,
+    parameter,
+    context,
+  });
+};
 
 describe("selectCriterion definition", () => {
   it.each([
