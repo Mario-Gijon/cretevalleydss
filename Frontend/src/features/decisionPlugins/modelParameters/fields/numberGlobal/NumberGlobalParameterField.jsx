@@ -1,5 +1,5 @@
 import { Stack, Typography, TextField } from "@mui/material";
-import { numberGlobalParameterFieldSx } from "./NumberGlobalParameterField.styles";
+import { numberGlobalParameterFieldSx } from "./styles/NumberGlobalParameterField.styles";
 
 export const NumberGlobalParameterField = ({
   parameter,

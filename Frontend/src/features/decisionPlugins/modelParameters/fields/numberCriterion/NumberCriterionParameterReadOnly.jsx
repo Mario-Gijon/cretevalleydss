@@ -2,7 +2,7 @@ import { Box, Typography } from "@mui/material";
 import {
   buildNumberCriterionRows,
   resolveNumberCriterionRowValue,
-} from "./numberCriterionValues";
+} from "./operations/numberCriterionValues";
 
 const displayValue = (value) =>
   value === null || value === undefined || value === "" ? "—" : String(value);

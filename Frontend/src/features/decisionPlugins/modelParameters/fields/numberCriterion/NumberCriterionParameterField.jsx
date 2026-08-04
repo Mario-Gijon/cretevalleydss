@@ -6,16 +6,9 @@ import {
   resolveNumberCriterionRowValue,
   reconcileNumberCriterionMap,
   numberCriterionMapsEqual,
-} from "./numberCriterionValues";
+} from "./operations/numberCriterionValues";
 import { isPlainObject } from "../../../../../utils/common/objects";
-
-const FIELD_HEIGHT = 36;
-
-const textFieldSx = {
-  width: 96,
-  "& .MuiOutlinedInput-root": { height: FIELD_HEIGHT },
-  "& input": { py: 0 },
-};
+import { numberCriterionParameterFieldSx } from "./styles/NumberCriterionParameterField.styles";
 
 export const NumberCriterionParameterField = ({
   parameter,
@@ -49,7 +42,7 @@ export const NumberCriterionParameterField = ({
   return (
     <Stack spacing={1}>
       <Typography variant="body2" sx={{ color: "text.primary", fontWeight: 800, mb: 0.5 }}>{label}</Typography>
-      <Box sx={{ display: "grid", gridTemplateColumns: `repeat(${rows.length}, max-content)`, columnGap: 1, rowGap: 0.75, alignItems: "start", width: "fit-content", maxWidth: "100%", overflowX: "auto" }}>
+      <Box sx={numberCriterionParameterFieldSx.grid(rows.length)}>
         {rows.map((row) => <Typography key={`label-${row.key}`} variant="caption" sx={{ display: "block", color: "text.secondary", fontWeight: 700, whiteSpace: "normal", lineHeight: 1, textAlign: "center" }}>{row.name}</Typography>)}
         {rows.map((row) => (
           <TextField
@@ -64,7 +57,7 @@ export const NumberCriterionParameterField = ({
               [row.key]: event.target.value,
             })}
             inputProps={{ "aria-label": `${label} for ${row.name}`, min, max, step: "any" }}
-            sx={textFieldSx}
+            sx={numberCriterionParameterFieldSx.input}
             disabled={disabled}
             error={Boolean(error)}
           />

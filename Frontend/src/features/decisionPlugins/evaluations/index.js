@@ -1,9 +1,9 @@
+export { EVALUATION_STAGES } from "./evaluationStages.js";
 export {
-  EVALUATION_STAGES,
   EVALUATION_STRUCTURE_REGISTRY,
   getEvaluationStructureEntry,
   getEvaluationStructureEntryForStage,
-} from "./registry/index.js";
+} from "./evaluationStructureRegistry.js";
 export {
   getAlternatives,
   getLeafCriteria,

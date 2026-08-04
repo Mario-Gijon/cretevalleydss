@@ -1,7 +1,7 @@
 import { MenuItem, Stack, TextField, Typography } from "@mui/material";
 
 import ComparisonRow from "./ComparisonRow";
-import { comparisonSectionSx } from "./ComparisonSection.styles";
+import { comparisonSectionSx } from "../styles/ComparisonSection.styles";
 
 const ComparisonSection = ({
   title,

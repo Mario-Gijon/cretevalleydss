@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { buildSelectCriterionRows, resolveSelectCriterionRowValue } from "./selectCriterionValues";
+import { buildSelectCriterionRows, resolveSelectCriterionRowValue } from "./operations/selectCriterionValues";
 
 const formatValue = (value) =>
   value === null || value === undefined || value === "" ? "—" : String(value);

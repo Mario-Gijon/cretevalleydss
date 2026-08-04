@@ -1,7 +1,7 @@
 import { Box, Chip, Stack } from "@mui/material";
 
 import { ExpressionDomainEvaluationInput } from "../../../../../expressionDomains";
-import { cellSx } from "./Cell.styles";
+import { cellSx } from "../styles/Cell.styles";
 import { formatCollectiveValue } from "../operations/formatCollectiveValue";
 
 const Cell = ({

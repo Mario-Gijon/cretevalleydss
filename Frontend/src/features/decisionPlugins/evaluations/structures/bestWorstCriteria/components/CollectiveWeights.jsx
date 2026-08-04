@@ -1,7 +1,7 @@
 import { Stack, Typography } from "@mui/material";
 
 import { formatCollectiveDisplayValue } from "../../../shared/formatCollectiveDisplayValue";
-import { collectiveWeightsSx } from "./CollectiveWeights.styles";
+import { collectiveWeightsSx } from "../styles/CollectiveWeights.styles";
 
 const CollectiveWeights = ({ criteria, weightsByCriterion }) => (
   <Stack spacing={0.65} sx={collectiveWeightsSx.container}>

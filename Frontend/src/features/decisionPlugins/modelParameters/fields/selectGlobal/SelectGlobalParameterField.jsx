@@ -1,5 +1,5 @@
 import { Stack, Typography, TextField, MenuItem } from "@mui/material";
-import { selectGlobalParameterFieldSx } from "./SelectGlobalParameterField.styles";
+import { selectGlobalParameterFieldSx } from "./styles/SelectGlobalParameterField.styles";
 
 const getOptionKey = (option) => `${typeof option}:${String(option)}`;
 

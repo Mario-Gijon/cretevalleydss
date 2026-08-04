@@ -1,5 +1,5 @@
 import { isPlainObject } from "../../../utils/common/objects";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/registry";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations";
 import { buildDecisionContext } from "../../issueEvaluation/context";
 
 const toCanonicalId = (value) =>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/stages";
+import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations";
 import { buildDecisionContext } from "../../../src/features/issueEvaluation/logic/buildDecisionContext.js";
 import { extractLeafCriteria } from "../../../src/features/issueEvaluation/logic/extractIssueEvaluationLeafCriteria.js";
 import {

@@ -1,12 +1,12 @@
 import { Box, useTheme } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 
-import { buildEvaluationMatrixDataGridSx } from "../../../shared/evaluationMatrixTable.styles";
+import { buildEvaluationMatrixDataGridSx } from "../../../shared/styles/evaluationMatrixTable.styles";
 import Cell from "./Cell";
 import {
   buildPairwiseMatrixSx,
   pairwiseMatrixSx,
-} from "./PairwiseMatrix.styles";
+} from "../styles/PairwiseMatrix.styles";
 import { buildColumns } from "../operations/buildColumns";
 import { buildRows } from "../operations/buildRows";
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Box, Stack, Typography } from "@mui/material";
 
-import { alternativePairwiseByCriterionViewSx } from "./AlternativePairwiseByCriterionView.styles";
+import { alternativePairwiseByCriterionViewSx } from "./styles/AlternativePairwiseByCriterionView.styles";
 import CriterionSelector from "./components/CriterionSelector";
 import PairwiseMatrix from "./components/PairwiseMatrix";
 import { resolveCollective } from "./operations/resolveCollective";

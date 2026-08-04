@@ -35,7 +35,7 @@ vi.mock(
 );
 
 import ActiveIssuesOverlays from "../../../src/features/activeIssues/components/ActiveIssuesOverlays.jsx";
-import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/stages";
+import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations";
 import { activeIssuesDashboardFixture } from "../../mocks/fixtures/issues.fixtures.js";
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 

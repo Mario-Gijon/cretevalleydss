@@ -2,7 +2,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/stages";
+import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations";
 import { EvaluationStructureRenderer } from "../../../issueEvaluation/rendering";
 
 /**

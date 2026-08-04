@@ -1,7 +1,7 @@
 import { Chip, Stack, TextField, Typography } from "@mui/material";
 
 import { formatCollectiveDisplayValue } from "../../../shared/formatCollectiveDisplayValue";
-import { weightFieldSx } from "./WeightField.styles";
+import { weightFieldSx } from "../styles/WeightField.styles";
 
 const preventInvalidNumberKeys = (event) => {
   if (["e", "E", "+", "-", ","].includes(event.key)) {

@@ -1,6 +1,6 @@
 import { Stack, TextField, Typography } from "@mui/material";
 
-import { comparisonRowSx } from "./ComparisonRow.styles";
+import { comparisonRowSx } from "../styles/ComparisonRow.styles";
 
 const preventInvalidNumberKeys = (event) => {
   if (["e", "E", "+", "-", ".", ","].includes(event.key)) {

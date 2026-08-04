@@ -10,7 +10,7 @@ import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import {
   EVALUATION_STAGES,
   getEvaluationStructureEntryForStage,
-} from "../../decisionPlugins/evaluations/registry";
+} from "../../decisionPlugins/evaluations";
 import EvaluationStructureDialog from "./EvaluationStructureDialog";
 
 const getIssueStructureKeyByStage = (issue, stage) => {

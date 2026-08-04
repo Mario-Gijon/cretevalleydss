@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Alert, Box, useTheme } from "@mui/material";
 
-import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
+import { buildEvaluationMatrixDataGridSx } from "../../shared/styles/evaluationMatrixTable.styles";
 import { isPlainObject } from "../../../../../utils/common/objects";
-import { alternativeCriteriaMatrixViewSx } from "./AlternativeCriteriaMatrixView.styles";
+import { alternativeCriteriaMatrixViewSx } from "./styles/AlternativeCriteriaMatrixView.styles";
 import Cell from "./components/Cell";
 import { buildColumns } from "./operations/buildColumns";
 import { buildRows } from "./operations/buildRows";

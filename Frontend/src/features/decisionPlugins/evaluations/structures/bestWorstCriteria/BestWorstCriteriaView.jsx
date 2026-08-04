@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Alert, Divider, Stack, Typography } from "@mui/material";
 
-import { bestWorstCriteriaViewSx } from "./BestWorstCriteriaView.styles";
+import { bestWorstCriteriaViewSx } from "./styles/BestWorstCriteriaView.styles";
 import CollectiveWeights from "./components/CollectiveWeights";
 import ComparisonSection from "./components/ComparisonSection";
 import { resolveCollective } from "./operations/resolveCollective";

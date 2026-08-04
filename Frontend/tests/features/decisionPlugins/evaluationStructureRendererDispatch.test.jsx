@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockGetEvaluationStructureEntryForStage = vi.hoisted(() => vi.fn());
 const mockViewState = vi.hoisted(() => ({ lastProps: null }));
 
-vi.mock("../../../src/features/decisionPlugins/evaluations/registry", () => ({
+vi.mock("../../../src/features/decisionPlugins/evaluations", () => ({
   getEvaluationStructureEntryForStage:
     mockGetEvaluationStructureEntryForStage,
 }));

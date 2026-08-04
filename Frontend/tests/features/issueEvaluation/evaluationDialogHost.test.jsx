@@ -6,7 +6,7 @@ const mockGetEvaluationStructureEntryForStage = vi.hoisted(() => vi.fn());
 const mockEvaluationStructureDialog = vi.hoisted(() => vi.fn());
 
 vi.mock(
-  "../../../src/features/decisionPlugins/evaluations/registry",
+  "../../../src/features/decisionPlugins/evaluations",
   async (importOriginal) => {
     const actual = await importOriginal();
 
@@ -32,7 +32,7 @@ vi.mock(
 );
 
 import EvaluationDialogHost from "../../../src/features/issueEvaluation/components/EvaluationDialogHost.jsx";
-import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/stages";
+import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations";
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 describe("EvaluationDialogHost", () => {

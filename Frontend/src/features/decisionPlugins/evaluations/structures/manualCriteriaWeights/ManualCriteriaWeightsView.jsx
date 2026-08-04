@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Alert, Box, Stack, Typography } from "@mui/material";
 
-import { manualCriteriaWeightsViewSx } from "./ManualCriteriaWeightsView.styles";
+import { manualCriteriaWeightsViewSx } from "./styles/ManualCriteriaWeightsView.styles";
 import WeightField from "./components/WeightField";
 import { resolveCollective } from "./operations/resolveCollective";
 import { resolveCriteria } from "./operations/resolveCriteria";

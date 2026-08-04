@@ -31,7 +31,7 @@ import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
 import {
   EVALUATION_STAGES,
   getEvaluationStructureEntryForStage,
-} from "../../../decisionPlugins/evaluations/registry";
+} from "../../../decisionPlugins/evaluations";
 import { requireCompleteEvaluationObject } from "../../../issueEvaluation/logic/requireCompleteEvaluationObject";
 
 export const CriteriaWeightingPanel = ({

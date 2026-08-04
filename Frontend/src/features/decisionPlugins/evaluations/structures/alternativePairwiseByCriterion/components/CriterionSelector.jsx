@@ -10,11 +10,11 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import { softIconBtnSx } from "../../../shared/evaluationStructure.styles";
+import { softIconBtnSx } from "../../../shared/styles/evaluationStructure.styles";
 import {
   buildCriterionToggleGroupSx,
   criterionSelectorSx,
-} from "./CriterionSelector.styles";
+} from "../styles/CriterionSelector.styles";
 
 const CriterionSelector = ({
   criteria = [],

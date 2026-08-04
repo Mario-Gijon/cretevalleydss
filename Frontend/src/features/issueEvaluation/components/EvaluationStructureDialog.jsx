@@ -8,7 +8,7 @@ import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import {
   EVALUATION_STAGES,
   getEvaluationStructureEntryForStage,
-} from "../../decisionPlugins/evaluations/registry";
+} from "../../decisionPlugins/evaluations";
 import { buildDecisionContext } from "../logic/buildDecisionContext";
 import {
   fetchIssueEvaluation,

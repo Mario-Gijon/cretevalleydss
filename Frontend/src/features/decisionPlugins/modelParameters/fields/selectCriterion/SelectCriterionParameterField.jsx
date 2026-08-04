@@ -1,36 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { Box, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import { buildSelectCriterionDraft, buildSelectCriterionRows, resolveSelectCriterionRowValue, selectCriterionMapsEqual } from "./selectCriterionValues";
+import { buildSelectCriterionDraft, buildSelectCriterionRows, resolveSelectCriterionRowValue, selectCriterionMapsEqual } from "./operations/selectCriterionValues";
 import { isPlainObject } from "../../../../../utils/common/objects";
-
-const FIELD_HEIGHT = 36;
-
-const labelSx = {
-  display: "block",
-  color: "text.secondary",
-  fontWeight: 700,
-  whiteSpace: "normal",
-  lineHeight: 1,
-  textAlign: "center",
-};
-
-const titleSx = {
-  color: "text.primary",
-  fontWeight: 800,
-  mb: 0.5,
-};
-
-const textFieldSx = {
-  width: 128,
-  "& .MuiOutlinedInput-root": {
-    height: FIELD_HEIGHT,
-  },
-  "& .MuiSelect-select": {
-    py: 0,
-    display: "flex",
-    alignItems: "center",
-  },
-};
+import { selectCriterionParameterFieldSx } from "./styles/SelectCriterionParameterField.styles";
 
 const getAllowedValues = (parameter) =>
   Array.isArray(parameter?.restrictions?.allowed) && parameter.restrictions.allowed.length > 0
@@ -70,24 +42,13 @@ export const SelectCriterionParameterField = ({
 
   return (
     <Stack spacing={1}>
-      <Typography variant="body2" sx={titleSx}>
+      <Typography variant="body2" sx={selectCriterionParameterFieldSx.title}>
         {label}
       </Typography>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${rows.length}, max-content)`,
-          columnGap: 1,
-          rowGap: 0.75,
-          alignItems: "start",
-          width: "fit-content",
-          maxWidth: "100%",
-          overflowX: "auto",
-        }}
-      >
+      <Box sx={selectCriterionParameterFieldSx.grid(rows.length)}>
         {rows.map((row) => (
-          <Typography key={`label-${row.key}`} variant="caption" sx={labelSx}>
+          <Typography key={`label-${row.key}`} variant="caption" sx={selectCriterionParameterFieldSx.label}>
             {row.name}
           </Typography>
         ))}
@@ -106,7 +67,7 @@ export const SelectCriterionParameterField = ({
                 [row.key]: event.target.value,
               });
             }}
-            sx={textFieldSx}
+            sx={selectCriterionParameterFieldSx.input}
             disabled={disabled || allowed.length === 0}
             error={Boolean(error)}
             inputProps={{ "aria-label": `${label} for ${row.name}` }}

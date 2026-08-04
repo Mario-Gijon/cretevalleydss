@@ -5,7 +5,7 @@ import ActiveIssueDrawer from "./drawer/ActiveIssueDrawer";
 import ActiveIssueConfirmDialog from "./ActiveIssueConfirmDialog";
 import { IssueExpertsDialogs } from "../../issueExperts/dialogs";
 import { EvaluationDialogHost } from "../../issueEvaluation/dialogs";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/stages";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations";
 
 /**
  * Agrupa overlays y diálogos de la pantalla de issues activos.

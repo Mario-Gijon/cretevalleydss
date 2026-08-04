@@ -53,7 +53,7 @@ const MockEvaluationView = (props) => {
 MockEvaluationView.displayName = "MockEvaluationView";
 
 vi.mock(
-  "../../../src/features/decisionPlugins/evaluations/registry",
+  "../../../src/features/decisionPlugins/evaluations",
   async (importOriginal) => {
     const actual = await importOriginal();
 
@@ -135,7 +135,7 @@ vi.mock(
 );
 
 import EvaluationStructureDialog from "../../../src/features/issueEvaluation/components/EvaluationStructureDialog.jsx";
-import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/stages";
+import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations";
 import {
   evaluationIssueFixture,
   evaluationIssueWithUnderscoreIdFixture,

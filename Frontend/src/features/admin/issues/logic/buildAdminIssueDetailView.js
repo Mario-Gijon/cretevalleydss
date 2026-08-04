@@ -1,7 +1,7 @@
 import {
   EVALUATION_STAGES,
   getEvaluationStructureEntryForStage,
-} from "../../../decisionPlugins/evaluations/registry";
+} from "../../../decisionPlugins/evaluations";
 
 export const pickInitialAdminIssueExpertId = (rows = []) => {
   if (!Array.isArray(rows) || rows.length === 0) return "";

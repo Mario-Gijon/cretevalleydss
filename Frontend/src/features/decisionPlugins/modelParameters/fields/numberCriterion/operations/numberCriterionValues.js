@@ -1,10 +1,7 @@
 import { isPlainObject } from "../../../../../utils/common/objects";
 
 export const buildNumberCriterionRows = (parameterContext) =>
-  (Array.isArray(parameterContext?.leafCriteria)
-    ? parameterContext.leafCriteria
-    : []
-  )
+  (Array.isArray(parameterContext?.leafCriteria) ? parameterContext.leafCriteria : [])
     .map((criterion) => {
       const key = typeof criterion?.id === "string" ? criterion.id.trim() : "";
       return key ? { key, name: criterion?.name || key } : null;
