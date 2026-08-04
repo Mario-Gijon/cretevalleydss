@@ -37,7 +37,7 @@ import { ModelParameters } from "./components/ModelParameters";
 import { useCreateIssueContext } from "../context/createIssue.context";
 
 import { getRemainingTime } from "../logic/createIssueDates";
-import { setDefaults } from "../logic/createIssueModelParameters";
+import { buildCreateIssueParameterDefaults } from "../../modelParameters/draft";
 import { buildDefaultCriteriaWeightingConfig } from "../logic/createIssueCriteriaWeighting";
 import { modelUsesExpertWeights } from "../logic/createIssueExpertWeights";
 import { getRenderableNormalModelParameters } from "./logic/getRenderableNormalModelParameters";
@@ -143,9 +143,8 @@ export const SummaryStep = () => {
   const handleDefaultChange = () => {
     const leafCriteria = getLeafCriteria(criteria);
     setParamValues(
-      setDefaults({
+      buildCreateIssueParameterDefaults({
         selectedModel,
-        criteria: leafCriteria,
       })
     );
     setCriteriaWeightingConfig(

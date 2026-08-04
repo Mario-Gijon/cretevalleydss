@@ -9,7 +9,6 @@ export {
 export {
   PARAMETER_FIELD_REGISTRY,
   resolveParameterFieldEntry,
-  resolveParameterField,
 } from "../decisionPlugins/modelParameters";
 
 export {

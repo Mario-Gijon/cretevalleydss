@@ -198,10 +198,7 @@ describe("useCreateIssue", () => {
     await waitFor(() => {
       expect(result.current.paramValues).toEqual({
         threshold: 0.4,
-        criterionScores: {
-          "criterion-cost": 1,
-          "criterion-speed": 1,
-        },
+        criterionScores: 1,
       });
       expect(result.current.criteriaWeightingConfig).toEqual({
         mode: "expertManual",
@@ -219,7 +216,7 @@ describe("useCreateIssue", () => {
     });
   });
 
-  it("changing criteria keeps ids, refreshes parameter values, and normalizes domain config", async () => {
+  it("changing criteria keeps ids and parameter values shape-agnostic while normalizing domain config", async () => {
     const { result } = renderCreateIssueHook();
 
     await act(async () => {
@@ -247,14 +244,47 @@ describe("useCreateIssue", () => {
       expect(result.current.criteria[0].id).toBeTruthy();
       expect(result.current.criteria[0].children[0].id).toBeTruthy();
       expect(result.current.paramValues.threshold).toBe(0.4);
-      expect(result.current.paramValues.criterionScores).toEqual({
-        [result.current.criteria[0].children[0].id]: 1,
-      });
+      expect(result.current.paramValues.criterionScores).toBe(1);
       expect(result.current.expressionDomainConfig).toEqual(
         createIssueGlobalExpressionDomainConfigFixture
       );
       expect(result.current.defaultModelParams).toBe(true);
     });
+  });
+
+  it("preserves plugin-owned parameter objects when criteria change", async () => {
+    const { result } = renderCreateIssueHook();
+
+    await act(async () => {
+      result.current.setSelectedModel(basicCreateIssueModelFixture);
+    });
+    await act(async () => {
+      result.current.setParamValues({
+        threshold: 0.4,
+        criterionScores: { oldCriterion: "custom-draft", staleCriterion: "" },
+      });
+      result.current.setCriteria([{ name: "Impact", children: [{ name: "Cost", children: [] }] }]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.paramValues).toEqual({
+        threshold: 0.4,
+        criterionScores: { oldCriterion: "custom-draft", staleCriterion: "" },
+      });
+    });
+  });
+
+  it("clears model parameters when the selected model is removed", async () => {
+    const { result } = renderCreateIssueHook();
+
+    await act(async () => {
+      result.current.setSelectedModel(basicCreateIssueModelFixture);
+    });
+    await waitFor(() => expect(result.current.paramValues).toEqual({ threshold: 0.4, criterionScores: 1 }));
+    await act(async () => {
+      result.current.setSelectedModel(null);
+    });
+    await waitFor(() => expect(result.current.paramValues).toEqual({}));
   });
 
   it("changing selected experts keeps expert weights in sync for expert-weight models", async () => {

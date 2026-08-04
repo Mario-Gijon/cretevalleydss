@@ -109,6 +109,3 @@ export const resolveParameterFieldEntry = (parameter) => {
 
   return entry;
 };
-
-export const resolveParameterField = (parameter) =>
-  resolveParameterFieldEntry(parameter).FieldComponent;

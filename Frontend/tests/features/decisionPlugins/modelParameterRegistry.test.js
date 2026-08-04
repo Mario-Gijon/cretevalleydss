@@ -2,12 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   PARAMETER_FIELD_REGISTRY,
-  resolveParameterField,
   resolveParameterFieldEntry,
 } from "../../../src/features/decisionPlugins/modelParameters";
 
 describe("model-parameter Decision Plugin public registry", () => {
-  it("exposes every discovered field through the public resolver", () => {
+  it("exposes every discovered field through the public entry resolver", () => {
     const registeredEntries = Object.entries(PARAMETER_FIELD_REGISTRY);
 
     expect(Object.isFrozen(PARAMETER_FIELD_REGISTRY)).toBe(true);
@@ -23,7 +22,6 @@ describe("model-parameter Decision Plugin public registry", () => {
       expect(entry.FieldComponent).toBeTruthy();
       expect(entry.ReadOnlyComponent).toBeTruthy();
       expect(resolveParameterFieldEntry(parameter)).toBe(entry);
-      expect(resolveParameterField(parameter)).toBe(entry.FieldComponent);
     });
   });
 

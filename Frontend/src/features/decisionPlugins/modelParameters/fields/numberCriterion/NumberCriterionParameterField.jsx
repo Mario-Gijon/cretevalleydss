@@ -43,7 +43,7 @@ export const NumberCriterionParameterField = ({
     <Stack spacing={1}>
       <Typography variant="body2" sx={{ color: "text.primary", fontWeight: 800, mb: 0.5 }}>{label}</Typography>
       <Box sx={numberCriterionParameterFieldSx.grid(rows.length)}>
-        {rows.map((row) => <Typography key={`label-${row.key}`} variant="caption" sx={{ display: "block", color: "text.secondary", fontWeight: 700, whiteSpace: "normal", lineHeight: 1, textAlign: "center" }}>{row.name}</Typography>)}
+        {rows.map((row) => <Typography key={`label-${row.key}`} variant="caption" sx={numberCriterionParameterFieldSx.label}>{row.name}</Typography>)}
         {rows.map((row) => (
           <TextField
             key={`input-${row.key}`}

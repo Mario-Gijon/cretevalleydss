@@ -5,6 +5,7 @@ import utc from "dayjs/plugin/utc";
 
 import { createIssue } from "../../../services/issue.service";
 import {
+  buildCreateIssueParameterDefaults,
   getCreateIssueModelParameters,
 } from "../../modelParameters/draft";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
@@ -17,10 +18,6 @@ import {
   validateIssueDescription,
   validateIssueName,
 } from "../logic/createIssueFieldValidation";
-import {
-  setDefaults,
-  updateParamValues,
-} from "../logic/createIssueModelParameters";
 import {
   buildStoredCreateIssueData,
   persistStoredCreateIssueData,
@@ -211,9 +208,8 @@ export const useCreateIssue = () => {
       const leafCriteria = getLeafCriteria(criteria);
       try {
         setParamValues(
-          setDefaults({
+          buildCreateIssueParameterDefaults({
             selectedModel,
-            criteria: leafCriteria,
           })
         );
       } catch {
@@ -237,6 +233,7 @@ export const useCreateIssue = () => {
       }
       return;
     }
+    setParamValues({});
     setCriteriaWeightingConfig(buildDefaultCriteriaWeightingConfig(selectedModel, []));
     setExpertWeights(null);
     setExpertWeightsCustomized(false);
@@ -272,17 +269,6 @@ export const useCreateIssue = () => {
   }, [criteria, expressionDomains, globalDomains, selectedModel]);
 
   useEffect(() => {
-    try {
-      setParamValues((previous) =>
-        updateParamValues(previous, selectedModel, getLeafCriteria(criteria))
-      );
-    } catch {
-      showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [criteria, selectedModel]);
-
-  useEffect(() => {
     if (!selectedModel) {
       if (defaultModelParams !== true) setDefaultModelParams(true);
       return;
@@ -297,9 +283,8 @@ export const useCreateIssue = () => {
     });
     let defaults = {};
     try {
-      defaults = setDefaults({
+      defaults = buildCreateIssueParameterDefaults({
         selectedModel,
-        criteria: leafCriteria,
       });
     } catch {
       return;
