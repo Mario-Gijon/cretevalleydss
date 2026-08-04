@@ -5,7 +5,6 @@ const formatValue = (value) =>
   value === null || value === undefined || value === "" ? "—" : String(value);
 
 export const SelectCriterionParameterReadOnly = ({
-  parameter,
   value,
   parameterContext,
 }) => {
