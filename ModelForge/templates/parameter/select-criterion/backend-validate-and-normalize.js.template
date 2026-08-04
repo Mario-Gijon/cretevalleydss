@@ -1,0 +1,43 @@
+import { normalizeNumberValue } from "../../../../modelParameters/parameterValues.js";
+import { hasOwnKey, isPlainObject } from "../../../../../utils/common/objects.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
+
+const types = new Set(["string", "number", "integer", "boolean"]);
+const id = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
+const booleanValue = (value) => typeof value === "boolean" ? value : typeof value === "string" && value.trim().toLowerCase() === "true" ? true : typeof value === "string" && value.trim().toLowerCase() === "false" ? false : null;
+const validAllowed = (allowed, valueType) => Array.isArray(allowed) && allowed.length > 0 && new Set(allowed).size === allowed.length && allowed.every((item) => valueType === "string" ? typeof item === "string" && item.trim() !== "" : valueType === "number" ? typeof item === "number" && Number.isFinite(item) : valueType === "integer" ? typeof item === "number" && Number.isInteger(item) : typeof item === "boolean");
+
+export const validateAndNormalizeSelectCriterion = ({ value, parameter, context }) => {
+  const criteria = context?.leafCriteria;
+  if (!Array.isArray(criteria) || criteria.length === 0) return toInvalid("requires at least one leaf criterion", value);
+  const rows = [];
+  const ids = new Set();
+  for (const criterion of criteria) {
+    const criterionId = id(criterion?.id);
+    if (!criterionId) return toInvalid("leaf criteria must include canonical ids", value);
+    if (ids.has(criterionId)) return toInvalid(`contains duplicate criterion id '${criterionId}'`, value);
+    ids.add(criterionId);
+    rows.push({ id: criterionId, name: id(criterion?.name) || criterionId });
+  }
+  const valueType = parameter?.valueType;
+  const allowed = parameter?.restrictions?.allowed;
+  if (!types.has(valueType) || !validAllowed(allowed, valueType)) return toInvalid("requires a compatible non-empty restrictions.allowed array", value);
+  const normalize = (raw) => {
+    const normalized = valueType === "number" || valueType === "integer" ? normalizeNumberValue(raw) : valueType === "boolean" ? booleanValue(raw) : typeof raw === "string" ? raw : null;
+    if (normalized === null || (valueType === "integer" && !Number.isInteger(normalized))) return toInvalid(`must be a ${valueType}`, raw);
+    return allowed.includes(normalized) ? toValid(normalized) : toInvalid("must be one of the allowed values", normalized);
+  };
+  if (!isPlainObject(value)) {
+    const normalized = normalize(value);
+    return normalized.ok ? toValid(Object.fromEntries(rows.map((row) => [row.id, normalized.value]))) : normalized;
+  }
+  for (const key of Object.keys(value)) if (!id(key) || !ids.has(key)) return toInvalid(`contains unknown criterion key '${key}'`, value[key]);
+  const result = {};
+  for (const row of rows) {
+    if (!hasOwnKey(value, row.id)) return toInvalid(`is missing value for criterion '${row.id}'`, value);
+    const normalized = normalize(value[row.id]);
+    if (!normalized.ok) return toInvalid(`[${row.name}] ${normalized.message}`, normalized.value);
+    result[row.id] = normalized.value;
+  }
+  return toValid(result);
+};

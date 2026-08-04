@@ -53,6 +53,17 @@ const buildNumberCriterion = (overrides = {}) => ({
   ...overrides,
 });
 
+const buildSelectCriterion = (overrides = {}) => ({
+  key: "preference",
+  label: "Preference",
+  parameterStructureKey: "selectCriterion",
+  valueType: "string",
+  required: true,
+  default: "t5",
+  restrictions: { allowed: ["t3", "t5"] },
+  ...overrides,
+});
+
 describe("model manifest parameter mapping", () => {
   it("preserves every canonical numberGlobal metadata field", () => {
     expect(
@@ -151,6 +162,53 @@ describe("syncable manifest parameter definitions", () => {
         ])
       )
     ).toEqual([]);
+  });
+
+  it.each([
+    ["string", ["t3", "t5"], "t5"],
+    ["number", [-1, 0], 0],
+    ["integer", [0, 1], 0],
+    ["boolean", [false, true], false],
+  ])("dispatches canonical selectCriterion %s definitions", (valueType, allowed, defaultValue) => {
+    expect(validateSyncableManifestModel(buildManifest([
+      buildSelectCriterion({ valueType, restrictions: { allowed }, default: defaultValue }),
+    ]))).toEqual([]);
+  });
+
+  it("accepts selectCriterion definitions without defaults independently of required", () => {
+    const required = buildSelectCriterion();
+    delete required.default;
+    const optional = buildSelectCriterion({ required: false });
+    delete optional.default;
+    expect(validateSyncableManifestModel(buildManifest([required]))).toEqual([]);
+    expect(validateSyncableManifestModel(buildManifest([optional]))).toEqual([]);
+  });
+
+  it.each([
+    { valueType: "enum" },
+    { restrictions: { allowed: [] } },
+    { restrictions: { allowed: ["t5", 1] } },
+    { restrictions: { allowed: ["t5", "t5"] } },
+    { default: "t1" },
+    { scope: "global" },
+  ])("rejects invalid selectCriterion metadata", (overrides) => {
+    expect(validateSyncableManifestModel(buildManifest([buildSelectCriterion(overrides)]))).toEqual([
+      expect.stringContaining("parameters[0] (preference):"),
+    ]);
+  });
+
+  it("normalizes canonical selectCriterion metadata without obsolete fields", () => {
+    const normalized = normalizeParameter(buildSelectCriterion());
+    expect(normalized).toMatchObject({
+      valueType: "string",
+      parameterStructureKey: "selectCriterion",
+      required: true,
+      default: "t5",
+      restrictions: { allowed: ["t3", "t5"] },
+    });
+    expect(normalized).not.toHaveProperty("scope");
+    expect(normalized.restrictions).not.toHaveProperty("valueType");
+    expect(normalized).not.toHaveProperty("requiredForEachCriterion");
   });
 
   it.each([

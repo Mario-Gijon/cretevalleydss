@@ -350,6 +350,39 @@ def test_number_criterion_preview_uses_its_colocated_descriptor(
     assert "scenarioKind" not in files[f"{frontend_base}/index.js"]
 
 
+def test_select_criterion_preview_uses_its_colocated_descriptor(
+    client_factory,
+    project_root: Path,
+) -> None:
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/parameter/preview",
+            json={"parameterStructureKey": "selectCriterion"},
+        )
+
+    assert response.status_code == 200
+    files = {item["path"]: item["content"] for item in response.json()["files"]}
+    backend_base = "Backend/modules/decisionPlugins/modelParameters/structures/selectCriterion"
+    frontend_base = "Frontend/src/features/decisionPlugins/modelParameters/fields/selectCriterion"
+    assert f"{backend_base}/index.js" in files
+    assert f"{backend_base}/validateDefinition.js" in files
+    assert f"{backend_base}/validateAndNormalize.js" in files
+    assert f"{frontend_base}/index.js" in files
+    assert f"{frontend_base}/selectCriterionValues.js" in files
+    field = files[f"{frontend_base}/SelectCriterionParameterField.jsx"]
+    index = files[f"{frontend_base}/index.js"]
+    assert "useMemo" in field
+    assert "useEffect" in field
+    assert "rows.length === 0" in field
+    assert "isPlainObject(value)" in field
+    assert "aria-label" in field
+    assert "scope" not in field
+    assert "requiredForEachCriterion" not in field
+    assert "restrictions.valueType" not in field
+    assert "scenario" not in index
+    assert "selectCriterionParameterField" in index
+
+
 def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_temp_root(
     client_factory,
     monkeypatch,

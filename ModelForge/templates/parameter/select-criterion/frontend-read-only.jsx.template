@@ -1,0 +1,12 @@
+import { Typography } from "@mui/material";
+import { buildSelectCriterionRows, resolveSelectCriterionRowValue } from "./selectCriterionValues";
+
+const display = (value) => value === null || value === undefined || value === "" ? "—" : String(value);
+
+export const SelectCriterionParameterReadOnly = ({ value, parameterContext }) => {
+  const rows = buildSelectCriterionRows(parameterContext);
+  if (!rows.length) return <Typography variant="body2">—</Typography>;
+  return <>{rows.map((row) => <Typography key={row.key} variant="body2">{display(resolveSelectCriterionRowValue({ value, rowKey: row.key }))}</Typography>)}</>;
+};
+
+export default SelectCriterionParameterReadOnly;

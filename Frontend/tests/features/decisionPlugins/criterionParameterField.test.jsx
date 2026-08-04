@@ -129,7 +129,7 @@ describe("criterion parameter fields", () => {
       />
     );
 
-    const combobox = screen.getAllByRole("combobox")[0];
+    const combobox = screen.getByRole("combobox", { name: "Mode for Cost" });
     fireEvent.mouseDown(combobox);
     fireEvent.click(screen.getByRole("option", { name: "strict" }));
 

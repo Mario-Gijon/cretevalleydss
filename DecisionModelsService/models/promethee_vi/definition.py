@@ -72,11 +72,10 @@ MODEL_DEFINITION = ModelDefinition(
             "key": "f",
             "label": "Preference functions",
             "parameterStructureKey": "selectCriterion",
+            "valueType": "string",
             "required": True,
             "default": "t5",
             "restrictions": {
-                "valueType": "enum",
-                "requiredForEachCriterion": True,
                 "allowed": ["t1", "t2", "t3", "t4", "t5", "t6", "t7"],
             },
         },

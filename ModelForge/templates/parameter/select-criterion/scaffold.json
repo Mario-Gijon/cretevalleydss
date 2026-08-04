@@ -1,0 +1,9 @@
+[
+  {"template": "select-criterion/backend-index.js.template", "output": "index.js", "target": "backend"},
+  {"template": "select-criterion/backend-validate-definition.js.template", "output": "validateDefinition.js", "target": "backend"},
+  {"template": "select-criterion/backend-validate-and-normalize.js.template", "output": "validateAndNormalize.js", "target": "backend"},
+  {"template": "select-criterion/frontend-index.js.template", "output": "index.js", "target": "frontend"},
+  {"template": "select-criterion/frontend-values.js.template", "output": "selectCriterionValues.js", "target": "frontend"},
+  {"template": "select-criterion/frontend-field.jsx.template", "output": "SelectCriterionParameterField.jsx", "target": "frontend"},
+  {"template": "select-criterion/frontend-read-only.jsx.template", "output": "SelectCriterionParameterReadOnly.jsx", "target": "frontend"}
+]

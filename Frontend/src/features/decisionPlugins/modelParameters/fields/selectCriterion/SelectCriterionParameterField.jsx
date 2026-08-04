@@ -32,17 +32,10 @@ const textFieldSx = {
   },
 };
 
-const requireAllowedValues = (parameter) => {
-  const allowed = parameter.restrictions?.allowed;
-
-  if (!Array.isArray(allowed)) {
-    throw new Error(
-      `[modelParameters] Missing allowed values for criterion parameter "${parameter.key}".`
-    );
-  }
-
-  return allowed;
-};
+const getAllowedValues = (parameter) =>
+  Array.isArray(parameter?.restrictions?.allowed) && parameter.restrictions.allowed.length > 0
+    ? parameter.restrictions.allowed
+    : [];
 
 export const SelectCriterionParameterField = ({
   parameter,
@@ -57,8 +50,8 @@ export const SelectCriterionParameterField = ({
     () => buildSelectCriterionRows({ leafCriteria }),
     [leafCriteria]
   );
-  const allowed = requireAllowedValues(parameter);
-  const { label } = parameter;
+  const allowed = getAllowedValues(parameter);
+  const label = parameter?.label || "Selection";
 
   useEffect(() => {
     if (rows.length === 0) return;
@@ -114,12 +107,13 @@ export const SelectCriterionParameterField = ({
               });
             }}
             sx={textFieldSx}
-            disabled={disabled}
+            disabled={disabled || allowed.length === 0}
             error={Boolean(error)}
+            inputProps={{ "aria-label": `${label} for ${row.name}` }}
           >
             {allowed.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
+              <MenuItem key={`${typeof option}:${String(option)}`} value={option}>
+                {String(option)}
               </MenuItem>
             ))}
           </TextField>
