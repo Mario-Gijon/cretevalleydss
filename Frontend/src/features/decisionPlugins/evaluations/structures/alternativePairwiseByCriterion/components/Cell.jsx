@@ -1,6 +1,7 @@
 import { Box, Chip, Stack } from "@mui/material";
 
 import { ExpressionDomainEvaluationInput } from "../../../../../expressionDomains";
+import { PAIRWISE_MAX_DECIMAL_PLACES } from "../operations/numericPrecision";
 import { cellSx } from "../styles/Cell.styles";
 import { formatCollectiveValue } from "../operations/formatCollectiveValue";
 
@@ -43,6 +44,7 @@ const Cell = ({
             }}
             disabled={!permitEdit}
             showHelperText={false}
+            maxDecimalPlaces={PAIRWISE_MAX_DECIMAL_PLACES}
           />
         </Box>
       </Box>

@@ -5,6 +5,11 @@ import {
   reflectExpressionDomainValue,
 } from "../../../../../expressionDomains/index.js";
 import { resolveItems } from "./resolveItems.js";
+import {
+  hasAtMostPairwiseDecimalPlaces,
+  PAIRWISE_MAX_DECIMAL_PLACES,
+  roundPairwiseNumericValue,
+} from "./numericPrecision.js";
 import { validatePayloadShape } from "./validatePayloadShape.js";
 
 const isEmptyValue = (value) => value === "";
@@ -103,10 +108,28 @@ export const normalizePayload = async ({
             value: upperValue,
             expressionDomain: criterion.expressionDomain,
           });
-        const expectedLowerValue = reflectExpressionDomainValue({
+        const isNumericContinuous =
+          criterion.expressionDomain.typeKey === "numericContinuous";
+
+        if (
+          isNumericContinuous &&
+          !hasAtMostPairwiseDecimalPlaces(normalizedUpperValue)
+        ) {
+          throw createBadRequestError(
+            `Pairwise numeric values may use at most ${PAIRWISE_MAX_DECIMAL_PLACES} decimal places.`,
+            {
+              field: upperField,
+            }
+          );
+        }
+
+        const reflectedLowerValue = reflectExpressionDomainValue({
           value: normalizedUpperValue,
           expressionDomain: criterion.expressionDomain,
         });
+        const expectedLowerValue = isNumericContinuous
+          ? roundPairwiseNumericValue(reflectedLowerValue)
+          : reflectedLowerValue;
 
         if (
           !areExpressionDomainValuesEqual({

@@ -1,15 +1,39 @@
 import { findMatchingFuzzyLabel } from "../../../../../expressionDomains";
 import { isPlainObject } from "../../../../../../utils/common/objects";
+import { PAIRWISE_MAX_DECIMAL_PLACES } from "./numericPrecision";
 
 const UNMATCHED_FUZZY_TOOLTIP =
   "No predefined label matches this derived inverse.";
 
-const formatNumericValue = (value) => {
+const formatNumericValue = ({ value, maxDecimalPlaces }) => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error("Numeric pairwise value is invalid.");
   }
 
-  return Number.parseFloat(value.toPrecision(12)).toString();
+  const text = Number.isInteger(maxDecimalPlaces) && maxDecimalPlaces >= 0
+    ? String(value)
+    : Number.parseFloat(value.toPrecision(12)).toString();
+  const decimalIndex = text.indexOf(".");
+
+  if (
+    !Number.isInteger(maxDecimalPlaces) ||
+    maxDecimalPlaces < 0 ||
+    decimalIndex < 0
+  ) {
+    return text;
+  }
+
+  const fractionalPart = text.slice(decimalIndex + 1);
+
+  if (fractionalPart.length <= maxDecimalPlaces) {
+    return text;
+  }
+
+  if (maxDecimalPlaces === 0) {
+    return `${text.slice(0, decimalIndex)}…`;
+  }
+
+  return `${text.slice(0, decimalIndex + maxDecimalPlaces + 1)}…`;
 };
 
 const resolveLabelText = ({ labelKey, expressionDomain }) => {
@@ -35,9 +59,17 @@ export const formatValue = ({ value, expressionDomain }) => {
 
   switch (expressionDomain?.typeKey) {
     case "numericContinuous":
+      return {
+        text: formatNumericValue({
+          value,
+          maxDecimalPlaces: PAIRWISE_MAX_DECIMAL_PLACES,
+        }),
+        tooltip: null,
+      };
+
     case "numericDiscrete":
       return {
-        text: formatNumericValue(value),
+        text: formatNumericValue({ value }),
         tooltip: null,
       };
 

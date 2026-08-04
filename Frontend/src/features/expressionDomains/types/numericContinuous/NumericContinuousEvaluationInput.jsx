@@ -31,6 +31,57 @@ const parseNumericInput = (rawValue) => {
   return { kind: "invalid", value: text };
 };
 
+const countDecimalPlaces = (value) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const match = String(value).match(/(?:\.(\d*))?(?:e([+-]?\d+))?$/i);
+  const fractionalLength = match?.[1]?.length ?? 0;
+  const exponent = Number(match?.[2] ?? 0);
+
+  return Math.max(0, fractionalLength - exponent);
+};
+
+const formatReadOnlyValue = ({ value, maxDecimalPlaces }) => {
+  const text = String(value ?? "");
+  const decimalIndex = text.indexOf(".");
+
+  if (decimalIndex < 0) {
+    return text;
+  }
+
+  const fractionalPart = text.slice(decimalIndex + 1);
+
+  if (fractionalPart.length <= maxDecimalPlaces) {
+    return text;
+  }
+
+  if (maxDecimalPlaces === 0) {
+    return `${text.slice(0, decimalIndex)}…`;
+  }
+
+  return `${text.slice(0, decimalIndex + maxDecimalPlaces + 1)}…`;
+};
+
+const resolveRawValue = ({
+  value,
+  disabled,
+  hasDecimalLimit,
+  maxDecimalPlaces,
+}) => {
+  if (value === "") {
+    return "";
+  }
+
+  return disabled && hasDecimalLimit
+    ? formatReadOnlyValue({
+        value,
+        maxDecimalPlaces,
+      })
+    : String(value ?? "");
+};
+
 export const NumericContinuousEvaluationInput = ({
   expressionDomain,
   value,
@@ -39,13 +90,30 @@ export const NumericContinuousEvaluationInput = ({
   error = false,
   helperText = "",
   showHelperText = true,
+  maxDecimalPlaces,
 }) => {
   const definition = normalizeDefinition(expressionDomain);
-  const [rawValue, setRawValue] = useState(value === "" ? "" : String(value ?? ""));
+  const hasDecimalLimit =
+    Number.isInteger(maxDecimalPlaces) && maxDecimalPlaces >= 0;
+  const [rawValue, setRawValue] = useState(() =>
+    resolveRawValue({
+      value,
+      disabled,
+      hasDecimalLimit,
+      maxDecimalPlaces,
+    })
+  );
 
   useEffect(() => {
-    setRawValue(value === "" ? "" : String(value ?? ""));
-  }, [value]);
+    setRawValue(
+      resolveRawValue({
+        value,
+        disabled,
+        hasDecimalLimit,
+        maxDecimalPlaces,
+      })
+    );
+  }, [disabled, hasDecimalLimit, maxDecimalPlaces, value]);
 
   const parsedState = useMemo(() => parseNumericInput(rawValue), [rawValue]);
   const min = Number.isFinite(definition.min) ? definition.min : undefined;
@@ -64,16 +132,23 @@ export const NumericContinuousEvaluationInput = ({
         value: parsedState.value,
         expressionDomain,
       });
+      if (
+        hasDecimalLimit &&
+        countDecimalPlaces(parsedState.value) > maxDecimalPlaces
+      ) {
+        return `Use at most ${maxDecimalPlaces} decimal places.`;
+      }
+
       return "";
     } catch (validationError) {
       return validationError instanceof Error ? validationError.message : "Enter a valid number.";
     }
-  }, [expressionDomain, parsedState]);
+  }, [expressionDomain, hasDecimalLimit, maxDecimalPlaces, parsedState]);
   const resolvedHelperText = showHelperText ? localHelperText || helperText : "";
 
   return (
     <TextField
-      type="number"
+      type={disabled && hasDecimalLimit ? "text" : "number"}
       color="info"
       value={rawValue}
       onChange={(event) => {
@@ -82,7 +157,12 @@ export const NumericContinuousEvaluationInput = ({
 
         const nextParsedState = parseNumericInput(nextRawValue);
 
-        if (nextParsedState.kind === "number" || nextParsedState.kind === "empty") {
+        if (
+          nextParsedState.kind === "empty" ||
+          (nextParsedState.kind === "number" &&
+            (!hasDecimalLimit ||
+              countDecimalPlaces(nextParsedState.value) <= maxDecimalPlaces))
+        ) {
           onChange?.(nextParsedState.value);
         }
       }}
@@ -93,6 +173,7 @@ export const NumericContinuousEvaluationInput = ({
       inputProps={{
         min,
         max,
+        step: hasDecimalLimit ? 10 ** -maxDecimalPlaces : undefined,
       }}
     />
   );
