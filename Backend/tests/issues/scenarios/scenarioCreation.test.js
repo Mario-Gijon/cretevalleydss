@@ -211,7 +211,7 @@ describe("createIssueScenario input normalization", () => {
     });
   });
 
-  it("requires a trimmed scenario description with a maximum of 320 characters", async () => {
+  it("normalizes optional scenario descriptions while retaining type and length validation", async () => {
     const input = {
       userId: new mongoose.Types.ObjectId(),
       issueId: new mongoose.Types.ObjectId(),
@@ -219,9 +219,17 @@ describe("createIssueScenario input normalization", () => {
       scenarioName: "Valid name",
     };
 
-    await expect(createIssueScenario(input)).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription must be a string" });
+    const context = buildMockExecutionContext();
+    scenarioExecutionState.buildScenarioExecutionContext.mockResolvedValue(context);
+    scenarioExecutionState.executeScenarioModel.mockResolvedValue({ standardResult: {}, modelExecution: {}, rawOutput: {} });
+
+    for (const scenarioDescription of [undefined, null, "", "   "]) {
+      await createIssueScenario({ ...input, scenarioDescription });
+    }
+
+    const { IssueScenario } = await import("../../../models/IssueScenarios.js");
+    expect((await IssueScenario.find().lean()).map((scenario) => scenario.description)).toEqual(["", "", "", ""]);
     await expect(createIssueScenario({ ...input, scenarioDescription: 42 })).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription must be a string" });
-    await expect(createIssueScenario({ ...input, scenarioDescription: "   " })).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription is required" });
     await expect(createIssueScenario({ ...input, scenarioDescription: "x".repeat(321) })).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription must not exceed 320 characters" });
   });
 

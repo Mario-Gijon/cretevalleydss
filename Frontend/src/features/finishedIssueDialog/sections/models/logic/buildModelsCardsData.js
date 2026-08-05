@@ -59,7 +59,7 @@ export const buildModelsCardsData = ({ payload, selectedExecution, executionOpti
       modelName: nonEmpty(model?.name, option.modelName || "—"),
       description: option.type === "base"
         ? "Original issue execution."
-        : nonEmpty(scenario?.description, "No scenario description provided."),
+        : nonEmpty(scenario?.description, "No description added."),
       computedAt: option.type === "base"
         ? resolveBaseComputedAt(payload)
         : scenario?.execution?.completedAt ?? scenario?.createdAt ??

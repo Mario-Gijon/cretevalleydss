@@ -9,11 +9,14 @@ vi.mock("@mui/x-charts/BarChart", () => ({
 import { useFinishedIssueResultsSelection } from "../../../../../src/features/finishedIssueDialog/hooks/useFinishedIssueResultsSelection.js";
 import { buildResultsAnalysisWorkspaceData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsAnalysisWorkspaceData.js";
 import ScoreOverviewChart from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/ScoreOverviewChart.jsx";
+import FinalRankingPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/FinalRankingPanel.jsx";
+import RankingsByExecution from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/RankingsByExecution.jsx";
 import RankingList from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/RankingList.jsx";
 import RankingCorrelationMatrix from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/RankingCorrelationMatrix.jsx";
 import RankingMovementChart from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/RankingMovementChart.jsx";
 import { getScoreOverviewChartHeight } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/scoreOverviewChartHeight.js";
 import { buildScoreOverviewSeries } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildScoreOverviewSeries.js";
+import { normalizeRankingScores } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/normalizeRankingScores.js";
 import { buildConsensusEvolutionData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildConsensusEvolutionData.js";
 import { comparisonDetailPanelSx, comparisonOutcomeGridSx, correlationCellSx, correlationMatrixSx, correlationMatrixViewportSx, movementChartViewportSx, rankingListViewportSx, rankingScoreTrackSx, scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx, singleOutcomeGridSx } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
@@ -33,6 +36,80 @@ const completeScenario = (id, ranks) => ({
 });
 
 describe("Results analysis workspace", () => {
+  it("normalizes ranking scores without mutating the original entries", () => {
+    const ranking = [
+      { id: "positive-low", score: 10, formattedScore: "10", position: 1 },
+      { id: "positive-high", score: 30, formattedScore: "30", position: 2 },
+      { id: "mixed-low", score: -5, formattedScore: "-5", position: 3 },
+      { id: "missing", score: null, formattedScore: "—", position: 4 },
+      { id: "invalid", score: Number.NaN, formattedScore: "NaN", position: 5 },
+      { id: "infinite", score: Infinity, formattedScore: "∞", position: 6 },
+    ];
+    const original = ranking.map((entry) => ({ ...entry }));
+
+    const normalized = normalizeRankingScores(ranking);
+
+    expect(normalized.map((entry) => [entry.id, entry.score, entry.formattedScore])).toEqual([
+      ["positive-low", 0.42857142857142855, "0.4286"],
+      ["positive-high", 1, "1"],
+      ["mixed-low", 0, "0"],
+      ["missing", null, "—"],
+      ["invalid", null, "—"],
+      ["infinite", null, "—"],
+    ]);
+    expect(ranking).toEqual(original);
+    expect(normalized[0]).not.toBe(ranking[0]);
+  });
+
+  it("normalizes equal finite scores to one and keeps unavailable scores unavailable", () => {
+    expect(normalizeRankingScores([
+      { id: "a", score: -2, formattedScore: "-2" },
+      { id: "b", score: -2, formattedScore: "-2" },
+      { id: "c", formattedScore: "—" },
+    ]).map((entry) => [entry.score, entry.formattedScore])).toEqual([[1, "1"], [1, "1"], [null, "—"]]);
+  });
+
+  it("keeps comparison scores original by default and normalizes each execution independently when enabled", () => {
+    const executions = [
+      { key: "first", color: "#27d5e4", displayLabel: "First", fullLabel: "First", available: true, ranking: [{ id: "a", name: "Alpha", position: 1, score: 10, formattedScore: "10" }, { id: "b", name: "Beta", position: 2, score: 20, formattedScore: "20" }] },
+      { key: "second", color: "#6fdc68", displayLabel: "Second", fullLabel: "Second", available: true, ranking: [{ id: "a", name: "Alpha", position: 1, score: -5, formattedScore: "-5" }, { id: "b", name: "Beta", position: 2, score: 5, formattedScore: "5" }] },
+    ];
+    render(<ThemeProvider theme={createTheme()}><RankingsByExecution executions={executions} /></ThemeProvider>);
+    const toggle = screen.getByRole("button", { name: "Normalize values" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("-5")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByText("20")).not.toBeInTheDocument();
+    expect(screen.queryByText("-5")).not.toBeInTheDocument();
+    expect(screen.getAllByText("0", { selector: "p" })).toHaveLength(2);
+    expect(screen.getAllByText("1", { selector: "p" })).toHaveLength(2);
+
+    fireEvent.click(toggle);
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("-5")).toBeInTheDocument();
+  });
+
+  it("keeps the Score Overview original by default and switches its series and footer when normalized", () => {
+    const ranking = [{ id: "a", name: "Alpha", score: -5, formattedScore: "-5", position: 1 }, { id: "b", name: "Beta", score: 5, formattedScore: "5", position: 2 }];
+    render(<ThemeProvider theme={createTheme()}><ScoreOverviewChart ranking={ranking} /></ThemeProvider>);
+    const toggle = screen.getByRole("button", { name: "Normalize values" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(JSON.parse(screen.getByTestId("score-overview-chart").dataset.series).map((series) => series.data)).toEqual([[-5, null], [null, 5]]);
+    expect(screen.getByText("Scores are shown in the original scale of this execution.")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(JSON.parse(screen.getByTestId("score-overview-chart").dataset.series).map((series) => series.data)).toEqual([[0, null], [null, 1]]);
+    expect(screen.getByText("Scores are normalized from 0 to 1 within this execution.")).toBeInTheDocument();
+    expect(screen.queryByText("Scores are shown in the original scale of this execution.")).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(JSON.parse(screen.getByTestId("score-overview-chart").dataset.series).map((series) => series.data)).toEqual([[-5, null], [null, 5]]);
+    expect(screen.getByText("Scores are shown in the original scale of this execution.")).toBeInTheDocument();
+  });
+
   it("uses blue, green, and purple Results Analysis slots in selection order", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios = [completeScenario("scenario-forward", [["a", 1, 1], ["b", 2, 0]]), completeScenario("scenario-reverse", [["b", 1, 1], ["a", 2, 0]])];
@@ -175,8 +252,8 @@ describe("Results analysis workspace", () => {
 
   it("uses a stretched, balanced comparison grid and a flexible score-panel chart body", () => {
     expect(singleOutcomeGridSx.alignItems).toBe("stretch");
-    expect(scoreOverviewPanelSx).toMatchObject({ display: "flex", flexDirection: "column", minWidth: 0 });
-    expect(scoreChartViewportSx).toMatchObject({ width: "100%", overflowX: "auto", overflowY: "hidden" });
+    expect(scoreOverviewPanelSx).toMatchObject({ display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "100%" });
+    expect(scoreChartViewportSx).toMatchObject({ width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "auto", overflowY: "hidden" });
     expect(scoreChartViewportSx.flex).toBeUndefined();
     expect(scoreChartContainerSx(900, 380)).toMatchObject({ minWidth: 900, width: "100%", flex: "0 0 auto", height: 380, minHeight: 380, maxHeight: 380 });
     expect(rankingListViewportSx(false).maxHeight).toEqual({ xs: 520, xl: 380 });
@@ -247,7 +324,7 @@ describe("Results analysis workspace", () => {
   });
 
   it("uses stable bounded responsive numeric chart heights without creating a ResizeObserver", () => {
-    expect(getScoreOverviewChartHeight({ isMobile: true, isDesktop: false })).toBe(320);
+    expect(getScoreOverviewChartHeight({ isMobile: true, isDesktop: false })).toBe(260);
     expect(getScoreOverviewChartHeight({ isMobile: false, isDesktop: false })).toBe(340);
     expect(getScoreOverviewChartHeight({ isMobile: false, isDesktop: true })).toBe(380);
     const originalResizeObserver = globalThis.ResizeObserver;
@@ -282,6 +359,13 @@ describe("Results analysis workspace", () => {
     expect(scoreChartContainerSx(900, 380).minWidth).toBe(900);
   });
 
+  it("lets small score-overview rankings fit their panel while wide rankings retain horizontal scroll space", () => {
+    const smallRanking = Array.from({ length: 3 }, (_, index) => ({ id: `small-${index}`, name: `Alternative ${index + 1}`, score: index, formattedScore: String(index), position: index + 1 }));
+    render(<ThemeProvider theme={createTheme()}><ScoreOverviewChart ranking={smallRanking} /></ThemeProvider>);
+    expect(scoreChartContainerSx(270, 260)).toMatchObject({ minWidth: 270, width: "100%", maxWidth: "none" });
+    expect(screen.getByTestId("score-overview-chart")).toBeInTheDocument();
+  });
+
   it("uses Dashboard-style colors for every highest finite score, including ties and negatives", () => {
     const tied = buildScoreOverviewSeries([{ id: "a", name: "A", score: 0.8 }, { id: "b", name: "B", score: 0.8 }, { id: "c", name: "C", score: 0.4 }]);
     expect(tied.map((series) => series.color)).toEqual(["rgba(72, 190, 130, 0.82)", "rgba(72, 190, 130, 0.82)", "rgba(52, 139, 218, 0.78)"]);
@@ -294,5 +378,11 @@ describe("Results analysis workspace", () => {
     render(<ThemeProvider theme={createTheme()}><RankingList ranking={[{ id: "a", name: "Alpha", position: 1, score: 1, formattedScore: "1" }]} /></ThemeProvider>);
     expect(screen.queryByText("Winner")).not.toBeInTheDocument();
     expect(screen.getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("does not render alternative descriptions in the Final ranking panel", () => {
+    render(<ThemeProvider theme={createTheme()}><FinalRankingPanel ranking={[{ id: "a", name: "Alpha", description: "An alternative description", position: 1, score: 1, formattedScore: "1" }]} /></ThemeProvider>);
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.queryByText("An alternative description")).not.toBeInTheDocument();
   });
 });

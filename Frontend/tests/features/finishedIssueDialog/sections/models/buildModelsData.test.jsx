@@ -93,7 +93,7 @@ describe("buildModelsCardsData", () => {
 
     expect(base.executions[0]).toMatchObject({ computedAt: "2026-01-02T10:00:00.000Z", paperUrl: "https://papers.example.test/base" });
     expect(scenario.executions.find((entry) => entry.key === "scenario-ok")).toMatchObject({ description: "Stored description", computedAt: "2026-01-03T10:00:00.000Z", paperUrl: "https://papers.example.test/scenario" });
-    expect(scenario.executions.find((entry) => entry.key === "scenario-secondary").description).toBe("No scenario description provided.");
+    expect(scenario.executions.find((entry) => entry.key === "scenario-secondary").description).toBe("No description added.");
     expect(scenario.executions.find((entry) => entry.key === "scenario-secondary").paperUrl).toBe(DEFAULT_MODEL_PAPER_URL);
   });
 });

@@ -167,14 +167,14 @@ describe("ModelsView", () => {
     expect(screen.getAllByLabelText("Add model")).toHaveLength(1);
   });
 
-  it("opens one Dialog with required name and description fields", () => {
+  it("opens one Dialog with a required name and optional description field", () => {
     const payload = buildFinishedIssuePayloadFixture();
     renderView(payload, "base", buildState(payload, { addOpen: true }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     const scenarioNameField = screen.getByRole("textbox", { name: /scenario name/i });
-    const scenarioDescriptionField = screen.getByRole("textbox", { name: /scenario description/i });
+    const scenarioDescriptionField = screen.getByRole("textbox", { name: "Scenario description (optional)" });
     expect(scenarioNameField).toBeRequired();
-    expect(scenarioDescriptionField).toBeRequired();
+    expect(scenarioDescriptionField).not.toBeRequired();
     expect(scenarioNameField.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
     expect(scenarioDescriptionField.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
     expect(screen.getByText(/\/320$/)).toBeInTheDocument();

@@ -128,6 +128,15 @@ describe("AddModelDialog", () => {
     expect(screen.getByRole("button", { name: "Add model" })).toBeDisabled();
   });
 
+  it("marks the description optional and keeps empty descriptions submittable", () => {
+    render(dialog(buildState({ scenarioDescription: "" })));
+    const description = screen.getByRole("textbox", { name: "Scenario description (optional)" });
+    expect(description).not.toBeRequired();
+    expect(screen.getByRole("button", { name: "Add model" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveClass("MuiButton-colorWarning");
+    expect(screen.getByRole("button", { name: "Add model" })).toHaveClass("MuiButton-colorSecondary");
+  });
+
   it("shows source phase only for consensus-enabled issues", () => {
     const { rerender } = render(dialog(buildState(), false));
     expect(screen.queryByLabelText("Source phase")).not.toBeInTheDocument();

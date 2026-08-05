@@ -33,6 +33,7 @@ export const scoreOverviewPanelSx = {
   display: "flex",
   flexDirection: "column",
   minWidth: 0,
+  maxWidth: "100%",
 };
 
 export const singleOutcomeGridSx = {
@@ -77,6 +78,8 @@ export const scoreChartViewportSx = {
   ...localScrollbarSx,
   mt: 1,
   width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
   overflowX: "auto",
   overflowY: "hidden",
 };
@@ -84,6 +87,7 @@ export const scoreChartViewportSx = {
 export const scoreChartContainerSx = (minWidth, chartHeight) => ({
   minWidth,
   width: "100%",
+  maxWidth: "none",
   height: chartHeight,
   minHeight: chartHeight,
   maxHeight: chartHeight,

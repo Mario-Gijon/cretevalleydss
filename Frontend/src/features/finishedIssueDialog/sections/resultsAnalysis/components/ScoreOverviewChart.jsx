@@ -1,9 +1,11 @@
-import { Box, Stack, Typography, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Stack, ToggleButton, Typography, useMediaQuery, useTheme } from "@mui/material";
+import { useState } from "react";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import { BarChart } from "@mui/x-charts/BarChart";
 
 import { getScoreOverviewChartHeight } from "../logic/scoreOverviewChartHeight.js";
 import { buildScoreOverviewSeries, formatOriginalScore } from "../logic/buildScoreOverviewSeries.js";
+import { normalizeRankingScores } from "../logic/normalizeRankingScores.js";
 import { scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx } from "../resultsAnalysis.styles.js";
 import { PERFORMANCE_BAR_TOKENS, performanceBarBorderFor } from "../../../shared/logic/chartVisualTokens.js";
 
@@ -15,26 +17,30 @@ const ScoreOverviewBar = (props) => {
 };
 
 const ScoreOverviewChart = ({ ranking }) => {
+  const [normalizationEnabled, setNormalizationEnabled] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDesktop = useMediaQuery(theme.breakpoints.up("xl"));
-  const chartEntries = ranking;
+  const chartEntries = normalizationEnabled ? normalizeRankingScores(ranking) : ranking;
   const series = buildScoreOverviewSeries(chartEntries);
-  const minWidth = Math.max(620, chartEntries.length * 90);
+  const minWidth = chartEntries.length * 90;
   const chartHeight = getScoreOverviewChartHeight({ isMobile, isDesktop });
 
   return (
     <Box sx={scoreOverviewPanelSx}>
-      <Stack direction="row" spacing={1} alignItems="center">
-        <BarChartRoundedIcon sx={{ color: "secondary.light" }} />
-        <Box>
-          <Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>
-            Score overview
-          </Typography>
-          <Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>
-            Original scores by alternative for this execution.
-          </Typography>
-        </Box>
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
+        <Stack direction="row" spacing={1} alignItems="center">
+          <BarChartRoundedIcon sx={{ color: "secondary.light" }} />
+          <Box>
+            <Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>
+              Score overview
+            </Typography>
+            <Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>
+              Scores by alternative for this execution.
+            </Typography>
+          </Box>
+        </Stack>
+        <ToggleButton value="normalize-values" size="small" color="secondary" selected={normalizationEnabled} onChange={() => setNormalizationEnabled((enabled) => !enabled)} aria-label="Normalize values">Normalize values</ToggleButton>
       </Stack>
 
       {chartEntries.length ? (
@@ -69,7 +75,7 @@ const ScoreOverviewChart = ({ ranking }) => {
       )}
 
       <Typography sx={{ mt: 0.8, color: "text.secondary", fontSize: 10.8 }}>
-        Scores are shown in the original scale of this execution.
+        {normalizationEnabled ? "Scores are normalized from 0 to 1 within this execution." : "Scores are shown in the original scale of this execution."}
       </Typography>
     </Box>
   );

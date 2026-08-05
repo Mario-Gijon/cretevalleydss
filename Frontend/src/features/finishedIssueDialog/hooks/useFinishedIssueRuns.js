@@ -85,10 +85,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       return;
     }
     const trimmedScenarioDescription = scenarioDescription.trim();
-    if (!trimmedScenarioDescription) {
-      showSnackbarAlert("Scenario description is required.", "warning");
-      return;
-    }
     if (trimmedScenarioDescription.length > SCENARIO_DESCRIPTION_MAX) {
       showSnackbarAlert(
         `Scenario description must not exceed ${SCENARIO_DESCRIPTION_MAX} characters.`,

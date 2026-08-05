@@ -20,8 +20,7 @@ const ScenarioDetailsFields = ({
     />
     <TextField
       color="secondary"
-      label="Scenario description"
-      required
+      label="Scenario description (optional)"
       fullWidth
       multiline
       minRows={3}

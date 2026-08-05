@@ -45,17 +45,14 @@ const normalizeScenarioCreationInputOrThrow = ({
   }
 
   const normalizedScenarioDescription =
-    typeof scenarioDescription === "string"
-      ? scenarioDescription.trim()
-      : null;
+    scenarioDescription === undefined || scenarioDescription === null
+      ? ""
+      : typeof scenarioDescription === "string"
+        ? scenarioDescription.trim()
+        : null;
 
   if (normalizedScenarioDescription === null) {
     throw createBadRequestError("scenarioDescription must be a string", {
-      field: "scenarioDescription",
-    });
-  }
-  if (!normalizedScenarioDescription) {
-    throw createBadRequestError("scenarioDescription is required", {
       field: "scenarioDescription",
     });
   }

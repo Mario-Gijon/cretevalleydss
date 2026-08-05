@@ -45,7 +45,7 @@ describe("Add Model dialog logic", () => {
     ]);
   });
 
-  it("preserves the exact description boundary and existing submit gate", () => {
+  it("keeps description length validation while allowing empty optional descriptions", () => {
     const valid = {
       addLoading: false,
       scenarioName: "Sensitivity",
@@ -68,6 +68,8 @@ describe("Add Model dialog logic", () => {
         scenarioDescription: "x".repeat(SCENARIO_DESCRIPTION_MAX + 1),
       }).disabled
     ).toBe(true);
+    expect(buildAddModelSubmitState({ ...valid, scenarioDescription: "" }).disabled).toBe(false);
+    expect(buildAddModelSubmitState({ ...valid, scenarioDescription: "   " }).disabled).toBe(false);
     expect(
       buildAddModelSubmitState({
         ...valid,

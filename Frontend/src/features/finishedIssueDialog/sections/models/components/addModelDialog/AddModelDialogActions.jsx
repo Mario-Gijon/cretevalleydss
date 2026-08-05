@@ -4,7 +4,7 @@ import { addModelDialogActionsSx } from "../../addModelDialog.styles.js";
 
 const AddModelDialogActions = ({ submitDisabled, onClose, onSubmit }) => (
   <DialogActions sx={addModelDialogActionsSx}>
-    <Button variant="outlined" onClick={onClose}>
+    <Button variant="outlined" color="warning" onClick={onClose}>
       Cancel
     </Button>
     <Button

@@ -29,7 +29,6 @@ export const buildAddModelSubmitState = ({
   const disabled = Boolean(
     addLoading ||
       !hasText(scenarioName) ||
-      !hasText(scenarioDescription) ||
       descriptionLength > SCENARIO_DESCRIPTION_MAX ||
       !selectedModelCompatible
   );
