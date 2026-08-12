@@ -3,6 +3,8 @@ import SelectCriterionParameterReadOnly from "./SelectCriterionParameterReadOnly
 
 export const selectCriterionParameterField = Object.freeze({
   key: "selectCriterion",
+  // Change to "ready" only after implementation is complete and tested.
+  implementationStatus: "scaffold",
   FieldComponent: SelectCriterionParameterField,
   ReadOnlyComponent: SelectCriterionParameterReadOnly,
 });

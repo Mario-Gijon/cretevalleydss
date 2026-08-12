@@ -1,0 +1,47 @@
+from schemas.scaffold_evaluation_structure import (
+    EvaluationStructureScaffoldPreviewRequest,
+)
+from schemas.scaffold_parameter import ParameterScaffoldPreviewRequest
+from services.evaluation_structure_scaffold_preview import (
+    build_evaluation_structure_scaffold_preview,
+)
+from services.parameter_scaffold_preview import build_parameter_scaffold_preview
+
+
+def _file_content(preview, suffix: str) -> str:
+    return next(file.content for file in preview.files if file.path.endswith(suffix))
+
+
+def test_evaluation_structure_preview_marks_both_runtime_entries_as_scaffolds() -> None:
+    preview = build_evaluation_structure_scaffold_preview(
+        EvaluationStructureScaffoldPreviewRequest(
+            evaluationStructureKey="sampleStructure",
+        )
+    )
+
+    assert 'implementationStatus: "scaffold"' in _file_content(preview, "/index.js")
+    assert sum(
+        'implementationStatus: "scaffold"' in file.content
+        for file in preview.files
+        if file.path.endswith("/index.js")
+    ) == 2
+
+
+def test_parameter_structure_previews_mark_generic_and_dedicated_entries_as_scaffolds() -> None:
+    generic_preview = build_parameter_scaffold_preview(
+        ParameterScaffoldPreviewRequest(parameterStructureKey="sampleParameter")
+    )
+    dedicated_preview = build_parameter_scaffold_preview(
+        ParameterScaffoldPreviewRequest(parameterStructureKey="numberGlobal")
+    )
+
+    assert sum(
+        'implementationStatus: "scaffold"' in file.content
+        for file in generic_preview.files
+        if file.path.endswith("/index.js")
+    ) == 2
+    assert sum(
+        'implementationStatus: "scaffold"' in file.content
+        for file in dedicated_preview.files
+        if file.path.endswith("/index.js")
+    ) == 2

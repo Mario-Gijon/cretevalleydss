@@ -4,7 +4,8 @@
 // structure.
 // Keep unchanged: key must match the folder name and frontend entry so runtime
 // registry lookup keeps working.
-// Safe to edit: implementationStatus after the real validator is complete.
+// Change implementationStatus to "ready" only after the validator is complete
+// and tested.
 
 import { {{ validate_function_name }} } from "./validate.js";
 

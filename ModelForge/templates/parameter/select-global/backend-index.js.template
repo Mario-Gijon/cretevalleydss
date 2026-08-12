@@ -3,6 +3,8 @@ import { validateSelectGlobalDefinition } from "./validateDefinition.js";
 
 export const selectGlobalParameterStructure = Object.freeze({
   key: "selectGlobal",
+  // Change to "ready" only after implementation is complete and tested.
+  implementationStatus: "scaffold",
   validateDefinition: validateSelectGlobalDefinition,
   validateAndNormalize: validateAndNormalizeSelectGlobal,
 });

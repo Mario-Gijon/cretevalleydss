@@ -9,6 +9,7 @@ import { {{ save_function_name }} } from "./{{ evaluation_structure_key }}.save.
 export const {{ backend_structure_export_name }} = Object.freeze({
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.{{ stage_constant }},
+  // Change to "ready" only after implementation is complete and tested.
   implementationStatus: "scaffold",
   get: {{ get_function_name }},
   save: {{ save_function_name }},{{ remap_criterion_ids_registry_field }}

@@ -18,6 +18,19 @@ const isValidEvaluationStructure = (value) =>
   isNonEmptyString(value.stage) &&
   isReactComponentCandidate(value.View);
 
+const validateImplementationStatus = ({ structure, modulePath }) => {
+  if (!Object.hasOwn(structure, "implementationStatus")) return;
+
+  if (
+    structure.implementationStatus !== "ready" &&
+    structure.implementationStatus !== "scaffold"
+  ) {
+    throw new Error(
+      `${modulePath} implementationStatus must be "ready" or "scaffold" when provided`
+    );
+  }
+};
+
 const validateOptionalCapabilities = ({ structure, modulePath }) => {
   if (
     Object.hasOwn(structure, "buildInitialEvaluation") &&
@@ -57,20 +70,27 @@ const extractEvaluationStructureFromModule = ({ moduleExports, modulePath }) => 
   return structures[0][1];
 };
 
-const buildEvaluationStructureRegistry = () => {
+export const buildEvaluationStructureRegistry = (
+  structureModules = STRUCTURE_MODULES
+) => {
   const registry = {};
-  const modulePaths = Object.keys(STRUCTURE_MODULES).sort((left, right) =>
+  const modulePaths = Object.keys(structureModules).sort((left, right) =>
     left.localeCompare(right)
   );
 
   for (const modulePath of modulePaths) {
     const structure = extractEvaluationStructureFromModule({
-      moduleExports: STRUCTURE_MODULES[modulePath],
+      moduleExports: structureModules[modulePath],
       modulePath,
     });
     const folderName = extractFolderName(modulePath);
 
     validateOptionalCapabilities({ structure, modulePath });
+    validateImplementationStatus({ structure, modulePath });
+
+    if (structure.implementationStatus === "scaffold") {
+      continue;
+    }
 
     if (structure.key !== folderName) {
       throw new Error(
@@ -92,8 +112,14 @@ const buildEvaluationStructureRegistry = () => {
 
 export const EVALUATION_STRUCTURE_REGISTRY = buildEvaluationStructureRegistry();
 
+export const getEvaluationStructureEntryFromRegistry = (registry, structureKey) =>
+  registry[structureKey] ?? null;
+
 export const getEvaluationStructureEntry = (structureKey) =>
-  EVALUATION_STRUCTURE_REGISTRY[structureKey] ?? null;
+  getEvaluationStructureEntryFromRegistry(
+    EVALUATION_STRUCTURE_REGISTRY,
+    structureKey
+  );
 
 export const getEvaluationStructureEntryForStage = ({ structureKey, stage }) => {
   const entry = getEvaluationStructureEntry(structureKey);

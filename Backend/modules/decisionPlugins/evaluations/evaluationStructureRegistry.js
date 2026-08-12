@@ -28,6 +28,19 @@ const isValidEvaluationStructure = (value) => {
   );
 };
 
+const validateImplementationStatus = ({ structure, modulePath }) => {
+  if (!Object.hasOwn(structure, "implementationStatus")) return;
+
+  if (
+    structure.implementationStatus !== "ready" &&
+    structure.implementationStatus !== "scaffold"
+  ) {
+    throw new Error(
+      `${modulePath} implementationStatus must be "ready" or "scaffold" when provided`
+    );
+  }
+};
+
 const assertValidEvaluationStructure = ({ structure, modulePath }) => {
   if (!isValidEvaluationStructure(structure)) {
     throw new Error(
@@ -53,8 +66,10 @@ const extractEvaluationStructureFromModule = ({ moduleExports, modulePath }) => 
   return structures[0][1];
 };
 
-const loadEvaluationStructures = async () => {
-  const entries = fs.readdirSync(STRUCTURES_ROOT, { withFileTypes: true });
+export const loadEvaluationStructures = async ({
+  structuresRoot = STRUCTURES_ROOT,
+} = {}) => {
+  const entries = fs.readdirSync(structuresRoot, { withFileTypes: true });
   const structureDirs = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
@@ -63,7 +78,7 @@ const loadEvaluationStructures = async () => {
   const registry = {};
 
   for (const folderName of structureDirs) {
-    const modulePath = path.join(STRUCTURES_ROOT, folderName, "index.js");
+    const modulePath = path.join(structuresRoot, folderName, "index.js");
 
     if (!fs.existsSync(modulePath)) {
       throw new Error(
@@ -78,6 +93,11 @@ const loadEvaluationStructures = async () => {
     });
 
     assertValidEvaluationStructure({ structure, modulePath });
+    validateImplementationStatus({ structure, modulePath });
+
+    if (structure.implementationStatus === "scaffold") {
+      continue;
+    }
 
     if (structure.key !== folderName) {
       throw new Error(

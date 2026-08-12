@@ -3,6 +3,8 @@ import { validateNumberGlobalDefinition } from "./validateDefinition.js";
 
 export const numberGlobalParameterStructure = Object.freeze({
   key: "numberGlobal",
+  // Change to "ready" only after implementation is complete and tested.
+  implementationStatus: "scaffold",
   validateDefinition: validateNumberGlobalDefinition,
   validateAndNormalize: validateAndNormalizeNumberGlobal,
 });

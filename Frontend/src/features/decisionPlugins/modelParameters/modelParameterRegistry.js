@@ -20,6 +20,19 @@ const isValidParameterFieldEntry = (value) =>
   isReactComponentCandidate(value.FieldComponent) &&
   isReactComponentCandidate(value.ReadOnlyComponent);
 
+const validateImplementationStatus = ({ entry, modulePath }) => {
+  if (!Object.hasOwn(entry, "implementationStatus")) return;
+
+  if (
+    entry.implementationStatus !== "ready" &&
+    entry.implementationStatus !== "scaffold"
+  ) {
+    throw new Error(
+      `[modelParameters] ${modulePath} implementationStatus must be "ready" or "scaffold" when provided.`
+    );
+  }
+};
+
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/fields\/([^/]+)\/index\.js$/);
 
@@ -50,18 +63,26 @@ const extractParameterFieldEntryFromModule = ({ moduleExports, modulePath }) => 
   return entries[0][1];
 };
 
-const buildParameterFieldRegistry = () => {
+export const buildParameterFieldRegistry = (
+  parameterFieldModules = PARAMETER_FIELD_MODULES
+) => {
   const registry = {};
-  const modulePaths = Object.keys(PARAMETER_FIELD_MODULES).sort((left, right) =>
+  const modulePaths = Object.keys(parameterFieldModules).sort((left, right) =>
     left.localeCompare(right)
   );
 
   for (const modulePath of modulePaths) {
     const entry = extractParameterFieldEntryFromModule({
-      moduleExports: PARAMETER_FIELD_MODULES[modulePath],
+      moduleExports: parameterFieldModules[modulePath],
       modulePath,
     });
     const folderName = extractFolderName(modulePath);
+
+    validateImplementationStatus({ entry, modulePath });
+
+    if (entry.implementationStatus === "scaffold") {
+      continue;
+    }
 
     if (entry.key !== folderName) {
       throw new Error(
@@ -83,7 +104,7 @@ const buildParameterFieldRegistry = () => {
 
 export const PARAMETER_FIELD_REGISTRY = buildParameterFieldRegistry();
 
-export const resolveParameterFieldEntry = (parameter) => {
+export const resolveParameterFieldEntryFromRegistry = (registry, parameter) => {
   const parameterKey =
     typeof parameter?.key === "string" && parameter.key.trim()
       ? parameter.key
@@ -99,7 +120,7 @@ export const resolveParameterFieldEntry = (parameter) => {
     );
   }
 
-  const entry = PARAMETER_FIELD_REGISTRY[structureKey];
+  const entry = registry[structureKey];
 
   if (!entry) {
     throw new Error(
@@ -109,3 +130,6 @@ export const resolveParameterFieldEntry = (parameter) => {
 
   return entry;
 };
+
+export const resolveParameterFieldEntry = (parameter) =>
+  resolveParameterFieldEntryFromRegistry(PARAMETER_FIELD_REGISTRY, parameter);

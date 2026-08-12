@@ -3,6 +3,8 @@ import NumberCriterionParameterReadOnly from "./NumberCriterionParameterReadOnly
 
 export const numberCriterionParameterField = Object.freeze({
   key: "numberCriterion",
+  // Change to "ready" only after implementation is complete and tested.
+  implementationStatus: "scaffold",
   FieldComponent: NumberCriterionParameterField,
   ReadOnlyComponent: NumberCriterionParameterReadOnly,
 });

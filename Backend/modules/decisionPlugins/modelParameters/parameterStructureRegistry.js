@@ -26,6 +26,19 @@ const isValidParameterStructure = (value) => {
   );
 };
 
+const validateImplementationStatus = ({ structure, modulePath }) => {
+  if (!Object.hasOwn(structure, "implementationStatus")) return;
+
+  if (
+    structure.implementationStatus !== "ready" &&
+    structure.implementationStatus !== "scaffold"
+  ) {
+    throw new Error(
+      `${modulePath} implementationStatus must be "ready" or "scaffold" when provided`
+    );
+  }
+};
+
 const extractParameterStructureFromModule = ({ moduleExports, modulePath }) => {
   const structures = Object.entries(moduleExports).filter(([, value]) =>
     isValidParameterStructure(value)
@@ -46,8 +59,10 @@ const extractParameterStructureFromModule = ({ moduleExports, modulePath }) => {
   return structures[0][1];
 };
 
-const loadParameterStructures = async () => {
-  const entries = fs.readdirSync(STRUCTURES_ROOT, { withFileTypes: true });
+export const loadParameterStructures = async ({
+  structuresRoot = STRUCTURES_ROOT,
+} = {}) => {
+  const entries = fs.readdirSync(structuresRoot, { withFileTypes: true });
   const structureDirs = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
@@ -56,7 +71,7 @@ const loadParameterStructures = async () => {
   const registry = new Map();
 
   for (const folderName of structureDirs) {
-    const modulePath = path.join(STRUCTURES_ROOT, folderName, "index.js");
+    const modulePath = path.join(structuresRoot, folderName, "index.js");
 
     if (!fs.existsSync(modulePath)) {
       throw new Error(
@@ -69,6 +84,11 @@ const loadParameterStructures = async () => {
       moduleExports,
       modulePath,
     });
+    validateImplementationStatus({ structure, modulePath });
+
+    if (structure.implementationStatus === "scaffold") {
+      continue;
+    }
 
     if (structure.key !== folderName) {
       throw new Error(

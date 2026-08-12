@@ -3,6 +3,8 @@ import NumberGlobalParameterReadOnly from "./NumberGlobalParameterReadOnly";
 
 export const numberGlobalParameterField = Object.freeze({
   key: "numberGlobal",
+  // Change to "ready" only after implementation is complete and tested.
+  implementationStatus: "scaffold",
   FieldComponent: NumberGlobalParameterField,
   ReadOnlyComponent: NumberGlobalParameterReadOnly,
 });
