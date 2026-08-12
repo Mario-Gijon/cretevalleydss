@@ -105,8 +105,17 @@ export const enrichModelForgeAssetsWithUsage = async (
         ? resolvedUsageCount
         : 0;
       const usedByIssuesCount = usageCount;
+      const protectedByModelForge =
+        item?.protected === true || item?.deletable === false;
+      const modelForgeProtectionReason =
+        typeof item?.deleteDisabledReason === "string" &&
+        item.deleteDisabledReason.trim()
+          ? item.deleteDisabledReason.trim()
+          : "This asset is protected and cannot be deleted through Model Forge.";
       const deleteBlockedReason =
-        usageCount > 0
+        protectedByModelForge
+          ? modelForgeProtectionReason
+          : usageCount > 0
           ? "This asset is used by existing issues and cannot be deleted."
           : "";
 
@@ -115,7 +124,7 @@ export const enrichModelForgeAssetsWithUsage = async (
         usageCount,
         usedByIssuesCount,
         deleteBlockedReason,
-        deletable: usageCount === 0,
+        deletable: !protectedByModelForge && usageCount === 0,
       };
     })
   );

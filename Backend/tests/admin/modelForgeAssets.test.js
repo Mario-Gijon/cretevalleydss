@@ -83,6 +83,34 @@ describe("admin Model Forge assets", () => {
     });
   });
 
+  it("preserves Model Forge protection metadata when usage is zero", async () => {
+    await expect(
+      enrichModelForgeAssetsWithUsage(
+        [
+          {
+            kind: "model",
+            key: "core_model",
+            protected: true,
+            deletable: false,
+            deleteDisabledReason: "This model is not an active Model Forge scaffold.",
+          },
+        ],
+        { countUsage: async () => 0 }
+      )
+    ).resolves.toEqual([
+      {
+        kind: "model",
+        key: "core_model",
+        protected: true,
+        deletable: false,
+        deleteDisabledReason: "This model is not an active Model Forge scaffold.",
+        deleteBlockedReason: "This model is not an active Model Forge scaffold.",
+        usageCount: 0,
+        usedByIssuesCount: 0,
+      },
+    ]);
+  });
+
   it("blocks deletion when an asset is referenced by issues", async () => {
     const deleteAsset = vi.fn();
 
