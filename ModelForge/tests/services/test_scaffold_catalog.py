@@ -9,6 +9,10 @@ def _write_index(root: Path, relative_path: str, source: str = "") -> None:
     path.write_text(source, encoding="utf-8")
 
 
+def _make_structure_directory(root: Path, relative_path: str) -> None:
+    (root / relative_path).mkdir(parents=True, exist_ok=True)
+
+
 def _parameter_item(catalog, key: str):
     return next(item for item in catalog.parameterStructures if item.key == key)
 
@@ -32,6 +36,16 @@ def test_catalog_aggregates_parameter_structure_lifecycle_for_reuse(tmp_path: Pa
     _write_index(tmp_path, f"{backend}/invalid", 'implementationStatus: "draft"')
     _write_index(tmp_path, f"{frontend}/invalid", 'implementationStatus: "ready"')
     _write_index(tmp_path, f"{backend}/partial", 'implementationStatus: "ready"')
+    _make_structure_directory(tmp_path, f"{backend}/missingBoth")
+    _make_structure_directory(tmp_path, f"{frontend}/missingBoth")
+    _write_index(tmp_path, f"{backend}/missingFrontend")
+    _make_structure_directory(tmp_path, f"{frontend}/missingFrontend")
+    _write_index(
+        tmp_path,
+        f"{backend}/commented",
+        '// implementationStatus: "scaffold"\n',
+    )
+    _write_index(tmp_path, f"{frontend}/commented", "/*\n * implementationStatus: \"scaffold\"\n */\n")
 
     catalog = build_scaffold_catalog(tmp_path)
 
@@ -48,6 +62,12 @@ def test_catalog_aggregates_parameter_structure_lifecycle_for_reuse(tmp_path: Pa
     assert _parameter_item(catalog, "invalid").available is False
     assert _parameter_item(catalog, "partial").status == "partial"
     assert _parameter_item(catalog, "partial").available is False
+    assert _parameter_item(catalog, "missingBoth").implementationStatus == "invalid"
+    assert _parameter_item(catalog, "missingBoth").available is False
+    assert _parameter_item(catalog, "missingFrontend").implementationStatus == "invalid"
+    assert _parameter_item(catalog, "missingFrontend").available is False
+    assert _parameter_item(catalog, "commented").implementationStatus == "ready"
+    assert _parameter_item(catalog, "commented").available is True
 
 
 def test_catalog_requires_ready_evaluation_lifecycle_for_stage_availability(
@@ -63,6 +83,14 @@ def test_catalog_requires_ready_evaluation_lifecycle_for_stage_availability(
     _write_index(tmp_path, f"{frontend}/scaffold", 'implementationStatus: "scaffold"')
     _write_index(tmp_path, f"{backend}/invalid", stage + 'implementationStatus: null')
     _write_index(tmp_path, f"{frontend}/invalid")
+    _make_structure_directory(tmp_path, f"{backend}/missingIndex")
+    _make_structure_directory(tmp_path, f"{frontend}/missingIndex")
+    _write_index(
+        tmp_path,
+        f"{backend}/commented",
+        stage + '// implementationStatus: "scaffold"\n',
+    )
+    _write_index(tmp_path, f"{frontend}/commented")
 
     catalog = build_scaffold_catalog(tmp_path)
 
@@ -71,3 +99,7 @@ def test_catalog_requires_ready_evaluation_lifecycle_for_stage_availability(
     assert _evaluation_item(catalog, "scaffold").availableForAlternativeEvaluation is False
     assert _evaluation_item(catalog, "invalid").implementationStatus == "invalid"
     assert _evaluation_item(catalog, "invalid").availableForAlternativeEvaluation is False
+    assert _evaluation_item(catalog, "missingIndex").implementationStatus == "invalid"
+    assert _evaluation_item(catalog, "missingIndex").availableForAlternativeEvaluation is False
+    assert _evaluation_item(catalog, "commented").implementationStatus == "ready"
+    assert _evaluation_item(catalog, "commented").availableForAlternativeEvaluation is True

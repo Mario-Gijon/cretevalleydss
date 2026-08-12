@@ -26,7 +26,10 @@ EVALUATION_FRONTEND_ROOT = Path(
 )
 
 STAGE_PATTERN = re.compile(r"stage:\s*EVALUATION_STAGES\.([A-Z_]+)")
-IMPLEMENTATION_STATUS_PATTERN = re.compile(r"implementationStatus\s*:\s*([^,\n}\r]+)")
+IMPLEMENTATION_STATUS_PATTERN = re.compile(
+    r"^\s*(?!//|/\*|\*)implementationStatus\s*:\s*([^,\n}\r]+)",
+    re.MULTILINE,
+)
 
 STAGE_MAP = {
     "ALTERNATIVE_EVALUATION": "alternativeEvaluation",
@@ -136,8 +139,8 @@ def _collect_union_folder_keys(*roots: Path) -> list[str]:
 
 
 def _read_implementation_status(index_path: Path) -> str:
-    if not index_path.exists():
-        return "ready"
+    if not index_path.is_file():
+        return "invalid"
 
     match = IMPLEMENTATION_STATUS_PATTERN.search(index_path.read_text(encoding="utf-8"))
     if not match:
@@ -160,11 +163,11 @@ def _aggregate_implementation_status(*statuses: str) -> str:
 
 
 def _read_evaluation_structure_metadata(index_path: Path) -> dict[str, str | None]:
-    if not index_path.exists():
+    if not index_path.is_file():
         return {
             "stage": None,
             "stageConstant": None,
-            "implementationStatus": None,
+            "implementationStatus": "invalid",
         }
 
     source = index_path.read_text(encoding="utf-8")
