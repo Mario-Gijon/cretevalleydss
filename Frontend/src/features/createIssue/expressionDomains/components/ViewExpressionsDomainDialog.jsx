@@ -325,6 +325,12 @@ export const ViewExpressionsDomainDialog = ({
                         Ordinal
                       </MenuItem>,
                       <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.twoTuple}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.twoTuple}
+                      >
+                        2-Tuple
+                      </MenuItem>,
+                      <MenuItem
                         key={MANAGE_DOMAIN_SUBTYPE_FILTERS.fuzzy}
                         value={MANAGE_DOMAIN_SUBTYPE_FILTERS.fuzzy}
                       >

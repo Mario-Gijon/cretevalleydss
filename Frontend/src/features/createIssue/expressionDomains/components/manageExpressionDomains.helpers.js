@@ -1,5 +1,9 @@
 const NUMERIC_TYPE_KEYS = Object.freeze(["numericContinuous", "numericDiscrete"]);
-const LINGUISTIC_TYPE_KEYS = Object.freeze(["linguisticOrdinal", "linguisticFuzzy"]);
+const LINGUISTIC_TYPE_KEYS = Object.freeze([
+  "linguisticOrdinal",
+  "linguistic2Tuple",
+  "linguisticFuzzy",
+]);
 
 export const MANAGE_DOMAIN_FAMILY_FILTERS = Object.freeze({
   all: "all",
@@ -13,6 +17,7 @@ export const MANAGE_DOMAIN_SUBTYPE_FILTERS = Object.freeze({
   discrete: "discrete",
   allLinguistic: "allLinguistic",
   ordinal: "ordinal",
+  twoTuple: "twoTuple",
   fuzzy: "fuzzy",
 });
 
@@ -52,6 +57,8 @@ const matchesSubtypeFilter = (domain, subtypeFilter) => {
       return typeKey === "numericDiscrete";
     case MANAGE_DOMAIN_SUBTYPE_FILTERS.ordinal:
       return typeKey === "linguisticOrdinal";
+    case MANAGE_DOMAIN_SUBTYPE_FILTERS.twoTuple:
+      return typeKey === "linguistic2Tuple";
     case MANAGE_DOMAIN_SUBTYPE_FILTERS.fuzzy:
       return typeKey === "linguisticFuzzy";
     case MANAGE_DOMAIN_SUBTYPE_FILTERS.allNumeric:
@@ -100,4 +107,3 @@ export const filterManagedExpressionDomains = ({
     return matchesSubtypeFilter(domain, subtypeFilter);
   });
 };
-

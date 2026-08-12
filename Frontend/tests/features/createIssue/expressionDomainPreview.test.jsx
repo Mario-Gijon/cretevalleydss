@@ -110,6 +110,32 @@ describe("ExpressionDomainPreview", () => {
     expect(document.querySelectorAll(".MuiDivider-root").length).toBeGreaterThan(0);
   });
 
+  it("reuses the ordered-label preview for a linguistic 2-tuple definition", () => {
+    renderWithProviders(
+      <ExpressionDomainPreview
+        domain={{
+          typeKey: "linguistic2Tuple",
+          definition: {
+            labelCount: 5,
+            labels: [
+              { key: "very_low", label: "Very Low", index: 0 },
+              { key: "low", label: "Low", index: 1 },
+              { key: "medium", label: "Medium", index: 2 },
+              { key: "high", label: "High", index: 3 },
+              { key: "very_high", label: "Very High", index: 4 },
+            ],
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("ordered-linguistic-preview")).toBeInTheDocument();
+    expect(screen.getAllByTestId("ordered-linguistic-preview-item")).toHaveLength(5);
+    expect(screen.getByText("Very Low")).toBeInTheDocument();
+    expect(screen.getByText("Very High")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/alpha/i)).not.toBeInTheDocument();
+  });
+
   it("renders the canonical bounded five-label fuzzy scale without chart changes", () => {
     renderWithProviders(
       <ExpressionDomainPreview

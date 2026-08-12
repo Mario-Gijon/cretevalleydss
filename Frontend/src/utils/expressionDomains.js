@@ -155,6 +155,9 @@ export const isNumericDiscreteExpressionDomain = (domain) =>
 export const isLinguisticOrdinalExpressionDomain = (domain) =>
   getExpressionDomainTypeKey(domain) === "linguisticOrdinal";
 
+export const isLinguistic2TupleExpressionDomain = (domain) =>
+  getExpressionDomainTypeKey(domain) === "linguistic2Tuple";
+
 export const isLinguisticFuzzyExpressionDomain = (domain) =>
   getExpressionDomainTypeKey(domain) === "linguisticFuzzy";
 
@@ -209,6 +212,10 @@ export const getExpressionDomainDisplayMeta = (domain) => {
     descriptor = labelCount
       ? `Ordered linguistic (${labelCount} labels)`
       : "Ordered linguistic";
+  } else if (typeKey === "linguistic2Tuple") {
+    descriptor = labelCount
+      ? `Linguistic 2-Tuple (${labelCount} labels)`
+      : "Linguistic 2-Tuple";
   } else if (typeKey === "linguisticFuzzy") {
     const labelCountText = labelCount ? ` (${labelCount} labels)` : "";
     descriptor = membershipFunction

@@ -322,6 +322,7 @@ export const ExpressionDomainPreview = ({ domain }) => {
     case "numericDiscrete":
       return renderNumericDiscretePreview(domain);
     case "linguisticOrdinal":
+    case "linguistic2Tuple":
       return renderLinguisticOrdinalPreview(domain);
     case "linguisticFuzzy":
       return renderLinguisticFuzzyPreview(domain);

@@ -86,7 +86,7 @@ export const CreateExpressionDomainDialog = ({
     ["numericContinuous", "numericDiscrete"].includes(entry.key)
   );
   const linguisticTypeEntries = typeEntries.filter((entry) =>
-    ["linguisticOrdinal", "linguisticFuzzy"].includes(entry.key)
+    ["linguisticOrdinal", "linguistic2Tuple", "linguisticFuzzy"].includes(entry.key)
   );
 
   const payload = {

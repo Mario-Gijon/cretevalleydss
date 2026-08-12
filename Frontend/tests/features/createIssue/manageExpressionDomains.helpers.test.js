@@ -35,6 +35,21 @@ const domainsFixture = [
     __domainScope: "user",
   },
   {
+    _id: "user-two-tuple",
+    name: "Fine preference scale",
+    typeKey: "linguistic2Tuple",
+    definition: {
+      labels: [
+        { key: "very_low", label: "Very Low", index: 0 },
+        { key: "low", label: "Low", index: 1 },
+        { key: "medium", label: "Medium", index: 2 },
+        { key: "high", label: "High", index: 3 },
+        { key: "very_high", label: "Very High", index: 4 },
+      ],
+    },
+    __domainScope: "user",
+  },
+  {
     _id: "user-fuzzy",
     name: "Suitability Cloud",
     typeKey: "linguisticFuzzy",
@@ -74,6 +89,7 @@ describe("manageExpressionDomains.helpers", () => {
       "Global Cost Range",
       "Priority Ladder",
       "Ticket Count",
+      "Fine preference scale",
       "Suitability Cloud",
     ]);
   });
@@ -84,7 +100,7 @@ describe("manageExpressionDomains.helpers", () => {
     ).toEqual(["Global Cost Range", "Ticket Count"]);
     expect(
       runFilter({ familyFilter: MANAGE_DOMAIN_FAMILY_FILTERS.linguistic })
-    ).toEqual(["Priority Ladder", "Suitability Cloud"]);
+    ).toEqual(["Priority Ladder", "Fine preference scale", "Suitability Cloud"]);
   });
 
   it("filters numeric subtypes exactly", () => {
@@ -112,6 +128,12 @@ describe("manageExpressionDomains.helpers", () => {
     expect(
       runFilter({
         familyFilter: MANAGE_DOMAIN_FAMILY_FILTERS.linguistic,
+        subtypeFilter: MANAGE_DOMAIN_SUBTYPE_FILTERS.twoTuple,
+      })
+    ).toEqual(["Fine preference scale"]);
+    expect(
+      runFilter({
+        familyFilter: MANAGE_DOMAIN_FAMILY_FILTERS.linguistic,
         subtypeFilter: MANAGE_DOMAIN_SUBTYPE_FILTERS.fuzzy,
       })
     ).toEqual(["Suitability Cloud"]);
@@ -133,8 +155,7 @@ describe("manageExpressionDomains.helpers", () => {
       familyFilter: MANAGE_DOMAIN_FAMILY_FILTERS.linguistic,
     });
 
-    expect(result).toEqual(["Priority Ladder", "Suitability Cloud"]);
+    expect(result).toEqual(["Priority Ladder", "Fine preference scale", "Suitability Cloud"]);
     expect(domainsFixture.map((domain) => domain.name)).toEqual(sourceCopy);
   });
 });
-

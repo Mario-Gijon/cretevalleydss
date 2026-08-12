@@ -84,10 +84,29 @@ const fuzzyDomainFixture = {
   },
 };
 
+const twoTupleDomainFixture = {
+  _id: "two-tuple-domain-1",
+  name: "Fine preference scale",
+  isGlobal: false,
+  user: "user-1",
+  typeKey: "linguistic2Tuple",
+  definition: {
+    labelCount: 5,
+    labels: [
+      { key: "very_low", label: "Very Low", index: 0 },
+      { key: "low", label: "Low", index: 1 },
+      { key: "medium", label: "Medium", index: 2 },
+      { key: "high", label: "High", index: 3 },
+      { key: "very_high", label: "Very High", index: 4 },
+    ],
+  },
+};
+
 const allDomainFixtures = [
   globalDomainFixture,
   userDomainFixture,
   ordinalDomainFixture,
+  twoTupleDomainFixture,
   fuzzyDomainFixture,
   largeDiscreteDomainFixture,
 ];
@@ -111,6 +130,7 @@ describe("ViewExpressionsDomainDialog", () => {
           expressionDomains: [
             userDomainFixture,
             ordinalDomainFixture,
+            twoTupleDomainFixture,
             fuzzyDomainFixture,
             largeDiscreteDomainFixture,
           ],
@@ -128,8 +148,8 @@ describe("ViewExpressionsDomainDialog", () => {
     expect(screen.queryByText("Mine")).not.toBeInTheDocument();
     expect(screen.queryByText("Edit")).not.toBeInTheDocument();
     expect(screen.queryByText("Delete")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Edit domain" })).toHaveLength(4);
-    expect(screen.getAllByRole("button", { name: "Delete domain" })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: "Edit domain" })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: "Delete domain" })).toHaveLength(5);
 
     expect(screen.getByTestId("expression-domain-family-layout")).toBeInTheDocument();
     expect(screen.getByTestId("expression-domain-numeric-column")).toBeInTheDocument();
@@ -147,7 +167,11 @@ describe("ViewExpressionsDomainDialog", () => {
       "My discrete domain",
       "Extended discrete domain",
     ]);
-    expect(linguisticNames).toEqual(["Priority scale", "Fuzzy suitability"]);
+    expect(linguisticNames).toEqual([
+      "Priority scale",
+      "Fine preference scale",
+      "Fuzzy suitability",
+    ]);
     expect(
       screen.getByText(`${totalDomainCount} of ${totalDomainCount} domains`)
     ).toBeInTheDocument();
@@ -194,6 +218,7 @@ describe("ViewExpressionsDomainDialog", () => {
           expressionDomains: [
             userDomainFixture,
             ordinalDomainFixture,
+            twoTupleDomainFixture,
             fuzzyDomainFixture,
             largeDiscreteDomainFixture,
           ],
@@ -225,6 +250,12 @@ describe("ViewExpressionsDomainDialog", () => {
     await user.click(screen.getByLabelText("Family"));
     await user.click(screen.getByRole("option", { name: "Linguistic" }));
     expect(screen.getByLabelText("Subtype")).toHaveTextContent("All linguistic");
+    await user.click(screen.getByLabelText("Subtype"));
+    expect(screen.getByRole("option", { name: "2-Tuple" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "2-Tuple" }));
+    expect(screen.getByText("Fine preference scale")).toBeInTheDocument();
+    expect(screen.queryByText("Priority scale")).not.toBeInTheDocument();
+    expect(screen.queryByText("Fuzzy suitability")).not.toBeInTheDocument();
     expect(screen.getByTestId("expression-domain-linguistic-only-layout")).toBeInTheDocument();
     expect(screen.queryByTestId("expression-domain-numeric-only-layout")).not.toBeInTheDocument();
 
@@ -248,6 +279,7 @@ describe("ViewExpressionsDomainDialog", () => {
           expressionDomains: [
             userDomainFixture,
             ordinalDomainFixture,
+            twoTupleDomainFixture,
             fuzzyDomainFixture,
             largeDiscreteDomainFixture,
           ],
@@ -264,14 +296,15 @@ describe("ViewExpressionsDomainDialog", () => {
     expect(screen.queryByText(/^Min$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Max$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Step$/)).not.toBeInTheDocument();
-    expect(screen.getByTestId("ordered-linguistic-preview")).toHaveAttribute("data-mobile-direction", "column");
-    expect(screen.getByTestId("ordered-linguistic-preview")).toHaveAttribute("data-desktop-direction", "row");
-    expect(screen.getByText("1:")).toBeInTheDocument();
-    expect(screen.getByText("2:")).toBeInTheDocument();
-    expect(screen.getByText("3:")).toBeInTheDocument();
-    expect(screen.getByText("Low")).toBeInTheDocument();
-    expect(screen.getByText("Medium")).toBeInTheDocument();
-    expect(screen.getByText("High")).toBeInTheDocument();
+    const ordinalPreview = screen.getAllByTestId("ordered-linguistic-preview")[0];
+    expect(ordinalPreview).toHaveAttribute("data-mobile-direction", "column");
+    expect(ordinalPreview).toHaveAttribute("data-desktop-direction", "row");
+    expect(within(ordinalPreview).getByText("1:")).toBeInTheDocument();
+    expect(within(ordinalPreview).getByText("2:")).toBeInTheDocument();
+    expect(within(ordinalPreview).getByText("3:")).toBeInTheDocument();
+    expect(within(ordinalPreview).getByText("Low")).toBeInTheDocument();
+    expect(within(ordinalPreview).getByText("Medium")).toBeInTheDocument();
+    expect(within(ordinalPreview).getByText("High")).toBeInTheDocument();
     expect(screen.getByTestId("fuzzy-preview-chart")).toBeInTheDocument();
     expect(screen.getByTestId("fuzzy-preview-chart")).toHaveAttribute(
       "data-height",

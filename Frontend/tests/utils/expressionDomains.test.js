@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   expressionDomainMatchesSupportedEntry,
   getExpressionDomainFamily,
+  getExpressionDomainDisplayMeta,
+  isLinguistic2TupleExpressionDomain,
 } from "../../src/utils/expressionDomains.js";
 
 describe("expressionDomainMatchesSupportedEntry", () => {
@@ -20,6 +22,27 @@ describe("expressionDomainMatchesSupportedEntry", () => {
         family: "numeric",
       })
     ).toBe("linguistic");
+  });
+
+  it("identifies linguistic 2-tuple domains and gives them a label-count descriptor", () => {
+    const domain = {
+      name: "Preference scale",
+      typeKey: "linguistic2Tuple",
+      definition: { labelCount: 5 },
+    };
+
+    expect(isLinguistic2TupleExpressionDomain(domain)).toBe(true);
+    expect(isLinguistic2TupleExpressionDomain({ typeKey: "linguisticOrdinal" })).toBe(false);
+    expect(getExpressionDomainDisplayMeta(domain).descriptor).toBe(
+      "Linguistic 2-Tuple (5 labels)"
+    );
+    expect(
+      getExpressionDomainDisplayMeta({
+        name: "Preference scale",
+        typeKey: "linguistic2Tuple",
+        definition: {},
+      }).descriptor
+    ).toBe("Linguistic 2-Tuple");
   });
 
   it("matches scalar constraints", () => {
