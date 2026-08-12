@@ -28,6 +28,7 @@ it("keeps only the canonical operation names", () => {
     [
       "buildEmptyPayload.js",
       "normalizePayload.js",
+      "numericPrecision.js",
       "resolveItems.js",
       "validatePayloadShape.js",
     ].sort()

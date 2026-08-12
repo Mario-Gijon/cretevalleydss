@@ -6,7 +6,7 @@ const mockGetEvaluationStructureEntryForStage = vi.hoisted(() => vi.fn());
 const mockEvaluationStructureDialog = vi.hoisted(() => vi.fn());
 
 vi.mock(
-  "../../../src/features/decisionPlugins/evaluations",
+  "../../../src/features/decisionPlugins/evaluations/evaluationStructureRegistry",
   async (importOriginal) => {
     const actual = await importOriginal();
 
