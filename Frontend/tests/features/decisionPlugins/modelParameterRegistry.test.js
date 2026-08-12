@@ -150,6 +150,22 @@ describe("model-parameter Decision Plugin public registry", () => {
       buildParameterFieldRegistry(
         buildModules([
           {
+            folderName: "scaffoldFolder",
+            entry: {
+              key: "wrongKey",
+              implementationStatus: "scaffold",
+              FieldComponent,
+              ReadOnlyComponent,
+            },
+          },
+        ])
+      )
+    ).toThrow("must match folder name");
+
+    expect(() =>
+      buildParameterFieldRegistry(
+        buildModules([
+          {
             folderName: "folderName",
             entry: {
               key: "differentKey",

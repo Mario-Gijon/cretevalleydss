@@ -86,14 +86,14 @@ export const loadParameterStructures = async ({
     });
     validateImplementationStatus({ structure, modulePath });
 
-    if (structure.implementationStatus === "scaffold") {
-      continue;
-    }
-
     if (structure.key !== folderName) {
       throw new Error(
         `${modulePath} structure key '${structure.key}' must match folder name '${folderName}'`
       );
+    }
+
+    if (structure.implementationStatus === "scaffold") {
+      continue;
     }
 
     if (registry.has(structure.key)) {

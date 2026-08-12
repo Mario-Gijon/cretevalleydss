@@ -79,7 +79,7 @@ describe("model parameter structure registry", () => {
     expect(registry.has("scaffold")).toBe(false);
   });
 
-  it("rejects unknown statuses and malformed scaffold structures", async () => {
+  it("rejects unknown statuses, malformed scaffolds, and scaffold key mismatches", async () => {
     const invalidStatusRoot = createTemporaryStructuresRoot();
     writeParameterStructure({
       root: invalidStatusRoot,
@@ -103,5 +103,17 @@ describe("model parameter structure registry", () => {
     await expect(
       loadParameterStructures({ structuresRoot: malformedRoot })
     ).rejects.toThrow("must export exactly one valid parameter structure object");
+
+    const mismatchedScaffoldRoot = createTemporaryStructuresRoot();
+    writeParameterStructure({
+      root: mismatchedScaffoldRoot,
+      folderName: "scaffoldFolder",
+      key: "wrongKey",
+      status: "scaffold",
+    });
+
+    await expect(
+      loadParameterStructures({ structuresRoot: mismatchedScaffoldRoot })
+    ).rejects.toThrow("must match folder name 'scaffoldFolder'");
   });
 });

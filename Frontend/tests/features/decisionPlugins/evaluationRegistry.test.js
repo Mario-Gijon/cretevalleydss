@@ -151,6 +151,22 @@ describe("evaluation Decision Plugin public registry", () => {
       buildEvaluationStructureRegistry(
         buildModules([
           {
+            folderName: "scaffoldFolder",
+            structure: {
+              key: "wrongKey",
+              stage: "alternativeEvaluation",
+              implementationStatus: "scaffold",
+              View,
+            },
+          },
+        ])
+      )
+    ).toThrow("must match folder name");
+
+    expect(() =>
+      buildEvaluationStructureRegistry(
+        buildModules([
+          {
             folderName: "folderName",
             structure: {
               key: "differentKey",

@@ -88,14 +88,14 @@ export const buildEvaluationStructureRegistry = (
     validateOptionalCapabilities({ structure, modulePath });
     validateImplementationStatus({ structure, modulePath });
 
-    if (structure.implementationStatus === "scaffold") {
-      continue;
-    }
-
     if (structure.key !== folderName) {
       throw new Error(
         `${modulePath} structure key '${structure.key}' must match folder name '${folderName}'`
       );
+    }
+
+    if (structure.implementationStatus === "scaffold") {
+      continue;
     }
 
     if (Object.hasOwn(registry, structure.key)) {

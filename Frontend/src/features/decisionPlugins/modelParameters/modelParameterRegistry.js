@@ -80,14 +80,14 @@ export const buildParameterFieldRegistry = (
 
     validateImplementationStatus({ entry, modulePath });
 
-    if (entry.implementationStatus === "scaffold") {
-      continue;
-    }
-
     if (entry.key !== folderName) {
       throw new Error(
         `[modelParameters] ${modulePath} entry key "${entry.key}" must match folder name "${folderName}".`
       );
+    }
+
+    if (entry.implementationStatus === "scaffold") {
+      continue;
     }
 
     if (Object.hasOwn(registry, entry.key)) {

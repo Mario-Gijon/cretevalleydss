@@ -57,7 +57,7 @@ describe("evaluation structure registry", () => {
     expect(registry.scaffold).toBeUndefined();
   });
 
-  it("rejects unknown statuses and malformed scaffold structures", async () => {
+  it("rejects unknown statuses, malformed scaffolds, and scaffold key mismatches", async () => {
     const invalidStatusRoot = createTemporaryStructuresRoot();
     writeEvaluationStructure({
       root: invalidStatusRoot,
@@ -81,5 +81,17 @@ describe("evaluation structure registry", () => {
     await expect(
       loadEvaluationStructures({ structuresRoot: malformedRoot })
     ).rejects.toThrow("must export exactly one valid evaluation structure object");
+
+    const mismatchedScaffoldRoot = createTemporaryStructuresRoot();
+    writeEvaluationStructure({
+      root: mismatchedScaffoldRoot,
+      folderName: "scaffoldFolder",
+      key: "wrongKey",
+      status: "scaffold",
+    });
+
+    await expect(
+      loadEvaluationStructures({ structuresRoot: mismatchedScaffoldRoot })
+    ).rejects.toThrow("must match folder name 'scaffoldFolder'");
   });
 });
