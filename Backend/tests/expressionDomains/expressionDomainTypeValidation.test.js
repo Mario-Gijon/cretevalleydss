@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { linguisticFuzzy } from "../../modules/expressionDomains/types/linguisticFuzzy/index.js";
+import { linguistic2Tuple } from "../../modules/expressionDomains/types/linguistic2Tuple/index.js";
 import { linguisticOrdinal } from "../../modules/expressionDomains/types/linguisticOrdinal/index.js";
 import { numericContinuous } from "../../modules/expressionDomains/types/numericContinuous/index.js";
 import { numericDiscrete } from "../../modules/expressionDomains/types/numericDiscrete/index.js";
@@ -85,6 +86,34 @@ describe("expression domain type validation", () => {
         expressionDomain,
       })
     ).toEqual({ labelKey: "medium" });
+  });
+
+  it("validates linguistic2Tuple creation and evaluation", () => {
+    const expressionDomain = linguistic2Tuple.validateCreation({
+      name: "2-tuple domain",
+      definition: {
+        labels: ["Low", "Medium", "High"],
+      },
+    });
+
+    expect(expressionDomain).toEqual({
+      name: "2-tuple domain",
+      typeKey: "linguistic2Tuple",
+      definition: {
+        labelCount: 3,
+        labels: [
+          { key: "low", label: "Low", index: 0 },
+          { key: "medium", label: "Medium", index: 1 },
+          { key: "high", label: "High", index: 2 },
+        ],
+      },
+    });
+    expect(
+      linguistic2Tuple.validateEvaluation({
+        value: { labelKey: "medium", alpha: 0 },
+        expressionDomain,
+      })
+    ).toEqual({ labelKey: "medium", alpha: 0 });
   });
 
   it("validates linguisticFuzzy creation and evaluation", () => {

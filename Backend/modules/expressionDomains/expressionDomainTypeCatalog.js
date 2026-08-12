@@ -1,4 +1,5 @@
 import { createBadRequestError } from "../../utils/common/errors.js";
+import { linguistic2Tuple } from "./types/linguistic2Tuple/index.js";
 import { linguisticFuzzy } from "./types/linguisticFuzzy/index.js";
 import { linguisticOrdinal } from "./types/linguisticOrdinal/index.js";
 import { numericContinuous } from "./types/numericContinuous/index.js";
@@ -8,6 +9,7 @@ export const EXPRESSION_DOMAIN_TYPE_CATALOG = Object.freeze({
   numericContinuous,
   numericDiscrete,
   linguisticOrdinal,
+  linguistic2Tuple,
   linguisticFuzzy,
 });
 
