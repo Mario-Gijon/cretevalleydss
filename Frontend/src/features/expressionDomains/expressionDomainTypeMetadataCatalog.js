@@ -30,6 +30,15 @@ const ORDERED_EXPRESSION_DOMAIN_TYPE_METADATA_ENTRIES = Object.freeze([
     },
   }),
   Object.freeze({
+    key: "linguistic2Tuple",
+    label: "Linguistic 2-Tuple",
+    description: "Ordered linguistic labels with symbolic translation.",
+    family: "linguistic",
+    constraintExample: {
+      labelCount: [3, 5, 7],
+    },
+  }),
+  Object.freeze({
     key: "linguisticFuzzy",
     label: "Fuzzy linguistic",
     description: "Linguistic labels represented with membership function values.",

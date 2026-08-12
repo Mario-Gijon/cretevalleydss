@@ -11,17 +11,18 @@ const EXPECTED_TYPE_KEYS = [
   "numericContinuous",
   "numericDiscrete",
   "linguisticOrdinal",
+  "linguistic2Tuple",
   "linguisticFuzzy",
 ];
 
 describe("expression domain type catalog", () => {
-  it("lists the four core entries in the expected order", () => {
+  it("lists the five core entries in the expected order", () => {
     expect(listExpressionDomainTypes().map((entry) => entry.key)).toEqual(
       EXPECTED_TYPE_KEYS
     );
   });
 
-  it("registers exactly the four supported keys", () => {
+  it("registers exactly the five supported keys", () => {
     expect(Object.keys(EXPRESSION_DOMAIN_TYPE_CATALOG)).toEqual(
       EXPECTED_TYPE_KEYS
     );
