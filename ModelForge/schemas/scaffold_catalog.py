@@ -8,6 +8,7 @@ class CatalogParameterStructureItem(BaseModel):
     status: Literal["ready", "partial"]
     backendExists: bool
     frontendExists: bool
+    implementationStatus: Literal["ready", "scaffold", "invalid"] = "ready"
     available: bool
 
 
@@ -18,7 +19,7 @@ class CatalogEvaluationStructureItem(BaseModel):
     status: Literal["ready", "partial"]
     backendExists: bool
     frontendExists: bool
-    implementationStatus: Literal["ready", "scaffold"] = "ready"
+    implementationStatus: Literal["ready", "scaffold", "invalid"] = "ready"
     availableForAlternativeEvaluation: bool
     availableForCriteriaWeighting: bool
 

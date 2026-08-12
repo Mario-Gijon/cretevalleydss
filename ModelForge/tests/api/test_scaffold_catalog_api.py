@@ -59,6 +59,7 @@ def test_scaffold_catalog_lists_ready_and_partial_assets(
         "status": "ready",
         "backendExists": True,
         "frontendExists": True,
+        "implementationStatus": "ready",
         "available": True,
     }
 

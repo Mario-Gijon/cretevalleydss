@@ -45,6 +45,7 @@ import {
   buildEmptyParameterRow,
   buildExampleFormState,
   buildInitialFormState,
+  buildNewParameterStructureRequestsOrThrow,
   buildParameterRowPayloadOrThrow,
   buildSupportedExpressionDomainEntry,
   buildSupportedExpressionDomainsPayloadOrThrow,
@@ -58,6 +59,7 @@ import {
   modelKeyPattern,
   RESTRICTIONS_MODE_OPTIONS,
 } from "./scaffoldPayloadHelpers.js";
+import ParameterStructureSelector from "./ParameterStructureSelector.jsx";
 import EmptyState from "../models/components/EmptyState";
 import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
 
@@ -200,12 +202,18 @@ const getEvaluationStatus = ({ value, selectedStructure }) => {
   return { label: "Ready", color: "info" };
 };
 
-const getParameterStructureStatus = ({ value, selectedStructure, hasError }) => {
+const getParameterStructureStatus = ({ mode, value, selectedStructure, hasError }) => {
   const key = String(value || "").trim();
   if (!key || hasError) return null;
-  if (!selectedStructure) return { label: "New scaffold", color: "success" };
+  if (mode === "new") return { label: "New scaffold", color: "success" };
+  if (!selectedStructure) return null;
   if (selectedStructure.status === "partial") return { label: "Partial", color: "warning" };
-  if (selectedStructure.status === "scaffold") return { label: "Scaffold", color: "info" };
+  if (selectedStructure.implementationStatus === "scaffold") {
+    return { label: "Scaffold", color: "info" };
+  }
+  if (selectedStructure.implementationStatus === "invalid") {
+    return { label: "Invalid", color: "error" };
+  }
   return { label: "Ready", color: "info" };
 };
 
@@ -540,6 +548,7 @@ const ParameterCard = ({
   index,
   theme,
   parameterStructureOptions,
+  parameterStructures,
   parameterStructureMap,
   setParameterField,
   setParameterExpanded,
@@ -547,8 +556,13 @@ const ParameterCard = ({
 }) => {
   const selectedParameterStructure =
     parameterStructureMap.get(String(parameter.parameterStructureKey || "").trim()) || null;
-  const parameterErrors = getParameterRowValidation(parameter, index);
+  const parameterErrors = getParameterRowValidation(
+    parameter,
+    index,
+    parameterStructures
+  );
   const structureStatus = getParameterStructureStatus({
+    mode: parameter.parameterStructureMode,
     value: parameter.parameterStructureKey,
     selectedStructure: selectedParameterStructure,
     hasError: Boolean(parameterErrors.parameterStructureKey),
@@ -604,40 +618,18 @@ const ParameterCard = ({
             fullWidth
             color="info"
           />
-          <Autocomplete
-            freeSolo
+          <ParameterStructureSelector
+            mode={parameter.parameterStructureMode}
+            value={parameter.parameterStructureKey}
             options={parameterStructureOptions}
-            value={
-              parameter.parameterStructureKey
-                ? parameterStructureOptions.find(
-                  (item) => item.key === parameter.parameterStructureKey
-                ) || parameter.parameterStructureKey
-                : null
-            }
-            onChange={(_event, value) =>
-              setParameterField(
-                parameter.id,
-                "parameterStructureKey",
-                typeof value === "string" ? value : value?.key || ""
-              )
-            }
-            onInputChange={(_event, value, reason) => {
-              if (reason === "input") {
-                setParameterField(parameter.id, "parameterStructureKey", value);
-              }
+            error={parameterErrors.parameterStructureKey}
+            onModeChange={(mode) => {
+              setParameterField(parameter.id, "parameterStructureMode", mode);
+              setParameterField(parameter.id, "parameterStructureKey", "");
             }}
-            getOptionLabel={getCatalogKeyLabel}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Structure"
-                size="small"
-                error={Boolean(parameterErrors.parameterStructureKey)}
-                helperText={parameterErrors.parameterStructureKey || ""}
-                color="info"
-                fullWidth
-              />
-            )}
+            onValueChange={(value) =>
+              setParameterField(parameter.id, "parameterStructureKey", value)
+            }
           />
         </Box>
 
@@ -1018,24 +1010,6 @@ export default function AdminModelForgeSection() {
     [formState.evaluationStructureKey, selectedEvaluationStructure]
   );
 
-  const requiredParameterStructures = useMemo(() => {
-    const seen = new Set();
-    const keys = [];
-
-    formState.parameters.forEach((parameter) => {
-      const key = String(parameter?.parameterStructureKey || "").trim();
-      if (!key || seen.has(key)) return;
-
-      seen.add(key);
-      const structure = parameterStructureMap.get(key);
-      if (!structure || structure.available !== true) {
-        keys.push(key);
-      }
-    });
-
-    return keys;
-  }, [formState.parameters, parameterStructureMap]);
-
   const setField = useCallback((field, value) => {
     setFormState((current) => ({
       ...current,
@@ -1164,6 +1138,10 @@ export default function AdminModelForgeSection() {
     const parsedParameters = formState.parameters.map((parameter, index) =>
       buildParameterRowPayloadOrThrow(parameter, index)
     );
+    const parameterStructureRequests = buildNewParameterStructureRequestsOrThrow(
+      formState.parameters,
+      parameterStructures
+    );
     const supportedExpressionDomains =
       buildSupportedExpressionDomainsPayloadOrThrow(
         formState.supportedExpressionDomains
@@ -1208,14 +1186,12 @@ export default function AdminModelForgeSection() {
         evaluationStructureCatalogItem?.status === "ready"
           ? null
           : { evaluationStructureKey },
-      parameterStructures: requiredParameterStructures.map((key) => ({
-        parameterStructureKey: key,
-      })),
+      parameterStructures: parameterStructureRequests,
     };
   }, [
     evaluationStructureMap,
     formState,
-    requiredParameterStructures,
+    parameterStructures,
   ]);
 
   const runPreview = useCallback(async () => {
@@ -1889,6 +1865,7 @@ export default function AdminModelForgeSection() {
                     index={index}
                     theme={theme}
                     parameterStructureOptions={parameterStructureOptions}
+                    parameterStructures={parameterStructures}
                     parameterStructureMap={parameterStructureMap}
                     setParameterField={setParameterField}
                     setParameterExpanded={setParameterExpanded}

@@ -26,9 +26,7 @@ EVALUATION_FRONTEND_ROOT = Path(
 )
 
 STAGE_PATTERN = re.compile(r"stage:\s*EVALUATION_STAGES\.([A-Z_]+)")
-IMPLEMENTATION_STATUS_PATTERN = re.compile(
-    r"implementationStatus:\s*['\"](ready|scaffold)['\"]"
-)
+IMPLEMENTATION_STATUS_PATTERN = re.compile(r"implementationStatus\s*:\s*([^,\n}\r]+)")
 
 STAGE_MAP = {
     "ALTERNATIVE_EVALUATION": "alternativeEvaluation",
@@ -55,13 +53,22 @@ def _build_parameter_structure_items(
     for key in keys:
         existence = get_parameter_structure_existence(project_root, key)
         status = "ready" if existence.status == "exists" else "partial"
+        implementation_status = _aggregate_implementation_status(
+            _read_implementation_status(
+                project_root / PARAMETER_BACKEND_ROOT / key / "index.js"
+            ),
+            _read_implementation_status(
+                project_root / PARAMETER_FRONTEND_ROOT / key / "index.js"
+            ),
+        )
         items.append(
             CatalogParameterStructureItem(
                 key=key,
                 status=status,
                 backendExists=existence.backend_exists,
                 frontendExists=existence.frontend_exists,
-                available=status == "ready",
+                implementationStatus=implementation_status,
+                available=status == "ready" and implementation_status == "ready",
             )
         )
 
@@ -83,6 +90,12 @@ def _build_evaluation_structure_items(
         metadata = _read_evaluation_structure_metadata(
             project_root / EVALUATION_BACKEND_ROOT / key / "index.js"
         )
+        implementation_status = _aggregate_implementation_status(
+            metadata["implementationStatus"],
+            _read_implementation_status(
+                project_root / EVALUATION_FRONTEND_ROOT / key / "index.js"
+            ),
+        )
         stage = metadata["stage"]
 
         items.append(
@@ -93,11 +106,15 @@ def _build_evaluation_structure_items(
                 status=status,
                 backendExists=existence.backend_exists,
                 frontendExists=existence.frontend_exists,
-                implementationStatus=metadata["implementationStatus"] or "ready",
+                implementationStatus=implementation_status,
                 availableForAlternativeEvaluation=
-                status == "ready" and stage == "alternativeEvaluation",
+                status == "ready"
+                and implementation_status == "ready"
+                and stage == "alternativeEvaluation",
                 availableForCriteriaWeighting=
-                status == "ready" and stage == "criteriaWeighting",
+                status == "ready"
+                and implementation_status == "ready"
+                and stage == "criteriaWeighting",
             )
         )
 
@@ -118,6 +135,30 @@ def _collect_union_folder_keys(*roots: Path) -> list[str]:
     return sorted(keys)
 
 
+def _read_implementation_status(index_path: Path) -> str:
+    if not index_path.exists():
+        return "ready"
+
+    match = IMPLEMENTATION_STATUS_PATTERN.search(index_path.read_text(encoding="utf-8"))
+    if not match:
+        return "ready"
+
+    value = match.group(1).strip()
+    if value in {"'ready'", '"ready"'}:
+        return "ready"
+    if value in {"'scaffold'", '"scaffold"'}:
+        return "scaffold"
+    return "invalid"
+
+
+def _aggregate_implementation_status(*statuses: str) -> str:
+    if "invalid" in statuses:
+        return "invalid"
+    if "scaffold" in statuses:
+        return "scaffold"
+    return "ready"
+
+
 def _read_evaluation_structure_metadata(index_path: Path) -> dict[str, str | None]:
     if not index_path.exists():
         return {
@@ -128,15 +169,10 @@ def _read_evaluation_structure_metadata(index_path: Path) -> dict[str, str | Non
 
     source = index_path.read_text(encoding="utf-8")
     stage_match = STAGE_PATTERN.search(source)
-    implementation_status_match = IMPLEMENTATION_STATUS_PATTERN.search(source)
     stage_constant = stage_match.group(1) if stage_match else None
 
     return {
         "stage": STAGE_MAP.get(stage_constant),
         "stageConstant": stage_constant,
-        "implementationStatus": (
-            implementation_status_match.group(1).strip()
-            if implementation_status_match
-            else None
-        ),
+        "implementationStatus": _read_implementation_status(index_path),
     }

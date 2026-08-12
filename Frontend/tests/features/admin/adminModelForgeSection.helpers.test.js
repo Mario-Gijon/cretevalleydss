@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import { stripNullConstraintPlaceholders } from "../../../src/features/admin/modelForge/constraintTemplates.js";
 import {
   buildParameterRowPayloadOrThrow,
+  buildNewParameterStructureRequestsOrThrow,
   buildConstraintTemplateObjectOrThrow,
   buildSupportedExpressionDomainsPayloadOrThrow,
+  getParameterStructureSelectionError,
+  PARAMETER_STRUCTURE_MODES,
 } from "../../../src/features/admin/modelForge/scaffoldPayloadHelpers.js";
 
 describe("numberGlobal Model Forge parameter payload", () => {
@@ -108,6 +111,43 @@ describe("selectGlobal Model Forge parameter payload", () => {
 
     expect(payload).toMatchObject({ restrictions: { allowed: ["1", "0.5"] } });
     expect(payload).not.toHaveProperty("default");
+  });
+});
+
+describe("parameter structure selection", () => {
+  const catalog = [
+    { key: "selectGlobal", status: "ready", implementationStatus: "ready", available: true },
+    { key: "scaffoldStructure", status: "ready", implementationStatus: "scaffold", available: false },
+    { key: "partialStructure", status: "partial", implementationStatus: "ready", available: false },
+    { key: "invalidStructure", status: "ready", implementationStatus: "invalid", available: false },
+  ];
+  const row = (overrides = {}) => ({
+    parameterStructureMode: PARAMETER_STRUCTURE_MODES.EXISTING,
+    parameterStructureKey: "selectGlobal",
+    ...overrides,
+  });
+
+  it("accepts only runtime-ready existing structures", () => {
+    expect(getParameterStructureSelectionError(row(), catalog)).toBe("");
+    expect(getParameterStructureSelectionError(row({ parameterStructureKey: "unknown" }), catalog)).toContain("does not exist");
+    expect(getParameterStructureSelectionError(row({ parameterStructureKey: "scaffoldStructure" }), catalog)).toContain("not runtime-ready");
+    expect(getParameterStructureSelectionError(row({ parameterStructureKey: "partialStructure" }), catalog)).toContain("not runtime-ready");
+    expect(getParameterStructureSelectionError(row({ parameterStructureKey: "invalidStructure" }), catalog)).toContain("not runtime-ready");
+  });
+
+  it("allows new non-conflicting keys and rejects every catalog collision", () => {
+    expect(getParameterStructureSelectionError(row({ parameterStructureMode: "new", parameterStructureKey: "numberAlternative" }), catalog)).toBe("");
+    ["selectGlobal", "scaffoldStructure", "partialStructure"].forEach((key) => {
+      expect(getParameterStructureSelectionError(row({ parameterStructureMode: "new", parameterStructureKey: key }), catalog)).toContain("already exists");
+    });
+  });
+
+  it("builds requests only for deduplicated new structure selections", () => {
+    expect(buildNewParameterStructureRequestsOrThrow([
+      row({ parameterStructureKey: "selectGlobal" }),
+      row({ parameterStructureMode: "new", parameterStructureKey: "numberAlternative" }),
+      row({ parameterStructureMode: "new", parameterStructureKey: "numberAlternative" }),
+    ], catalog)).toEqual([{ parameterStructureKey: "numberAlternative" }]);
   });
 });
 

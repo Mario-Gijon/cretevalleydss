@@ -2,6 +2,10 @@ import { stripNullConstraintPlaceholders } from "./constraintTemplates.js";
 import { isPlainObject } from "../../../utils/common/objects";
 
 export const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
+export const PARAMETER_STRUCTURE_MODES = Object.freeze({
+  EXISTING: "existing",
+  NEW: "new",
+});
 
 export const PROTECTED_ADVANCED_FIELDS = new Set([
   "key",
@@ -377,7 +381,64 @@ export const buildParameterRowPayloadOrThrow = (parameter, index) => {
   };
 };
 
-export const getParameterRowValidation = (parameter, index) => {
+export const getParameterStructureSelectionError = (
+  parameter,
+  parameterStructures
+) => {
+  const mode = parameter?.parameterStructureMode;
+  const key = String(parameter?.parameterStructureKey || "").trim();
+  const catalog = Array.isArray(parameterStructures) ? parameterStructures : [];
+  const structure = catalog.find((item) => item?.key === key) || null;
+
+  if (
+    mode !== PARAMETER_STRUCTURE_MODES.EXISTING &&
+    mode !== PARAMETER_STRUCTURE_MODES.NEW
+  ) {
+    return "Choose whether to use an existing structure or create a new one.";
+  }
+  if (!key) return "Choose or enter a parameter structure key.";
+  if (!PARAMETER_STRUCTURE_KEY_PATTERN.test(key)) {
+    return "Use lower camelCase.";
+  }
+  if (mode === PARAMETER_STRUCTURE_MODES.EXISTING) {
+    if (!structure) return `Parameter structure '${key}' does not exist in the catalog.`;
+    if (structure.available !== true) {
+      return `Parameter structure '${key}' is not runtime-ready and cannot be reused.`;
+    }
+    return "";
+  }
+  if (structure) {
+    return `Parameter structure '${key}' already exists. Reuse it if it is ready or resolve its registry state before creating a new structure.`;
+  }
+  return "";
+};
+
+export const validateParameterStructureSelectionOrThrow = (
+  parameter,
+  parameterStructures
+) => {
+  const error = getParameterStructureSelectionError(parameter, parameterStructures);
+  if (error) throw new Error(error);
+};
+
+export const buildNewParameterStructureRequestsOrThrow = (
+  parameters,
+  parameterStructures
+) => {
+  const requestsByKey = new Map();
+
+  (Array.isArray(parameters) ? parameters : []).forEach((parameter) => {
+    validateParameterStructureSelectionOrThrow(parameter, parameterStructures);
+    if (parameter.parameterStructureMode === PARAMETER_STRUCTURE_MODES.NEW) {
+      const parameterStructureKey = String(parameter.parameterStructureKey).trim();
+      requestsByKey.set(parameterStructureKey, { parameterStructureKey });
+    }
+  });
+
+  return [...requestsByKey.values()];
+};
+
+export const getParameterRowValidation = (parameter, index, parameterStructures) => {
   const errors = {};
   const parameterStructureKey = String(parameter?.parameterStructureKey || "").trim();
 
@@ -387,6 +448,12 @@ export const getParameterRowValidation = (parameter, index) => {
   ) {
     errors.parameterStructureKey = "Use lower camelCase.";
   }
+
+  const selectionError = getParameterStructureSelectionError(
+    parameter,
+    parameterStructures
+  );
+  if (selectionError) errors.parameterStructureKey = selectionError;
 
   try {
     buildParameterRowPayloadOrThrow(parameter, index);
@@ -408,6 +475,7 @@ export const buildEmptyParameterRow = () => ({
   key: "",
   label: "",
   parameterStructureKey: "",
+  parameterStructureMode: PARAMETER_STRUCTURE_MODES.EXISTING,
   valueType: "number",
   required: false,
   defaultMode: "null",
@@ -530,6 +598,7 @@ export const buildExampleFormState = () => ({
       key: "sample_param",
       label: "Sample parameter",
       parameterStructureKey: "sampleParameterGlobal",
+      parameterStructureMode: PARAMETER_STRUCTURE_MODES.NEW,
       required: true,
       defaultMode: "literal",
       defaultLiteralText: "0.5",
