@@ -146,7 +146,7 @@ def test_generated_model_package_is_importable_and_discoverable_via_registry_lik
         assert hasattr(examples_module, "DEMO_MODEL_RESPONSE_EXAMPLES")
         assert model_definition.request_examples == examples_module.DEMO_MODEL_REQUEST_EXAMPLES
         assert model_definition.response_examples == examples_module.DEMO_MODEL_RESPONSE_EXAMPLES
-        assert "basic_request" in model_definition.request_examples
+        assert "scaffold_request" in model_definition.request_examples
         assert "under_development" in model_definition.response_examples
 
         request_model = definition_module.GenericModelExecutionRequest

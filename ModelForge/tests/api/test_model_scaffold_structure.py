@@ -194,7 +194,7 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
     )
     assert hasattr(examples_module, "DEMO_MODEL_REQUEST_EXAMPLES")
     assert hasattr(examples_module, "DEMO_MODEL_RESPONSE_EXAMPLES")
-    assert examples_module.DEMO_MODEL_REQUEST_EXAMPLES["basic_request"]["value"]["context"][
+    assert examples_module.DEMO_MODEL_REQUEST_EXAMPLES["scaffold_request"]["value"]["context"][
         "structure"
     ]["key"] == "alternativeMatrix"
 
@@ -208,8 +208,8 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
     assert package_module.MODEL_DEFINITION.api_model_key == "demo_model"
     assert package_module.MODEL_DEFINITION.display_name == "Demo Model"
     assert definition_module.MODEL_DEFINITION.api_endpoint_path == "/demo_model"
-    assert definition_module.MODEL_DEFINITION.request_examples["basic_request"]["summary"] == (
-        "Basic request"
+    assert definition_module.MODEL_DEFINITION.request_examples["scaffold_request"]["summary"] == (
+        "Generated scaffold request"
     )
 
 
