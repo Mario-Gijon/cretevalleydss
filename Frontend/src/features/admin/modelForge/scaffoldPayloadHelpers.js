@@ -1,5 +1,5 @@
-import { stripNullConstraintPlaceholders } from "./constraintTemplates.js";
 import { isPlainObject } from "../../../utils/common/objects";
+import { getExpressionDomainTypeMetadataOrThrow } from "../../expressionDomains/expressionDomainTypeMetadataCatalog.js";
 
 export const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 export const PARAMETER_STRUCTURE_MODES = Object.freeze({
@@ -490,13 +490,70 @@ export const buildEmptyParameterRow = () => ({
   advancedExpanded: false,
 });
 
-export const buildSupportedExpressionDomainEntry = (
+export const buildSupportedExpressionDomainEntry = (typeKey) => ({
   typeKey,
-  constraintsJsonText = "{}"
-) => ({
-  typeKey,
-  constraintsJsonText,
+  compatibilityConstraints: {},
 });
+
+const parseOptionalIntegerListOrThrow = (rawValue, field) => {
+  const text = String(rawValue ?? "").trim();
+
+  if (!text) return undefined;
+
+  const values = [];
+  const seenValues = new Set();
+
+  text.split(",").forEach((rawToken) => {
+    const token = rawToken.trim();
+    const value = Number(token);
+
+    if (!token || !Number.isInteger(value)) {
+      throw new Error(`${field.label} must be a comma-separated list of integers`);
+    }
+
+    if (field.minimum !== undefined && value < field.minimum) {
+      throw new Error(`${field.label} values must be at least ${field.minimum}`);
+    }
+
+    if (field.mustBeOdd && value % 2 === 0) {
+      throw new Error(`${field.label} values must be odd`);
+    }
+
+    if (!seenValues.has(value)) {
+      seenValues.add(value);
+      values.push(value);
+    }
+  });
+
+  return values;
+};
+
+const parseOptionalMultiEnumOrThrow = (rawValue, field) => {
+  if (rawValue === undefined || rawValue === null) return undefined;
+
+  if (!Array.isArray(rawValue)) {
+    throw new Error(`${field.label} must be a list`);
+  }
+
+  const allowedValues = new Set((field.options ?? []).map((option) => option.value));
+  const values = [];
+  const seenValues = new Set();
+
+  rawValue.forEach((rawValueItem) => {
+    const value = String(rawValueItem ?? "").trim();
+
+    if (!allowedValues.has(value)) {
+      throw new Error(`${field.label} contains an unsupported value`);
+    }
+
+    if (!seenValues.has(value)) {
+      seenValues.add(value);
+      values.push(value);
+    }
+  });
+
+  return values.length > 0 ? values : undefined;
+};
 
 export const buildSupportedExpressionDomainsPayloadOrThrow = (
   supportedExpressionDomains
@@ -512,25 +569,65 @@ export const buildSupportedExpressionDomainsPayloadOrThrow = (
       throw new Error("Each supported expression domain must include typeKey");
     }
 
-    const rawConstraints = String(entry?.constraintsJsonText || "").trim() || "{}";
-    const parsedConstraints = parseJsonOrThrow(
-      rawConstraints,
-      `${typeKey} constraints`
+    const metadata = getExpressionDomainTypeMetadataOrThrow(typeKey);
+    const rawConstraints = isPlainObject(entry?.compatibilityConstraints)
+      ? entry.compatibilityConstraints
+      : {};
+    const normalizedConstraints = {};
+    const fieldsByKey = new Map(
+      (metadata.compatibilityConstraintFields ?? []).map((field) => [
+        field.key,
+        field,
+      ])
     );
 
-    if (!isPlainObject(parsedConstraints)) {
-      throw new Error(`${typeKey} constraints must be a JSON object`);
-    }
+    (metadata.compatibilityConstraintFields ?? []).forEach((field) => {
+      const rawValue = rawConstraints[field.key];
+      let value;
 
-    const normalizedConstraints = stripNullConstraintPlaceholders(parsedConstraints);
+      if (field.kind === "finiteNumber") {
+        value = parseOptionalFiniteNumberOrThrow(rawValue, field.label);
+
+        if (
+          value !== undefined &&
+          field.exclusiveMinimum !== undefined &&
+          value <= field.exclusiveMinimum
+        ) {
+          throw new Error(
+            `${field.label} must be greater than ${field.exclusiveMinimum}`
+          );
+        }
+      } else if (field.kind === "integerList") {
+        value = parseOptionalIntegerListOrThrow(rawValue, field);
+      } else if (field.kind === "multiEnum") {
+        value = parseOptionalMultiEnumOrThrow(rawValue, field);
+      } else {
+        throw new Error(`Unsupported compatibility field ${field.key}`);
+      }
+
+      if (value !== undefined) {
+        normalizedConstraints[field.key] = value;
+      }
+    });
+
+    Array.from(fieldsByKey.values()).forEach((field) => {
+      if (!field.lessThan) return;
+
+      const value = normalizedConstraints[field.key];
+      const upperValue = normalizedConstraints[field.lessThan];
+
+      if (value !== undefined && upperValue !== undefined && value >= upperValue) {
+        throw new Error(
+          `${field.label} must be strictly less than ${
+            fieldsByKey.get(field.lessThan)?.label ?? field.lessThan
+          }`
+        );
+      }
+    });
 
     return {
       typeKey,
-      constraints:
-        isPlainObject(normalizedConstraints) &&
-        Object.keys(normalizedConstraints).length === 0
-          ? {}
-          : normalizedConstraints,
+      constraints: normalizedConstraints,
     };
   });
 };
@@ -623,12 +720,6 @@ export const formatJsonPreview = (value) => {
     return String(value);
   }
 };
-
-export const formatConstraintTemplate = (value) =>
-  JSON.stringify(value ?? {}, null, 2);
-
-export const formatConstraintTemplateInline = (value) =>
-  JSON.stringify(value ?? {});
 
 export const createConstraintTemplateFieldId = () =>
   `constraint-template-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

@@ -50,8 +50,6 @@ import {
   buildSupportedExpressionDomainEntry,
   buildSupportedExpressionDomainsPayloadOrThrow,
   DEFAULT_MODE_OPTIONS,
-  formatConstraintTemplate,
-  formatConstraintTemplateInline,
   formatJsonPreview,
   getParameterRowValidation,
   getSupportedExpressionDomainValidationError,
@@ -72,8 +70,7 @@ const DOMAIN_OPTIONS = listExpressionDomainTypes().map((entry) => ({
   typeKey: entry.key,
   label: entry.label,
   description: entry.description,
-  // `constraintExample` is the catalog/API field name; the UI treats it as a template.
-  constraintExample: entry.constraintExample ?? {},
+  compatibilityConstraintFields: entry.compatibilityConstraintFields ?? [],
 }));
 
 const BACKEND_CHANGE_SUCCESS_MESSAGE =
@@ -1071,13 +1068,19 @@ export default function AdminModelForgeSection() {
     showSnackbarAlert("Sample scaffold form loaded", "success");
   }, [resetActionState, showSnackbarAlert]);
 
-  const setSupportedExpressionDomainConstraints = useCallback(
-    (typeKey, constraintsJsonText) => {
+  const setSupportedExpressionDomainConstraint = useCallback(
+    (typeKey, fieldKey, value) => {
       setFormState((current) => ({
         ...current,
         supportedExpressionDomains: current.supportedExpressionDomains.map((entry) =>
           entry.typeKey === typeKey
-            ? { ...entry, constraintsJsonText }
+            ? {
+              ...entry,
+              compatibilityConstraints: {
+                ...(entry.compatibilityConstraints ?? {}),
+                [fieldKey]: value,
+              },
+            }
             : entry
         ),
       }));
@@ -1085,13 +1088,6 @@ export default function AdminModelForgeSection() {
     },
     [resetActionState]
   );
-
-  const applySupportedExpressionDomainTemplate = useCallback((typeKey, template) => {
-    setSupportedExpressionDomainConstraints(
-      typeKey,
-      formatConstraintTemplate(template)
-    );
-  }, [setSupportedExpressionDomainConstraints]);
 
   const toggleSupportedExpressionDomain = useCallback(
     (typeKey, checked) => {
@@ -1759,75 +1755,101 @@ export default function AdminModelForgeSection() {
                         </Typography>
 
                         {checked && (
-                          <Box
-                            sx={{
-                              display: "grid",
-                              gap: 1,
-                              gridTemplateColumns: {
-                                xs: "1fr",
-                                md: "minmax(0, 1fr) minmax(0, 1fr)",
-                              },
-                            }}
-                          >
-                            <Stack spacing={0.65}>
-                              <Stack
-                                direction="row"
-                                spacing={0.8}
-                                alignItems="center"
-                                justifyContent="space-between"
-                              >
-                                <Typography
-                                  variant="caption"
-                                  sx={{ color: "text.secondary", fontWeight: 900 }}
-                                >
-                                  Constraint template
-                                </Typography>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="info"
-                                  onClick={() =>
-                                    applySupportedExpressionDomainTemplate(
-                                      domain.typeKey,
-                                      domain.constraintExample
-                                    )
-                                  }
-                                  sx={{ textTransform: "none", fontWeight: 900 }}
-                                >
-                                  Use template
-                                </Button>
-                              </Stack>
+                          <Stack spacing={0.8}>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "text.secondary", fontWeight: 900 }}
+                            >
+                              Compatibility restrictions
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              Optional exact domain-definition values. Leave every field empty to accept any compatible domain of this type.
+                            </Typography>
+                            <Box
+                              sx={{
+                                display: "grid",
+                                gap: 1,
+                                gridTemplateColumns: {
+                                  xs: "1fr",
+                                  md: "repeat(2, minmax(0, 1fr))",
+                                },
+                              }}
+                            >
+                              {domain.compatibilityConstraintFields.map((field) => {
+                                const rawValue =
+                                  selectedEntry?.compatibilityConstraints?.[field.key];
 
-                              <TextField
-                                color="info"
-                                value={formatConstraintTemplate(domain.constraintExample)}
-                                multiline
-                                minRows={5}
-                                fullWidth
-                                InputProps={{ readOnly: true }}
-                              />
-                            </Stack>
+                                if (field.kind === "multiEnum") {
+                                  return (
+                                    <Stack key={field.key} spacing={0.5}>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "text.secondary", fontWeight: 800 }}
+                                      >
+                                        {field.label}
+                                      </Typography>
+                                      <ToggleButtonGroup
+                                        color="info"
+                                        size="small"
+                                        value={Array.isArray(rawValue) ? rawValue : []}
+                                        onChange={(_event, value) =>
+                                          setSupportedExpressionDomainConstraint(
+                                            domain.typeKey,
+                                            field.key,
+                                            value
+                                          )
+                                        }
+                                        sx={{ alignSelf: "flex-start", flexWrap: "wrap" }}
+                                      >
+                                        {field.options.map((option) => (
+                                          <ToggleButton key={option.value} value={option.value}>
+                                            {option.label}
+                                          </ToggleButton>
+                                        ))}
+                                      </ToggleButtonGroup>
+                                    </Stack>
+                                  );
+                                }
 
-                            <TextField
-                              color="info"
-                              label="Constraints JSON"
-                              value={selectedEntry?.constraintsJsonText ?? "{}"}
-                              onChange={(event) =>
-                                setSupportedExpressionDomainConstraints(
-                                  domain.typeKey,
-                                  event.target.value
-                                )
-                              }
-                              minRows={5}
-                              multiline
-                              fullWidth
-                              error={Boolean(validationError)}
-                              helperText={
-                                validationError ||
-                                `Use template copies available constraint keys. Fill the values you want to restrict; null placeholders are ignored before saving. Leave constraints empty ({}) to allow any domain variant of this type. For example, ${domain.typeKey} with {} means any ${domain.typeKey} domain is accepted. ${domain.typeKey} with ${formatConstraintTemplateInline(domain.constraintExample)} means only compatible domains with those constraints are accepted.`
-                              }
-                            />
-                          </Box>
+                                return (
+                                  <TextField
+                                    key={field.key}
+                                    color="info"
+                                    size="small"
+                                    type={field.kind === "finiteNumber" ? "number" : "text"}
+                                    label={field.label}
+                                    value={rawValue ?? ""}
+                                    onChange={(event) =>
+                                      setSupportedExpressionDomainConstraint(
+                                        domain.typeKey,
+                                        field.key,
+                                        event.target.value
+                                      )
+                                    }
+                                    inputProps={
+                                      field.kind === "finiteNumber"
+                                        ? { step: "any" }
+                                        : undefined
+                                    }
+                                    helperText={
+                                      field.kind === "integerList"
+                                        ? `Comma-separated integers${
+                                          field.minimum !== undefined
+                                            ? ` of at least ${field.minimum}`
+                                            : ""
+                                        }${field.mustBeOdd ? "; odd values only" : ""}.`
+                                        : "Optional exact domain-definition value."
+                                    }
+                                  />
+                                );
+                              })}
+                            </Box>
+                            {validationError && (
+                              <Alert severity="warning" variant="outlined">
+                                {validationError}
+                              </Alert>
+                            )}
+                          </Stack>
                         )}
                       </Stack>
                     </Box>

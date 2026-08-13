@@ -4,49 +4,89 @@ const ORDERED_EXPRESSION_DOMAIN_TYPE_METADATA_ENTRIES = Object.freeze([
     label: "Numeric continuous",
     description: "Numeric values within a continuous range.",
     family: "numeric",
-    constraintExample: {
-      min: 0,
-      max: 1,
-    },
+    compatibilityConstraintFields: Object.freeze([
+      Object.freeze({
+        key: "min",
+        label: "Minimum",
+        kind: "finiteNumber",
+        lessThan: "max",
+      }),
+      Object.freeze({ key: "max", label: "Maximum", kind: "finiteNumber" }),
+    ]),
   }),
   Object.freeze({
     key: "numericDiscrete",
     label: "Numeric discrete",
     description: "Numeric values within a range using a fixed step.",
     family: "numeric",
-    constraintExample: {
-      min: 1,
-      max: 5,
-      step: 1,
-    },
+    compatibilityConstraintFields: Object.freeze([
+      Object.freeze({
+        key: "min",
+        label: "Minimum",
+        kind: "finiteNumber",
+        lessThan: "max",
+      }),
+      Object.freeze({ key: "max", label: "Maximum", kind: "finiteNumber" }),
+      Object.freeze({
+        key: "step",
+        label: "Step",
+        kind: "finiteNumber",
+        exclusiveMinimum: 0,
+      }),
+    ]),
   }),
   Object.freeze({
     key: "linguisticOrdinal",
     label: "Ordered linguistic",
     description: "Ordered linguistic labels without membership functions.",
     family: "linguistic",
-    constraintExample: {
-      labelCount: [3, 5, 7],
-    },
+    compatibilityConstraintFields: Object.freeze([
+      Object.freeze({
+        key: "labelCount",
+        label: "Allowed label counts",
+        kind: "integerList",
+        minimum: 2,
+      }),
+    ]),
   }),
   Object.freeze({
     key: "linguistic2Tuple",
     label: "Linguistic 2-Tuple",
     description: "Ordered linguistic labels with symbolic translation.",
     family: "linguistic",
-    constraintExample: {
-      labelCount: [3, 5, 7],
-    },
+    compatibilityConstraintFields: Object.freeze([
+      Object.freeze({
+        key: "labelCount",
+        label: "Allowed label counts",
+        kind: "integerList",
+        minimum: 3,
+        mustBeOdd: true,
+      }),
+    ]),
   }),
   Object.freeze({
     key: "linguisticFuzzy",
     label: "Fuzzy linguistic",
     description: "Linguistic labels represented with membership function values.",
     family: "linguistic",
-    constraintExample: {
-      membershipFunction: ["triangular"],
-      labelCount: [5, 7],
-    },
+    compatibilityConstraintFields: Object.freeze([
+      Object.freeze({
+        key: "membershipFunction",
+        label: "Allowed membership functions",
+        kind: "multiEnum",
+        options: Object.freeze([
+          Object.freeze({ value: "triangular", label: "Triangular" }),
+          Object.freeze({ value: "trapezoidal", label: "Trapezoidal" }),
+          Object.freeze({ value: "hexagonal", label: "Hexagonal" }),
+        ]),
+      }),
+      Object.freeze({
+        key: "labelCount",
+        label: "Allowed label counts",
+        kind: "integerList",
+        minimum: 1,
+      }),
+    ]),
   }),
 ]);
 

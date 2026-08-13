@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { stripNullConstraintPlaceholders } from "../../../src/features/admin/modelForge/constraintTemplates.js";
 import {
   buildParameterRowPayloadOrThrow,
   buildNewParameterStructureRequestsOrThrow,
@@ -151,120 +150,120 @@ describe("parameter structure selection", () => {
   });
 });
 
-describe("stripNullConstraintPlaceholders", () => {
-  it("strips top-level null placeholders", () => {
-    expect(
-      stripNullConstraintPlaceholders({
-        labelCount: null,
-      })
-    ).toEqual({});
-  });
-
-  it("strips nested null placeholders", () => {
-    expect(
-      stripNullConstraintPlaceholders({
-        alphaRange: {
-          min: null,
-          max: null,
-        },
-      })
-    ).toEqual({});
-  });
-
-  it("preserves filled nested values while dropping null siblings", () => {
-    expect(
-      stripNullConstraintPlaceholders({
-        labelCount: null,
-        alphaRange: {
-          min: -0.5,
-          max: 0.5,
-        },
-      })
-    ).toEqual({
-      alphaRange: {
-        min: -0.5,
-        max: 0.5,
-      },
-    });
-  });
-
-  it("returns an empty object when every nested value is omitted", () => {
-    expect(
-      stripNullConstraintPlaceholders({
-        outer: {
-          inner: null,
-        },
-      })
-    ).toEqual({});
-  });
-});
-
 describe("buildSupportedExpressionDomainsPayloadOrThrow", () => {
-  it("strips null placeholders from supported expression domain constraints", () => {
+  it("emits empty restrictions for empty numeric controls", () => {
     expect(
       buildSupportedExpressionDomainsPayloadOrThrow([
         {
-          typeKey: "linguisticTwoTupleScale",
-          constraintsJsonText: JSON.stringify({
-            labelCount: null,
-          }),
+          typeKey: "numericContinuous",
+          compatibilityConstraints: {
+            min: "",
+            max: "",
+          },
         },
       ])
     ).toEqual([
       {
-        typeKey: "linguisticTwoTupleScale",
+        typeKey: "numericContinuous",
         constraints: {},
       },
     ]);
   });
 
-  it("preserves nested filled constraints while dropping null placeholders", () => {
+  it("normalizes numeric and discrete compatibility restrictions", () => {
     expect(
       buildSupportedExpressionDomainsPayloadOrThrow([
         {
-          typeKey: "linguisticTwoTupleScale",
-          constraintsJsonText: JSON.stringify({
-            labelCount: null,
-            alphaRange: {
-              min: -0.5,
-              max: 0.5,
-            },
-          }),
+          typeKey: "numericDiscrete",
+          compatibilityConstraints: { min: "1", max: "5.5", step: "0.5" },
         },
       ])
     ).toEqual([
       {
-        typeKey: "linguisticTwoTupleScale",
+        typeKey: "numericDiscrete",
         constraints: {
-          alphaRange: {
-            min: -0.5,
-            max: 0.5,
-          },
+          min: 1,
+          max: 5.5,
+          step: 0.5,
         },
       },
     ]);
   });
 
-  it("throws when constraints JSON is invalid", () => {
+  it("rejects invalid numeric ranges and discrete steps", () => {
     expect(() =>
       buildSupportedExpressionDomainsPayloadOrThrow([
         {
-          typeKey: "linguisticTwoTupleScale",
-          constraintsJsonText: "{bad json}",
+          typeKey: "numericContinuous",
+          compatibilityConstraints: { min: "2", max: "2" },
         },
       ])
-    ).toThrow("linguisticTwoTupleScale constraints must be valid JSON");
+    ).toThrow("Minimum must be strictly less than Maximum");
+
+    expect(() =>
+      buildSupportedExpressionDomainsPayloadOrThrow([
+        {
+          typeKey: "numericDiscrete",
+          compatibilityConstraints: { step: "0" },
+        },
+      ])
+    ).toThrow("Step must be greater than 0");
   });
 
-  it("throws when constraints JSON is not an object", () => {
+  it("normalizes linguistic lists and membership-function selections", () => {
+    expect(
+      buildSupportedExpressionDomainsPayloadOrThrow([
+        {
+          typeKey: "linguisticOrdinal",
+          compatibilityConstraints: { labelCount: "3, 5, 3" },
+        },
+        {
+          typeKey: "linguisticFuzzy",
+          compatibilityConstraints: {
+            membershipFunction: ["triangular", "triangular", "hexagonal"],
+            labelCount: "5, 7",
+          },
+        },
+      ])
+    ).toEqual([
+      { typeKey: "linguisticOrdinal", constraints: { labelCount: [3, 5] } },
+      {
+        typeKey: "linguisticFuzzy",
+        constraints: {
+          membershipFunction: ["triangular", "hexagonal"],
+          labelCount: [5, 7],
+        },
+      },
+    ]);
+  });
+
+  it("rejects invalid linguistic list tokens and 2-tuple counts", () => {
     expect(() =>
       buildSupportedExpressionDomainsPayloadOrThrow([
         {
-          typeKey: "linguisticTwoTupleScale",
-          constraintsJsonText: "[]",
+          typeKey: "linguisticOrdinal",
+          compatibilityConstraints: { labelCount: "3, nope" },
         },
       ])
-    ).toThrow("linguisticTwoTupleScale constraints must be a JSON object");
+    ).toThrow("Allowed label counts must be a comma-separated list of integers");
+
+    expect(() =>
+      buildSupportedExpressionDomainsPayloadOrThrow([
+        {
+          typeKey: "linguistic2Tuple",
+          compatibilityConstraints: { labelCount: "2, 4" },
+        },
+      ])
+    ).toThrow("Allowed label counts values must be at least 3");
+
+    expect(() =>
+      buildSupportedExpressionDomainsPayloadOrThrow([
+        {
+          typeKey: "linguistic2Tuple",
+          compatibilityConstraints: { labelCount: "4" },
+        },
+      ])
+    ).toThrow("Allowed label counts values must be odd");
   });
 });
 
