@@ -22,16 +22,6 @@ def get_plots_graphics_from_matrices(
     preferences_flat = np.array([np.array(pref, dtype=float).flatten() for pref in preferences], dtype=float)
     preferences_flat[preferences_flat == 0] = 1e-10
 
-    """ if preferences_flat.shape[0] < 2:
-        return {
-            "reason": "insufficient_points_for_projection",
-        }
-
-    if np.allclose(preferences_flat, preferences_flat[0], atol=1e-12):
-        return {
-            "reason": "insufficient_variation_for_projection",
-        } """
-
     if method.upper() == "PCA":
         reducer = PCA(n_components=2)
     else:

@@ -54,26 +54,3 @@ export const normalizeLabelKeyValue = (value) => {
   return "";
 };
 
-export const normalizeLabelsForDraft = ({
-  labels = [],
-  fallbackPrefix = "label",
-}) => {
-  const usedKeys = new Set();
-
-  return (Array.isArray(labels) ? labels : []).map((labelItem, index) => {
-    const label = String(labelItem?.label || "").trim();
-    const key = buildUniqueLabelKey({
-      label,
-      index,
-      usedKeys,
-      fallbackPrefix,
-    });
-
-    return {
-      key,
-      label: label || `Label ${index + 1}`,
-      index,
-    };
-  });
-};
-

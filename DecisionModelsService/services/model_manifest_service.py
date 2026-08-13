@@ -6,12 +6,6 @@ from registry.model_definition import ModelDefinition
 from registry.model_registry import get_model_definitions
 
 
-def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]:
-    """Copia un parámetro declarado al contrato público del manifest."""
-
-    return dict(parameter)
-
-
 def _build_supported_expression_domains(model: ModelDefinition) -> list[dict[str, Any]]:
     """Normaliza el contrato público de dominios de expresión soportados."""
 
@@ -40,7 +34,7 @@ def _build_supported_expression_domains(model: ModelDefinition) -> list[dict[str
 def _build_parameters(model: ModelDefinition) -> list[dict[str, Any]]:
     """Genera la lista pública de parámetros declarados por el modelo."""
 
-    return [_normalize_parameter_definition(parameter) for parameter in model.parameters]
+    return [dict(parameter) for parameter in model.parameters]
 
 
 def _get_request_example(model: ModelDefinition) -> dict[str, Any] | None:

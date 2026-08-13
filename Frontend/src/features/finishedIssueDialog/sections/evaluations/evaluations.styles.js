@@ -63,10 +63,6 @@ export const evaluationsWorkspaceSx = {
   boxShadow: "0 15px 36px rgba(0,0,0,0.18)",
 };
 
-export const evaluationsToolbarDividerSx = {
-  borderColor: "rgba(83, 198, 214, 0.16)",
-};
-
 export const evaluationsStageDividerWideSx = {
   display: { xs: "none", xl: "block" },
   borderColor: "rgba(83, 198, 214, 0.16)",

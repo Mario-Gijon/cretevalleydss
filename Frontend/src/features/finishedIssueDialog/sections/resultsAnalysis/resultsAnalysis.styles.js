@@ -6,8 +6,6 @@ const localScrollbarSx = {
   "&::-webkit-scrollbar-thumb": { bgcolor: "rgba(72,189,205,0.38)", borderRadius: 99 },
 };
 
-export const resultsAnalysisRootSx = { width: "100%" };
-
 export const executionSelectionToolbarSx = {
   display: "flex",
   flexDirection: { xs: "column", md: "row" },

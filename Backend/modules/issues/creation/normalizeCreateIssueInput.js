@@ -46,21 +46,6 @@ const requireNonEmptyStringOrThrow = ({ value, field, message }) => {
   return normalizedValue;
 };
 
-const normalizeOptionalStringOrThrow = ({ value, field, message }) => {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  if (typeof value !== "string") {
-    throw createBadRequestError(message, {
-      field,
-    });
-  }
-
-  const normalizedValue = normalizeWhitespace(value);
-  return normalizedValue === "" ? null : normalizedValue;
-};
-
 const normalizeOptionalCriterionIdOrThrow = ({ value, field }) => {
   if (value === undefined || value === null) {
     return null;
@@ -74,38 +59,6 @@ const normalizeOptionalCriterionIdOrThrow = ({ value, field }) => {
 
   const normalizedValue = normalizeWhitespace(value);
   return normalizedValue === "" ? null : normalizedValue;
-};
-
-const normalizeUniqueStringArrayOrThrow = ({
-  values,
-  field,
-  itemMessage,
-  lower = false,
-}) => {
-  const uniqueValues = [];
-  const seenValues = new Set();
-
-  for (const value of values) {
-    if (typeof value !== "string") {
-      throw createBadRequestError(itemMessage, {
-        field,
-      });
-    }
-
-    let normalizedValue = normalizeWhitespace(value);
-    if (lower) {
-      normalizedValue = normalizedValue.toLowerCase();
-    }
-
-    if (!normalizedValue || seenValues.has(normalizedValue)) {
-      continue;
-    }
-
-    seenValues.add(normalizedValue);
-    uniqueValues.push(normalizedValue);
-  }
-
-  return uniqueValues;
 };
 
 const normalizeExpertSelectionsOrThrow = (values) => {

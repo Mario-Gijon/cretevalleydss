@@ -71,21 +71,6 @@ export const ColorlibStepIconRoot = styled('div')(({ theme }) => ({
   ],
 }));
 
-export const DeactivateColorlibStepIconRoot = styled('div')(({ theme }) => ({
-  backgroundColor: '#ccc',
-  zIndex: 1,
-  color: '#fff',
-  width: 50,
-  height: 50,
-  display: 'flex',
-  borderRadius: '50%',
-  justifyContent: 'center',
-  alignItems: 'center',
-  ...theme.applyStyles('dark', {
-    backgroundColor: theme.palette.grey[700],
-  }),
-}));
-
 export const ColorlibStepIcon = (props) => {
   const { active, completed, className } = props;
 
@@ -102,24 +87,5 @@ export const ColorlibStepIcon = (props) => {
     <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
       {icons[String(props.icon)]}
     </ColorlibStepIconRoot>
-  );
-}
-
-export const DeactivateColorlibStepIcon = (props) => {
-  const { active, completed, className } = props;
-
-  const icons = {
-    1: <ModelTrainingIcon />,
-    2: <MediationIcon />,
-    3: <SettingsIcon />,
-    4: <GroupIcon />,
-    5: <FormatListNumberedIcon />,
-    6: <SummarizeIcon />
-  };
-
-  return (
-    <DeactivateColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
-      {icons[String(props.icon)]}
-    </DeactivateColorlibStepIconRoot>
   );
 }

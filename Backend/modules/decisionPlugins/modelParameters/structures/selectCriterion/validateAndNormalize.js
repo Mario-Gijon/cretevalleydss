@@ -1,6 +1,6 @@
-import { normalizeNumberValue } from "../../../../modelParameters/parameterValues.js";
 import { hasOwnKey, isPlainObject } from "../../../../../utils/common/objects.js";
 import { toInvalid, toValid } from "../../parameterValidationResult.js";
+import { validateAndNormalizeSelectValue } from "../../selectValueValidation.js";
 
 const VALUE_TYPES = new Set(["string", "number", "integer", "boolean"]);
 
@@ -25,15 +25,6 @@ const buildRows = (context) => {
   return { rows };
 };
 
-const normalizeBoolean = (value) => {
-  if (typeof value === "boolean") return value;
-  if (typeof value !== "string") return null;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "true") return true;
-  if (normalized === "false") return false;
-  return null;
-};
-
 const allowedMatchesType = (allowed, valueType) => {
   if (!Array.isArray(allowed) || allowed.length === 0) return false;
   if (new Set(allowed).size !== allowed.length) return false;
@@ -41,28 +32,6 @@ const allowedMatchesType = (allowed, valueType) => {
   if (valueType === "number") return allowed.every((item) => typeof item === "number" && Number.isFinite(item));
   if (valueType === "integer") return allowed.every((item) => typeof item === "number" && Number.isFinite(item) && Number.isInteger(item));
   return allowed.every((item) => typeof item === "boolean");
-};
-
-const normalizeValue = ({ value, valueType, allowed }) => {
-  let normalized;
-  if (valueType === "number" || valueType === "integer") {
-    normalized = normalizeNumberValue(value);
-    if (normalized === null) return toInvalid("must be a finite number", value);
-    if (valueType === "integer" && !Number.isInteger(normalized)) {
-      return toInvalid("must be an integer", value);
-    }
-  } else if (valueType === "boolean") {
-    normalized = normalizeBoolean(value);
-    if (normalized === null) return toInvalid("must be a boolean", value);
-  } else if (valueType === "string") {
-    if (typeof value !== "string") return toInvalid("must be a string", value);
-    normalized = value;
-  } else {
-    return toInvalid("uses an unsupported valueType", value);
-  }
-
-  if (!allowed.includes(normalized)) return toInvalid("must be one of the allowed values", normalized);
-  return toValid(normalized);
 };
 
 export const validateAndNormalizeSelectCriterion = ({ value, parameter, context }) => {
@@ -77,7 +46,11 @@ export const validateAndNormalizeSelectCriterion = ({ value, parameter, context 
 
   const { rows } = contextRows;
   if (!isPlainObject(value)) {
-    const normalized = normalizeValue({ value, valueType, allowed });
+    const normalized = validateAndNormalizeSelectValue({
+      value,
+      valueType,
+      allowed,
+    });
     if (!normalized.ok) return normalized;
     return toValid(Object.fromEntries(rows.map((row) => [row.id, normalized.value])));
   }
@@ -91,7 +64,11 @@ export const validateAndNormalizeSelectCriterion = ({ value, parameter, context 
   const normalizedByCriterion = {};
   for (const row of rows) {
     if (!hasOwnKey(value, row.id)) return toInvalid(`is missing value for criterion '${row.id}'`, value);
-    const normalized = normalizeValue({ value: value[row.id], valueType, allowed });
+    const normalized = validateAndNormalizeSelectValue({
+      value: value[row.id],
+      valueType,
+      allowed,
+    });
     if (!normalized.ok) return toInvalid(`[${row.name}] ${normalized.message}`, normalized.value);
     normalizedByCriterion[row.id] = normalized.value;
   }

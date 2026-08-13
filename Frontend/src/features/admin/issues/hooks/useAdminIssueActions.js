@@ -14,6 +14,10 @@ import {
   countAdminIssueCurrentExperts,
 } from "../logic/buildAdminIssueExpertEditorState";
 import { modelUsesExpertWeights } from "../../../../utils/expertWeights.utils.js";
+import {
+  buildEditedExpertParticipants,
+  buildExpertWeightsByEmail,
+} from "../../../issueExperts/logic/buildEditedExpertParticipants.js";
 
 export const useAdminIssueActions = ({
   showSnackbarAlert,
@@ -300,32 +304,24 @@ export const useAdminIssueActions = ({
     const current = Array.isArray(issueDetail?.participants)
       ? issueDetail.participants
       : [];
-    const currentByEmail = new Map(
-      current.map((participant) => [participant?.expert?.email, {
+    const currentParticipants = current
+      .map((participant) => ({
         email: participant?.expert?.email,
         name: participant?.expert?.name || "",
         weight: participant?.weight,
-      }])
-    );
-    const finalExperts = Array.from(currentByEmail.values()).filter(
-      (expert) => expert.email && !expertsToRemove.includes(expert.email)
-    );
+      }))
+      .filter((participant) => participant.email);
 
-    expertsToAdd.forEach((email) => {
-      if (!currentByEmail.has(email)) {
-        const expert = allExperts.find((item) => item.email === email);
-        finalExperts.push({ email, name: expert?.name || "", weight: 0, isNew: true });
-      }
+    return buildEditedExpertParticipants({
+      currentParticipants,
+      availableExperts: allExperts,
+      expertsToAdd,
+      expertsToRemove,
     });
-
-    return finalExperts.sort((left, right) => left.email.localeCompare(right.email));
   }, [allExperts, expertsToAdd, expertsToRemove, issueDetail?.participants]);
 
   const currentExpertWeightsByEmail = useMemo(
-    () => finalExpertParticipants.reduce((weights, expert) => {
-      weights[expert.email] = expert.weight;
-      return weights;
-    }, {}),
+    () => buildExpertWeightsByEmail(finalExpertParticipants),
     [finalExpertParticipants]
   );
 

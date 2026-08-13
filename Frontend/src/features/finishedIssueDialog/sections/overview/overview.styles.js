@@ -135,14 +135,6 @@ export const overviewPanelCountSx = {
   fontWeight: "fontWeightBold",
 };
 
-export const overviewInnerSurfaceSx = {
-  minWidth: 0,
-  borderRadius: 1.8,
-  border: "1px solid rgba(255,255,255,0.08)",
-  bgcolor: "rgba(4, 12, 21, 0.33)",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.022)",
-};
-
 export const overviewIssueGridSx = {
   display: "grid",
   gridTemplateColumns: {

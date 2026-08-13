@@ -68,8 +68,6 @@ export const signupValidationRules = [
   validationResultExpress,
 ];
 
-export const singupValidationRules = signupValidationRules;
-
 export const loginValidationRules = [
   createEmailRule("email"),
 

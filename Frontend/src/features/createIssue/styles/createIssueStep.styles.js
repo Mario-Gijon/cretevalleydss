@@ -13,36 +13,6 @@ export const createIssueStepContainerSx = {
 };
 
 /**
- * Estilo base para inputs de steps createIssue.
- *
- * @param {Object} theme Tema de MUI.
- * @returns {Object}
- */
-export const getCreateIssueStepInputSx = (theme) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 3,
-    bgcolor: alpha(theme.palette.common.white, 0.04),
-  },
-});
-
-/**
- * Estilo del paper para diálogos compactos del flujo createIssue.
- *
- * @param {Object} theme Tema de MUI.
- * @returns {Object}
- */
-export const getCreateIssueCompactDialogPaperSx = (theme) => ({
-  borderRadius: 3.4,
-  overflow: "hidden",
-  border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-  boxShadow: `0 24px 60px ${alpha(theme.palette.common.black, 0.20)}`,
-  background: `radial-gradient(900px 340px at 10% 0%, ${alpha(
-    theme.palette.info.main,
-    0.18
-  )}, transparent 62%), rgba(16, 24, 34, 0.92)`,
-});
-
-/**
  * Estilo de paper para diálogos simples con aurora sutil en la parte superior.
  *
  * @param {Object} theme Tema de MUI.
@@ -239,50 +209,6 @@ export const getCreateIssueExpertsHeaderAvatarSx = (theme) => ({
 });
 
 /**
- * Estilo del badge contador en step de expertos.
- *
- * @param {Object} theme Tema de MUI.
- * @returns {Object}
- */
-export const getCreateIssueExpertsCountBadgeSx = (theme) => ({
-  px: 1.1,
-  py: 0.55,
-  borderRadius: 999,
-  bgcolor: alpha(theme.palette.info.main, 0.1),
-  color: "info.main",
-  typography: "caption",
-  fontWeight: "fontWeightBold",
-  border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
-});
-
-/**
- * Estilo de input de búsqueda en step de expertos.
- *
- * @param {Object} theme Tema de MUI.
- * @returns {Object}
- */
-export const getCreateIssueExpertsSearchInputSx = (theme) => ({
-  "& .MuiOutlinedInput-root": {
-    bgcolor: alpha(theme.palette.common.white, 0.04),
-    borderRadius: 3,
-  },
-});
-
-/**
- * Estilo de chip para expertos seleccionados.
- *
- * @param {Object} theme Tema de MUI.
- * @returns {Object}
- */
-export const getCreateIssueExpertsChipSx = (theme) => ({
-  borderColor: alpha(theme.palette.common.white, 0.18),
-  color: alpha(theme.palette.common.white, 0.88),
-  bgcolor: alpha(theme.palette.common.white, 0.03),
-  "& .MuiChip-deleteIcon": { color: alpha(theme.palette.common.white, 0.55) },
-  "& .MuiChip-deleteIcon:hover": { color: alpha(theme.palette.common.white, 0.85) },
-});
-
-/**
  * Estilo de celda de cabecera para tabla de expertos.
  *
  * @param {Object} theme Tema de MUI.
@@ -358,23 +284,6 @@ export const getCreateIssueExpressionActionBtnSx = (theme) => ({
   borderColor: alpha(theme.palette.common.white, 0.14),
   bgcolor: alpha(theme.palette.common.white, 0.03),
   "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.05) },
-});
-
-/**
- * Estilo del badge contador en dominios de expresión.
- *
- * @param {Object} theme Tema de MUI.
- * @returns {Object}
- */
-export const getCreateIssueExpressionCountBadgeSx = (theme) => ({
-  px: 1.1,
-  py: 0.55,
-  borderRadius: 999,
-  bgcolor: alpha(theme.palette.info.main, 0.1),
-  color: "info.main",
-  typography: "caption",
-  fontWeight: "fontWeightBold",
-  border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
 });
 
 /**

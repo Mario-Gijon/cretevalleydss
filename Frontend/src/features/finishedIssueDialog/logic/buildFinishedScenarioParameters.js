@@ -40,12 +40,6 @@ const resolveScenarioModelParameters = (model) =>
 export const modelUsesScenarioCriteriaWeights = (model) =>
   model?.capabilities?.usesCriteriaWeights === true;
 
-export const formatScenarioWeightValue = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return "";
-  return String(Number(parsed.toFixed(3)));
-};
-
 const resolveScenarioWeightRows = (leafCriteria = [], leafCount = 0) => {
   const rowsFromCriteria = (Array.isArray(leafCriteria) ? leafCriteria : [])
     .map((criterion, index) => {
@@ -154,37 +148,6 @@ export const getScenarioParameterDefinitions = (model) => {
   const params = resolveScenarioModelParameters(model);
   const syntheticWeights = buildSyntheticWeightsParameter(model);
   return syntheticWeights ? [...params, syntheticWeights] : params;
-};
-
-export const buildPseudoParametersFromValues = (values) => {
-  const source = values && typeof values === "object" ? values : {};
-
-  return Object.keys(source)
-    .sort()
-    .map((key) => {
-      const value = source[key];
-      const isFuzzyArray =
-        Array.isArray(value) &&
-        value.length > 0 &&
-        value.every(
-          (triple) =>
-            Array.isArray(triple) &&
-            triple.length === 3 &&
-            triple.every(
-              (item) =>
-                item === null || item === undefined || Number.isFinite(Number(item))
-            )
-        );
-      const type = Number.isFinite(Number(value))
-        ? "number"
-        : isFuzzyArray
-          ? "fuzzyArray"
-          : Array.isArray(value)
-            ? "array"
-            : "json";
-
-      return { key, label: key, type, default: value, rawOnly: true };
-    });
 };
 
 export const buildParamsResolved = ({

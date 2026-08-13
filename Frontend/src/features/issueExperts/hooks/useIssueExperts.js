@@ -2,6 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 
 import { editExperts } from "../../../services/issue.service.js";
 import { modelUsesExpertWeights } from "../../../utils/expertWeights.utils.js";
+import {
+  buildEditedExpertParticipants,
+  buildExpertWeightsByEmail,
+} from "../logic/buildEditedExpertParticipants.js";
 
 const getCurrentExpertsFromIssue = (issue) =>
   Array.from(
@@ -178,35 +182,26 @@ export const useIssueExperts = ({
   };
 
   const expertParticipants = useMemo(() => {
-    const currentByEmail = new Map(
-      (Array.isArray(selectedIssue?.expertParticipants)
+    const currentParticipants = (
+      Array.isArray(selectedIssue?.expertParticipants)
         ? selectedIssue.expertParticipants
         : getCurrentExpertsFromIssue(selectedIssue)
-      ).map((expert) => [
-        typeof expert === "string" ? expert : expert.email,
-        typeof expert === "string" ? { email: expert, name: "", weight: null } : expert,
-      ])
-    );
-    const finalExperts = Array.from(currentByEmail.values()).filter(
-      (expert) => !expertsToRemove.includes(expert.email)
+    ).map((expert) =>
+      typeof expert === "string"
+        ? { email: expert, name: "", weight: null }
+        : expert
     );
 
-    expertsToAdd.forEach((email) => {
-      if (!currentByEmail.has(email)) {
-        const expert = normalizedInitialExperts.find((item) => item.email === email);
-        finalExperts.push({ email, name: expert?.name || "", weight: 0, isNew: true });
-      }
+    return buildEditedExpertParticipants({
+      currentParticipants,
+      availableExperts: normalizedInitialExperts,
+      expertsToAdd,
+      expertsToRemove,
     });
-
-    return finalExperts.sort((left, right) => left.email.localeCompare(right.email));
   }, [expertsToAdd, expertsToRemove, normalizedInitialExperts, selectedIssue]);
 
   const currentExpertWeightsByEmail = useMemo(
-    () =>
-      expertParticipants.reduce((weights, expert) => {
-        weights[expert.email] = expert.weight;
-        return weights;
-      }, {}),
+    () => buildExpertWeightsByEmail(expertParticipants),
     [expertParticipants]
   );
 

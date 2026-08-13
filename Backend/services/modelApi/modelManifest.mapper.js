@@ -50,20 +50,6 @@ const normalizeDynamicObject = (value) => {
   return plainValue;
 };
 
-const normalizeStringList = (value) => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const uniqueValues = new Set(
-    value
-      .map((item) => normalizeNonEmptyString(item))
-      .filter(Boolean)
-  );
-
-  return [...uniqueValues];
-};
-
 const normalizeConstraintValue = (value) => {
   const plainValue = toPlainValue(value);
 

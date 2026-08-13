@@ -145,20 +145,6 @@ export const getExpressionDomainAssignmentsByCriterion = ({
   return assignments;
 };
 
-export const resolveAssignedDomainIdsFromExpressionDomainConfig = ({
-  expressionDomainConfig,
-  leafCriteria,
-}) => {
-  const assignments = getExpressionDomainAssignmentsByCriterion({
-    expressionDomainConfig,
-    leafCriteria,
-  });
-
-  return Array.from(
-    new Set(Object.values(assignments).map((domainId) => normalizeDomainId(domainId)).filter(Boolean))
-  );
-};
-
 export const validateExpressionDomainConfig = ({
   expressionDomainConfig,
   leafCriteria,
