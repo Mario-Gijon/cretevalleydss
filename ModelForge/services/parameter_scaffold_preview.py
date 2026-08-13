@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from schemas.scaffold_common import ScaffoldedFile
@@ -13,28 +12,10 @@ from services.template_renderer import render_template_strict
 PARAMETER_TEMPLATES_DIR = (
     Path(__file__).resolve().parent.parent / "templates" / "parameter"
 )
+
+
 def _load_template(template_filename: str) -> str:
     return (PARAMETER_TEMPLATES_DIR / template_filename).read_text(encoding="utf-8")
-
-
-def _to_kebab_case(value: str) -> str:
-    return "".join(
-        f"-{character.lower()}" if character.isupper() else character
-        for character in value
-    )
-
-
-def _load_structure_scaffold_adapter(
-    parameter_structure_key: str,
-) -> list[dict[str, str]] | None:
-    adapter_path = (
-        PARAMETER_TEMPLATES_DIR
-        / _to_kebab_case(parameter_structure_key)
-        / "scaffold.json"
-    )
-    if not adapter_path.is_file():
-        return None
-    return json.loads(adapter_path.read_text(encoding="utf-8"))
 
 
 def _build_placeholder_values(
@@ -67,46 +48,41 @@ def build_parameter_scaffold_preview(
     )
     placeholders = _build_placeholder_values(request)
 
-    dedicated_templates = _load_structure_scaffold_adapter(
-        names.parameter_structure_key
-    )
-    if dedicated_templates is not None:
-        template_map = [
-            (
-                template["template"],
-                f"{backend_target_base_path}/{template['output']}"
-                if template["target"] == "backend"
-                else f"{frontend_target_base_path}/{template['output']}",
+    runtime_templates = {
+        "backend_index_source": "backend-index.js.template",
+        "backend_validate_source": "backend-validate.js.template",
+        "frontend_index_source": "frontend-index.js.template",
+        "frontend_field_source": "frontend-field.jsx.template",
+        "frontend_read_only_source": "frontend-read-only.jsx.template",
+    }
+    placeholders.update(
+        {
+            placeholder: render_template_strict(
+                _load_template(template_name), placeholders
             )
-            for template in dedicated_templates
-        ]
-    else:
-        template_map = [
-            ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
-            ("backend-validate.js.template", f"{backend_target_base_path}/validate.js"),
-            ("frontend-index.js.template", f"{frontend_target_base_path}/index.js"),
-            (
-                "frontend-field.jsx.template",
-                f"{frontend_target_base_path}/{names.field_component_name}.jsx",
-            ),
-            (
-                "frontend-read-only.jsx.template",
-                f"{frontend_target_base_path}/{names.read_only_component_name}.jsx",
-            ),
-        ]
-
-    template_map.extend(
-        [
-            (
-                "backend-implementation-guide.md.template",
-                f"{backend_target_base_path}/IMPLEMENTATION_GUIDE.md",
-            ),
-            (
-                "frontend-implementation-guide.md.template",
-                f"{frontend_target_base_path}/IMPLEMENTATION_GUIDE.md",
-            ),
-        ]
+            for placeholder, template_name in runtime_templates.items()
+        }
     )
+
+    template_map = [
+        ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
+        ("backend-validate.js.template", f"{backend_target_base_path}/validate.js"),
+        ("backend-implementation-guide.md.template", f"{backend_target_base_path}/IMPLEMENTATION_GUIDE.md"),
+        ("backend-prompt-llm.md.template", f"{backend_target_base_path}/PROMPT_LLM.md"),
+        ("backend-prompt-agent.md.template", f"{backend_target_base_path}/PROMPT_AGENT.md"),
+        ("frontend-index.js.template", f"{frontend_target_base_path}/index.js"),
+        (
+            "frontend-field.jsx.template",
+            f"{frontend_target_base_path}/{names.field_component_name}.jsx",
+        ),
+        (
+            "frontend-read-only.jsx.template",
+            f"{frontend_target_base_path}/{names.read_only_component_name}.jsx",
+        ),
+        ("frontend-implementation-guide.md.template", f"{frontend_target_base_path}/IMPLEMENTATION_GUIDE.md"),
+        ("frontend-prompt-llm.md.template", f"{frontend_target_base_path}/PROMPT_LLM.md"),
+        ("frontend-prompt-agent.md.template", f"{frontend_target_base_path}/PROMPT_AGENT.md"),
+    ]
 
     files = []
     for template_name, output_path in template_map:

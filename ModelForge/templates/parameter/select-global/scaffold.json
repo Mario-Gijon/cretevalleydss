@@ -1,5 +1,0 @@
-[
-  {"template": "select-global/backend-index.js.template", "output": "index.js", "target": "backend"},
-  {"template": "select-global/backend-validate-definition.js.template", "output": "validateDefinition.js", "target": "backend"},
-  {"template": "select-global/backend-validate-and-normalize.js.template", "output": "validateAndNormalize.js", "target": "backend"}
-]

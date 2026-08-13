@@ -1,9 +1,0 @@
-[
-  {"template": "interval-global/backend-index.js.template", "output": "index.js", "target": "backend"},
-  {"template": "interval-global/backend-validate-definition.js.template", "output": "validateDefinition.js", "target": "backend"},
-  {"template": "interval-global/backend-validate-and-normalize.js.template", "output": "validateAndNormalize.js", "target": "backend"},
-  {"template": "interval-global/frontend-index.js.template", "output": "index.js", "target": "frontend"},
-  {"template": "interval-global/frontend-field.jsx.template", "output": "IntervalGlobalParameterField.jsx", "target": "frontend"},
-  {"template": "interval-global/frontend-field.styles.js.template", "output": "IntervalGlobalParameterField.styles.js", "target": "frontend"},
-  {"template": "interval-global/frontend-read-only.jsx.template", "output": "IntervalGlobalParameterReadOnly.jsx", "target": "frontend"}
-]

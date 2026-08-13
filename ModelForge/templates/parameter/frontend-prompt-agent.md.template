@@ -1,0 +1,230 @@
+# Implement {{ parameter_structure_key }} Frontend — Agent prompt
+
+You are a repository-aware coding agent working inside CreteValleyDSS.
+
+Implement the Frontend of the generated Parameter Structure:
+
+```text
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/
+```
+
+## Read first
+
+Read:
+
+```text
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/index.js
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ field_component_name }}.jsx
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ read_only_component_name }}.jsx
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/IMPLEMENTATION_GUIDE.md
+```
+
+Also inspect the matching Backend package when useful:
+
+```text
+Backend/modules/decisionPlugins/modelParameters/structures/{{ parameter_structure_key }}/
+```
+
+The current repository state is authoritative.
+
+## Developer requirements
+
+### Parameter Structure description
+
+[PARAMETER STRUCTURE DESCRIPTION]
+
+### Canonical value shape
+
+[VALUE SHAPE]
+
+### Desired UI / behavior
+
+[DESIRED UI / BEHAVIOR]
+
+### Additional requirements
+
+[ADDITIONAL REQUIREMENTS]
+
+### Actual runtime input — optional
+
+[ACTUAL RUNTIME INPUT]
+
+If supplied, treat the runtime object shape as authoritative.
+
+## Field contract
+
+Preserve:
+
+```js
+{
+  parameter,
+  value,
+  onChange,
+  error,
+  disabled,
+  parameterContext,
+}
+```
+
+`value` is the complete current value of this parameter.
+
+Treat object/array values as immutable.
+
+`onChange(nextValue)` replaces the complete value.
+
+Display `error` when appropriate.
+
+When `disabled` is true, prevent every change.
+
+Use `parameterContext` instead of refetching data already supplied by the host.
+
+## ReadOnly contract
+
+Preserve:
+
+```js
+{
+  parameter,
+  value,
+  parameterContext,
+}
+```
+
+Present the same canonical value without mutation.
+
+## `parameterContext`
+
+Frontend receives:
+
+```js
+{
+  model,
+  alternatives,
+  criteriaTree,
+  leafCriteria,
+}
+```
+
+Backend receives a different `context`.
+
+Do not rename or unify them.
+
+## Frontend/Backend agreement
+
+The Field, ReadOnly component and Backend validator must share one canonical value contract.
+
+Inspect the generated Backend package when necessary.
+
+Do not invent a separate Frontend-only value shape without an explicitly required normalization boundary.
+
+## Expression Domains
+
+Do not treat every parameter as an Expression Domain evaluation.
+
+If and only if this parameter stores a criterion-domain evaluation, reuse the public Expression Domain input/validation infrastructure using the canonical domain from `parameterContext`.
+
+Do not recreate registered numeric, linguistic, fuzzy or 2-tuple controls/validation.
+
+## Project conventions
+
+Keep the implementation simple.
+
+Start from the three generated runtime files.
+
+When extra files genuinely improve clarity:
+
+- React subcomponents belong in `components/`;
+- pure structure-specific logic belongs in `operations/`;
+- MUI `sx`/style definitions belong in `styles/`;
+- style files normally follow `<ComponentName>.styles.js`.
+
+Do not create generic `utils/`, `helpers/`, `services/`, hooks or abstractions without a concrete need.
+
+Use the existing React/Material UI stack.
+
+## Existing structures
+
+You may inspect implementations such as:
+
+```text
+Frontend/src/features/decisionPlugins/modelParameters/fields/numberGlobal/
+```
+
+They are references only.
+
+Do not modify or regenerate an existing Parameter Structure as part of this task.
+
+## Scope restrictions
+
+Do not modify:
+
+- ModelForge templates;
+- ParameterFieldHost or ParameterReadOnlyHost;
+- parameterContext builders;
+- unrelated Parameter Structures;
+- Backend runtime unless coordinated changes were explicitly requested;
+- Expression Domain implementations;
+- Model Forge UI;
+- DecisionModelsService.
+
+Do not redesign the plugin architecture.
+
+## Lifecycle
+
+Keep:
+
+```js
+implementationStatus: "scaffold"
+```
+
+while implementation is incomplete.
+
+Change it to:
+
+```js
+implementationStatus: "ready"
+```
+
+only after the Frontend implementation is complete and relevant tests pass.
+
+## Validation
+
+Add/update focused Frontend tests covering applicable behavior such as:
+
+- rendering the canonical value;
+- exact `onChange(nextValue)` output;
+- disabled behavior;
+- error presentation;
+- `parameterContext`-driven options/rows;
+- ReadOnly presentation;
+- Expression Domain integration when applicable.
+
+Run focused tests first, then appropriate Frontend validation, and finally:
+
+```text
+git diff --check
+```
+
+Do not install dependencies.
+
+## Final report
+
+Modify the repository directly.
+
+Do not paste every complete source file in the final response.
+
+Report:
+
+1. Files created.
+2. Files modified.
+3. Canonical value/UI behavior implemented.
+4. Exact shape emitted through `onChange`.
+5. `parameterContext` fields used.
+6. Expression Domain infrastructure reused, if applicable.
+7. Any `components/`, `operations/` or `styles/` files created and why.
+8. Whether `implementationStatus` remains `scaffold` or became `ready`.
+9. Tests/lint executed and results.
+10. `git diff --check` result.
+11. Any remaining limitation.
+
+Implement only what this Parameter Structure requires.

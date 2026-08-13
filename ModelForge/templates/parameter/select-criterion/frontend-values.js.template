@@ -1,9 +1,0 @@
-import { isPlainObject } from "../../../../../utils/common/objects";
-
-export const buildSelectCriterionRows = (parameterContext) => (Array.isArray(parameterContext?.leafCriteria) ? parameterContext.leafCriteria : []).map((criterion) => {
-  const key = typeof criterion?.id === "string" ? criterion.id.trim() : "";
-  return key ? { key, name: criterion?.name || key } : null;
-}).filter(Boolean);
-export const resolveSelectCriterionRowValue = ({ value, rowKey }) => isPlainObject(value) ? (Object.prototype.hasOwnProperty.call(value, rowKey) ? value[rowKey] : "") : (value ?? "");
-export const buildSelectCriterionDraft = ({ rows, value }) => Object.fromEntries(rows.map((row) => [row.key, resolveSelectCriterionRowValue({ value, rowKey: row.key })]));
-export const selectCriterionMapsEqual = (left, right) => isPlainObject(left) && isPlainObject(right) && Object.keys(left).length === Object.keys(right).length && Object.keys(left).every((key) => Object.prototype.hasOwnProperty.call(right, key) && left[key] === right[key]);

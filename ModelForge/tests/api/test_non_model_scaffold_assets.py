@@ -377,115 +377,18 @@ def test_parameter_structure_preview_reports_expected_paths_without_writing_file
         "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/index.js",
         "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/validate.js",
         "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/IMPLEMENTATION_GUIDE.md",
+        "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/PROMPT_LLM.md",
+        "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/PROMPT_AGENT.md",
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/index.js",
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/ScoreRangeParameterField.jsx",
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/ScoreRangeParameterReadOnly.jsx",
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/IMPLEMENTATION_GUIDE.md",
+        "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/PROMPT_LLM.md",
+        "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/PROMPT_AGENT.md",
     ]
+    assert len(preview_paths) == 11
     for relative_path in preview_paths:
         assert not (project_root / relative_path).exists()
-
-
-def test_interval_global_preview_uses_the_registered_forge_capability(
-    client_factory,
-    project_root: Path,
-) -> None:
-    payload = {
-        "parameterStructureKey": "intervalGlobal",
-        "componentName": "IntervalGlobal",
-        "backendStructureExportName": "intervalGlobalParameterStructure",
-        "validateFunctionName": "validateIntervalGlobal",
-    }
-
-    with client_factory(project_root) as client:
-        response = client.post("/scaffold/parameter/preview", json=payload)
-
-    assert response.status_code == 200
-    files = {item["path"]: item["content"] for item in response.json()["files"]}
-    backend_base = "Backend/modules/decisionPlugins/modelParameters/structures/intervalGlobal"
-    frontend_base = "Frontend/src/features/decisionPlugins/modelParameters/fields/intervalGlobal"
-    assert f"{backend_base}/validateDefinition.js" in files
-    assert f"{backend_base}/validateAndNormalize.js" in files
-    assert f"{frontend_base}/IntervalGlobalParameterField.jsx" in files
-    assert f"{frontend_base}/IntervalGlobalParameterReadOnly.jsx" in files
-    assert "validateDefinition: validateIntervalGlobalDefinition" in files[
-        f"{backend_base}/index.js"
-    ]
-
-
-def test_number_criterion_preview_uses_its_colocated_descriptor(
-    client_factory,
-    project_root: Path,
-) -> None:
-    with client_factory(project_root) as client:
-        response = client.post(
-            "/scaffold/parameter/preview",
-            json={"parameterStructureKey": "numberCriterion"},
-        )
-
-    assert response.status_code == 200
-    files = {item["path"]: item["content"] for item in response.json()["files"]}
-    backend_base = "Backend/modules/decisionPlugins/modelParameters/structures/numberCriterion"
-    frontend_base = "Frontend/src/features/decisionPlugins/modelParameters/fields/numberCriterion"
-    assert f"{backend_base}/validateDefinition.js" in files
-    assert f"{backend_base}/validateAndNormalize.js" in files
-    assert f"{frontend_base}/numberCriterionValues.js" in files
-    assert "validateDefinition: validateNumberCriterionDefinition" in files[
-        f"{backend_base}/index.js"
-    ]
-    frontend_field = files[
-        "Frontend/src/features/decisionPlugins/modelParameters/fields/"
-        "numberCriterion/NumberCriterionParameterField.jsx"
-    ]
-    frontend_values = files[
-        "Frontend/src/features/decisionPlugins/modelParameters/fields/"
-        "numberCriterion/numberCriterionValues.js"
-    ]
-    assert "useEffect" in frontend_field
-    assert "useMemo" in frontend_field
-    assert "rows.length === 0" in frontend_field
-    assert "isPlainObject(value)" in frontend_field
-    assert "numberCriterionMapsEqual" in frontend_field
-    assert "reconcileNumberCriterionMap" in frontend_values
-    assert "scope" not in frontend_field
-    assert "scope" not in frontend_values
-    assert "validateNumberCriterionDefinition(parameter)" not in files[
-        f"{backend_base}/validateAndNormalize.js"
-    ]
-    assert "scenarioKind" not in files[f"{frontend_base}/index.js"]
-
-
-def test_select_criterion_preview_uses_its_colocated_descriptor(
-    client_factory,
-    project_root: Path,
-) -> None:
-    with client_factory(project_root) as client:
-        response = client.post(
-            "/scaffold/parameter/preview",
-            json={"parameterStructureKey": "selectCriterion"},
-        )
-
-    assert response.status_code == 200
-    files = {item["path"]: item["content"] for item in response.json()["files"]}
-    backend_base = "Backend/modules/decisionPlugins/modelParameters/structures/selectCriterion"
-    frontend_base = "Frontend/src/features/decisionPlugins/modelParameters/fields/selectCriterion"
-    assert f"{backend_base}/index.js" in files
-    assert f"{backend_base}/validateDefinition.js" in files
-    assert f"{backend_base}/validateAndNormalize.js" in files
-    assert f"{frontend_base}/index.js" in files
-    assert f"{frontend_base}/selectCriterionValues.js" in files
-    field = files[f"{frontend_base}/SelectCriterionParameterField.jsx"]
-    index = files[f"{frontend_base}/index.js"]
-    assert "useMemo" in field
-    assert "useEffect" in field
-    assert "rows.length === 0" in field
-    assert "isPlainObject(value)" in field
-    assert "aria-label" in field
-    assert "scope" not in field
-    assert "requiredForEachCriterion" not in field
-    assert "restrictions.valueType" not in field
-    assert "scenario" not in index
-    assert "selectCriterionParameterField" in index
 
 
 def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_temp_root(
@@ -549,8 +452,16 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
         / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/ScoreRangeParameterReadOnly.jsx",
         "parameter_backend_guide": project_root
         / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/IMPLEMENTATION_GUIDE.md",
+        "parameter_backend_prompt_llm": project_root
+        / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/PROMPT_LLM.md",
+        "parameter_backend_prompt_agent": project_root
+        / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/PROMPT_AGENT.md",
         "parameter_frontend_guide": project_root
         / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/IMPLEMENTATION_GUIDE.md",
+        "parameter_frontend_prompt_llm": project_root
+        / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/PROMPT_LLM.md",
+        "parameter_frontend_prompt_agent": project_root
+        / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/PROMPT_AGENT.md",
     }
 
     for path in expected_files.values():
