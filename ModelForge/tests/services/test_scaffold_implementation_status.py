@@ -51,6 +51,8 @@ def test_scaffold_previews_include_implementation_guides() -> None:
         "DecisionModelsService/models/guide_model/run.py",
         "DecisionModelsService/models/guide_model/examples.py",
         "DecisionModelsService/models/guide_model/IMPLEMENTATION_GUIDE.md",
+        "DecisionModelsService/models/guide_model/PROMPT_LLM.md",
+        "DecisionModelsService/models/guide_model/PROMPT_AGENT.md",
     }
     assert _file_paths(evaluation_preview) == {
         "Backend/modules/decisionPlugins/evaluations/structures/guideEvaluation/index.js",
@@ -78,6 +80,30 @@ def test_scaffold_previews_include_implementation_guides() -> None:
         ),
     ):
         assert {backend_path, frontend_path} <= _file_paths(preview)
+
+
+def test_model_preview_embeds_rendered_runtime_sources() -> None:
+    preview = build_model_scaffold_preview(_model_request())
+    files = {file.path: file.content for file in preview.files}
+    base = "DecisionModelsService/models/guide_model/"
+
+    assert _file_paths(preview) == {
+        base + "__init__.py",
+        base + "definition.py",
+        base + "executor.py",
+        base + "run.py",
+        base + "examples.py",
+        base + "IMPLEMENTATION_GUIDE.md",
+        base + "PROMPT_LLM.md",
+        base + "PROMPT_AGENT.md",
+    }
+    assert files[base + "IMPLEMENTATION_GUIDE.md"].strip()
+    assert files[base + "PROMPT_LLM.md"].strip()
+    assert files[base + "PROMPT_AGENT.md"].strip()
+    for runtime_name in ("__init__.py", "definition.py", "executor.py", "run.py", "examples.py"):
+        assert files[base + runtime_name] in files[base + "PROMPT_LLM.md"]
+    assert "NotImplementedError" in files[base + "run.py"]
+    assert "implementation_status=\"scaffold\"" in files[base + "definition.py"]
 
 
 def test_evaluation_prompt_embeds_rendered_runtime_sources_and_stage_value() -> None:

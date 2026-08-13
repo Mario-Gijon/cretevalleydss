@@ -1,0 +1,265 @@
+# Implement {{ display_name }} integration — Standalone LLM prompt
+
+You are implementing the non-mathematical DecisionModelsService integration for a generated CreteValleyDSS model.
+
+You do NOT need repository access.
+
+Return complete replacement files ready to copy into the repository.
+
+## Critical algorithm rule
+
+Do NOT implement or invent the model algorithm in `run.py`.
+
+Do NOT infer formulas from the model name.
+
+Do NOT replace the algorithm with:
+
+- TOPSIS or another existing model;
+- averages;
+- placeholder scores;
+- random rankings;
+- identity transformations;
+- guessed equations.
+
+`run.py` must remain a hard-stop until a separate verified model-specific mathematical/algorithm specification is supplied.
+
+This prompt is for integration only.
+
+## Developer requirements
+
+### Model input semantics
+
+[MODEL INPUT REQUIREMENTS]
+
+### Evaluation payload semantics
+
+[EVALUATION PAYLOAD SEMANTICS]
+
+### Expected public output
+
+[EXPECTED PUBLIC OUTPUT]
+
+### Additional integration requirements
+
+[ADDITIONAL REQUIREMENTS]
+
+### Actual runtime input — optional
+
+[ACTUAL RUNTIME INPUT]
+
+If supplied, treat its runtime object shape as authoritative.
+
+## Model metadata
+
+This scaffold declares:
+
+```text
+apiModelKey: {{ api_model_key }}
+displayName: {{ display_name }}
+modelKind: {{ model_kind }}
+evaluationStructureKey: {{ evaluation_structure_key }}
+evaluationStage: {{ evaluation_structure_stage }}
+
+supportsCreatorCriteriaWeighting: {{ supports_creator_criteria_weighting }}
+supportsExpertCriteriaWeighting: {{ supports_expert_criteria_weighting }}
+supportsConsensus: {{ supports_consensus }}
+supportsConsensusSimulation: {{ supports_consensus_simulation }}
+
+isMultiCriteria: {{ is_multi_criteria }}
+usesCriteriaWeights: {{ uses_criteria_weights }}
+usesExpertWeights: {{ uses_expert_weights }}
+usesFuzzyCriteriaWeights: {{ uses_fuzzy_criteria_weights }}
+usesCriterionTypes: {{ uses_criterion_types }}
+
+supportedExpressionDomains:
+{{ supported_expression_domains }}
+
+parameters:
+{{ parameters }}
+```
+
+Do not silently change these capabilities.
+
+## Request contract
+
+DecisionModelsService receives:
+
+```python
+GenericModelExecutionRequest
+```
+
+whose exact top-level fields are:
+
+```json
+{
+  "modelParameters": {},
+  "evaluations": [],
+  "context": {}
+}
+```
+
+For issue models, `context` may contain:
+
+```json
+{
+  "issue": {
+    "id": "ISSUE_1",
+    "name": "Supplier selection",
+    "consensusThreshold": null,
+    "consensusMaxPhases": null
+  },
+  "alternatives": [
+    {
+      "id": "ALT_1",
+      "name": "Supplier A",
+      "description": null
+    }
+  ],
+  "criteria": [
+    {
+      "id": "CRIT_1",
+      "name": "Cost",
+      "description": null,
+      "type": "cost",
+      "expressionDomain": {
+        "id": "DOMAIN_1",
+        "_id": "DOMAIN_1",
+        "name": "Cost scale",
+        "typeKey": "numericContinuous",
+        "definition": {
+          "min": 0,
+          "max": 100,
+          "step": null
+        }
+      }
+    }
+  ],
+  "consensusPhase": 0,
+  "previousStageResult": null,
+  "structure": {
+    "key": "{{ evaluation_structure_key }}",
+    "stage": "{{ evaluation_structure_stage }}"
+  }
+}
+```
+
+Evaluation entries are shaped like:
+
+```json
+{
+  "expert": {
+    "id": "EXPERT_1",
+    "name": "Expert A",
+    "email": "expert.a@example.com"
+  },
+  "payload": {}
+}
+```
+
+The empty payload is intentional.
+
+Its real shape belongs to the Evaluation Structure and must be supplied by the developer requirements/runtime input.
+
+An evaluation may additionally contain a numeric `weight` when expert weights are used.
+
+Criteria-weighting models use the same top-level request contract but do not use issue-model alternatives in their creator-side context.
+
+## Integration responsibilities
+
+`executor.py` owns:
+
+- model-specific request validation;
+- request normalization;
+- ordering/ID resolution;
+- model parameter interpretation;
+- Expression Domain interpretation when explicitly required;
+- preparation of algorithm input;
+- later invocation of the pure `run.py` boundary;
+- mapping a verified algorithm result into the public model `data` object;
+- success/error response wrapping.
+
+`run.py` owns the model algorithm and must remain unimplemented in this task.
+
+## Expression Domains
+
+Do not invent domain conversion rules.
+
+If executor normalization must interpret Expression Domain values, use the canonical domain from `context.criteria`.
+
+Preserve any information required by the declared model.
+
+Do not reduce a richer value such as a linguistic 2-tuple to a plain number/label unless the model specification explicitly defines that transformation.
+
+## Current generated files
+
+### `DecisionModelsService/models/{{ snake_case_model_name }}/__init__.py`
+
+```python
+{{ init_source }}
+```
+
+### `DecisionModelsService/models/{{ snake_case_model_name }}/definition.py`
+
+```python
+{{ definition_source }}
+```
+
+### `DecisionModelsService/models/{{ snake_case_model_name }}/executor.py`
+
+```python
+{{ executor_source }}
+```
+
+### `DecisionModelsService/models/{{ snake_case_model_name }}/run.py`
+
+```python
+{{ run_source }}
+```
+
+### `DecisionModelsService/models/{{ snake_case_model_name }}/examples.py`
+
+```python
+{{ examples_source }}
+```
+
+The generated files are the starting integration contract.
+
+## File-specific rules
+
+`__init__.py` normally requires no changes.
+
+`definition.py` metadata is generated from Model Forge. Keep `implementation_status="scaffold"` in this task.
+
+Implement integration in `executor.py`.
+
+Do NOT implement the algorithm in `run.py`.
+
+Update `examples.py` only with request/output shapes actually defined by the developer requirements.
+
+Additional integration files are allowed only when genuinely necessary.
+
+## Required output
+
+Return every file that must be created or replaced for the integration task.
+
+For each file, print:
+
+```text
+FILE: <complete repository path>
+```
+
+Then provide one fenced code block with the complete file contents.
+
+Do not return:
+
+- diffs;
+- ellipses;
+- partial functions;
+- pseudocode;
+- TODO implementations presented as finished code.
+
+Do not return a replacement `run.py` that implements or guesses the algorithm.
+
+If no safe executor implementation is possible without algorithm-specific information, preserve the under-development behavior and explain exactly what input/output contract is missing.
+
+The model must remain `implementation_status="scaffold"` until its verified algorithm is implemented and tested.

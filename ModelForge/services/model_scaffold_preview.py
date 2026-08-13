@@ -124,6 +124,22 @@ def build_model_scaffold_preview(
     target_base_path = f"DecisionModelsService/models/{names.snake_case_model_name}"
     placeholders = _build_placeholder_values(request)
 
+    runtime_templates = {
+        "init_source": "__init__.py.template",
+        "definition_source": "definition.py.template",
+        "executor_source": "executor.py.template",
+        "run_source": "run.py.template",
+        "examples_source": "examples.py.template",
+    }
+    placeholders.update(
+        {
+            placeholder: render_template_strict(
+                _load_template(template_name), placeholders
+            )
+            for placeholder, template_name in runtime_templates.items()
+        }
+    )
+
     template_map = [
         ("__init__.py.template", "__init__.py"),
         ("definition.py.template", "definition.py"),
@@ -131,6 +147,8 @@ def build_model_scaffold_preview(
         ("run.py.template", "run.py"),
         ("examples.py.template", "examples.py"),
         ("implementation-guide.md.template", "IMPLEMENTATION_GUIDE.md"),
+        ("prompt-llm.md.template", "PROMPT_LLM.md"),
+        ("prompt-agent.md.template", "PROMPT_AGENT.md"),
     ]
 
     files = []

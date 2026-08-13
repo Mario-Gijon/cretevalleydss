@@ -113,6 +113,8 @@ def test_model_package_preview_reports_model_file_paths_without_creating_files(
         "DecisionModelsService/models/demo_model/run.py",
         "DecisionModelsService/models/demo_model/examples.py",
         "DecisionModelsService/models/demo_model/IMPLEMENTATION_GUIDE.md",
+        "DecisionModelsService/models/demo_model/PROMPT_LLM.md",
+        "DecisionModelsService/models/demo_model/PROMPT_AGENT.md",
     ]
 
     for relative_path in preview_paths:
@@ -143,6 +145,8 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
         "executor.py": model_root / "executor.py",
         "run.py": model_root / "run.py",
         "IMPLEMENTATION_GUIDE.md": model_root / "IMPLEMENTATION_GUIDE.md",
+        "PROMPT_LLM.md": model_root / "PROMPT_LLM.md",
+        "PROMPT_AGENT.md": model_root / "PROMPT_AGENT.md",
     }
 
     for path in expected_files.values():
@@ -160,6 +164,8 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
     guide_source = expected_files["IMPLEMENTATION_GUIDE.md"].read_text(
         encoding="utf-8"
     )
+    prompt_llm_source = expected_files["PROMPT_LLM.md"].read_text(encoding="utf-8")
+    prompt_agent_source = expected_files["PROMPT_AGENT.md"].read_text(encoding="utf-8")
 
     assert "from .definition import MODEL_DEFINITION" in init_source
     assert 'api_model_key="demo_model"' in definition_source
@@ -173,6 +179,14 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
     assert "def run_demo_model(" in run_source
     assert "NotImplementedError" in run_source
     assert guide_source.strip()
+    assert prompt_llm_source.strip()
+    assert prompt_agent_source.strip()
+    assert init_source in prompt_llm_source
+    assert definition_source in prompt_llm_source
+    assert examples_source in prompt_llm_source
+    assert executor_source in prompt_llm_source
+    assert run_source in prompt_llm_source
+    assert 'implementation_status="scaffold"' in definition_source
 
     examples_module = _load_module_from_file(
         "generated_demo_model_examples",

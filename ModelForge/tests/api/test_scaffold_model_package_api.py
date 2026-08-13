@@ -292,6 +292,8 @@ def test_model_package_apply_writes_expected_files_inside_temp_project_root(
         project_root / "DecisionModelsService/models/demo_model/run.py",
         project_root / "DecisionModelsService/models/demo_model/examples.py",
         project_root / "DecisionModelsService/models/demo_model/IMPLEMENTATION_GUIDE.md",
+        project_root / "DecisionModelsService/models/demo_model/PROMPT_LLM.md",
+        project_root / "DecisionModelsService/models/demo_model/PROMPT_AGENT.md",
         project_root
         / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/index.js",
         project_root
