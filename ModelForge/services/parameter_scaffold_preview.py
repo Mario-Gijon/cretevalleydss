@@ -95,6 +95,19 @@ def build_parameter_scaffold_preview(
             ),
         ]
 
+    template_map.extend(
+        [
+            (
+                "backend-implementation-guide.md.template",
+                f"{backend_target_base_path}/IMPLEMENTATION_GUIDE.md",
+            ),
+            (
+                "frontend-implementation-guide.md.template",
+                f"{frontend_target_base_path}/IMPLEMENTATION_GUIDE.md",
+            ),
+        ]
+    )
+
     files = []
     for template_name, output_path in template_map:
         content = render_template_strict(_load_template(template_name), placeholders)

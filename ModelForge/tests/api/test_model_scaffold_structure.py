@@ -112,6 +112,7 @@ def test_model_package_preview_reports_model_file_paths_without_creating_files(
         "DecisionModelsService/models/demo_model/executor.py",
         "DecisionModelsService/models/demo_model/run.py",
         "DecisionModelsService/models/demo_model/examples.py",
+        "DecisionModelsService/models/demo_model/IMPLEMENTATION_GUIDE.md",
     ]
 
     for relative_path in preview_paths:
@@ -141,19 +142,24 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
         "examples.py": model_root / "examples.py",
         "executor.py": model_root / "executor.py",
         "run.py": model_root / "run.py",
+        "IMPLEMENTATION_GUIDE.md": model_root / "IMPLEMENTATION_GUIDE.md",
     }
 
     for path in expected_files.values():
         assert path.exists(), f"Expected generated scaffold file was missing: {path}"
         content = path.read_text(encoding="utf-8")
         assert content.strip(), f"Generated scaffold file was empty: {path}"
-        py_compile.compile(str(path), doraise=True)
+        if path.suffix == ".py":
+            py_compile.compile(str(path), doraise=True)
 
     init_source = expected_files["__init__.py"].read_text(encoding="utf-8")
     definition_source = expected_files["definition.py"].read_text(encoding="utf-8")
     examples_source = expected_files["examples.py"].read_text(encoding="utf-8")
     executor_source = expected_files["executor.py"].read_text(encoding="utf-8")
     run_source = expected_files["run.py"].read_text(encoding="utf-8")
+    guide_source = expected_files["IMPLEMENTATION_GUIDE.md"].read_text(
+        encoding="utf-8"
+    )
 
     assert "from .definition import MODEL_DEFINITION" in init_source
     assert "Implementation guide" in init_source
@@ -172,6 +178,10 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
     assert "def run_demo_model(" in run_source
     assert "NotImplementedError" in run_source
     assert "Implementation guide" in run_source
+    assert guide_source == (
+        "# Demo Model — Implementation Guide\n\n"
+        "TODO: final Model Forge implementation guide content will be added later.\n"
+    )
 
     examples_module = _load_module_from_file(
         "generated_demo_model_examples",

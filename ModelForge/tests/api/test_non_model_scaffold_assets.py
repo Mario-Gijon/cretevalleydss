@@ -90,13 +90,15 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
     )
 
     preview_paths = [item["path"] for item in body["files"]]
-    assert len(preview_paths) == 5
+    assert len(preview_paths) == 7
     assert preview_paths == [
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.get.js",
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.save.js",
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PairwiseMatrixView.jsx",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
     ]
     for relative_path in preview_paths:
         assert not (project_root / relative_path).exists()
@@ -134,7 +136,10 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
         "validatePayloadRead",
     ):
         assert forbidden not in frontend
-    assert all(not path.endswith(".md") for path in preview_paths)
+    assert [path for path in preview_paths if path.endswith("IMPLEMENTATION_GUIDE.md")] == [
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
+    ]
     assert all(not path.endswith(".validation.js") for path in preview_paths)
     for forbidden_path_part in (
         "/operations/",
@@ -182,9 +187,11 @@ def test_creator_criteria_weighting_package_scaffolds_explicit_creator_operation
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/index.js",
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/creatorWeighting.get.js",
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/creatorWeighting.save.js",
+        "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/IMPLEMENTATION_GUIDE.md",
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/operations/remapCriterionIds.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/index.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/CreatorWeightingView.jsx",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/IMPLEMENTATION_GUIDE.md",
         "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/operations/buildInitialEvaluation.js",
     ]
     definition = next(
@@ -360,9 +367,11 @@ def test_parameter_structure_preview_reports_expected_paths_without_writing_file
     assert preview_paths == [
         "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/index.js",
         "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/validate.js",
+        "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/IMPLEMENTATION_GUIDE.md",
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/index.js",
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/ScoreRangeParameterField.jsx",
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/ScoreRangeParameterReadOnly.jsx",
+        "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/IMPLEMENTATION_GUIDE.md",
     ]
     for relative_path in preview_paths:
         assert not (project_root / relative_path).exists()
@@ -507,6 +516,10 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
         / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.save.js",
         "evaluation_frontend_view": project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PairwiseMatrixView.jsx",
+        "evaluation_backend_guide": project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
+        "evaluation_frontend_guide": project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
         "parameter_backend_index": project_root
         / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/index.js",
         "parameter_backend_validate": project_root
@@ -517,6 +530,10 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
         / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/ScoreRangeParameterField.jsx",
         "parameter_frontend_readonly": project_root
         / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/ScoreRangeParameterReadOnly.jsx",
+        "parameter_backend_guide": project_root
+        / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/IMPLEMENTATION_GUIDE.md",
+        "parameter_frontend_guide": project_root
+        / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange/IMPLEMENTATION_GUIDE.md",
     }
 
     for path in expected_files.values():

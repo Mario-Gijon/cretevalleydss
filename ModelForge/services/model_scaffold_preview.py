@@ -130,6 +130,7 @@ def build_model_scaffold_preview(
         ("executor.py.template", "executor.py"),
         ("run.py.template", "run.py"),
         ("examples.py.template", "examples.py"),
+        ("implementation-guide.md.template", "IMPLEMENTATION_GUIDE.md"),
     ]
 
     files = []

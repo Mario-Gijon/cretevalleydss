@@ -118,6 +118,10 @@ def build_evaluation_structure_scaffold_preview(
             "backend-save.js.template",
             f"{backend_target_base_path}/{names.evaluation_structure_key}.save.js",
         ),
+        (
+            "backend-implementation-guide.md.template",
+            f"{backend_target_base_path}/IMPLEMENTATION_GUIDE.md",
+        ),
     ]
     if scaffold_creator_api_operations:
         template_map.append(
@@ -132,6 +136,10 @@ def build_evaluation_structure_scaffold_preview(
         (
             "frontend-view.jsx.template",
             f"{frontend_target_base_path}/{names.view_component_name}.jsx",
+        ),
+        (
+            "frontend-implementation-guide.md.template",
+            f"{frontend_target_base_path}/IMPLEMENTATION_GUIDE.md",
         ),
     ])
     if scaffold_creator_api_operations:
