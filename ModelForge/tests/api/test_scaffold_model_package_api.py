@@ -301,11 +301,19 @@ def test_model_package_apply_writes_expected_files_inside_temp_project_root(
         project_root
         / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/IMPLEMENTATION_GUIDE.md",
         project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/PROMPT_LLM.md",
+        project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/PROMPT_AGENT.md",
+        project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/index.js",
         project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/AlternativeMatrixView.jsx",
         project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/IMPLEMENTATION_GUIDE.md",
+        project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/PROMPT_LLM.md",
+        project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/PROMPT_AGENT.md",
     ]
 
     for path in expected_files:

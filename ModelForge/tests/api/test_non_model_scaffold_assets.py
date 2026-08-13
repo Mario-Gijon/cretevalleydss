@@ -90,15 +90,19 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
     )
 
     preview_paths = [item["path"] for item in body["files"]]
-    assert len(preview_paths) == 7
+    assert len(preview_paths) == 11
     assert preview_paths == [
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.get.js",
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.save.js",
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_LLM.md",
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_AGENT.md",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PairwiseMatrixView.jsx",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_LLM.md",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_AGENT.md",
     ]
     for relative_path in preview_paths:
         assert not (project_root / relative_path).exists()
@@ -136,6 +140,11 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
         "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
         "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
     ]
+    assert all(
+        contents[path].strip()
+        for path in preview_paths
+        if path.endswith(("IMPLEMENTATION_GUIDE.md", "PROMPT_LLM.md", "PROMPT_AGENT.md"))
+    )
     assert all(not path.endswith(".validation.js") for path in preview_paths)
     for forbidden_path_part in (
         "/operations/",
@@ -184,10 +193,14 @@ def test_creator_criteria_weighting_package_scaffolds_explicit_creator_operation
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/creatorWeighting.get.js",
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/creatorWeighting.save.js",
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/IMPLEMENTATION_GUIDE.md",
+        "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/PROMPT_LLM.md",
+        "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/PROMPT_AGENT.md",
         "Backend/modules/decisionPlugins/evaluations/structures/creatorWeighting/operations/remapCriterionIds.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/index.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/CreatorWeightingView.jsx",
         "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/IMPLEMENTATION_GUIDE.md",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/PROMPT_LLM.md",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/PROMPT_AGENT.md",
         "Frontend/src/features/decisionPlugins/evaluations/structures/creatorWeighting/operations/buildInitialEvaluation.js",
     ]
     definition = next(
@@ -514,8 +527,16 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
         / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PairwiseMatrixView.jsx",
         "evaluation_backend_guide": project_root
         / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
+        "evaluation_backend_prompt_llm": project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_LLM.md",
+        "evaluation_backend_prompt_agent": project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_AGENT.md",
         "evaluation_frontend_guide": project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/IMPLEMENTATION_GUIDE.md",
+        "evaluation_frontend_prompt_llm": project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_LLM.md",
+        "evaluation_frontend_prompt_agent": project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PROMPT_AGENT.md",
         "parameter_backend_index": project_root
         / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange/index.js",
         "parameter_backend_validate": project_root

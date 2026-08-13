@@ -60,10 +60,19 @@ def test_scaffold_previews_include_implementation_guides() -> None:
         "Backend/modules/decisionPlugins/evaluations/structures/guideEvaluation/guideEvaluation.get.js",
         "Backend/modules/decisionPlugins/evaluations/structures/guideEvaluation/guideEvaluation.save.js",
         "Backend/modules/decisionPlugins/evaluations/structures/guideEvaluation/IMPLEMENTATION_GUIDE.md",
+        "Backend/modules/decisionPlugins/evaluations/structures/guideEvaluation/PROMPT_LLM.md",
+        "Backend/modules/decisionPlugins/evaluations/structures/guideEvaluation/PROMPT_AGENT.md",
         "Frontend/src/features/decisionPlugins/evaluations/structures/guideEvaluation/index.js",
         "Frontend/src/features/decisionPlugins/evaluations/structures/guideEvaluation/GuideEvaluationView.jsx",
         "Frontend/src/features/decisionPlugins/evaluations/structures/guideEvaluation/IMPLEMENTATION_GUIDE.md",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/guideEvaluation/PROMPT_LLM.md",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/guideEvaluation/PROMPT_AGENT.md",
     }
+    assert all(
+        file.content.strip()
+        for file in evaluation_preview.files
+        if file.path.endswith(("IMPLEMENTATION_GUIDE.md", "PROMPT_LLM.md", "PROMPT_AGENT.md"))
+    )
     for preview, backend_path, frontend_path in (
         (
             generic_parameter_preview,
@@ -77,6 +86,52 @@ def test_scaffold_previews_include_implementation_guides() -> None:
         ),
     ):
         assert {backend_path, frontend_path} <= _file_paths(preview)
+
+
+def test_evaluation_prompt_embeds_rendered_runtime_sources_and_stage_value() -> None:
+    preview = build_evaluation_structure_scaffold_preview(
+        EvaluationStructureScaffoldPreviewRequest(
+            evaluationStructureKey="promptEvaluation",
+            stageConstant="ALTERNATIVE_EVALUATION",
+        )
+    )
+    files = {file.path: file.content for file in preview.files}
+    backend_base = "Backend/modules/decisionPlugins/evaluations/structures/promptEvaluation/"
+    frontend_base = "Frontend/src/features/decisionPlugins/evaluations/structures/promptEvaluation/"
+
+    assert "alternativeEvaluation" in files[backend_base + "PROMPT_LLM.md"]
+    assert "scaffold_creator_api_operations = false" in files[backend_base + "PROMPT_LLM.md"]
+    assert files[backend_base + "index.js"] in files[backend_base + "PROMPT_LLM.md"]
+    assert files[backend_base + "promptEvaluation.get.js"] in files[backend_base + "PROMPT_LLM.md"]
+    assert files[backend_base + "promptEvaluation.save.js"] in files[backend_base + "PROMPT_LLM.md"]
+    assert files[frontend_base + "index.js"] in files[frontend_base + "PROMPT_LLM.md"]
+    assert files[frontend_base + "PromptEvaluationView.jsx"] in files[frontend_base + "PROMPT_LLM.md"]
+    assert "loading" not in files[frontend_base + "PromptEvaluationView.jsx"]
+
+
+def test_creator_evaluation_prompt_embeds_optional_runtime_sources() -> None:
+    model = _model_request().model_copy(
+        update={
+            "apiModelKey": "creator_weighting",
+            "modelKind": "criteriaWeighting",
+            "supportsCreatorCriteriaWeighting": True,
+        }
+    )
+    request = EvaluationStructureScaffoldPreviewRequest(
+        evaluationStructureKey="creatorEvaluation",
+        stageConstant="CRITERIA_WEIGHTING",
+    )
+    preview = build_evaluation_structure_scaffold_preview(request, model=model)
+    files = {file.path: file.content for file in preview.files}
+    backend_base = "Backend/modules/decisionPlugins/evaluations/structures/creatorEvaluation/"
+    frontend_base = "Frontend/src/features/decisionPlugins/evaluations/structures/creatorEvaluation/"
+    backend_prompt = files[backend_base + "PROMPT_LLM.md"]
+    frontend_prompt = files[frontend_base + "PROMPT_LLM.md"]
+
+    assert "criteriaWeighting" in backend_prompt
+    assert "scaffold_creator_api_operations = true" in backend_prompt
+    assert files[backend_base + "operations/remapCriterionIds.js"] in backend_prompt
+    assert files[frontend_base + "operations/buildInitialEvaluation.js"] in frontend_prompt
 
 
 def test_model_package_preview_includes_guides_only_for_generated_items(

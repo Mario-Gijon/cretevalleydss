@@ -1,0 +1,335 @@
+# Implement {{ evaluation_structure_key }} Backend — Standalone LLM prompt
+
+You are implementing the Backend of a CreteValleyDSS Evaluation Structure.
+
+You do NOT need repository access to complete this task.
+
+Return complete replacement files ready to copy into the repository paths requested below.
+
+Do not return diffs or isolated code fragments.
+
+## Developer requirements
+
+### Structure description
+
+[STRUCTURE DESCRIPTION]
+
+### Evaluation payload
+
+Describe the canonical payload that this structure should own.
+
+[EVALUATION PAYLOAD DESCRIPTION]
+
+### Validation rules
+
+Include draft/submit differences when relevant.
+
+[VALIDATION RULES]
+
+### Additional requirements
+
+[ADDITIONAL REQUIREMENTS]
+
+### Actual runtime input — optional
+
+If available, this section contains values captured from a real CreteValleyDSS execution.
+
+The actual runtime object shape is authoritative if it differs from the representative example later in this prompt.
+
+[ACTUAL RUNTIME INPUT]
+
+## Project architecture
+
+CreteValleyDSS uses plugin-owned Evaluation Structures.
+
+Evaluation payloads are persisted in MongoDB using Mongoose `Schema.Types.Mixed`.
+
+There is deliberately no universal database payload shape for every Evaluation Structure.
+
+Each Evaluation Structure owns:
+
+- its canonical payload shape;
+- structure-specific validation;
+- normalization before persistence;
+- draft versus submit requirements.
+
+`Schema.Types.Mixed` provides structural flexibility. It does NOT mean that arbitrary payloads should be accepted.
+
+Do not solve this implementation by changing shared persistence schemas.
+
+## Public Backend contract
+
+Preserve the generated function signatures and exports.
+
+### GET
+
+```js
+async ({
+  payload,
+  decisionContext,
+}) => frontendPayload
+```
+
+`payload` is the stored evaluation payload or `null`.
+
+Return the complete payload consumed by the Frontend.
+
+If the canonical stored representation already matches the required Frontend representation, prefer returning it directly.
+
+### SAVE
+
+```js
+async ({
+  payload,
+  decisionContext,
+  mode,
+}) => storedPayload
+```
+
+`mode` is:
+
+- `"draft"` — incomplete payloads may be accepted when appropriate;
+- `"submit"` — the definitive submission must satisfy every required rule.
+
+Return the complete normalized payload to persist.
+
+Do not mutate the input payload.
+
+## Representative `decisionContext`
+
+A representative runtime object is:
+
+```json
+{
+  "issue": {
+    "id": "ISSUE_1",
+    "name": "Supplier selection",
+    "currentStage": "{{ evaluation_stage_value }}",
+    "consensusPhase": 0,
+    "isConsensus": false,
+    "consensusThreshold": null,
+    "consensusMaxPhases": null
+  },
+  "structure": {
+    "key": "{{ evaluation_structure_key }}",
+    "stage": "{{ evaluation_stage_value }}"
+  },
+  "model": {
+    "id": "MODEL_1",
+    "name": "Example model",
+    "apiModelKey": "example_model"
+  },
+  "modelParameters": {},
+  "criteriaWeightingParameters": {},
+  "alternatives": [
+    {
+      "id": "ALT_1",
+      "name": "Supplier A"
+    },
+    {
+      "id": "ALT_2",
+      "name": "Supplier B"
+    }
+  ],
+  "criteriaTree": [
+    {
+      "id": "CRIT_1",
+      "name": "Cost",
+      "type": "cost",
+      "expressionDomain": {
+        "id": "DOMAIN_1",
+        "_id": "DOMAIN_1",
+        "name": "Cost scale",
+        "typeKey": "numericContinuous",
+        "definition": {
+          "min": 0,
+          "max": 100,
+          "step": null
+        }
+      },
+      "children": []
+    }
+  ],
+  "leafCriteria": [
+    {
+      "id": "CRIT_1",
+      "name": "Cost",
+      "type": "cost",
+      "expressionDomain": {
+        "id": "DOMAIN_1",
+        "_id": "DOMAIN_1",
+        "name": "Cost scale",
+        "typeKey": "numericContinuous",
+        "definition": {
+          "min": 0,
+          "max": 100,
+          "step": null
+        }
+      }
+    }
+  ],
+  "experts": [
+    {
+      "id": "EXPERT_1",
+      "name": "Expert A"
+    }
+  ],
+  "criteriaWeights": {},
+  "expertWeights": {},
+  "consensus": {
+    "phase": 0,
+    "maxPhases": null,
+    "threshold": null,
+    "currentCollectiveEvaluations": {},
+    "previousCollectiveEvaluations": {}
+  }
+}
+```
+
+Concrete IDs, names, stages, domains and collections vary between issues.
+
+Do not hard-code the representative values.
+
+Use IDs and data dynamically from `decisionContext`.
+
+## Expression Domains
+
+CreteValleyDSS already owns validation rules for Expression Domain values.
+
+If this structure stores evaluations against:
+
+```js
+criterion.expressionDomain
+```
+
+reuse the existing Backend validation layer.
+
+The existing API includes:
+
+```js
+validateExpressionDomainEvaluationOrThrow({
+  value,
+  expressionDomain,
+});
+```
+
+The canonical Expression Domain must come from the relevant criterion supplied by `decisionContext`.
+
+Do not implement your own:
+
+- numeric range validation;
+- discrete-value validation;
+- linguistic ordinal validation;
+- linguistic fuzzy validation;
+- linguistic 2-tuple validation;
+- other Expression Domain-specific coercion or validation.
+
+The Evaluation Structure still owns validation of its surrounding payload shape.
+
+## Current generated files
+
+The following source is the exact scaffold generated by Model Forge and is the starting integration contract.
+
+### `Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/index.js`
+
+```js
+{{ backend_index_source }}
+```
+
+### `Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/{{ evaluation_structure_key }}.get.js`
+
+```js
+{{ backend_get_source }}
+```
+
+### `Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/{{ evaluation_structure_key }}.save.js`
+
+```js
+{{ backend_save_source }}
+```
+
+## Optional creator criteria-weighting operation
+
+For this scaffold:
+
+```text
+scaffold_creator_api_operations = {{ scaffold_creator_api_operations }}
+```
+
+When this value is `true`, Model Forge also generates:
+
+```text
+Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/operations/remapCriterionIds.js
+```
+
+Its generated starting source is:
+
+```js
+{{ backend_remap_source }}
+```
+
+Implement it only when `scaffold_creator_api_operations` is `true`.
+
+If it is `false`, do not create that operation.
+
+Criterion remapping must target only the criterion references actually owned by the payload.
+
+Do not implement generic recursive string replacement.
+
+## Implementation conventions
+
+Keep the implementation simple.
+
+The generated files are the minimum integration scaffold, not a requirement to keep all logic in one file.
+
+If additional files are genuinely useful:
+
+- pure structure-specific operations belong in `operations/`;
+- use descriptive filenames such as:
+  - `normalizePayload.js`
+  - `validatePayload.js`
+  - `remapCriterionIds.js`
+
+Do not create generic `utils/`, `helpers/`, `services/`, adapters or abstractions without a concrete need.
+
+Do not change shared persistence schemas or application architecture.
+
+## Lifecycle
+
+The generated registry starts with:
+
+```js
+implementationStatus: "scaffold"
+```
+
+Return `"ready"` in the final `index.js` only if the implementation described by this prompt is complete.
+
+If required behavior is impossible to determine from the supplied requirements, do not invent domain rules merely to mark the structure ready.
+
+## Required output
+
+Return every file that must be created or replaced.
+
+For each file, clearly print:
+
+```text
+FILE: <complete repository path>
+```
+
+Immediately after it, provide one fenced code block containing the complete file contents in the appropriate language.
+
+Return complete source files.
+
+Do not return:
+
+- diffs;
+- ellipses;
+- partial methods;
+- pseudocode;
+- TODO implementations.
+
+If you create an additional operation, include its complete repository path and complete source.
+
+Do not generate files that are unnecessary.
+
+At minimum, return every generated Backend source file that requires replacement for the completed implementation.

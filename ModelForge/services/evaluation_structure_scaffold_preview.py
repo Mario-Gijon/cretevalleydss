@@ -15,6 +15,10 @@ from services.template_renderer import render_template_strict
 EVALUATION_STRUCTURE_TEMPLATES_DIR = (
     Path(__file__).resolve().parent.parent / "templates" / "evaluation-structure"
 )
+EVALUATION_STAGE_VALUE = {
+    "CRITERIA_WEIGHTING": "criteriaWeighting",
+    "ALTERNATIVE_EVALUATION": "alternativeEvaluation",
+}
 
 
 def _load_template(template_filename: str) -> str:
@@ -33,6 +37,10 @@ def _build_placeholder_values(
     return {
         "evaluation_structure_key": names.evaluation_structure_key,
         "stage_constant": request.stageConstant,
+        "evaluation_stage_value": EVALUATION_STAGE_VALUE[request.stageConstant],
+        "scaffold_creator_api_operations": str(
+            scaffold_creator_api_operations
+        ).lower(),
         "backend_structure_export_name": names.backend_structure_export_name,
         "get_function_name": names.get_function_name,
         "save_function_name": names.save_function_name,
@@ -108,6 +116,23 @@ def build_evaluation_structure_scaffold_preview(
         scaffold_creator_api_operations=scaffold_creator_api_operations,
     )
 
+    runtime_template_names = {
+        "backend_index_source": "backend-index.js.template",
+        "backend_get_source": "backend-get.js.template",
+        "backend_save_source": "backend-save.js.template",
+        "backend_remap_source": "backend-remap-criterion-ids.js.template",
+        "frontend_index_source": "frontend-index.js.template",
+        "frontend_view_source": "frontend-view.jsx.template",
+        "frontend_build_initial_source": "frontend-build-initial-evaluation.js.template",
+    }
+    rendered_runtime_sources = {
+        placeholder_name: render_template_strict(
+            _load_template(template_name), placeholders
+        )
+        for placeholder_name, template_name in runtime_template_names.items()
+    }
+    placeholders.update(rendered_runtime_sources)
+
     template_map = [
         ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
         (
@@ -121,6 +146,14 @@ def build_evaluation_structure_scaffold_preview(
         (
             "backend-implementation-guide.md.template",
             f"{backend_target_base_path}/IMPLEMENTATION_GUIDE.md",
+        ),
+        (
+            "backend-prompt-llm.md.template",
+            f"{backend_target_base_path}/PROMPT_LLM.md",
+        ),
+        (
+            "backend-prompt-agent.md.template",
+            f"{backend_target_base_path}/PROMPT_AGENT.md",
         ),
     ]
     if scaffold_creator_api_operations:
@@ -140,6 +173,14 @@ def build_evaluation_structure_scaffold_preview(
         (
             "frontend-implementation-guide.md.template",
             f"{frontend_target_base_path}/IMPLEMENTATION_GUIDE.md",
+        ),
+        (
+            "frontend-prompt-llm.md.template",
+            f"{frontend_target_base_path}/PROMPT_LLM.md",
+        ),
+        (
+            "frontend-prompt-agent.md.template",
+            f"{frontend_target_base_path}/PROMPT_AGENT.md",
         ),
     ])
     if scaffold_creator_api_operations:
