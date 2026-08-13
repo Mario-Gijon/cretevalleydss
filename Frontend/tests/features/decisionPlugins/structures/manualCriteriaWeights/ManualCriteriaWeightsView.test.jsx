@@ -23,13 +23,12 @@ const renderView = (props = {}) =>
       setEvaluation={vi.fn()}
       collectiveEvaluation={null}
       readOnly={false}
-      loading={false}
       {...props}
     />
   );
 
 describe("ManualCriteriaWeightsView", () => {
-  it("requires a supplied canonical evaluation outside loading", () => {
+  it("requires a supplied canonical evaluation", () => {
     renderView({ evaluation: null });
 
     expect(
@@ -74,15 +73,11 @@ describe("ManualCriteriaWeightsView", () => {
     expect(screen.getAllByRole("spinbutton")).toHaveLength(3);
   });
 
-  it("supports read-only and loading states", () => {
-    const { unmount } = renderView({ readOnly: true });
+  it("supports read-only rendering", () => {
+    renderView({ readOnly: true });
     for (const input of screen.getAllByRole("spinbutton")) {
       expect(input).toBeDisabled();
     }
-    unmount();
-
-    const { container } = renderView({ evaluation: null, loading: true });
-    expect(container).toBeEmptyDOMElement();
   });
 
   it("uses the same public props for Finished Issue rendering", () => {

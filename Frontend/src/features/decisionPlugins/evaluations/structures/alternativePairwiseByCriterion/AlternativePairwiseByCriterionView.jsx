@@ -16,7 +16,6 @@ const AlternativePairwiseByCriterionView = ({
   setEvaluation,
   collectiveEvaluation,
   readOnly,
-  loading,
 }) => {
   const alternatives = Array.isArray(decisionContext?.alternatives)
     ? decisionContext.alternatives
@@ -30,7 +29,7 @@ const AlternativePairwiseByCriterionView = ({
     Math.min(currentCriterionIndex, Math.max(criteria.length - 1, 0))
   );
   const currentCriterion = criteria[safeCurrentCriterionIndex] || null;
-  const permitEdit = readOnly !== true && loading !== true;
+  const permitEdit = readOnly !== true;
 
   useEffect(() => {
     setCurrentCriterionIndex(0);
@@ -77,10 +76,6 @@ const AlternativePairwiseByCriterionView = ({
       };
     }
   }, [alternatives, collectiveEvaluation, criteria]);
-
-  if (loading === true && evaluation == null) {
-    return null;
-  }
 
   if (criteria.length === 0) {
     return (

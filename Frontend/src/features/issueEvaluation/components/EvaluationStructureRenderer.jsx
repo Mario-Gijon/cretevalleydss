@@ -51,7 +51,11 @@ const EvaluationStructureRenderer = ({
   if (!View || !decisionContext) {
     return null;
   }
-  if (loading !== true && providedEvaluation == null) {
+  if (providedEvaluation == null) {
+    if (loading === true) {
+      return null;
+    }
+
     return (
       <Alert severity="error">
         Evaluation payload is unavailable.
@@ -67,7 +71,6 @@ const EvaluationStructureRenderer = ({
         setEvaluation={READ_ONLY_SET_EVALUATION}
         collectiveEvaluation={collectiveEvaluation}
         readOnly={readOnly === true}
-        loading={loading === true}
       />
     </Box>
   );

@@ -39,7 +39,6 @@ describe("BestWorstCriteriaView interaction", () => {
         setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -69,7 +68,6 @@ describe("BestWorstCriteriaView interaction", () => {
         setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -95,7 +93,6 @@ describe("BestWorstCriteriaView interaction", () => {
         setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -130,7 +127,6 @@ describe("BestWorstCriteriaView interaction", () => {
         setEvaluation={vi.fn()}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 

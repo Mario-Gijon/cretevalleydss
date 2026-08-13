@@ -16,7 +16,6 @@ const ManualCriteriaWeightsView = ({
   setEvaluation,
   collectiveEvaluation,
   readOnly,
-  loading,
 }) => {
   const criteriaResolution = useMemo(() => {
     try {
@@ -71,10 +70,6 @@ const ManualCriteriaWeightsView = ({
     }
   }, [collectiveEvaluation, criteria]);
 
-  if (loading === true && evaluation == null) {
-    return null;
-  }
-
   if (criteriaResolution.message) {
     return <Alert severity="error">{criteriaResolution.message}</Alert>;
   }
@@ -92,7 +87,7 @@ const ManualCriteriaWeightsView = ({
   }
 
   const currentEvaluation = evaluationResolution.payload;
-  const permitEdit = readOnly !== true && loading !== true;
+  const permitEdit = readOnly !== true;
 
   const handleWeightChange = ({ criterionId, rawValue }) => {
     if (!permitEdit) {

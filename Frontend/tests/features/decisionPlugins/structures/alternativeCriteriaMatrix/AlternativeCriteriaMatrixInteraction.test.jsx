@@ -80,7 +80,6 @@ const StatefulMatrixView = ({
         setEvaluation={setPayload}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
       <pre data-testid="evaluation-state">{JSON.stringify(payload)}</pre>
     </>

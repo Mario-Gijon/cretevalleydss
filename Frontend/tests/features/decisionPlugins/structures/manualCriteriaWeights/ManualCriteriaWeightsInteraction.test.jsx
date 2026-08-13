@@ -22,7 +22,6 @@ const renderEditableView = (setEvaluation) =>
       setEvaluation={setEvaluation}
       collectiveEvaluation={null}
       readOnly={false}
-      loading={false}
     />
   );
 

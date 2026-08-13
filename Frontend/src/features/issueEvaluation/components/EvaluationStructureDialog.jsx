@@ -215,6 +215,9 @@ const EvaluationStructureDialog = ({
     if (loadError) {
       return <Alert severity="error">{loadError}</Alert>;
     }
+    if (evaluation === null) {
+      return null;
+    }
 
     const visibleCollectiveEvaluation = showCollective
       ? collectiveEvaluation
@@ -225,7 +228,6 @@ const EvaluationStructureDialog = ({
       setEvaluation,
       collectiveEvaluation: visibleCollectiveEvaluation,
       readOnly: false,
-      loading: evaluationLoading,
     };
 
     return <View {...viewProps} />;

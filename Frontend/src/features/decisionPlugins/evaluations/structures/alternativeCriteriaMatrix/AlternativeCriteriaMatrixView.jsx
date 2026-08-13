@@ -18,14 +18,12 @@ const AlternativeCriteriaMatrixView = ({
   setEvaluation,
   collectiveEvaluation,
   readOnly,
-  loading,
 }) => {
   const theme = useTheme();
   const alternatives = decisionContext.alternatives;
   const criteria = decisionContext.leafCriteria;
   const hasEvaluation = isPlainObject(evaluation);
-  const isWaitingForEvaluation = loading === true && evaluation == null;
-  const permitEdit = readOnly !== true && loading !== true;
+  const permitEdit = readOnly !== true;
 
   const matrixRows = useMemo(
     () =>
@@ -56,10 +54,6 @@ const AlternativeCriteriaMatrixView = ({
       };
     }
   }, [alternatives, collectiveEvaluation, criteria]);
-
-  if (isWaitingForEvaluation) {
-    return null;
-  }
 
   if (!hasEvaluation) {
     return <Alert severity="error">Evaluation payload is invalid.</Alert>;

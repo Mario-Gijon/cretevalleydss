@@ -18,7 +18,6 @@ const BestWorstCriteriaView = ({
   setEvaluation,
   collectiveEvaluation,
   readOnly,
-  loading,
 }) => {
   const criteriaResolution = useMemo(() => {
     try {
@@ -69,10 +68,6 @@ const BestWorstCriteriaView = ({
     }
   }, [collectiveEvaluation, criteria]);
 
-  if (loading === true && evaluation == null) {
-    return null;
-  }
-
   if (criteriaResolution.message) {
     return <Alert severity="error">{criteriaResolution.message}</Alert>;
   }
@@ -90,7 +85,7 @@ const BestWorstCriteriaView = ({
   }
 
   const currentEvaluation = evaluationResolution.payload;
-  const permitEdit = readOnly !== true && loading !== true;
+  const permitEdit = readOnly !== true;
   const longestCriterionLength = criteria.reduce(
     (maximum, criterion) => Math.max(maximum, criterion.name.length),
     0

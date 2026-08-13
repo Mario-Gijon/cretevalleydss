@@ -71,6 +71,7 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
     expect(screen.getByText("individual-payload")).toBeInTheDocument();
     expect(screen.getByText("collective-payload")).toBeInTheDocument();
     expect(screen.getByText("true")).toBeInTheDocument();
+    expect(mockViewState.lastProps).not.toHaveProperty("loading");
     expect(() =>
       mockViewState.lastProps.setEvaluation({ complete: true })
     ).not.toThrow();
@@ -115,7 +116,7 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
     expect(mockViewState.lastProps).toBeNull();
   });
 
-  it("passes null unchanged during loading", () => {
+  it("withholds the plugin while host loading has no evaluation payload", () => {
     mockGetEvaluationStructureEntryForStage.mockReturnValue({
       key: "futureStructure",
       stage: "alternativeEvaluation",
@@ -132,6 +133,7 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
       />
     );
 
-    expect(mockViewState.lastProps.evaluation).toBeNull();
+    expect(mockViewState.lastProps).toBeNull();
+    expect(screen.queryByText("Evaluation payload is unavailable.")).not.toBeInTheDocument();
   });
 });

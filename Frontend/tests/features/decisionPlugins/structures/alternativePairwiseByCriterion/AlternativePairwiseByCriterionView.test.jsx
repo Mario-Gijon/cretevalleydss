@@ -50,7 +50,6 @@ const renderView = (props = {}) =>
       setEvaluation={vi.fn()}
       collectiveEvaluation={null}
       readOnly={false}
-      loading={false}
       {...props}
     />
   );
@@ -69,19 +68,8 @@ describe("AlternativePairwiseByCriterionView", () => {
     );
   });
 
-  it("renders no payload while loading and reports a missing payload afterward", () => {
-    const { container, unmount } = renderView({
-      evaluation: null,
-      loading: true,
-    });
-
-    expect(container).toBeEmptyDOMElement();
-    unmount();
-
-    renderView({
-      evaluation: null,
-      loading: false,
-    });
+  it("reports a missing payload", () => {
+    renderView({ evaluation: null });
 
     expect(
       screen.getByText("Pairwise evaluation payload must be an object.")

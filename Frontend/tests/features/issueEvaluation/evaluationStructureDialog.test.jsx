@@ -184,7 +184,7 @@ describe("EvaluationStructureDialog", () => {
     renderDialog();
 
     expect(screen.getByTestId("shell-loading")).toHaveTextContent("true");
-    expect(mockViewState.lastProps.evaluation).toBeNull();
+    expect(mockViewState.lastProps).toBeNull();
 
     await waitFor(() => {
       expect(mockFetchIssueEvaluation).toHaveBeenCalledWith(
@@ -201,6 +201,7 @@ describe("EvaluationStructureDialog", () => {
       collectiveEvaluation: evaluationResponseFixture.data.collectivePayload,
       readOnly: false,
     });
+    expect(mockViewState.lastProps).not.toHaveProperty("loading");
     expect(screen.getByTestId("view-readonly")).toHaveTextContent("false");
   });
 
@@ -253,7 +254,7 @@ describe("EvaluationStructureDialog", () => {
     expect(
       screen.getByText("Could not load evaluation context for this evaluation.")
     ).toBeInTheDocument();
-    expect(mockViewState.lastProps.evaluation).toBeNull();
+    expect(mockViewState.lastProps).toBeNull();
   });
 
   it("keeps evaluation absent when the service rejects and clears loading", async () => {
@@ -269,7 +270,7 @@ describe("EvaluationStructureDialog", () => {
       expect(screen.getByTestId("shell-loading")).toHaveTextContent("false");
     });
 
-    expect(mockViewState.lastProps.evaluation).toBeNull();
+    expect(mockViewState.lastProps).toBeNull();
     expect(
       screen.getByText("Could not load evaluation context for this evaluation.")
     ).toBeInTheDocument();

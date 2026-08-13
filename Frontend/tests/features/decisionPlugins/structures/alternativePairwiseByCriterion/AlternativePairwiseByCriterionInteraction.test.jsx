@@ -55,7 +55,6 @@ describe("AlternativePairwiseByCriterionView interaction", () => {
         setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -99,7 +98,6 @@ describe("AlternativePairwiseByCriterionView interaction", () => {
         setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -134,7 +132,6 @@ describe("AlternativePairwiseByCriterionView interaction", () => {
           },
         }}
         readOnly
-        loading={false}
       />
     );
 

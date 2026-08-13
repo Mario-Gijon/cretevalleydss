@@ -26,13 +26,12 @@ const renderView = (props = {}) =>
       setEvaluation={vi.fn()}
       collectiveEvaluation={null}
       readOnly={false}
-      loading={false}
       {...props}
     />
   );
 
 describe("BestWorstCriteriaView", () => {
-  it("requires a supplied canonical evaluation outside loading", () => {
+  it("requires a supplied canonical evaluation", () => {
     renderView({ evaluation: null });
 
     expect(
@@ -60,14 +59,7 @@ describe("BestWorstCriteriaView", () => {
     }
   });
 
-  it("renders no payload while loading and reports invalid individual state", () => {
-    const { container, unmount } = renderView({
-      evaluation: null,
-      loading: true,
-    });
-    expect(container).toBeEmptyDOMElement();
-    unmount();
-
+  it("reports invalid individual state", () => {
     renderView({ evaluation: {} });
     expect(
       screen.getByText("BWM evaluation has an invalid top-level shape.")

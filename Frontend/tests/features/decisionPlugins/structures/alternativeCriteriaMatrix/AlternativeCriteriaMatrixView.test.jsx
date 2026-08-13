@@ -72,7 +72,6 @@ describe("AlternativeCriteriaMatrixView", () => {
         setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -92,7 +91,6 @@ describe("AlternativeCriteriaMatrixView", () => {
         setEvaluation={vi.fn()}
         collectiveEvaluation={null}
         readOnly
-        loading={false}
       />
     );
 
@@ -124,7 +122,6 @@ describe("AlternativeCriteriaMatrixView", () => {
           },
         }}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -150,7 +147,6 @@ describe("AlternativeCriteriaMatrixView", () => {
         setEvaluation={vi.fn()}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -158,8 +154,8 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("withholds the grid while loading without fabricating a matrix", () => {
-    const { container } = renderWithProviders(
+  it("reports an unavailable evaluation payload", () => {
+    renderWithProviders(
       <AlternativeCriteriaMatrixView
         decisionContext={buildDecisionContext([
           { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
@@ -168,11 +164,10 @@ describe("AlternativeCriteriaMatrixView", () => {
         setEvaluation={vi.fn()}
         collectiveEvaluation={null}
         readOnly={false}
-        loading={true}
       />
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByText("Evaluation payload is invalid.")).toBeInTheDocument();
   });
 
   it("renders a collective payload alert for invalid present values", () => {
@@ -208,7 +203,6 @@ describe("AlternativeCriteriaMatrixView", () => {
           setEvaluation={vi.fn()}
           collectiveEvaluation={collectiveEvaluation}
           readOnly={false}
-          loading={false}
         />
       );
 
@@ -241,7 +235,6 @@ describe("AlternativeCriteriaMatrixView", () => {
           },
         }}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -269,7 +262,6 @@ describe("AlternativeCriteriaMatrixView", () => {
           },
         }}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -305,7 +297,6 @@ describe("AlternativeCriteriaMatrixView", () => {
           },
         }}
         readOnly={false}
-        loading={false}
       />
     );
 
@@ -359,7 +350,6 @@ describe("AlternativeCriteriaMatrixView", () => {
           },
         }}
         readOnly={false}
-        loading={false}
       />
     );
 
