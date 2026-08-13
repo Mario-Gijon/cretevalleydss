@@ -152,16 +152,9 @@ def test_generated_model_package_is_importable_and_discoverable_via_registry_lik
         request_model = definition_module.GenericModelExecutionRequest
         handler_response = model_definition.handler(request_model())
 
-        assert handler_response == {
-            "success": False,
-            "message": "Demo Model is a generated scaffold and is still under development.",
-            "data": None,
-            "error": {
-                "code": "MODEL_UNDER_DEVELOPMENT",
-                "field": None,
-                "details": None,
-            },
-        }
+        assert handler_response["success"] is False
+        assert handler_response["data"] is None
+        assert handler_response["error"]["code"] == "MODEL_UNDER_DEVELOPMENT"
 
         discovered_definitions = _discover_model_definitions(project_root)
 

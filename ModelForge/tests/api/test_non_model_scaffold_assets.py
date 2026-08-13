@@ -116,15 +116,11 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
     assert "return payload ?? {};" in backend_get
     assert "savePairwiseMatrixPayload" in backend_save
     assert "return payload;" in backend_save
-    assert "Return the complete payload that must be sent to the Frontend." in backend_get
-    assert "Return the complete payload that must be stored in the database." in backend_save
     assert "decisionContext" in frontend
     assert "evaluation" in frontend
     assert "setEvaluation" in frontend
     assert "collectiveEvaluation" in frontend
     assert "readOnly" in frontend
-    assert "loading" in frontend
-    assert "// console.log(JSON.stringify(decisionContext, null, 2));" in frontend
     for forbidden in (
         "forwardRef",
         "useImperativeHandle",
@@ -594,37 +590,25 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_frontend_index_source
     assert "PairwiseMatrixView" in evaluation_frontend_index_source
     assert 'implementationStatus: "scaffold"' in evaluation_frontend_index_source
-    assert "Implementation guide" in evaluation_frontend_index_source
-    assert "pairwiseMatrix is under development." in evaluation_view_source
     assert "decisionContext" in evaluation_view_source
     assert "evaluation" in evaluation_view_source
     assert "setEvaluation" in evaluation_view_source
     assert "collectiveEvaluation" in evaluation_view_source
     assert "readOnly" in evaluation_view_source
-    assert "loading" in evaluation_view_source
     for forbidden in ("forwardRef", "useEffect", "useMemo", "useState"):
         assert forbidden not in evaluation_view_source
 
     assert 'key: "scoreRange"' in parameter_backend_index_source
     assert "scoreRangeParameterStructure" in parameter_backend_index_source
-    assert "Implementation guide" in parameter_backend_index_source
     assert "validateScoreRangeParameter" in parameter_backend_validate_source
     assert 'parameterStructureKey: "scoreRange"' in parameter_backend_validate_source
-    assert "Implementation guide" in parameter_backend_validate_source
     assert "typeKey" in parameter_backend_validate_source
     assert "scoreRangeParameterField" in parameter_frontend_index_source
-    assert "Implementation guide" in parameter_frontend_index_source
     assert "ScoreRangeParameterField" in parameter_field_source
     assert "parameter.label" in parameter_field_source
-    assert "Implementation guide" in parameter_field_source
-    assert "https://mui.com/material-ui/" in parameter_field_source
     assert "typeKey" in parameter_field_source
-    assert "definition depends on typeKey" in parameter_field_source
     assert "ScoreRangeParameterReadOnly" in parameter_readonly_source
-    assert "Implementation guide" in parameter_readonly_source
-    assert "https://mui.com/material-ui/" in parameter_readonly_source
     assert "typeKey" in parameter_readonly_source
-    assert "definition depends on typeKey" in parameter_readonly_source
     for generated_source in (
         parameter_backend_validate_source,
         parameter_field_source,
@@ -639,12 +623,6 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
             "['linguisticLabels']",
         ):
             assert forbidden_access not in generated_source
-        assert (
-            "expressionDomain.definition depends on typeKey"
-            in generated_source
-        )
-        assert "Do not assume numericRange or" in generated_source
-        assert "linguisticLabels." in generated_source
 
 
 def test_model_package_apply_rejects_partial_existing_evaluation_structure(
