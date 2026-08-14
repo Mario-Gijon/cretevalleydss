@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Alert, Box, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, ToggleButton, Typography } from "@mui/material";
 
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
@@ -119,16 +119,9 @@ export const CriteriaWeightingPanel = ({
       ),
     [availableCriteriaWeightingModels]
   );
-  const creatorApiCriteriaWeightingModels = useMemo(
+  const apiCriteriaWeightingOptions = useMemo(
     () =>
-      visibleApiCriteriaWeightingModels.filter(
-        (modelItem) => modelItem?.supportsCreatorCriteriaWeighting === true
-      ),
-    [visibleApiCriteriaWeightingModels]
-  );
-  const creatorApiCriteriaWeightingOptions = useMemo(
-    () =>
-      creatorApiCriteriaWeightingModels.map((modelItem) => {
+      visibleApiCriteriaWeightingModels.map((modelItem) => {
         const structureEntry = getEvaluationStructureEntryForStage({
           structureKey: modelItem?.evaluationStructureKey || "",
           stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
@@ -143,13 +136,6 @@ export const CriteriaWeightingPanel = ({
           canInitialize,
         };
       }),
-    [creatorApiCriteriaWeightingModels]
-  );
-  const expertApiCriteriaWeightingModels = useMemo(
-    () =>
-      visibleApiCriteriaWeightingModels.filter(
-        (modelItem) => modelItem?.supportsExpertCriteriaWeighting === true
-      ),
     [visibleApiCriteriaWeightingModels]
   );
   const selectedApiCriteriaWeightingModel = useMemo(() => {
@@ -205,6 +191,31 @@ export const CriteriaWeightingPanel = ({
       setDefaultModelParams(false);
     }
     setCriteriaWeightingConfig?.(nextConfig);
+  };
+
+  const buildCreatorApiConfig = (criteriaModel, structureEntry) => {
+    const decisionContext = buildCriteriaWeightingDecisionContext({
+      criteriaWeightingModel: criteriaModel,
+      structureEntry,
+      criteriaTree: criteria,
+      leafCriteria,
+    });
+    const initialization = buildCreatorCriteriaWeightingInitialization({
+      criteriaWeightingModel: criteriaModel,
+      structureEntry,
+      decisionContext,
+    });
+    const nextConfig = buildApiCriteriaWeightingConfig({
+      mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
+      leafCriteria,
+      criteriaWeightingModel: criteriaModel,
+    });
+
+    return {
+      ...nextConfig,
+      payload: initialization.evaluation,
+      initializationIdentity: initialization.initializationIdentity,
+    };
   };
 
   useEffect(() => {
@@ -428,6 +439,31 @@ export const CriteriaWeightingPanel = ({
   ).trim();
   const manualByExpertsSelected =
     mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL;
+  const manualSelected =
+    mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL || manualByExpertsSelected;
+  const selectedApiOption = apiCriteriaWeightingOptions.find((option) => {
+    const modelId = String(option.model?._id || option.model?.id || "").trim();
+    const modelKey = String(option.model?.apiModelKey || "").trim();
+
+    return (
+      (selectedCriteriaWeightingModelId && selectedCriteriaWeightingModelId === modelId) ||
+      (selectedCriteriaWeightingModelKey && selectedCriteriaWeightingModelKey === modelKey)
+    );
+  });
+  const selectedMethodSupportsCreator = manualSelected
+    ? true
+    : selectedApiOption?.model?.supportsCreatorCriteriaWeighting === true;
+  const selectedMethodSupportsExperts = manualSelected
+    ? manualExpertWeightingAvailable
+    : selectedApiOption?.model?.supportsExpertCriteriaWeighting === true;
+  const mccExpertsConsensusAvailable =
+    !isFuzzyModel &&
+    !isSingleCriterion &&
+    selectedMethodSupportsCreator &&
+    selectedMethodSupportsExperts;
+  const mccExpertsConsensusActive =
+    mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ||
+    mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL;
   const canRenderCreatorEvaluation =
     selectedStructureCanInitialize &&
     criteriaWeightingDecisionContext !== null;
@@ -494,7 +530,7 @@ export const CriteriaWeightingPanel = ({
           <CriteriaWeightingMethodCard
             title="Manual"
             description="Set weights now"
-            selected={mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL}
+            selected={manualSelected}
             onClick={() =>
               updateConfig(
                 buildConfigByMode({
@@ -506,106 +542,117 @@ export const CriteriaWeightingPanel = ({
             }
           />
 
-          <CriteriaWeightingMethodCard
-            title="Manual by experts"
-            description="Experts evaluate later"
-            selected={manualByExpertsSelected}
-            disabled={isSingleCriterion || !manualExpertWeightingAvailable}
-            onClick={() =>
-              updateConfig(
-                buildConfigByMode({
-                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
-                  leafCriteria,
-                }),
-                { markDirty: true }
-              )
-            }
-          />
-
-          {creatorApiCriteriaWeightingOptions.map((creatorOption) => {
-            const criteriaModel = creatorOption.model;
+          {apiCriteriaWeightingOptions.map((option) => {
+            const criteriaModel = option.model;
             const modelId = String(
               criteriaModel?._id || criteriaModel?.id || ""
             ).trim();
             const selected =
-              mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
+              (mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ||
+                mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL) &&
               (selectedCriteriaWeightingModelId === modelId ||
                 selectedCriteriaWeightingModelKey ===
                   String(criteriaModel?.apiModelKey || "").trim());
+            const supportsCreator =
+              criteriaModel?.supportsCreatorCriteriaWeighting === true;
+            const supportsExperts =
+              criteriaModel?.supportsExpertCriteriaWeighting === true;
+            const canSelect =
+              supportsExperts || (supportsCreator && option.canInitialize);
 
             return (
               <CriteriaWeightingMethodCard
-                key={`${String(modelId || criteriaModel?.apiModelKey)}-creator`}
+                key={String(modelId || criteriaModel?.apiModelKey)}
                 title={getCriteriaWeightingModelLabel(criteriaModel)}
-                description="Compute now"
+                description={
+                  supportsCreator ? "Compute now" : "Experts evaluate later"
+                }
                 selected={selected}
-                disabled={isSingleCriterion || !creatorOption.canInitialize}
+                disabled={isSingleCriterion || !canSelect}
                 onClick={() => {
-                  const decisionContext =
-                    buildCriteriaWeightingDecisionContext({
-                      criteriaWeightingModel: criteriaModel,
-                      structureEntry: creatorOption.structureEntry,
-                      criteriaTree: criteria,
-                      leafCriteria,
-                    });
-                  const initialization =
-                    buildCreatorCriteriaWeightingInitialization({
-                      criteriaWeightingModel: criteriaModel,
-                      structureEntry: creatorOption.structureEntry,
-                      decisionContext,
-                    });
-                  const nextConfig = buildApiCriteriaWeightingConfig({
-                    mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
-                    leafCriteria,
-                    criteriaWeightingModel: criteriaModel,
-                  });
-
                   updateConfig(
-                    {
-                      ...nextConfig,
-                      payload: initialization.evaluation,
-                      initializationIdentity:
-                        initialization.initializationIdentity,
-                    },
+                    supportsCreator
+                      ? buildCreatorApiConfig(criteriaModel, option.structureEntry)
+                      : buildApiCriteriaWeightingConfig({
+                          mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
+                          leafCriteria,
+                          criteriaWeightingModel: criteriaModel,
+                        }),
                     { markDirty: true }
                   );
                 }}
               />
             );
           })}
+        </Stack>
+      )}
 
-          {expertApiCriteriaWeightingModels.map((criteriaModel) => {
-            const modelId = String(
-              criteriaModel?._id || criteriaModel?.id || ""
-            ).trim();
-            const selected =
-              mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
-              (selectedCriteriaWeightingModelId === modelId ||
-                selectedCriteriaWeightingModelKey ===
-                  String(criteriaModel?.apiModelKey || "").trim());
+      {mccExpertsConsensusAvailable ? (
+        <Stack spacing={0.45} alignItems="flex-end">
+          <ToggleButton
+            value="mccExpertsConsensus"
+            selected={mccExpertsConsensusActive}
+            size="small"
+            color="info"
+            onClick={() => {
+              if (manualSelected) {
+                updateConfig(
+                  buildConfigByMode({
+                    mode: mccExpertsConsensusActive
+                      ? CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL
+                      : CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+                    leafCriteria,
+                  }),
+                  { markDirty: true }
+                );
+                return;
+              }
 
-            return (
-              <CriteriaWeightingMethodCard
-                key={`${String(modelId || criteriaModel?.apiModelKey)}-expert`}
-                title={`${getCriteriaWeightingModelLabel(criteriaModel)} by experts`}
-                description="Experts evaluate later"
-                selected={selected}
-                disabled={isSingleCriterion}
-                onClick={() =>
-                  updateConfig(
-                    buildApiCriteriaWeightingConfig({
+              const criteriaModel = selectedApiOption?.model;
+              if (!criteriaModel) return;
+              updateConfig(
+                mccExpertsConsensusActive
+                  ? buildCreatorApiConfig(
+                      criteriaModel,
+                      selectedApiOption.structureEntry
+                    )
+                  : buildApiCriteriaWeightingConfig({
                       mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
                       leafCriteria,
                       criteriaWeightingModel: criteriaModel,
                     }),
-                    { markDirty: true }
-                  )
-                }
-              />
-            );
-          })}
+                { markDirty: true }
+              );
+            }}
+            sx={{
+              px: 1.4,
+              py: 0.55,
+              borderColor: mccExpertsConsensusActive
+                ? "rgba(75, 210, 207, 0.72)"
+                : "rgba(255,255,255,0.16)",
+              color: mccExpertsConsensusActive ? "info.main" : "text.secondary",
+              fontWeight: "fontWeightBold",
+              typography: "caption",
+              letterSpacing: 0.25,
+              textTransform: "uppercase",
+              "&.Mui-selected": {
+                color: "info.main",
+                backgroundColor: "rgba(75, 210, 207, 0.10)",
+              },
+              "&.Mui-selected:hover": {
+                backgroundColor: "rgba(75, 210, 207, 0.14)",
+              },
+            }}
+          >
+            MCC EXPERTS CONSENSUS
+          </ToggleButton>
+          {mccExpertsConsensusActive ? (
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              Experts evaluate criterion importance. MCC produces the collective weights.
+            </Typography>
+          ) : null}
         </Stack>
-      )}
+      ) : null}
 
       {!isFuzzyModel && !isSingleCriterion && !manualExpertWeightingAvailable ? (
         <Alert severity="warning">
@@ -616,7 +663,8 @@ export const CriteriaWeightingPanel = ({
       ) : null}
 
       {!isFuzzyModel
-        ? creatorApiCriteriaWeightingOptions
+        ? apiCriteriaWeightingOptions
+            .filter((option) => option.model?.supportsCreatorCriteriaWeighting === true)
             .filter((option) => !option.canInitialize)
             .map((option) => (
               <Alert

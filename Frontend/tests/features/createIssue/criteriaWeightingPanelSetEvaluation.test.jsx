@@ -164,17 +164,19 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
     expect(mockViewState.lastProps.evaluation).not.toEqual({});
   });
 
-  it("offers creator and expert modes from the existing capability flags", () => {
+  it("renders one BWM method card and exposes MCC experts consensus from capabilities", () => {
     renderPanel();
 
     expect(
       screen.getByRole("button", { name: /BWM Compute now/ })
     ).toHaveAttribute("aria-disabled", "false");
     expect(
-      screen.getByRole("button", {
-        name: /BWM by experts Experts evaluate later/,
-      })
-    ).toHaveAttribute("aria-disabled", "false");
+      screen.queryByText("BWM by experts")
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /BWM/ })).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "MCC EXPERTS CONSENSUS" })
+    ).toHaveAttribute("aria-pressed", "false");
   });
 
   it("initializes creator mode before mounting and leaves expert mode uninitialized", async () => {
@@ -206,9 +208,7 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
 
     mockBuildInitialEvaluation.mockClear();
     await userEvent.click(
-      screen.getByRole("button", {
-        name: /BWM by experts Experts evaluate later/,
-      })
+      screen.getByRole("button", { name: "MCC EXPERTS CONSENSUS" })
     );
 
     expect(mockBuildInitialEvaluation).not.toHaveBeenCalled();

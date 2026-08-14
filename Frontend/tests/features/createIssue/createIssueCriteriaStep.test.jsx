@@ -45,7 +45,7 @@ import { criteriaWeightModelFixture } from "../../mocks/fixtures/createIssue.fix
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 describe("CriteriaStep manual equal weights", () => {
-  it("selects Manual by experts with its canonical manual weighting config", async () => {
+  it("maps Manual MCC experts consensus to its canonical expert weighting config", async () => {
     const setCriteriaWeightingConfig = vi.fn();
     const setDefaultModelParams = vi.fn();
     const criteria = [
@@ -90,8 +90,11 @@ describe("CriteriaStep manual equal weights", () => {
 
     renderWithProviders(<CriteriaStep />);
 
+    expect(screen.getAllByRole("button", { name: /^Manual/ })).toHaveLength(1);
+    expect(screen.queryByText("Manual by experts")).not.toBeInTheDocument();
+
     await userEvent.click(
-      screen.getByRole("button", { name: /^Manual by experts/ })
+      screen.getByRole("button", { name: "MCC EXPERTS CONSENSUS" })
     );
 
     expect(setDefaultModelParams).toHaveBeenCalledWith(false);
