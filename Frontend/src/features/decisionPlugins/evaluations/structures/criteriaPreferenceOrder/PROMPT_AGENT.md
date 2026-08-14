@@ -1,0 +1,323 @@
+# Implement criteriaPreferenceOrder Frontend — Agent prompt
+
+You are a repository-aware coding agent working inside CreteValleyDSS.
+
+Implement the Frontend of the generated Evaluation Structure:
+
+```text
+Frontend/src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/
+```
+
+## Read first
+
+Read the complete generated Frontend package, especially:
+
+```text
+Frontend/src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/index.js
+Frontend/src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/CriteriaPreferenceOrderView.jsx
+Frontend/src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/IMPLEMENTATION_GUIDE.md
+```
+
+If `operations/buildInitialEvaluation.js` exists, read it too.
+
+Also read the generated Backend package for this Evaluation Structure when useful to confirm the canonical payload contract:
+
+```text
+Backend/modules/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/
+```
+
+Read existing project APIs and nearby implementations only when useful.
+
+The current repository state is authoritative.
+
+## Developer requirements
+
+### Structure description
+
+[STRUCTURE DESCRIPTION]
+
+### Evaluation payload
+
+Describe the canonical evaluation payload expected by the View.
+
+[EVALUATION PAYLOAD DESCRIPTION]
+
+### Desired UI / behavior
+
+[DESIRED UI / BEHAVIOR]
+
+### Additional requirements
+
+[ADDITIONAL REQUIREMENTS]
+
+### Actual runtime input — optional
+
+If available, the following was captured from a real CreteValleyDSS execution.
+
+Treat the actual runtime object shape as authoritative if it differs from a representative example.
+
+[ACTUAL RUNTIME INPUT]
+
+## Public View contract
+
+Preserve this public contract:
+
+```js
+{
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
+}
+```
+
+There is no `loading` prop.
+
+The host owns:
+
+- loading;
+- save;
+- submit;
+- dialog lifecycle.
+
+The View is not mounted while `evaluation` is unavailable.
+
+### `evaluation`
+
+Represents the complete current payload.
+
+Do not mutate it in place.
+
+### `setEvaluation(nextEvaluation)`
+
+Replaces the complete current payload.
+
+It is not a patch API and not a cell-specific setter.
+
+Build the complete next object before calling it.
+
+### `collectiveEvaluation`
+
+May be `null`.
+
+Treat it as read-only presentation data.
+
+Do not assume a structure-specific shape unless it is defined by the supplied requirements or existing contract.
+
+### `readOnly`
+
+Respect it for every action capable of changing the evaluation.
+
+## `decisionContext`
+
+Use data already supplied through `decisionContext`.
+
+It may contain:
+
+- issue metadata;
+- evaluation structure metadata;
+- selected model;
+- model parameters;
+- criteria-weighting parameters;
+- alternatives;
+- criteria tree;
+- leaf criteria;
+- experts;
+- criteria weights;
+- expert weights;
+- consensus state and collective evaluations.
+
+Do not introduce API requests, context reads or duplicated application state for data already present there.
+
+## Expression Domains
+
+If the expert enters an evaluation value belonging to a criterion's:
+
+```js
+criterion.expressionDomain
+```
+
+reuse the existing Expression Domain infrastructure.
+
+Prefer the public Frontend API:
+
+```js
+import {
+  ExpressionDomainEvaluationInput,
+  validateExpressionDomainEvaluation,
+} from "../../../../expressionDomains";
+```
+
+Adjust the relative import only if the consuming file is moved into a nested subdirectory.
+
+Use:
+
+```jsx
+<ExpressionDomainEvaluationInput
+  expressionDomain={criterion.expressionDomain}
+  value={value}
+  onChange={onChange}
+  disabled={readOnly}
+  error={Boolean(error)}
+/>
+```
+
+as the input boundary when appropriate.
+
+Do not manually recreate domain-specific inputs or validation for registered Expression Domain types.
+
+Do not implement separate numeric/linguistic/fuzzy/2-tuple selectors inside this Evaluation Structure.
+
+The structure still owns:
+
+- payload organization;
+- structure-specific validation;
+- error mapping;
+- updates to the complete evaluation object.
+
+## Creator-side initialization
+
+If this package contains:
+
+```text
+operations/buildInitialEvaluation.js
+```
+
+implement its existing contract:
+
+```js
+buildInitialEvaluation({
+  decisionContext,
+}) => completeEvaluationObject
+```
+
+The returned value must be a complete plain object suitable for the View during creator-side criteria weighting.
+
+Use only `decisionContext`.
+
+Do not fetch extra data.
+
+If the file does not exist, do not create it merely because this prompt mentions it.
+
+## Project conventions
+
+Keep the implementation simple.
+
+Do not create extra files preemptively.
+
+When additional files genuinely improve the implementation:
+
+- React subcomponents belong in `components/`;
+- pure structure-specific logic belongs in `operations/`;
+- MUI `sx`/style definitions belong in `styles/`;
+- style files normally follow `<ComponentName>.styles.js`;
+- operation filenames should describe the operation directly.
+
+Examples of current operation naming:
+
+```text
+buildRows.js
+updateValue.js
+validateValue.js
+resolveCollective.js
+```
+
+Do not create generic `utils/`, `helpers/`, `services/`, hooks or abstractions without a concrete need.
+
+Use the existing React/MUI stack already present in the repository.
+
+## Existing implementation reference
+
+If useful, inspect:
+
+```text
+Frontend/src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/
+```
+
+It is a reference for project conventions, Expression Domain input reuse and package organization.
+
+Do not copy matrix-specific behavior unless required.
+
+## Scope restrictions
+
+Do not modify:
+
+- ModelForge templates;
+- shared evaluation hosts;
+- decisionContext builders;
+- Expression Domain implementations;
+- unrelated Evaluation Structures;
+- Backend code unless the developer explicitly requested a coordinated Backend change;
+- Model Forge UI;
+- DecisionModelsService.
+
+Do not redesign the plugin architecture.
+
+Do not add compatibility fallbacks unless an existing public contract requires them.
+
+## Lifecycle
+
+Keep the Frontend registry entry at:
+
+```js
+implementationStatus: "scaffold"
+```
+
+while implementation is incomplete.
+
+Change it to:
+
+```js
+implementationStatus: "ready"
+```
+
+only when the Frontend structure is completely implemented and its relevant tests pass.
+
+## Validation
+
+Add or update focused Frontend tests using existing repository conventions.
+
+Cover the behavior that applies to the structure, including where relevant:
+
+- rendering from the canonical payload;
+- updating the complete payload through `setEvaluation`;
+- `readOnly` behavior;
+- Expression Domain input integration;
+- validation/error presentation;
+- collective evaluation presentation;
+- creator-side `buildInitialEvaluation`.
+
+Run focused tests first.
+
+Then run the appropriate Frontend lint/test validation available in the repository.
+
+Finally run:
+
+```text
+git diff --check
+```
+
+Do not install dependencies.
+
+## Final report
+
+Modify the repository directly.
+
+Do not paste every complete source file in the final response.
+
+Report:
+
+1. Files created.
+2. Files modified.
+3. UI/payload behavior implemented.
+4. How `setEvaluation` is used.
+5. Expression Domain infrastructure reused, if applicable.
+6. Any `components/`, `operations/` or `styles/` files created and why.
+7. Creator-side initialization implemented, if applicable.
+8. Whether `implementationStatus` remains `scaffold` or became `ready`.
+9. Tests/lint executed and results.
+10. `git diff --check` result.
+11. Any remaining limitation.
+
+Implement only what is required for this Evaluation Structure.
