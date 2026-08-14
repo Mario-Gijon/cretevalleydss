@@ -27,12 +27,17 @@ const serializeRanking = ({ rankedAlternatives, alternativesById, alternativeIds
         : name && alternativeIdsByName.get(name)?.length === 1
           ? alternativeIdsByName.get(name)[0]
           : null;
+    const classification =
+      typeof entry?.classification === "string" && entry.classification.trim()
+        ? entry.classification.trim()
+        : null;
 
     return {
       alternativeId: resolvedId,
       name,
       score: entry?.score ?? null,
       rank: entry?.rank ?? null,
+      ...(classification ? { classification } : {}),
     };
   });
 };

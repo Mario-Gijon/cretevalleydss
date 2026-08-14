@@ -33,6 +33,10 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
       consensusMeasure: basePhase?.consensusMeasure ?? null,
       modelSpecificOutput: basePhase?.modelSpecificOutput ?? null,
       rawOutput: basePhase?.rawOutput ?? null,
+      modelParameters:
+        payload?.models?.base?.effectiveParameters ??
+        payload?.models?.base?.configuredParameters ??
+        {},
       scenario: null,
     };
   }
@@ -57,6 +61,7 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
     consensusMeasure: scenario?.result?.standardResult?.consensusMeasure ?? null,
     modelSpecificOutput: scenario?.result?.modelExecution ?? null,
     rawOutput: scenario?.result?.rawOutput ?? null,
+    modelParameters: scenario?.requestSnapshot?.modelParameters ?? {},
     scenario,
   };
 };

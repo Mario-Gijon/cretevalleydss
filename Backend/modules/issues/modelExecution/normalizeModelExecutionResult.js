@@ -18,6 +18,8 @@ const DEFAULT_MESSAGES = {
     "Each ranked alternative requires a finite score",
   rankedAlternativeRankRequired:
     "Each ranked alternative requires a positive integer rank",
+  rankedAlternativeClassificationInvalid:
+    "Each ranked alternative classification must be a non-empty string",
   rankedAlternativesRankOrderInvalid:
     "rankedAlternatives must be ordered from best to worst by rank",
   collectiveEvaluationsRequired:
@@ -67,7 +69,7 @@ export const normalizeModelExecutionResult = ({
   }
 
   let previousRank = 0;
-  result.rankedAlternatives.forEach((entry, index) => {
+  const rankedAlternatives = result.rankedAlternatives.map((entry, index) => {
     if (!isPlainObject(entry)) {
       throwInvalid(
         resolvedMessages.rankedAlternativeInvalidEntry,
@@ -117,6 +119,25 @@ export const normalizeModelExecutionResult = ({
       );
     }
     previousRank = rank;
+
+    let classification;
+    if (Object.hasOwn(entry, "classification")) {
+      classification = normalizeNonEmptyString(entry.classification);
+      if (!classification) {
+        throwInvalid(
+          resolvedMessages.rankedAlternativeClassificationInvalid,
+          `result.rankedAlternatives[${index}].classification`
+        );
+      }
+    }
+
+    return {
+      alternativeId: entry.alternativeId,
+      name,
+      score,
+      rank,
+      ...(classification ? { classification } : {}),
+    };
   });
 
   if (!isPlainObject(result.collectiveEvaluations)) {
@@ -142,7 +163,7 @@ export const normalizeModelExecutionResult = ({
   }
 
   return {
-    rankedAlternatives: result.rankedAlternatives,
+    rankedAlternatives,
     collectiveEvaluations: result.collectiveEvaluations,
     plotsGraphic: result.plotsGraphic,
     consensusMeasure: result.consensusMeasure,

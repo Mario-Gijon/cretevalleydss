@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Chip, Stack, Typography } from "@mui/material";
 
 import { rankingListViewportSx, rankingRowSx, rankingScoreTrackSx } from "../resultsAnalysis.styles.js";
 import { buildScoreBarGeometry } from "../logic/buildScoreBarGeometry.js";
@@ -98,7 +98,12 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                   ) : null}
                 </Box>
               </Box>
-              <Box sx={{ textAlign: "right", flex: "0 0 auto" }}>
+              <Stack
+                direction="row"
+                spacing={0.75}
+                alignItems="center"
+                sx={{ flex: "0 0 auto" }}
+              >
                 <Typography
                   variant="body2"
                   sx={{
@@ -108,7 +113,14 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                 >
                   {entry.formattedScore}
                 </Typography>
-              </Box>
+                {entry.classificationLabel ? (
+                  <Chip
+                    label={entry.classificationLabel}
+                    size="small"
+                    variant="outlined"
+                  />
+                ) : null}
+              </Stack>
             </Box>
           );
         })}

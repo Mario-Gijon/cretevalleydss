@@ -11,6 +11,21 @@ const formatScore = (value) => {
   return Number(value.toFixed(4)).toString();
 };
 
+const nonEmptyString = (value) =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
+
+const resolveClassificationLabel = ({ classificationId, modelParameters }) => {
+  if (!classificationId || !modelParameters || typeof modelParameters !== "object") {
+    return null;
+  }
+
+  const profile = asArray(modelParameters.profiles).find((candidate) => {
+    return nonEmptyString(candidate?.id) === classificationId;
+  });
+
+  return nonEmptyString(profile?.label);
+};
+
 const resolveExecution = (payload, key, selectedPhase) => selectFinishedIssueExecution(payload, key, key === "base" ? selectedPhase : null);
 
 const normalizeRanking = ({ payload, execution }) => {
@@ -18,6 +33,7 @@ const normalizeRanking = ({ payload, execution }) => {
   return asArray(execution?.standardizedOutput?.rankedAlternatives)
     .map((entry, index) => {
       const alternative = alternatives.get(entry?.alternativeId);
+      const classificationId = nonEmptyString(entry?.classification);
       return {
         id: entry?.alternativeId || `ranking-${index}`,
         name: alternative?.name || entry?.name || "—",
@@ -25,6 +41,11 @@ const normalizeRanking = ({ payload, execution }) => {
         position: Number.isInteger(entry?.rank) ? entry.rank : index + 1,
         score: typeof entry?.score === "number" && Number.isFinite(entry.score) ? entry.score : null,
         formattedScore: formatScore(entry?.score),
+        classificationId,
+        classificationLabel: resolveClassificationLabel({
+          classificationId,
+          modelParameters: execution?.modelParameters,
+        }),
       };
     })
     .sort((left, right) => left.position - right.position);

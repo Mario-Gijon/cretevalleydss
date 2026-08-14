@@ -380,6 +380,81 @@ describe("Results analysis workspace", () => {
     expect(screen.getByText("Alpha")).toBeInTheDocument();
   });
 
+  it("resolves a Base classification through the Base effective profiles and renders its label after the score", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.models.base.effectiveParameters = {
+      profiles: [
+        { id: "high", label: "Highly suitable", description: "Ignored" },
+        { id: "medium", label: "Suitable" },
+      ],
+    };
+    payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].classification = "high";
+
+    const data = buildResultsAnalysisWorkspaceData({
+      payload,
+      selectedExecutionKeys: ["base"],
+    });
+    const entry = data.single.ranking[0];
+
+    expect(entry).toMatchObject({
+      classificationId: "high",
+      classificationLabel: "Highly suitable",
+      formattedScore: "0.8",
+    });
+    render(<ThemeProvider theme={createTheme()}><RankingList ranking={data.single.ranking} /></ThemeProvider>);
+    const score = screen.getByText("0.8");
+    const chip = screen.getByText("Highly suitable");
+    expect(score.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("does not render a classification chip when classification is absent or unresolved", () => {
+    const { rerender } = render(<ThemeProvider theme={createTheme()}><RankingList ranking={[{
+      id: "a",
+      name: "Alpha",
+      position: 1,
+      score: 0.8,
+      formattedScore: "0.8",
+      classificationId: null,
+      classificationLabel: null,
+    }]} /></ThemeProvider>);
+    expect(screen.queryByText("Highly suitable")).not.toBeInTheDocument();
+
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].classification = "internal-profile-id";
+    const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+    expect(data.single.ranking[0]).toMatchObject({
+      classificationId: "internal-profile-id",
+      classificationLabel: null,
+    });
+    rerender(<ThemeProvider theme={createTheme()}><RankingList ranking={data.single.ranking} /></ThemeProvider>);
+    expect(screen.queryByText("internal-profile-id")).not.toBeInTheDocument();
+  });
+
+  it("resolves classifications independently for Base and scenario parameter snapshots", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.models.base.effectiveParameters = {
+      profiles: [{ id: "high", label: "Base high" }],
+    };
+    payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].classification = "high";
+    const scenario = completeScenario("scenario-profiles", [["a", 1, 0.9], ["b", 2, 0.1]]);
+    scenario.requestSnapshot = {
+      modelParameters: {
+        profiles: [{ id: "high", label: "Scenario high" }],
+      },
+    };
+    scenario.result.standardResult.rankedAlternatives[0].classification = "high";
+    payload.scenarios = [scenario];
+
+    const data = buildResultsAnalysisWorkspaceData({
+      payload,
+      selectedExecutionKeys: ["base", "scenario-profiles"],
+    });
+
+    expect(data.mode).toBe("comparison");
+    expect(data.selected[0].ranking[0].classificationLabel).toBe("Base high");
+    expect(data.selected[1].ranking[0].classificationLabel).toBe("Scenario high");
+  });
+
   it("does not render alternative descriptions in the Final ranking panel", () => {
     render(<ThemeProvider theme={createTheme()}><FinalRankingPanel ranking={[{ id: "a", name: "Alpha", description: "An alternative description", position: 1, score: 1, formattedScore: "1" }]} /></ThemeProvider>);
     expect(screen.getByText("Alpha")).toBeInTheDocument();
