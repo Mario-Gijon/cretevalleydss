@@ -2,113 +2,122 @@
 
 You are implementing the Backend of a CreteValleyDSS Evaluation Structure.
 
-You do NOT need repository access to complete this task.
+You do NOT need repository access. Treat this prompt as the complete integration
+contract.
 
-Return complete replacement files ready to copy into the repository paths requested below.
-
-Do not return diffs or isolated code fragments.
+Return complete replacement files, not diffs or isolated snippets.
 
 ## Developer requirements
 
 ### Structure description
-
 [STRUCTURE DESCRIPTION]
 
 ### Evaluation payload
-
-Describe the canonical payload that this structure should own.
-
 [EVALUATION PAYLOAD DESCRIPTION]
 
 ### Validation rules
-
-Include draft/submit differences when relevant.
-
 [VALIDATION RULES]
 
 ### Additional requirements
-
 [ADDITIONAL REQUIREMENTS]
 
 ### Actual runtime input — optional
-
-If available, this section contains values captured from a real CreteValleyDSS execution.
-
-The actual runtime object shape is authoritative if it differs from the representative example later in this prompt.
-
 [ACTUAL RUNTIME INPUT]
 
-## Project architecture
+If runtime input is supplied, its object shape is authoritative.
 
-CreteValleyDSS uses plugin-owned Evaluation Structures.
+## Architecture
 
-Evaluation payloads are persisted in MongoDB using Mongoose `Schema.Types.Mixed`.
+Evaluation Structures own their canonical payload, structure-specific
+validation, normalization and draft/submit semantics.
 
-There is deliberately no universal database payload shape for every Evaluation Structure.
+Evaluation payloads are persisted using Mongoose `Schema.Types.Mixed`.
+Do not change shared persistence schemas.
 
-Each Evaluation Structure owns:
+## Backend error contract
 
-- its canonical payload shape;
-- structure-specific validation;
-- normalization before persistence;
-- draft versus submit requirements.
+Use the existing factories from:
 
-`Schema.Types.Mixed` provides structural flexibility. It does NOT mean that arbitrary payloads should be accepted.
-
-Do not solve this implementation by changing shared persistence schemas.
-
-## Public Backend contract
-
-Preserve the generated function signatures and exports.
-
-### GET
-
-```js
-async ({
-  payload,
-  decisionContext,
-}) => frontendPayload
+```text
+Backend/utils/common/errors.js
 ```
 
-`payload` is the stored evaluation payload or `null`.
-
-Return the complete payload consumed by the Frontend.
-
-If the canonical stored representation already matches the required Frontend representation, prefer returning it directly.
-
-### SAVE
+Relevant APIs:
 
 ```js
-async ({
-  payload,
-  decisionContext,
-  mode,
-}) => storedPayload
+createBadRequestError(message, { field, details });
+createInternalError(message, { field, details });
 ```
 
-`mode` is:
+Use `createBadRequestError` for invalid user-controlled/persisted evaluation
+input: malformed payloads, invalid values, duplicate/unknown submitted IDs,
+incomplete submit data, unsupported save modes, or malformed creator remapping
+input.
 
-- `"draft"` — incomplete payloads may be accepted when appropriate;
-- `"submit"` — the definitive submission must satisfy every required rule.
+Use `createInternalError` when application-provided runtime context is malformed
+or inconsistent, such as invalid `decisionContext`, invalid canonical
+collections, or duplicate/invalid canonical IDs supplied by the application.
 
-Return the complete normalized payload to persist.
+Do not use plain `Error`/`TypeError` where these application errors apply.
+Include `field` and useful `details` when possible.
 
-Do not mutate the input payload.
+## Shared Backend utilities
 
-## Representative `decisionContext`
+Existing APIs include:
 
-A representative runtime object is:
+```text
+Backend/utils/common/objects.js
+  isPlainObject(value)
+  hasOwnKey(object, key)
+
+Backend/utils/common/strings.js
+  normalizeNonEmptyString(value)
+  isNonEmptyString(value)
+```
+
+Prefer these when semantics match. Do not recreate equivalent generic helpers.
+
+For the standard draft/submit required-value distinction:
+
+```text
+Backend/modules/decisionPlugins/evaluations/shared/resolveRequireValue.js
+```
+
+provides:
+
+```js
+resolveRequireValue(mode)
+```
+
+It returns false for `"draft"`, true for `"submit"` and already uses BAD_REQUEST
+for unsupported modes. Use it only when that abstraction matches the structure.
+
+## Public contract
+
+GET:
+
+```js
+async ({ payload, decisionContext }) => frontendPayload
+```
+
+SAVE:
+
+```js
+async ({ payload, decisionContext, mode }) => storedPayload
+```
+
+`mode` is `"draft"` or `"submit"`.
+
+Return complete payloads. Do not mutate input payload/context.
+
+## Representative decisionContext
 
 ```json
 {
   "issue": {
     "id": "ISSUE_1",
     "name": "Supplier selection",
-    "currentStage": "{{ evaluation_stage_value }}",
-    "consensusPhase": 0,
-    "isConsensus": false,
-    "consensusThreshold": null,
-    "consensusMaxPhases": null
+    "currentStage": "{{ evaluation_stage_value }}"
   },
   "structure": {
     "key": "{{ evaluation_structure_key }}",
@@ -122,34 +131,9 @@ A representative runtime object is:
   "modelParameters": {},
   "criteriaWeightingParameters": {},
   "alternatives": [
-    {
-      "id": "ALT_1",
-      "name": "Supplier A"
-    },
-    {
-      "id": "ALT_2",
-      "name": "Supplier B"
-    }
+    { "id": "ALT_1", "name": "Supplier A" }
   ],
-  "criteriaTree": [
-    {
-      "id": "CRIT_1",
-      "name": "Cost",
-      "type": "cost",
-      "expressionDomain": {
-        "id": "DOMAIN_1",
-        "_id": "DOMAIN_1",
-        "name": "Cost scale",
-        "typeKey": "numericContinuous",
-        "definition": {
-          "min": 0,
-          "max": 100,
-          "step": null
-        }
-      },
-      "children": []
-    }
-  ],
+  "criteriaTree": [],
   "leafCriteria": [
     {
       "id": "CRIT_1",
@@ -160,19 +144,12 @@ A representative runtime object is:
         "_id": "DOMAIN_1",
         "name": "Cost scale",
         "typeKey": "numericContinuous",
-        "definition": {
-          "min": 0,
-          "max": 100,
-          "step": null
-        }
+        "definition": { "min": 0, "max": 100, "step": null }
       }
     }
   ],
   "experts": [
-    {
-      "id": "EXPERT_1",
-      "name": "Expert A"
-    }
+    { "id": "EXPERT_1", "name": "Expert A" }
   ],
   "criteriaWeights": {},
   "expertWeights": {},
@@ -186,25 +163,11 @@ A representative runtime object is:
 }
 ```
 
-Concrete IDs, names, stages, domains and collections vary between issues.
-
-Do not hard-code the representative values.
-
-Use IDs and data dynamically from `decisionContext`.
+Never hard-code representative IDs/names.
 
 ## Expression Domains
 
-CreteValleyDSS already owns validation rules for Expression Domain values.
-
-If this structure stores evaluations against:
-
-```js
-criterion.expressionDomain
-```
-
-reuse the existing Backend validation layer.
-
-The existing API includes:
+If the payload stores a value against `criterion.expressionDomain`, reuse:
 
 ```js
 validateExpressionDomainEvaluationOrThrow({
@@ -213,123 +176,79 @@ validateExpressionDomainEvaluationOrThrow({
 });
 ```
 
-The canonical Expression Domain must come from the relevant criterion supplied by `decisionContext`.
+using the canonical domain from `decisionContext`.
 
-Do not implement your own:
+Do not recreate registered numeric, linguistic, fuzzy or 2-tuple validation.
 
-- numeric range validation;
-- discrete-value validation;
-- linguistic ordinal validation;
-- linguistic fuzzy validation;
-- linguistic 2-tuple validation;
-- other Expression Domain-specific coercion or validation.
+## Generated source
 
-The Evaluation Structure still owns validation of its surrounding payload shape.
-
-## Current generated files
-
-The following source is the exact scaffold generated by Model Forge and is the starting integration contract.
-
-### `Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/index.js`
-
+### index.js
 ```js
 {{ backend_index_source }}
 ```
 
-### `Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/{{ evaluation_structure_key }}.get.js`
-
+### {{ evaluation_structure_key }}.get.js
 ```js
 {{ backend_get_source }}
 ```
 
-### `Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/{{ evaluation_structure_key }}.save.js`
-
+### {{ evaluation_structure_key }}.save.js
 ```js
 {{ backend_save_source }}
 ```
 
-## Optional creator criteria-weighting operation
-
-For this scaffold:
+## Optional creator criterion remapping
 
 ```text
 scaffold_creator_api_operations = {{ scaffold_creator_api_operations }}
 ```
 
-When this value is `true`, Model Forge also generates:
-
-```text
-Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/operations/remapCriterionIds.js
-```
-
-Its generated starting source is:
+When true, generated source is:
 
 ```js
 {{ backend_remap_source }}
 ```
 
-Implement it only when `scaffold_creator_api_operations` is `true`.
+`criterionIdMap` is exactly:
 
-If it is `false`, do not create that operation.
+```text
+Map<temporaryCriterionId, persistedCriterionId>
+```
 
-Criterion remapping must target only the criterion references actually owned by the payload.
+Use JavaScript `Map.has(...)` / `Map.get(...)`. Do not treat it as an object or
+array.
 
-Do not implement generic recursive string replacement.
+Remap only criterion references actually owned by the payload. Do not perform
+generic recursive string replacement.
 
-## Implementation conventions
+## Implementation style
 
-Keep the implementation simple.
-
-The generated files are the minimum integration scaffold, not a requirement to keep all logic in one file.
-
-If additional files are genuinely useful:
-
-- pure structure-specific operations belong in `operations/`;
-- use descriptive filenames such as:
-  - `normalizePayload.js`
-  - `validatePayload.js`
-  - `remapCriterionIds.js`
-
-Do not create generic `utils/`, `helpers/`, `services/`, adapters or abstractions without a concrete need.
-
-Do not change shared persistence schemas or application architecture.
+Use ES modules, shared helpers/errors, immutable inputs and deliberate
+normalization. Keep structure-specific logic local. Put pure structure-specific
+operations in `operations/` only when useful. Avoid generic one-use helpers,
+legacy fallbacks, permissive coercion and new dependencies without need.
 
 ## Lifecycle
 
-The generated registry starts with:
+Keep `implementationStatus: "scaffold"` while required runtime behavior is
+incomplete.
 
-```js
-implementationStatus: "scaffold"
-```
+Change to `"ready"` when every runtime behavior in this prompt is implemented.
 
-Return `"ready"` in the final `index.js` only if the implementation described by this prompt is complete.
+Tests are outside scope. Do not create/modify test files unless explicitly
+requested.
 
-If required behavior is impossible to determine from the supplied requirements, do not invent domain rules merely to mark the structure ready.
+If essential behavior is missing, keep `"scaffold"` and state what is missing.
 
 ## Required output
 
-Return every file that must be created or replaced.
-
-For each file, clearly print:
+For each created/replaced file print:
 
 ```text
 FILE: <complete repository path>
 ```
 
-Immediately after it, provide one fenced code block containing the complete file contents in the appropriate language.
+then one fenced block with the complete source.
 
-Return complete source files.
-
-Do not return:
-
-- diffs;
-- ellipses;
-- partial methods;
-- pseudocode;
-- TODO implementations.
-
-If you create an additional operation, include its complete repository path and complete source.
-
-Do not generate files that are unnecessary.
-
-At minimum, return every generated Backend source file that requires replacement for the completed implementation.
+No diffs, ellipses, partial implementations, pseudocode or TODO code presented
+as complete.

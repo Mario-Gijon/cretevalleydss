@@ -1,236 +1,57 @@
 # Implement {{ parameter_structure_key }} Backend — Agent prompt
 
-You are a repository-aware coding agent working inside CreteValleyDSS.
-
-Implement the Backend of the generated Parameter Structure:
-
-```text
-Backend/modules/decisionPlugins/modelParameters/structures/{{ parameter_structure_key }}/
-```
-
-## Read first
-
-Read:
+Read generated Parameter Structure files, `IMPLEMENTATION_GUIDE.md`, matching
+Frontend when useful, and:
 
 ```text
-Backend/modules/decisionPlugins/modelParameters/structures/{{ parameter_structure_key }}/index.js
-Backend/modules/decisionPlugins/modelParameters/structures/{{ parameter_structure_key }}/validate.js
-Backend/modules/decisionPlugins/modelParameters/structures/{{ parameter_structure_key }}/IMPLEMENTATION_GUIDE.md
+Backend/utils/common/errors.js
+Backend/utils/common/objects.js
+Backend/utils/common/strings.js
 ```
-
-Also inspect the matching Frontend package when useful to confirm the canonical value contract:
-
-```text
-Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/
-```
-
-The current repository state is authoritative.
 
 ## Developer requirements
 
 ### Parameter Structure description
-
 [PARAMETER STRUCTURE DESCRIPTION]
 
 ### Canonical value shape
-
 [VALUE SHAPE]
 
 ### Default and restrictions semantics
-
 [DEFAULT / RESTRICTIONS CONTRACT]
 
 ### Additional requirements
-
 [ADDITIONAL REQUIREMENTS]
 
 ### Actual runtime input — optional
-
 [ACTUAL RUNTIME INPUT]
-
-If runtime input is supplied, treat its object shape as authoritative.
-
-## Architecture
-
-CreteValleyDSS uses plugin-owned Parameter Structures.
-
-Model parameter values and restrictions are intentionally persistence-flexible.
-
-This Parameter Structure owns its canonical value shape and structure-specific validation/normalization rules.
-
-Do not modify shared persistence schemas merely to support this plugin.
-
-## Shared validation responsibilities
-
-The higher-level model-parameter layer already handles:
-
-- parameter-key resolution;
-- unknown parameter keys;
-- missing/required values;
-- applying defaults when appropriate;
-- `parameterStructureKey` resolution;
-- validation-error aggregation.
-
-Do not duplicate that orchestration.
-
-Implement only this structure's value semantics.
-
-## Backend contract
 
 Preserve:
 
 ```js
-{{ validate_function_name }}({
-  value,
-  parameter,
-  context,
-})
+{{ validate_function_name }}({ value, parameter, context })
 ```
 
-Successful result:
+Ordinary invalid user values return `{ ok: false, message, value }`; they are not
+exceptions. Valid values return `{ ok: true, value: normalizedValue }`.
 
-```js
-{
-  ok: true,
-  value: normalizedValue,
-}
-```
+Use `createInternalError(...)` only for genuine malformed/inconsistent
+application runtime context. Reuse existing object/string helpers.
 
-Invalid user value:
+Do not duplicate higher-level required/default/key orchestration.
 
-```js
-{
-  ok: false,
-  message: "Human-readable validation message",
-  value,
-}
-```
+Only use Expression Domain validation when this parameter actually stores a
+criterion-domain value.
 
-Return the complete normalized value.
+Keep code small, immutable and local. No generic one-use abstractions or
+compatibility fallbacks.
 
-Do not mutate inputs.
+Change `"scaffold"` to `"ready"` when requested runtime behavior is complete.
 
-## Backend `context`
+Tests are outside scope. Do not create/modify/run tests unless explicitly
+requested.
 
-The Backend context is:
-
-```js
-{
-  modelName,
-  leafCriteria,
-  alternatives,
-}
-```
-
-It is intentionally different from the Frontend `parameterContext`.
-
-Do not rename or unify these contracts.
-
-Use the context only when this structure needs it.
-
-Do not add database queries for information already present there.
-
-## Parameter descriptor
-
-The parameter may contain:
-
-```js
-{
-  key,
-  name,
-  label,
-  description,
-  valueType,
-  parameterStructureKey,
-  required,
-  default,
-  restrictions,
-}
-```
-
-`default` and `restrictions` are structure-specific.
-
-Do not assume numeric ranges, select options, criterion maps or intervals unless required by the developer specification.
-
-## Expression Domains
-
-Do not treat every Parameter Structure as an Expression Domain evaluation.
-
-If and only if this parameter represents a value evaluated against a criterion's Expression Domain, use the canonical domain from `context.leafCriteria` and reuse the existing Expression Domain validation infrastructure.
-
-Do not reimplement registered domain-specific validation.
-
-## File organization
-
-Keep the implementation simple.
-
-Start from the generated `index.js` and `validate.js`.
-
-If additional pure structure-specific logic is genuinely useful, use `operations/` with descriptive filenames.
-
-Do not create generic `utils/`, `helpers/`, `services/`, adapters or abstractions without a concrete need.
-
-## Existing structures
-
-You may inspect existing implementations such as:
-
-```text
-Backend/modules/decisionPlugins/modelParameters/structures/numberGlobal/
-```
-
-They are references only.
-
-Do not modify or regenerate an existing Parameter Structure as part of this task.
-
-Do not copy its structure-specific semantics unless they apply.
-
-## Scope restrictions
-
-Do not modify:
-
-- ModelForge templates;
-- shared Issue/IssueModel schemas;
-- shared model-parameter orchestration;
-- unrelated Parameter Structures;
-- Frontend runtime unless coordinated changes were explicitly requested;
-- Expression Domain implementations;
-- Model Forge UI;
-- DecisionModelsService.
-
-Do not redesign the plugin architecture.
-
-## Lifecycle
-
-Keep:
-
-```js
-implementationStatus: "scaffold"
-```
-
-while implementation is incomplete.
-
-Change it to:
-
-```js
-implementationStatus: "ready"
-```
-
-only after the Backend implementation is complete and relevant tests pass.
-
-## Validation
-
-Add/update focused tests following existing repository conventions.
-
-Cover applicable behavior such as:
-
-- canonical valid values;
-- invalid value type/shape;
-- normalization;
-- restrictions;
-- criterion/alternative references;
-- Expression Domain validation when applicable.
-
-Run focused Backend tests first, then appropriate Backend validation, and finally:
+Run targeted lint/static validation when practical plus:
 
 ```text
 git diff --check
@@ -238,23 +59,5 @@ git diff --check
 
 Do not install dependencies.
 
-## Final report
-
-Modify the repository directly.
-
-Do not paste every complete source file in the final response.
-
-Report:
-
-1. Files created.
-2. Files modified.
-3. Canonical value shape implemented.
-4. Default/restriction semantics implemented.
-5. Backend `context` fields used, if any.
-6. Additional files/contracts added and why.
-7. Whether `implementationStatus` remains `scaffold` or became `ready`.
-8. Tests/lint executed and results.
-9. `git diff --check` result.
-10. Any remaining limitation.
-
-Implement only what this Parameter Structure requires.
+Report files changed, canonical semantics, defaults/restrictions, context used,
+shared helpers/errors, final status and validation.

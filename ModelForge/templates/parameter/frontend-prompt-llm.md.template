@@ -1,48 +1,27 @@
 # Implement {{ parameter_structure_key }} Frontend — Standalone LLM prompt
 
-You are implementing the Frontend of a new CreteValleyDSS Parameter Structure.
+You are implementing the Frontend of a CreteValleyDSS Parameter Structure.
 
 You do NOT need repository access.
-
-Return complete replacement files ready to copy into the repository.
-
-Do not return diffs or partial snippets.
 
 ## Developer requirements
 
 ### Parameter Structure description
-
 [PARAMETER STRUCTURE DESCRIPTION]
 
 ### Canonical value shape
-
 [VALUE SHAPE]
 
 ### Desired UI / behavior
-
 [DESIRED UI / BEHAVIOR]
 
 ### Additional requirements
-
 [ADDITIONAL REQUIREMENTS]
 
 ### Actual runtime input — optional
-
 [ACTUAL RUNTIME INPUT]
 
-If runtime input is supplied, treat its object shape as authoritative.
-
-## Frontend architecture
-
-The shared host resolves the correct Parameter Structure and passes the current descriptor, value and context to its registered components.
-
-Do not add application fetching or persistence logic inside the Field/ReadOnly components.
-
-Existing Parameter Structures are reused by Model Forge; this prompt is for implementing a newly generated structure.
-
-## Editable Field contract
-
-The Field receives:
+## Field contract
 
 ```js
 {
@@ -55,21 +34,12 @@ The Field receives:
 }
 ```
 
-`value` is the complete current value.
+`onChange(nextValue)` replaces the complete canonical value.
 
-Treat object/array values as immutable.
-
-`onChange(nextValue)` replaces the complete current value.
-
-Do not call it as `(id, value)` unless that pair is literally the canonical parameter value.
-
-Display the supplied `error` when appropriate.
-
-Prevent changes when `disabled` is true.
+Treat object/array values immutably. Display supplied error. Prevent changes
+when disabled.
 
 ## ReadOnly contract
-
-The ReadOnly component receives:
 
 ```js
 {
@@ -79,119 +49,11 @@ The ReadOnly component receives:
 }
 ```
 
-It displays the same canonical value without mutation.
+Display the same canonical value without mutation.
 
-## Representative `parameter`
+Frontend and Backend must share one canonical value representation.
 
-```json
-{
-  "key": "risk_factor",
-  "name": "Risk factor",
-  "label": "Risk factor",
-  "description": "Controls the model risk preference.",
-  "valueType": "number",
-  "parameterStructureKey": "{{ parameter_structure_key }}",
-  "required": true,
-  "default": 0.5,
-  "restrictions": {
-    "min": 0,
-    "max": 1
-  }
-}
-```
-
-This descriptor is representative only.
-
-Do not assume this structure is numeric unless the developer requirements define it that way.
-
-## Representative `parameterContext`
-
-```json
-{
-  "model": {
-    "id": "MODEL_1",
-    "name": "Example model",
-    "apiModelKey": "example_model"
-  },
-  "alternatives": [
-    {
-      "id": "ALT_1",
-      "name": "Supplier A"
-    },
-    {
-      "id": "ALT_2",
-      "name": "Supplier B"
-    }
-  ],
-  "criteriaTree": [
-    {
-      "id": "CRIT_GROUP",
-      "name": "Main criteria",
-      "type": null,
-      "expressionDomain": null,
-      "children": [
-        {
-          "id": "CRIT_1",
-          "name": "Cost",
-          "type": "cost",
-          "expressionDomain": {
-            "id": "DOMAIN_1",
-            "_id": "DOMAIN_1",
-            "name": "Cost scale",
-            "typeKey": "numericContinuous",
-            "definition": {
-              "min": 0,
-              "max": 100,
-              "step": null
-            }
-          },
-          "children": []
-        }
-      ]
-    }
-  ],
-  "leafCriteria": [
-    {
-      "id": "CRIT_1",
-      "name": "Cost",
-      "type": "cost",
-      "expressionDomain": {
-        "id": "DOMAIN_1",
-        "_id": "DOMAIN_1",
-        "name": "Cost scale",
-        "typeKey": "numericContinuous",
-        "definition": {
-          "min": 0,
-          "max": 100,
-          "step": null
-        }
-      }
-    }
-  ]
-}
-```
-
-Concrete values vary.
-
-Frontend `parameterContext` is different from Backend validator `context`.
-
-## Frontend/Backend agreement
-
-The Field, ReadOnly component and Backend validator must agree on one canonical value shape.
-
-The Field emits it.
-
-The ReadOnly component displays it.
-
-The Backend validates/normalizes it.
-
-Do not invent incompatible representations without an explicitly required normalization boundary.
-
-## Expression Domains
-
-Do not force Expression Domain controls onto unrelated parameters.
-
-If this parameter is explicitly a value belonging to a criterion's Expression Domain, reuse:
+If this parameter is explicitly a criterion-domain evaluation, reuse:
 
 ```js
 import {
@@ -200,88 +62,111 @@ import {
 } from "../../../../expressionDomains";
 ```
 
-Use the canonical criterion/domain from `parameterContext`.
+Do not recreate registered domain inputs.
 
-Do not recreate registered numeric, linguistic, fuzzy or linguistic 2-tuple inputs/validation.
 
-## Current generated files
+## CreteValleyDSS visual language
 
-These are the exact files generated by Model Forge.
+Use React and Material UI (`@mui/material`). The application already provides its
+global `ThemeProvider`, `CssBaseline` and global styles. Do not create another
+theme or design system inside the plugin.
 
-### `Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/index.js`
+The app supports both light and dark schemes. Do not force one mode.
 
+Representative theme values:
+
+```text
+Typography
+- Source Sans Pro, Arial, sans-serif
+- base font size: 15px
+- headings: bold
+- buttons: bold
+
+Light
+- primary.main: #134F8A
+- secondary.main / info.main: #45C5C5
+- background.default: #F5F0F6
+- background.paper: #FFFFFF
+- text.primary: #1D1D1B
+- text.secondary: #545454
+
+Dark
+- primary.main: #224261
+- primary.light / secondary.main / info.main: #45C5C5
+- background.default: #1D1D1B
+- background.paper: #262B32
+- text.primary: #FFFFFF
+- text.secondary: #BFBFBF
+```
+
+Prefer semantic MUI values in `sx`, such as `background.paper`, `text.primary`,
+`text.secondary`, `divider`, `secondary.main` and `info.main`, rather than
+hard-coded colors.
+
+Match the application's compact visual language:
+
+- prefer `Stack`/`Box` compositions;
+- modest spacing/padding, commonly around 1–1.5 theme units;
+- compact plugin surfaces commonly use `borderRadius: 2`;
+- use subtle borders/dividers;
+- use `body2`/`caption` for supporting text;
+- prefer compact buttons/toggles to oversized controls;
+- use clear but restrained selected/active states;
+- wrap responsively instead of assuming wide screens;
+- avoid oversized cards, large empty areas and decorative UI that does not aid
+  the task.
+
+A subtle low-opacity accent may be used for grouping. Avoid excessive gradients,
+glass effects or arbitrary bright colors.
+
+Prefer MUI `sx`. If styling becomes large enough to obscure component logic,
+extract it to `styles/<ComponentName>.styles.js`.
+
+Do not introduce Tailwind, Bootstrap, styled-components, another component
+library, a new ThemeProvider or a new global CSS system.
+
+Do not rely on color alone to communicate validation, ordering or selection.
+
+
+
+## React implementation style
+
+Keep the state model simple.
+
+- host-provided payload/value props are the source of truth;
+- do not mirror props into local state without a real lifecycle reason;
+- do not add `useEffect` just to synchronize derived values;
+- derive inexpensive values directly;
+- use `useMemo`/`useCallback` only when they solve a real problem;
+- update objects/arrays immutably;
+- do not create one-use custom hooks;
+- do not fetch data already supplied in context;
+- do not add third-party dependencies when React/MUI/platform APIs suffice;
+- do not add compatibility aliases/fallback payloads unless explicitly required.
+
+
+## Generated source
+
+### index.js
 ```js
 {{ frontend_index_source }}
 ```
 
-### `Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ field_component_name }}.jsx`
-
+### {{ field_component_name }}.jsx
 ```jsx
 {{ frontend_field_source }}
 ```
 
-### `Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ read_only_component_name }}.jsx`
-
+### {{ read_only_component_name }}.jsx
 ```jsx
 {{ frontend_read_only_source }}
 ```
 
-Treat these files as the starting integration contract.
+Use extra `components/`, `operations/`, `styles/` only when useful.
 
-You may replace their internal implementation completely.
+Use `"ready"` only when every requested UI/runtime behavior is complete.
 
-Preserve public exports/signatures unless the requirements explicitly demand an additional capability.
+Tests are outside scope. Do not create/modify tests unless explicitly requested.
 
-## Implementation conventions
-
-Keep the implementation simple.
-
-When extra files genuinely improve clarity, use:
-
-```text
-components/
-operations/
-styles/
-```
-
-Use `styles/<ComponentName>.styles.js` for extracted MUI style definitions.
-
-Do not create unnecessary generic helpers/services/hooks.
-
-Use React and Material UI.
-
-## Lifecycle
-
-The generated registry starts with:
-
-```js
-implementationStatus: "scaffold"
-```
-
-Return `"ready"` only when the Frontend implementation is complete.
-
-Do not invent missing semantics merely to mark it ready.
-
-## Required output
-
-Return every Frontend file that must be created or replaced.
-
-For each file, print:
-
-```text
-FILE: <complete repository path>
-```
-
-Then provide one fenced code block with the complete file contents.
-
-Return complete source files.
-
-Do not return:
-
-- diffs;
-- ellipses;
-- partial components/functions;
-- pseudocode;
-- TODO implementations.
-
-Include any genuinely necessary new `components/`, `operations/` or `styles/` file with its complete repository path and source.
+Return every required file as `FILE: <path>` followed by complete source. No
+diffs, ellipses, partial implementations or pseudocode.

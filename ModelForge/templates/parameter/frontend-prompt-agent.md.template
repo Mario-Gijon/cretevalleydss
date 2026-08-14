@@ -1,59 +1,27 @@
 # Implement {{ parameter_structure_key }} Frontend — Agent prompt
 
-You are a repository-aware coding agent working inside CreteValleyDSS.
-
-Implement the Frontend of the generated Parameter Structure:
-
-```text
-Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/
-```
-
-## Read first
-
-Read:
-
-```text
-Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/index.js
-Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ field_component_name }}.jsx
-Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ read_only_component_name }}.jsx
-Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/IMPLEMENTATION_GUIDE.md
-```
-
-Also inspect the matching Backend package when useful:
-
-```text
-Backend/modules/decisionPlugins/modelParameters/structures/{{ parameter_structure_key }}/
-```
-
-The current repository state is authoritative.
+Read generated Field/ReadOnly/index/guide, matching Backend when useful,
+`Frontend/src/theme/appTheme.js`, `Frontend/src/theme/globalStyles.js` and a
+nearby Parameter Structure UI.
 
 ## Developer requirements
 
 ### Parameter Structure description
-
 [PARAMETER STRUCTURE DESCRIPTION]
 
 ### Canonical value shape
-
 [VALUE SHAPE]
 
 ### Desired UI / behavior
-
 [DESIRED UI / BEHAVIOR]
 
 ### Additional requirements
-
 [ADDITIONAL REQUIREMENTS]
 
 ### Actual runtime input — optional
-
 [ACTUAL RUNTIME INPUT]
 
-If supplied, treat the runtime object shape as authoritative.
-
-## Field contract
-
-Preserve:
+Field contract:
 
 ```js
 {
@@ -66,165 +34,110 @@ Preserve:
 }
 ```
 
-`value` is the complete current value of this parameter.
+`onChange(nextValue)` replaces the complete canonical value.
 
-Treat object/array values as immutable.
+ReadOnly displays the same canonical value.
 
-`onChange(nextValue)` replaces the complete value.
+Use `parameterContext` rather than refetching. Frontend/Backend share one value
+shape.
 
-Display `error` when appropriate.
+Reuse Expression Domain input/validation only when the parameter actually stores
+a criterion-domain value.
 
-When `disabled` is true, prevent every change.
 
-Use `parameterContext` instead of refetching data already supplied by the host.
+## CreteValleyDSS visual language
 
-## ReadOnly contract
+Use React and Material UI (`@mui/material`). The application already provides its
+global `ThemeProvider`, `CssBaseline` and global styles. Do not create another
+theme or design system inside the plugin.
 
-Preserve:
+The app supports both light and dark schemes. Do not force one mode.
 
-```js
-{
-  parameter,
-  value,
-  parameterContext,
-}
-```
-
-Present the same canonical value without mutation.
-
-## `parameterContext`
-
-Frontend receives:
-
-```js
-{
-  model,
-  alternatives,
-  criteriaTree,
-  leafCriteria,
-}
-```
-
-Backend receives a different `context`.
-
-Do not rename or unify them.
-
-## Frontend/Backend agreement
-
-The Field, ReadOnly component and Backend validator must share one canonical value contract.
-
-Inspect the generated Backend package when necessary.
-
-Do not invent a separate Frontend-only value shape without an explicitly required normalization boundary.
-
-## Expression Domains
-
-Do not treat every parameter as an Expression Domain evaluation.
-
-If and only if this parameter stores a criterion-domain evaluation, reuse the public Expression Domain input/validation infrastructure using the canonical domain from `parameterContext`.
-
-Do not recreate registered numeric, linguistic, fuzzy or 2-tuple controls/validation.
-
-## Project conventions
-
-Keep the implementation simple.
-
-Start from the three generated runtime files.
-
-When extra files genuinely improve clarity:
-
-- React subcomponents belong in `components/`;
-- pure structure-specific logic belongs in `operations/`;
-- MUI `sx`/style definitions belong in `styles/`;
-- style files normally follow `<ComponentName>.styles.js`.
-
-Do not create generic `utils/`, `helpers/`, `services/`, hooks or abstractions without a concrete need.
-
-Use the existing React/Material UI stack.
-
-## Existing structures
-
-You may inspect implementations such as:
+Representative theme values:
 
 ```text
-Frontend/src/features/decisionPlugins/modelParameters/fields/numberGlobal/
+Typography
+- Source Sans Pro, Arial, sans-serif
+- base font size: 15px
+- headings: bold
+- buttons: bold
+
+Light
+- primary.main: #134F8A
+- secondary.main / info.main: #45C5C5
+- background.default: #F5F0F6
+- background.paper: #FFFFFF
+- text.primary: #1D1D1B
+- text.secondary: #545454
+
+Dark
+- primary.main: #224261
+- primary.light / secondary.main / info.main: #45C5C5
+- background.default: #1D1D1B
+- background.paper: #262B32
+- text.primary: #FFFFFF
+- text.secondary: #BFBFBF
 ```
 
-They are references only.
+Prefer semantic MUI values in `sx`, such as `background.paper`, `text.primary`,
+`text.secondary`, `divider`, `secondary.main` and `info.main`, rather than
+hard-coded colors.
 
-Do not modify or regenerate an existing Parameter Structure as part of this task.
+Match the application's compact visual language:
 
-## Scope restrictions
+- prefer `Stack`/`Box` compositions;
+- modest spacing/padding, commonly around 1–1.5 theme units;
+- compact plugin surfaces commonly use `borderRadius: 2`;
+- use subtle borders/dividers;
+- use `body2`/`caption` for supporting text;
+- prefer compact buttons/toggles to oversized controls;
+- use clear but restrained selected/active states;
+- wrap responsively instead of assuming wide screens;
+- avoid oversized cards, large empty areas and decorative UI that does not aid
+  the task.
 
-Do not modify:
+A subtle low-opacity accent may be used for grouping. Avoid excessive gradients,
+glass effects or arbitrary bright colors.
 
-- ModelForge templates;
-- ParameterFieldHost or ParameterReadOnlyHost;
-- parameterContext builders;
-- unrelated Parameter Structures;
-- Backend runtime unless coordinated changes were explicitly requested;
-- Expression Domain implementations;
-- Model Forge UI;
-- DecisionModelsService.
+Prefer MUI `sx`. If styling becomes large enough to obscure component logic,
+extract it to `styles/<ComponentName>.styles.js`.
 
-Do not redesign the plugin architecture.
+Do not introduce Tailwind, Bootstrap, styled-components, another component
+library, a new ThemeProvider or a new global CSS system.
 
-## Lifecycle
+Do not rely on color alone to communicate validation, ordering or selection.
 
-Keep:
 
-```js
-implementationStatus: "scaffold"
-```
+Current repository theme/source code wins if it differs from representative
+values above.
 
-while implementation is incomplete.
 
-Change it to:
+## React implementation style
 
-```js
-implementationStatus: "ready"
-```
+Keep the state model simple.
 
-only after the Frontend implementation is complete and relevant tests pass.
+- host-provided payload/value props are the source of truth;
+- do not mirror props into local state without a real lifecycle reason;
+- do not add `useEffect` just to synchronize derived values;
+- derive inexpensive values directly;
+- use `useMemo`/`useCallback` only when they solve a real problem;
+- update objects/arrays immutably;
+- do not create one-use custom hooks;
+- do not fetch data already supplied in context;
+- do not add third-party dependencies when React/MUI/platform APIs suffice;
+- do not add compatibility aliases/fallback payloads unless explicitly required.
 
-## Validation
 
-Add/update focused Frontend tests covering applicable behavior such as:
+Keep code local/simple. Use `components/`, `operations/`, `styles/` only when
+useful.
 
-- rendering the canonical value;
-- exact `onChange(nextValue)` output;
-- disabled behavior;
-- error presentation;
-- `parameterContext`-driven options/rows;
-- ReadOnly presentation;
-- Expression Domain integration when applicable.
+Change `"scaffold"` to `"ready"` when requested UI/runtime behavior is complete.
 
-Run focused tests first, then appropriate Frontend validation, and finally:
+Tests are outside scope. Do not create/modify/run tests unless explicitly
+requested.
 
-```text
-git diff --check
-```
-
+Run targeted lint/static/build checks when practical plus `git diff --check`.
 Do not install dependencies.
 
-## Final report
-
-Modify the repository directly.
-
-Do not paste every complete source file in the final response.
-
-Report:
-
-1. Files created.
-2. Files modified.
-3. Canonical value/UI behavior implemented.
-4. Exact shape emitted through `onChange`.
-5. `parameterContext` fields used.
-6. Expression Domain infrastructure reused, if applicable.
-7. Any `components/`, `operations/` or `styles/` files created and why.
-8. Whether `implementationStatus` remains `scaffold` or became `ready`.
-9. Tests/lint executed and results.
-10. `git diff --check` result.
-11. Any remaining limitation.
-
-Implement only what this Parameter Structure requires.
+Report files changed, emitted value shape, context/domain reuse, visual choices,
+final status and validation.
