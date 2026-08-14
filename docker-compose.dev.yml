@@ -88,6 +88,9 @@ services:
       context: .
       dockerfile: docker/model-forge/Dockerfile.dev
     working_dir: /app
+    # Keep files created through the repository bind mount owned by the host developer.
+    # Override with LOCAL_UID/LOCAL_GID when the host account is not 1000:1000.
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     command:
       - uvicorn
       - app:app

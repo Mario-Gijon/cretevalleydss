@@ -9,7 +9,7 @@ For production-style local testing and server deployment, see [deployment.md](./
 Run the full local stack with Docker:
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) docker compose -f docker-compose.dev.yml up --build
 ```
 
 This workflow builds from local source code and keeps the normal development setup:
@@ -41,13 +41,13 @@ Fill `Backend/.env` locally with your own credentials. Never commit `.env` files
 Start:
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) docker compose -f docker-compose.dev.yml up --build
 ```
 
 Restart without rebuilding:
 
 ```bash
-docker compose -f docker-compose.dev.yml up
+LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) docker compose -f docker-compose.dev.yml up
 ```
 
 Stop:
@@ -61,6 +61,11 @@ Rebuild after dependency or Dockerfile changes:
 ```bash
 docker compose -f docker-compose.dev.yml build --no-cache
 ```
+
+The Model Forge development service runs as the host developer's numeric UID/GID
+so files created under the repository bind mount remain editable from the host.
+The commands above set `LOCAL_UID` and `LOCAL_GID` dynamically; the Compose file
+falls back to `1000:1000` when they are not provided.
 
 ## Logs
 
