@@ -1,4 +1,5 @@
 import request from "supertest";
+import { Types } from "mongoose";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = vi.hoisted(() => ({
@@ -148,6 +149,62 @@ describe("notifications module", () => {
     });
 
     expect(result.notifications[0].responseStatus).toBe(false);
+  });
+
+  it("skips an orphan notification and still returns the following valid notification", async () => {
+    const user = await createConfirmedUser({
+      email: "orphan-notification@example.com",
+    });
+    const issue = await createIssueFixture({
+      ownerId: user._id,
+      name: "Existing notification issue",
+    });
+    const orphanNotification = await createNotificationFixture({
+      expertId: user._id,
+      issueId: new Types.ObjectId(),
+      message: "Orphan invitation",
+      createdAt: new Date("2025-01-01T12:00:00.000Z"),
+    });
+    const validNotification = await createNotificationFixture({
+      expertId: user._id,
+      issueId: issue._id,
+      message: "Valid invitation",
+      createdAt: new Date("2025-01-01T11:00:00.000Z"),
+    });
+
+    const result = await getNotificationsPayload({
+      userId: user._id,
+    });
+
+    expect(result.notifications).toEqual([
+      expect.objectContaining({
+        _id: validNotification._id.toString(),
+        issueId: issue._id.toString(),
+        message: "Valid invitation",
+      }),
+    ]);
+    expect(await Notification.findById(orphanNotification._id)).not.toBeNull();
+  });
+
+  it("keeps malformed notification issue references as an internal error", async () => {
+    const user = await createConfirmedUser({
+      email: "malformed-notification@example.com",
+    });
+
+    await createNotificationFixture({
+      expertId: user._id,
+      issueId: null,
+    });
+
+    await expect(
+      getNotificationsPayload({
+        userId: user._id,
+      })
+    ).rejects.toMatchObject({
+      code: "INTERNAL_ERROR",
+      field: "notifications.issue",
+      message: "Notification issue must be populated",
+    });
   });
 
   it("markAllNotificationsAsRead marks only the authenticated user's unread notifications", async () => {
@@ -313,6 +370,51 @@ describe("notifications API contracts", () => {
       message: "Notification payload",
       issueName: "Notification issue",
       userEmail: "notify@example.com",
+    });
+  });
+
+  it("authenticated GET /api/issues/notifications returns valid notifications when an orphan exists", async () => {
+    const user = await createConfirmedUser({
+      email: "orphan-notification-api@example.com",
+    });
+    const issue = await createIssueFixture({
+      ownerId: user._id,
+      name: "API notification issue",
+    });
+
+    await createNotificationFixture({
+      expertId: user._id,
+      issueId: new Types.ObjectId(),
+      message: "Orphan API invitation",
+      createdAt: new Date("2025-01-01T12:00:00.000Z"),
+    });
+    const validNotification = await createNotificationFixture({
+      expertId: user._id,
+      issueId: issue._id,
+      message: "Valid API invitation",
+      createdAt: new Date("2025-01-01T11:00:00.000Z"),
+    });
+
+    authState.currentPayload = {
+      uid: String(user._id),
+      role: "user",
+    };
+
+    const response = await request(app)
+      .get("/api/issues/notifications")
+      .set(getAuthHeader())
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      success: true,
+      data: {
+        notifications: [
+          expect.objectContaining({
+            _id: validNotification._id.toString(),
+            message: "Valid API invitation",
+          }),
+        ],
+      },
     });
   });
 

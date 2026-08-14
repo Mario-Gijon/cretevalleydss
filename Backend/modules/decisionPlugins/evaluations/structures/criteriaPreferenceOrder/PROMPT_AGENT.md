@@ -1,11 +1,11 @@
-# Implement {{ evaluation_structure_key }} Backend — Agent prompt
+# Implement criteriaPreferenceOrder Backend — Agent prompt
 
 You are a repository-aware coding agent inside CreteValleyDSS.
 
 The target package is exactly:
 
 ```text
-Backend/modules/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/
+Backend/modules/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/
 ```
 
 ## Read first

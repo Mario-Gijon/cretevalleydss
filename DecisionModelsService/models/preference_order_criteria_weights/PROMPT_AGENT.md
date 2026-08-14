@@ -1,9 +1,9 @@
-# Implement {{ display_name }} integration — Agent prompt
+# Implement Preference Order Criteria Weights integration — Agent prompt
 
 Target package:
 
 ```text
-DecisionModelsService/models/{{ snake_case_model_name }}/
+DecisionModelsService/models/preference_order_criteria_weights/
 ```
 
 Do NOT implement/guess `run.py` mathematics.

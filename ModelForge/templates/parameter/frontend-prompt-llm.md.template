@@ -2,7 +2,7 @@
 
 You are implementing the Frontend of a CreteValleyDSS Parameter Structure.
 
-You do NOT need repository access.
+This prompt is self-contained.
 
 ## Developer requirements
 
@@ -21,7 +21,21 @@ You do NOT need repository access.
 ### Actual runtime input — optional
 [ACTUAL RUNTIME INPUT]
 
-## Field contract
+## Exact generated package location
+
+```text
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/
+```
+
+Exact generated files:
+
+```text
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/index.js
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ field_component_name }}.jsx
+Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ read_only_component_name }}.jsx
+```
+
+## Editable Field contract
 
 ```js
 {
@@ -34,10 +48,15 @@ You do NOT need repository access.
 }
 ```
 
-`onChange(nextValue)` replaces the complete canonical value.
+`value` is the complete canonical current parameter value.
 
-Treat object/array values immutably. Display supplied error. Prevent changes
-when disabled.
+`onChange(nextValue)` replaces the complete value.
+
+Treat object/array values immutably.
+
+Display `error` appropriately.
+
+When disabled, prevent all changes.
 
 ## ReadOnly contract
 
@@ -51,9 +70,51 @@ when disabled.
 
 Display the same canonical value without mutation.
 
-Frontend and Backend must share one canonical value representation.
+## Representative parameterContext
 
-If this parameter is explicitly a criterion-domain evaluation, reuse:
+```json
+{
+  "model": {
+    "id": "MODEL_1",
+    "name": "Example model",
+    "apiModelKey": "example_model"
+  },
+  "alternatives": [
+    { "id": "ALT_1", "name": "Supplier A" }
+  ],
+  "criteriaTree": [],
+  "leafCriteria": [
+    {
+      "id": "CRIT_1",
+      "name": "Cost",
+      "type": "cost",
+      "expressionDomain": {
+        "id": "DOMAIN_1",
+        "_id": "DOMAIN_1",
+        "name": "Cost scale",
+        "typeKey": "numericContinuous",
+        "definition": {
+          "min": 0,
+          "max": 100,
+          "step": null
+        }
+      }
+    }
+  ]
+}
+```
+
+Frontend `parameterContext` differs from Backend validator `context`.
+
+## Frontend/Backend agreement
+
+Field, ReadOnly and Backend validator must share one canonical value
+representation unless requirements explicitly define a normalization boundary.
+
+## Expression Domain API
+
+Only when this parameter explicitly stores a criterion-domain evaluation, from
+a root component import:
 
 ```js
 import {
@@ -62,111 +123,242 @@ import {
 } from "../../../../expressionDomains";
 ```
 
-Do not recreate registered domain inputs.
+Do not recreate registered domain-specific UI/validation.
 
 
-## CreteValleyDSS visual language
+## Exact CreteValleyDSS Frontend/theme context
 
-Use React and Material UI (`@mui/material`). The application already provides its
-global `ThemeProvider`, `CssBaseline` and global styles. Do not create another
-theme or design system inside the plugin.
+CreteValleyDSS already mounts the application with Material UI:
 
-The app supports both light and dark schemes. Do not force one mode.
-
-Representative theme values:
-
-```text
-Typography
-- Source Sans Pro, Arial, sans-serif
-- base font size: 15px
-- headings: bold
-- buttons: bold
-
-Light
-- primary.main: #134F8A
-- secondary.main / info.main: #45C5C5
-- background.default: #F5F0F6
-- background.paper: #FFFFFF
-- text.primary: #1D1D1B
-- text.secondary: #545454
-
-Dark
-- primary.main: #224261
-- primary.light / secondary.main / info.main: #45C5C5
-- background.default: #1D1D1B
-- background.paper: #262B32
-- text.primary: #FFFFFF
-- text.secondary: #BFBFBF
+```jsx
+<ThemeProvider theme={theme} disableTransitionOnChange>
+  <CssBaseline enableColorScheme />
+  <GlobalStyles styles={appGlobalStyles} />
+  ...
+</ThemeProvider>
 ```
 
-Prefer semantic MUI values in `sx`, such as `background.paper`, `text.primary`,
-`text.secondary`, `divider`, `secondary.main` and `info.main`, rather than
-hard-coded colors.
+Do not create another `ThemeProvider`, global theme or parallel design system.
 
-Match the application's compact visual language:
+The application uses `@mui/material` and supports both light and dark schemes.
 
-- prefer `Stack`/`Box` compositions;
-- modest spacing/padding, commonly around 1–1.5 theme units;
-- compact plugin surfaces commonly use `borderRadius: 2`;
+The current theme contract is:
+
+```js
+const FONT_FAMILY = "Source Sans Pro, Arial, sans-serif";
+
+let theme = extendTheme({
+  typography: {
+    fontFamily: FONT_FAMILY,
+    fontSize: 15,
+    h1: { fontWeight: "bold" },
+    h2: { fontWeight: "bold" },
+    h3: { fontWeight: "bold" },
+    h4: { fontWeight: "bold" },
+    h5: { fontWeight: "bold" },
+    h6: { fontWeight: "bold" },
+    subtitle1: { fontWeight: "normal" },
+    subtitle2: { fontWeight: "bold" },
+    body1: { fontWeight: "normal" },
+    body2: { fontWeight: "normal" },
+    button: { fontWeight: "bold" },
+    caption: { fontWeight: "normal" },
+    overline: { fontWeight: "normal" },
+  },
+  colorSchemes: {
+    light: {
+      palette: {
+        mode: "light",
+        primary: {
+          main: "#134F8A",
+          light: "#134F8A",
+        },
+        secondary: {
+          main: "#45C5C5",
+          contrastText: "#fff",
+        },
+        background: {
+          default: "#F5F0F6",
+          paper: "#FFFFFF",
+        },
+        text: {
+          primary: "#1D1D1B",
+          secondary: "#545454",
+          disabled: "#134F8A",
+        },
+        info: {
+          main: "#45C5C5",
+          contrastText: "#fff",
+        },
+      },
+    },
+    dark: {
+      palette: {
+        mode: "dark",
+        primary: {
+          main: "#224261",
+          light: "#45C5C5",
+        },
+        secondary: {
+          main: "#45C5C5",
+        },
+        background: {
+          default: "#1D1D1B",
+          paper: "#262B32",
+        },
+        text: {
+          primary: "#FFFFFF",
+          secondary: "#BFBFBF",
+          disabled: "#9AECA4",
+          info: "#45C5C5",
+        },
+        info: {
+          main: "#45C5C5",
+        },
+      },
+    },
+  },
+  colorSchemeSelector: "class",
+});
+```
+
+Prefer semantic theme values in `sx` rather than copying literal colors:
+
+```js
+bgcolor: "background.paper"
+color: "text.primary"
+borderColor: "divider"
+```
+
+Use `secondary`/`info` accents for selected or interactive states when useful.
+
+The app's plugin UI is intentionally compact:
+
+- use `Stack`, `Box`, `Paper`, `Typography`, `Alert`, `Button`,
+  `IconButton`, `TextField`, `Select`, etc. from Material UI as appropriate;
+- prefer spacing around 1–1.5 theme units for compact plugin surfaces;
+- prefer modest padding around 1–1.5 units;
+- `borderRadius: 2` is a common compact surface radius;
 - use subtle borders/dividers;
-- use `body2`/`caption` for supporting text;
-- prefer compact buttons/toggles to oversized controls;
-- use clear but restrained selected/active states;
-- wrap responsively instead of assuming wide screens;
-- avoid oversized cards, large empty areas and decorative UI that does not aid
-  the task.
-
-A subtle low-opacity accent may be used for grouping. Avoid excessive gradients,
-glass effects or arbitrary bright colors.
-
-Prefer MUI `sx`. If styling becomes large enough to obscure component logic,
-extract it to `styles/<ComponentName>.styles.js`.
+- use `body2` or `caption` for explanations;
+- avoid giant cards, large empty areas and oversized controls;
+- make selected/active states clear but restrained;
+- wrap/reflow on narrow screens rather than assuming a fixed wide layout;
+- preserve accessibility and do not communicate meaning only through color.
 
 Do not introduce Tailwind, Bootstrap, styled-components, another component
-library, a new ThemeProvider or a new global CSS system.
+library, a new ThemeProvider or a new global CSS architecture.
 
-Do not rely on color alone to communicate validation, ordering or selection.
+Prefer MUI `sx`. Extract `styles/<ComponentName>.styles.js` only when styling is
+large enough that extraction improves readability.
 
 
 
-## React implementation style
+## React implementation rules
 
-Keep the state model simple.
+Prefer the simplest state model that satisfies the UI:
 
-- host-provided payload/value props are the source of truth;
-- do not mirror props into local state without a real lifecycle reason;
-- do not add `useEffect` just to synchronize derived values;
+- host-provided `evaluation`/`value` is the source of truth;
+- treat props and nested objects/arrays as immutable;
+- do not mirror props into component state without a genuine interaction/lifecycle
+  requirement;
+- do not add `useEffect` merely to synchronize a value that can be derived during
+  render;
 - derive inexpensive values directly;
-- use `useMemo`/`useCallback` only when they solve a real problem;
-- update objects/arrays immutably;
-- do not create one-use custom hooks;
-- do not fetch data already supplied in context;
-- do not add third-party dependencies when React/MUI/platform APIs suffice;
-- do not add compatibility aliases/fallback payloads unless explicitly required.
+- use `useMemo`/`useCallback` only for a concrete reason;
+- do not create a custom hook for a single local use;
+- do not fetch data already provided through `decisionContext` or
+  `parameterContext`;
+- do not create compatibility aliases or alternate payload shapes unless the
+  supplied public contract requires them;
+- do not add dependencies when React, Material UI and platform APIs are enough.
 
 
-## Generated source
 
-### index.js
+## Reference Frontend Parameter Structure convention
+
+A current numeric field uses Material UI and the canonical `onChange(nextValue)`
+boundary like this:
+
+```jsx
+import { Stack, Typography, TextField } from "@mui/material";
+
+export const NumberGlobalParameterField = ({
+  parameter,
+  value,
+  onChange,
+  disabled = false,
+  error = "",
+}) => {
+  const { restrictions = {}, label, valueType } = parameter;
+  const isInteger = valueType === "integer";
+  const min = Number.isFinite(restrictions.min)
+    ? restrictions.min
+    : undefined;
+  const max = Number.isFinite(restrictions.max)
+    ? restrictions.max
+    : undefined;
+
+  return (
+    <Stack spacing={0.35}>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Typography variant="body2">
+          {label}:
+        </Typography>
+
+        <TextField
+          type="number"
+          variant="outlined"
+          color="secondary"
+          size="small"
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value)}
+          inputProps={{
+            "aria-label": label,
+            min,
+            max,
+            step: isInteger ? 1 : "any",
+          }}
+          disabled={disabled}
+          error={Boolean(error)}
+          helperText={error || ""}
+        />
+      </Stack>
+    </Stack>
+  );
+};
+```
+
+This is a style/API reference only. Do not assume the new parameter is numeric.
+
+
+## Exact generated starting source
+
+### `Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/index.js`
+
 ```js
 {{ frontend_index_source }}
 ```
 
-### {{ field_component_name }}.jsx
+### `Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ field_component_name }}.jsx`
+
 ```jsx
 {{ frontend_field_source }}
 ```
 
-### {{ read_only_component_name }}.jsx
+### `Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/{{ read_only_component_name }}.jsx`
+
 ```jsx
 {{ frontend_read_only_source }}
 ```
 
-Use extra `components/`, `operations/`, `styles/` only when useful.
+Use `components/`, `operations/`, `styles/` only when genuinely useful.
 
-Use `"ready"` only when every requested UI/runtime behavior is complete.
+Use `"ready"` when every requested UI/runtime behavior is complete.
 
 Tests are outside scope. Do not create/modify tests unless explicitly requested.
 
-Return every required file as `FILE: <path>` followed by complete source. No
-diffs, ellipses, partial implementations or pseudocode.
+## Required output
+
+For each file print `FILE: <complete repository path>` followed by complete
+source. No diffs, ellipses, partial implementations or pseudocode.

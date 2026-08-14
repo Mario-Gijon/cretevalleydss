@@ -1,3 +1,6 @@
+import { isObjectIdOrHexString } from "mongoose";
+
+import { Issue } from "../../../models/Issues.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
@@ -31,7 +34,7 @@ const getNonEmptyString = ({ value, message, field, details = null }) => {
   return value.trim();
 };
 
-const validateNotification = (notification) => {
+const validateNotificationIdentityAndExpert = (notification) => {
   const notificationId = toIdString(notification?._id);
 
   if (!notificationId) {
@@ -57,6 +60,40 @@ const validateNotification = (notification) => {
       notificationId,
     },
   });
+
+  return {
+    notificationId,
+    userEmail,
+  };
+};
+
+const getStoredNotificationIssueId = (notification) => {
+  const { notificationId } = validateNotificationIdentityAndExpert(notification);
+
+  if (notification.issue == null) {
+    throw createInternalError("Notification issue must be populated", {
+      field: "notifications.issue",
+      details: {
+        notificationId,
+      },
+    });
+  }
+
+  if (!isObjectIdOrHexString(notification.issue)) {
+    throw createInternalError("Notification issue id is invalid", {
+      field: "notifications.issue",
+      details: {
+        notificationId,
+      },
+    });
+  }
+
+  return toIdString(notification.issue);
+};
+
+const validateNotification = (notification) => {
+  const { notificationId, userEmail } =
+    validateNotificationIdentityAndExpert(notification);
 
   if (!notification.issue || typeof notification.issue !== "object") {
     throw createInternalError("Notification issue must be populated", {
@@ -133,7 +170,6 @@ export const getNotificationsPayload = async ({ userId }) => {
     Notification.find({ expert: userId })
       .sort({ createdAt: -1 })
       .populate("expert", "email")
-      .populate("issue", "name")
       .lean(),
     Participation.find({ expert: userId }).lean(),
   ]);
@@ -158,12 +194,38 @@ export const getNotificationsPayload = async ({ userId }) => {
     participationByIssueId.set(issueId, participation);
   }
 
+  const notificationsWithIssueIds = notifications.map((notification) => ({
+    notification,
+    issueId: getStoredNotificationIssueId(notification),
+  }));
+  const issues = await Issue.find({
+    _id: {
+      $in: notificationsWithIssueIds.map(({ issueId }) => issueId),
+    },
+  })
+    .select("name")
+    .lean();
+  const issueById = new Map(
+    issues.map((issue) => [toIdString(issue._id), issue])
+  );
+
   return {
-    notifications: notifications.map((notification) =>
-      buildNotificationItem({
-        notification,
-        participationByIssueId,
-      })
+    notifications: notificationsWithIssueIds.flatMap(
+      ({ notification, issueId }) => {
+        const issue = issueById.get(issueId);
+
+        if (!issue) {
+          return [];
+        }
+
+        return buildNotificationItem({
+          notification: {
+            ...notification,
+            issue,
+          },
+          participationByIssueId,
+        });
+      }
     ),
   };
 };

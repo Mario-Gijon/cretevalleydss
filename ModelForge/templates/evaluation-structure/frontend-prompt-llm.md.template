@@ -2,17 +2,14 @@
 
 You are implementing the Frontend of a CreteValleyDSS Evaluation Structure.
 
-You do NOT need repository access. Treat this prompt as the complete integration
-contract.
-
-Return complete replacement files, not diffs or fragments.
+This prompt is intentionally self-contained. Do NOT require repository access.
 
 ## Developer requirements
 
 ### Structure description
 [STRUCTURE DESCRIPTION]
 
-### Evaluation payload
+### Canonical evaluation payload
 [EVALUATION PAYLOAD DESCRIPTION]
 
 ### Desired UI / behavior
@@ -24,9 +21,30 @@ Return complete replacement files, not diffs or fragments.
 ### Actual runtime input — optional
 [ACTUAL RUNTIME INPUT]
 
-## Host/View contract
+## Exact generated package location
 
-The host owns loading, persistence, save/submit and dialog lifecycle.
+```text
+Frontend/src/features/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/
+```
+
+Exact generated runtime paths:
+
+```text
+Frontend/src/features/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/index.js
+Frontend/src/features/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/{{ view_component_name }}.jsx
+```
+
+When creator-side initialization is generated:
+
+```text
+Frontend/src/features/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/operations/buildInitialEvaluation.js
+```
+
+Do not invent another location.
+
+## Host/View architecture
+
+The host owns loading, fetching, save, submit, persistence and dialog lifecycle.
 
 The View receives exactly:
 
@@ -42,20 +60,93 @@ The View receives exactly:
 
 There is no `loading` prop.
 
-Treat `evaluation` as immutable.
+`evaluation` is the complete canonical current payload.
 
-`setEvaluation(nextEvaluation)` replaces the complete payload; it is not a patch
-API.
+Treat it as immutable.
 
-`collectiveEvaluation` may be null and is read-only.
+`setEvaluation(nextEvaluation)` replaces the COMPLETE evaluation. It is not a
+patch API and not `(id, value)`.
 
-When `readOnly` is true, prevent every mutating interaction.
+`collectiveEvaluation` may be null. Treat it as read-only presentation data and
+do not invent its nested shape unless requirements define it.
 
-Use data already in `decisionContext`; do not fetch it again.
+When `readOnly === true`, prevent every mutating interaction.
 
-## Expression Domains
+## Representative View input
 
-If the user enters a value belonging to `criterion.expressionDomain`, reuse:
+```json
+{
+  "decisionContext": {
+    "issue": {
+      "id": "ISSUE_1",
+      "name": "Supplier selection",
+      "currentStage": "{{ evaluation_stage_value }}"
+    },
+    "structure": {
+      "key": "{{ evaluation_structure_key }}",
+      "stage": "{{ evaluation_stage_value }}"
+    },
+    "model": {
+      "id": "MODEL_1",
+      "name": "Example model",
+      "apiModelKey": "example_model"
+    },
+    "modelParameters": {},
+    "criteriaWeightingParameters": {},
+    "alternatives": [
+      { "id": "ALT_1", "name": "Supplier A" }
+    ],
+    "criteriaTree": [],
+    "leafCriteria": [
+      {
+        "id": "CRIT_1",
+        "name": "Cost",
+        "type": "cost",
+        "expressionDomain": {
+          "id": "DOMAIN_1",
+          "_id": "DOMAIN_1",
+          "name": "Cost scale",
+          "typeKey": "numericContinuous",
+          "definition": {
+            "min": 0,
+            "max": 100,
+            "step": null
+          }
+        }
+      }
+    ],
+    "experts": [
+      { "id": "EXPERT_1", "name": "Expert A" }
+    ],
+    "criteriaWeights": {},
+    "expertWeights": {},
+    "consensus": {
+      "phase": 0,
+      "maxPhases": null,
+      "threshold": null,
+      "currentCollectiveEvaluations": {},
+      "previousCollectiveEvaluations": {}
+    }
+  },
+  "evaluation": {},
+  "collectiveEvaluation": null,
+  "readOnly": false
+}
+```
+
+`setEvaluation` is a function and is omitted from serialized examples.
+
+Do not hard-code representative values.
+
+## Exact Expression Domain Frontend API
+
+The public module is:
+
+```text
+Frontend/src/features/expressionDomains/index.js
+```
+
+From a component directly in the generated Evaluation Structure root:
 
 ```js
 import {
@@ -64,109 +155,309 @@ import {
 } from "../../../../expressionDomains";
 ```
 
-Use the canonical criterion domain. Do not recreate registered numeric,
-linguistic, fuzzy or 2-tuple inputs/validation.
+If moved one directory deeper into `components/`, adjust the relative path by
+one additional `../`.
 
+The public API exports:
 
-## CreteValleyDSS visual language
-
-Use React and Material UI (`@mui/material`). The application already provides its
-global `ThemeProvider`, `CssBaseline` and global styles. Do not create another
-theme or design system inside the plugin.
-
-The app supports both light and dark schemes. Do not force one mode.
-
-Representative theme values:
-
-```text
-Typography
-- Source Sans Pro, Arial, sans-serif
-- base font size: 15px
-- headings: bold
-- buttons: bold
-
-Light
-- primary.main: #134F8A
-- secondary.main / info.main: #45C5C5
-- background.default: #F5F0F6
-- background.paper: #FFFFFF
-- text.primary: #1D1D1B
-- text.secondary: #545454
-
-Dark
-- primary.main: #224261
-- primary.light / secondary.main / info.main: #45C5C5
-- background.default: #1D1D1B
-- background.paper: #262B32
-- text.primary: #FFFFFF
-- text.secondary: #BFBFBF
+```js
+export { default as ExpressionDomainEvaluationInput } from "./ExpressionDomainEvaluationInput.jsx";
+export { validateExpressionDomainEvaluation } from "./validateExpressionDomainEvaluation";
 ```
 
-Prefer semantic MUI values in `sx`, such as `background.paper`, `text.primary`,
-`text.secondary`, `divider`, `secondary.main` and `info.main`, rather than
-hard-coded colors.
+Typical usage:
 
-Match the application's compact visual language:
+```jsx
+<ExpressionDomainEvaluationInput
+  expressionDomain={criterion.expressionDomain}
+  value={value}
+  onChange={(nextValue) => {
+    const nextEvaluation = /* immutable complete evaluation */;
+    setEvaluation(nextEvaluation);
+  }}
+  disabled={readOnly}
+  error={Boolean(error)}
+  showHelperText={false}
+/>
+```
 
-- prefer `Stack`/`Box` compositions;
-- modest spacing/padding, commonly around 1–1.5 theme units;
-- compact plugin surfaces commonly use `borderRadius: 2`;
+Do not recreate registered numeric, linguistic, fuzzy or linguistic 2-tuple
+inputs/validation.
+
+If this structure does not edit Expression Domain evaluation values, do not
+force this API into it.
+
+
+## Exact CreteValleyDSS Frontend/theme context
+
+CreteValleyDSS already mounts the application with Material UI:
+
+```jsx
+<ThemeProvider theme={theme} disableTransitionOnChange>
+  <CssBaseline enableColorScheme />
+  <GlobalStyles styles={appGlobalStyles} />
+  ...
+</ThemeProvider>
+```
+
+Do not create another `ThemeProvider`, global theme or parallel design system.
+
+The application uses `@mui/material` and supports both light and dark schemes.
+
+The current theme contract is:
+
+```js
+const FONT_FAMILY = "Source Sans Pro, Arial, sans-serif";
+
+let theme = extendTheme({
+  typography: {
+    fontFamily: FONT_FAMILY,
+    fontSize: 15,
+    h1: { fontWeight: "bold" },
+    h2: { fontWeight: "bold" },
+    h3: { fontWeight: "bold" },
+    h4: { fontWeight: "bold" },
+    h5: { fontWeight: "bold" },
+    h6: { fontWeight: "bold" },
+    subtitle1: { fontWeight: "normal" },
+    subtitle2: { fontWeight: "bold" },
+    body1: { fontWeight: "normal" },
+    body2: { fontWeight: "normal" },
+    button: { fontWeight: "bold" },
+    caption: { fontWeight: "normal" },
+    overline: { fontWeight: "normal" },
+  },
+  colorSchemes: {
+    light: {
+      palette: {
+        mode: "light",
+        primary: {
+          main: "#134F8A",
+          light: "#134F8A",
+        },
+        secondary: {
+          main: "#45C5C5",
+          contrastText: "#fff",
+        },
+        background: {
+          default: "#F5F0F6",
+          paper: "#FFFFFF",
+        },
+        text: {
+          primary: "#1D1D1B",
+          secondary: "#545454",
+          disabled: "#134F8A",
+        },
+        info: {
+          main: "#45C5C5",
+          contrastText: "#fff",
+        },
+      },
+    },
+    dark: {
+      palette: {
+        mode: "dark",
+        primary: {
+          main: "#224261",
+          light: "#45C5C5",
+        },
+        secondary: {
+          main: "#45C5C5",
+        },
+        background: {
+          default: "#1D1D1B",
+          paper: "#262B32",
+        },
+        text: {
+          primary: "#FFFFFF",
+          secondary: "#BFBFBF",
+          disabled: "#9AECA4",
+          info: "#45C5C5",
+        },
+        info: {
+          main: "#45C5C5",
+        },
+      },
+    },
+  },
+  colorSchemeSelector: "class",
+});
+```
+
+Prefer semantic theme values in `sx` rather than copying literal colors:
+
+```js
+bgcolor: "background.paper"
+color: "text.primary"
+borderColor: "divider"
+```
+
+Use `secondary`/`info` accents for selected or interactive states when useful.
+
+The app's plugin UI is intentionally compact:
+
+- use `Stack`, `Box`, `Paper`, `Typography`, `Alert`, `Button`,
+  `IconButton`, `TextField`, `Select`, etc. from Material UI as appropriate;
+- prefer spacing around 1–1.5 theme units for compact plugin surfaces;
+- prefer modest padding around 1–1.5 units;
+- `borderRadius: 2` is a common compact surface radius;
 - use subtle borders/dividers;
-- use `body2`/`caption` for supporting text;
-- prefer compact buttons/toggles to oversized controls;
-- use clear but restrained selected/active states;
-- wrap responsively instead of assuming wide screens;
-- avoid oversized cards, large empty areas and decorative UI that does not aid
-  the task.
-
-A subtle low-opacity accent may be used for grouping. Avoid excessive gradients,
-glass effects or arbitrary bright colors.
-
-Prefer MUI `sx`. If styling becomes large enough to obscure component logic,
-extract it to `styles/<ComponentName>.styles.js`.
+- use `body2` or `caption` for explanations;
+- avoid giant cards, large empty areas and oversized controls;
+- make selected/active states clear but restrained;
+- wrap/reflow on narrow screens rather than assuming a fixed wide layout;
+- preserve accessibility and do not communicate meaning only through color.
 
 Do not introduce Tailwind, Bootstrap, styled-components, another component
-library, a new ThemeProvider or a new global CSS system.
+library, a new ThemeProvider or a new global CSS architecture.
 
-Do not rely on color alone to communicate validation, ordering or selection.
+Prefer MUI `sx`. Extract `styles/<ComponentName>.styles.js` only when styling is
+large enough that extraction improves readability.
 
 
 
-## React implementation style
+## React implementation rules
 
-Keep the state model simple.
+Prefer the simplest state model that satisfies the UI:
 
-- host-provided payload/value props are the source of truth;
-- do not mirror props into local state without a real lifecycle reason;
-- do not add `useEffect` just to synchronize derived values;
+- host-provided `evaluation`/`value` is the source of truth;
+- treat props and nested objects/arrays as immutable;
+- do not mirror props into component state without a genuine interaction/lifecycle
+  requirement;
+- do not add `useEffect` merely to synchronize a value that can be derived during
+  render;
 - derive inexpensive values directly;
-- use `useMemo`/`useCallback` only when they solve a real problem;
-- update objects/arrays immutably;
-- do not create one-use custom hooks;
-- do not fetch data already supplied in context;
-- do not add third-party dependencies when React/MUI/platform APIs suffice;
-- do not add compatibility aliases/fallback payloads unless explicitly required.
+- use `useMemo`/`useCallback` only for a concrete reason;
+- do not create a custom hook for a single local use;
+- do not fetch data already provided through `decisionContext` or
+  `parameterContext`;
+- do not create compatibility aliases or alternate payload shapes unless the
+  supplied public contract requires them;
+- do not add dependencies when React, Material UI and platform APIs are enough.
 
 
-## Generated source
 
-### index.js
+## Reference Frontend implementation from an existing Evaluation Structure
+
+This is a real project example showing package organization and React/MUI style.
+It is a reference for conventions only; do not copy its matrix-specific behavior
+unless requested.
+
+```jsx
+import { useMemo } from "react";
+import { DataGrid } from "@mui/x-data-grid";
+import { Alert, Box, useTheme } from "@mui/material";
+
+import { buildEvaluationMatrixDataGridSx } from "../../shared/styles/evaluationMatrixTable.styles";
+import { isPlainObject } from "../../../../../utils/common/objects";
+import { alternativeCriteriaMatrixViewSx } from "./styles/AlternativeCriteriaMatrixView.styles";
+import Cell from "./components/Cell";
+import { buildColumns } from "./operations/buildColumns";
+import { buildRows } from "./operations/buildRows";
+import { resolveCollective } from "./operations/resolveCollective";
+import { updateValue } from "./operations/updateValue";
+import { validateValue } from "./operations/validateValue";
+
+const AlternativeCriteriaMatrixView = ({
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
+}) => {
+  const theme = useTheme();
+  const alternatives = decisionContext.alternatives;
+  const criteria = decisionContext.leafCriteria;
+  const hasEvaluation =
+    evaluation !== null &&
+    typeof evaluation === "object" &&
+    !Array.isArray(evaluation);
+  const permitEdit = readOnly !== true;
+
+  const matrixRows = useMemo(
+    () =>
+      hasEvaluation
+        ? buildRows({
+            alternatives,
+            criteria,
+            evaluation,
+          })
+        : [],
+    [alternatives, criteria, evaluation, hasEvaluation]
+  );
+
+  if (!hasEvaluation) {
+    return <Alert severity="error">Evaluation payload is invalid.</Alert>;
+  }
+
+  const handleValueChange = ({ alternativeId, criterionId, nextValue }) => {
+    const nextEvaluation = updateValue({
+      evaluation,
+      alternativeId,
+      criterionId,
+      nextValue,
+    });
+
+    setEvaluation(nextEvaluation);
+  };
+
+  // columns/rendering omitted here only because they are matrix-specific.
+
+  return (
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: "none",
+        minWidth: 0,
+        p: { xs: 1, sm: 1.5 },
+        overflow: "hidden",
+      }}
+    >
+      {/* structure-specific UI */}
+    </Box>
+  );
+};
+
+export default AlternativeCriteriaMatrixView;
+```
+
+The reference demonstrates:
+
+- host props are used directly;
+- complete immutable payload updates are passed to `setEvaluation`;
+- structure-specific pure logic may live in `operations/`;
+- structure-specific styling may live in `styles/`;
+- Material UI is used instead of introducing another UI system;
+- compact responsive padding is preferred.
+
+
+## Exact generated starting source
+
+### `Frontend/src/features/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/index.js`
+
 ```js
 {{ frontend_index_source }}
 ```
 
-### {{ view_component_name }}.jsx
+### `Frontend/src/features/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/{{ view_component_name }}.jsx`
+
 ```jsx
 {{ frontend_view_source }}
 ```
 
-## Optional creator initialization
+## Creator-side initialization
 
 ```text
 scaffold_creator_api_operations = {{ scaffold_creator_api_operations }}
 ```
 
-When true, generated source is:
+When true, exact path:
+
+```text
+Frontend/src/features/decisionPlugins/evaluations/structures/{{ evaluation_structure_key }}/operations/buildInitialEvaluation.js
+```
+
+Starting source:
 
 ```js
 {{ frontend_build_initial_source }}
@@ -175,33 +466,44 @@ When true, generated source is:
 Contract:
 
 ```js
-buildInitialEvaluation({ decisionContext }) => completeEvaluationObject
+buildInitialEvaluation({
+  decisionContext,
+}) => completeEvaluationObject
 ```
 
 Use only supplied `decisionContext`.
 
-## File organization
+## Package organization
 
-Use `components/`, `operations/` and `styles/` only when they improve clarity.
+Only create extra files when useful:
+
+```text
+components/   structure-specific React subcomponents
+operations/   pure structure-specific logic
+styles/       extracted MUI sx/style definitions
+```
+
 Do not create generic one-use helpers/services/hooks.
 
 ## Lifecycle
 
-Keep `implementationStatus: "scaffold"` until every requested UI/runtime
-behavior is complete; then use `"ready"`.
+Keep `implementationStatus: "scaffold"` until every requested runtime/UI
+behavior is complete.
+
+Use `"ready"` when complete.
 
 Tests are outside scope. Do not create/modify test files unless explicitly
 requested.
 
 ## Required output
 
-For each created/replaced file print:
+For every file:
 
 ```text
 FILE: <complete repository path>
 ```
 
-then complete source.
+then the complete source.
 
-No diffs, ellipses, partial implementations, pseudocode or TODO code presented
-as complete.
+No diffs, ellipses, partial components/functions, pseudocode or unfinished TODO
+implementation.

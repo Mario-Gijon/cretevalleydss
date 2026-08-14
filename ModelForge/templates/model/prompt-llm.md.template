@@ -1,19 +1,27 @@
 # Implement {{ display_name }} integration — Standalone LLM prompt
 
-You are implementing only the non-mathematical DecisionModelsService integration
+You are implementing only the NON-MATHEMATICAL DecisionModelsService integration
 for a generated CreteValleyDSS model.
 
-You do NOT need repository access.
+This prompt is intentionally self-contained.
 
-## Critical algorithm rule
+## Critical algorithm boundary
 
-Do NOT implement or invent the model algorithm in `run.py`.
+Do NOT implement, guess or infer the model algorithm in `run.py`.
 
-Do not infer formulas from the name or substitute another model, averages,
-placeholder scores, random rankings, identity transforms or guessed equations.
+Do not infer formulas from the model name.
 
-`run.py` remains a hard-stop until a separate verified model-specific algorithm
-specification is supplied.
+Do not substitute:
+
+- TOPSIS or another model;
+- averaging;
+- random scores;
+- identity transformations;
+- placeholder rankings;
+- guessed mathematical equations.
+
+A separately verified model-specific algorithm specification is required before
+`run.py` may be implemented.
 
 ## Developer requirements
 
@@ -32,6 +40,24 @@ specification is supplied.
 ### Actual runtime input — optional
 [ACTUAL RUNTIME INPUT]
 
+## Exact generated package location
+
+```text
+DecisionModelsService/models/{{ snake_case_model_name }}/
+```
+
+Exact generated files:
+
+```text
+DecisionModelsService/models/{{ snake_case_model_name }}/__init__.py
+DecisionModelsService/models/{{ snake_case_model_name }}/definition.py
+DecisionModelsService/models/{{ snake_case_model_name }}/executor.py
+DecisionModelsService/models/{{ snake_case_model_name }}/run.py
+DecisionModelsService/models/{{ snake_case_model_name }}/examples.py
+```
+
+Do not invent another location.
+
 ## Generated metadata
 
 ```text
@@ -40,125 +66,246 @@ displayName: {{ display_name }}
 modelKind: {{ model_kind }}
 evaluationStructureKey: {{ evaluation_structure_key }}
 evaluationStage: {{ evaluation_structure_stage }}
+
 supportsCreatorCriteriaWeighting: {{ supports_creator_criteria_weighting }}
 supportsExpertCriteriaWeighting: {{ supports_expert_criteria_weighting }}
 supportsConsensus: {{ supports_consensus }}
 supportsConsensusSimulation: {{ supports_consensus_simulation }}
+
 isMultiCriteria: {{ is_multi_criteria }}
 usesCriteriaWeights: {{ uses_criteria_weights }}
 usesExpertWeights: {{ uses_expert_weights }}
 usesFuzzyCriteriaWeights: {{ uses_fuzzy_criteria_weights }}
 usesCriterionTypes: {{ uses_criterion_types }}
+
 supportedExpressionDomains:
 {{ supported_expression_domains }}
+
 parameters:
 {{ parameters }}
 ```
 
-Do not silently change metadata.
+Do not silently change capabilities.
 
-## Request contract
 
-`GenericModelExecutionRequest` has exactly:
+## Exact DecisionModelsService request/response contracts
 
-```python
-request.modelParameters  # dict
-request.evaluations      # list[dict]
-request.context          # dict
-```
-
-Evaluation entries contain an `expert` object and structure-owned `payload`; an
-entry may also contain numeric `weight` when expert weights are used.
-
-Do not invent nested payload semantics.
-
-## Response contract
-
-Use:
+### `DecisionModelsService/schemas/model_requests.py`
 
 ```python
-success_response(message: str, data)
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class RequestSchema(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+
+class GenericModelExecutionRequest(RequestSchema):
+    modelParameters: dict = Field(default_factory=dict)
+    evaluations: list[dict] = Field(default_factory=list)
+    context: dict = Field(default_factory=dict)
 ```
 
-which returns:
-
-```json
-{ "success": true, "message": "...", "data": {} }
-```
-
-and:
+### `DecisionModelsService/services/model_executors/responses.py`
 
 ```python
-error_response(
+from typing import Any
+
+from fastapi.responses import JSONResponse
+
+
+def success_response(message: str, data: Any) -> dict[str, Any]:
+    return {
+        "success": True,
+        "message": message,
+        "data": data,
+    }
+
+
+def error_response(
     message: str,
     code: str = "MODEL_EXECUTION_ERROR",
-    details = None,
-)
+    details: Any | None = None,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=200,
+        content={
+            "success": False,
+            "message": message,
+            "data": None,
+            "error": {
+                "code": code,
+                "field": None,
+                "details": details,
+            },
+        },
+    )
 ```
 
-which returns the existing failure envelope:
+Use these response helpers. Do not invent another public response envelope.
+Unexpected internal failures normally use `code="INTERNAL_ERROR"` when
+appropriate.
+
+
+## Generic evaluation entry
+
+Representative:
 
 ```json
 {
-  "success": false,
-  "message": "...",
-  "data": null,
-  "error": {
-    "code": "...",
-    "field": null,
-    "details": null
-  }
+  "expert": {
+    "id": "EXPERT_1",
+    "name": "Expert A",
+    "email": "expert.a@example.com"
+  },
+  "payload": {}
 }
 ```
 
-Use `code="INTERNAL_ERROR"` for unexpected internal failures when appropriate.
-Do not invent another envelope.
+An entry may also contain a numeric `weight` when expert weights are enabled.
 
-## Responsibilities
+The nested `payload` belongs to the Evaluation Structure. Its actual shape must
+come from developer requirements/runtime input. Do not invent it.
 
-`executor.py` owns request validation/normalization, stable ID/order resolution,
-declared parameter interpretation, canonical Expression Domain interpretation
-when required, preparation of later algorithm input and safe response mapping.
+## Executor responsibilities
 
-`run.py` owns the actual algorithm and stays unimplemented.
+`executor.py` owns, when relevant:
 
-If successful execution cannot be meaningful without `run.py`, keep a safe
-under-development response rather than fabricating output.
+- model-specific request validation;
+- normalization;
+- stable ID/order resolution;
+- declared parameter interpretation;
+- canonical Expression Domain interpretation;
+- preparation of algorithm input;
+- later invocation of `run.py`;
+- mapping a VERIFIED algorithm result to public response `data`;
+- existing success/error wrapping.
 
-Do not invent Expression Domain conversions. Preserve richer values such as
-linguistic 2-tuples unless a verified algorithm explicitly defines conversion.
+Do not move mathematical model logic into `executor.py`.
 
-## Generated source
+If a successful result cannot exist without the algorithm, preserve a safe
+MODEL_UNDER_DEVELOPMENT/error response rather than fabricating a result.
 
-### __init__.py
+Do not invent Expression Domain conversions. Preserve richer values unless the
+verified algorithm specification explicitly defines their conversion.
+
+
+## Reference DecisionModelsService executor convention
+
+A current criteria-weighting executor follows this overall shape:
+
+```python
+from typing import Any
+
+from fastapi.responses import JSONResponse
+
+from schemas.model_requests import GenericModelExecutionRequest
+from services.criteria_weights_consensus.mcc_weights import solve_mcc_weights
+from services.model_executors.responses import error_response, success_response
+from .run import run_manual_criteria_weights
+
+
+def execute_manual_criteria_weights(
+    payload: GenericModelExecutionRequest,
+) -> dict[str, Any] | JSONResponse:
+    try:
+        # Validate and normalize request/context.
+        # Run the model-specific pure boundary.
+        # For multiple expert weight vectors, existing MCC infrastructure may
+        # be invoked when this model's verified requirements call for it.
+        results = run_manual_criteria_weights(
+            criteria=[],
+            evaluations=(
+                payload.evaluations
+                if isinstance(payload.evaluations, list)
+                else []
+            ),
+        )
+
+        if not results.get("success", False):
+            return error_response(
+                results.get("message") or "Error executing model",
+                details=results,
+            )
+
+        response_data = {
+            # model-specific public data
+        }
+
+        return success_response(
+            "Model executed successfully",
+            response_data,
+        )
+    except ValueError as error:
+        return error_response(str(error))
+    except Exception as error:
+        return error_response(
+            f"Error executing model: {error}",
+            code="INTERNAL_ERROR",
+        )
+```
+
+This is an integration-style reference only. Do not copy its mathematical
+behavior, output fields, MCC usage or validation rules unless the supplied model
+requirements explicitly specify them.
+
+
+## Exact generated starting source
+
+### `DecisionModelsService/models/{{ snake_case_model_name }}/__init__.py`
+
 ```python
 {{ init_source }}
 ```
 
-### definition.py
+### `DecisionModelsService/models/{{ snake_case_model_name }}/definition.py`
+
 ```python
 {{ definition_source }}
 ```
 
-### executor.py
+### `DecisionModelsService/models/{{ snake_case_model_name }}/executor.py`
+
 ```python
 {{ executor_source }}
 ```
 
-### run.py
+### `DecisionModelsService/models/{{ snake_case_model_name }}/run.py`
+
 ```python
 {{ run_source }}
 ```
 
-### examples.py
+### `DecisionModelsService/models/{{ snake_case_model_name }}/examples.py`
+
 ```python
 {{ examples_source }}
 ```
 
-Keep `implementation_status="scaffold"` because this prompt does not implement
-the algorithm.
+## Lifecycle
+
+Keep:
+
+```python
+implementation_status="scaffold"
+```
+
+because this integration prompt does not implement the verified algorithm.
 
 Tests are outside scope. Do not create/modify tests unless explicitly requested.
 
-Return every required file as `FILE: <path>` plus complete source. Do not return
-a guessed algorithm, diffs, ellipses or fake completed code.
+## Required output
+
+For every required file:
+
+```text
+FILE: <complete repository path>
+```
+
+then complete source.
+
+Do not return a guessed `run.py`, diffs, ellipses, partial functions,
+pseudocode or fake completed behavior.
+
+If a safe integration decision genuinely requires missing information, preserve
+under-development behavior and state exactly what is missing.

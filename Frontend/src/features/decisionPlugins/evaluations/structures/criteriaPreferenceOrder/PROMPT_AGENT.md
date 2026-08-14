@@ -1,21 +1,30 @@
-# Implement {{ parameter_structure_key }} Frontend — Agent prompt
+# Implement criteriaPreferenceOrder Frontend — Agent prompt
 
 Target package:
 
 ```text
-Frontend/src/features/decisionPlugins/modelParameters/fields/{{ parameter_structure_key }}/
+Frontend/src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/
 ```
 
-Read generated files/guide, matching Backend, theme/global styles and a nearby
-Parameter Structure.
+Read the generated package, matching Backend package, `IMPLEMENTATION_GUIDE.md`,
+and when useful:
+
+```text
+Frontend/src/theme/appTheme.js
+Frontend/src/theme/globalStyles.js
+Frontend/src/features/expressionDomains/index.js
+```
+
+Inspect one or two nearby Evaluation Structure UIs. Repository state is
+authoritative.
 
 ## Developer requirements
 
-### Parameter Structure description
-[PARAMETER STRUCTURE DESCRIPTION]
+### Structure description
+[STRUCTURE DESCRIPTION]
 
-### Canonical value shape
-[VALUE SHAPE]
+### Canonical evaluation payload
+[EVALUATION PAYLOAD DESCRIPTION]
 
 ### Desired UI / behavior
 [DESIRED UI / BEHAVIOR]
@@ -26,8 +35,22 @@ Parameter Structure.
 ### Actual runtime input — optional
 [ACTUAL RUNTIME INPUT]
 
-Preserve Field and ReadOnly public contracts. `onChange(nextValue)` replaces the
-complete canonical value.
+## View contract
+
+Preserve:
+
+```js
+{
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
+}
+```
+
+No `loading` prop. Host owns persistence/lifecycle. Use complete immutable
+`setEvaluation(nextEvaluation)` updates. Respect `readOnly`.
 
 
 ## Exact CreteValleyDSS Frontend/theme context
@@ -157,7 +180,7 @@ Prefer MUI `sx`. Extract `styles/<ComponentName>.styles.js` only when styling is
 large enough that extraction improves readability.
 
 
-Current repository theme wins if changed since this embedded reference.
+Current repository source wins if its theme differs from this embedded snapshot.
 
 
 ## React implementation rules
@@ -181,71 +204,118 @@ Prefer the simplest state model that satisfies the UI:
 
 
 
-## Reference Frontend Parameter Structure convention
+## Reference Frontend implementation from an existing Evaluation Structure
 
-A current numeric field uses Material UI and the canonical `onChange(nextValue)`
-boundary like this:
+This is a real project example showing package organization and React/MUI style.
+It is a reference for conventions only; do not copy its matrix-specific behavior
+unless requested.
 
 ```jsx
-import { Stack, Typography, TextField } from "@mui/material";
+import { useMemo } from "react";
+import { DataGrid } from "@mui/x-data-grid";
+import { Alert, Box, useTheme } from "@mui/material";
 
-export const NumberGlobalParameterField = ({
-  parameter,
-  value,
-  onChange,
-  disabled = false,
-  error = "",
+import { buildEvaluationMatrixDataGridSx } from "../../shared/styles/evaluationMatrixTable.styles";
+import { isPlainObject } from "../../../../../utils/common/objects";
+import { alternativeCriteriaMatrixViewSx } from "./styles/AlternativeCriteriaMatrixView.styles";
+import Cell from "./components/Cell";
+import { buildColumns } from "./operations/buildColumns";
+import { buildRows } from "./operations/buildRows";
+import { resolveCollective } from "./operations/resolveCollective";
+import { updateValue } from "./operations/updateValue";
+import { validateValue } from "./operations/validateValue";
+
+const AlternativeCriteriaMatrixView = ({
+  decisionContext,
+  evaluation,
+  setEvaluation,
+  collectiveEvaluation,
+  readOnly,
 }) => {
-  const { restrictions = {}, label, valueType } = parameter;
-  const isInteger = valueType === "integer";
-  const min = Number.isFinite(restrictions.min)
-    ? restrictions.min
-    : undefined;
-  const max = Number.isFinite(restrictions.max)
-    ? restrictions.max
-    : undefined;
+  const theme = useTheme();
+  const alternatives = decisionContext.alternatives;
+  const criteria = decisionContext.leafCriteria;
+  const hasEvaluation =
+    evaluation !== null &&
+    typeof evaluation === "object" &&
+    !Array.isArray(evaluation);
+  const permitEdit = readOnly !== true;
+
+  const matrixRows = useMemo(
+    () =>
+      hasEvaluation
+        ? buildRows({
+            alternatives,
+            criteria,
+            evaluation,
+          })
+        : [],
+    [alternatives, criteria, evaluation, hasEvaluation]
+  );
+
+  if (!hasEvaluation) {
+    return <Alert severity="error">Evaluation payload is invalid.</Alert>;
+  }
+
+  const handleValueChange = ({ alternativeId, criterionId, nextValue }) => {
+    const nextEvaluation = updateValue({
+      evaluation,
+      alternativeId,
+      criterionId,
+      nextValue,
+    });
+
+    setEvaluation(nextEvaluation);
+  };
+
+  // columns/rendering omitted here only because they are matrix-specific.
 
   return (
-    <Stack spacing={0.35}>
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Typography variant="body2">
-          {label}:
-        </Typography>
-
-        <TextField
-          type="number"
-          variant="outlined"
-          color="secondary"
-          size="small"
-          value={value ?? ""}
-          onChange={(event) => onChange(event.target.value)}
-          inputProps={{
-            "aria-label": label,
-            min,
-            max,
-            step: isInteger ? 1 : "any",
-          }}
-          disabled={disabled}
-          error={Boolean(error)}
-          helperText={error || ""}
-        />
-      </Stack>
-    </Stack>
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: "none",
+        minWidth: 0,
+        p: { xs: 1, sm: 1.5 },
+        overflow: "hidden",
+      }}
+    >
+      {/* structure-specific UI */}
+    </Box>
   );
 };
+
+export default AlternativeCriteriaMatrixView;
 ```
 
-This is a style/API reference only. Do not assume the new parameter is numeric.
+The reference demonstrates:
+
+- host props are used directly;
+- complete immutable payload updates are passed to `setEvaluation`;
+- structure-specific pure logic may live in `operations/`;
+- structure-specific styling may live in `styles/`;
+- Material UI is used instead of introducing another UI system;
+- compact responsive padding is preferred.
 
 
-Reuse Expression Domain UI only when the parameter is explicitly a
+Reuse the public Expression Domain UI/validation only when the structure edits a
 criterion-domain value.
+
+If generated, implement `operations/buildInitialEvaluation.js` using only
+`decisionContext`.
+
+## Scope/lifecycle
+
+Keep changes local. Do not redesign shared hosts, context builders, unrelated
+plugins, Backend, Expression Domains, ModelForge or DecisionModelsService.
 
 Use `"ready"` when requested UI behavior is complete.
 
-Tests are outside scope. Do not create/modify/run tests unless requested.
+Tests are outside scope. Do not create/modify/run tests unless explicitly
+requested.
 
-Run targeted lint/static/build checks when practical plus `git diff --check`.
+Run targeted lint/static/build validation when practical and `git diff --check`.
+Do not install dependencies.
 
-Report files changed, canonical emitted value, context/domain usage, visual
-conventions, status and validation.
+Report files changed, payload/UI behavior, complete update semantics,
+creator/domain integration, visual/theme conventions, status and validation.
