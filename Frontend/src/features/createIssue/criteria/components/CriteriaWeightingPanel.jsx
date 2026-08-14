@@ -11,6 +11,7 @@ import {
   normalizeMode,
 } from "../../logic/createIssueCriteriaWeightingModes";
 import {
+  buildCreateIssueEqualManualWeights,
   isFuzzyCriteriaWeightModel,
   modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
@@ -28,6 +29,8 @@ import {
   normalizeManualWeightsByRoot,
 } from "../../logic/createIssueCriteriaWeightValues";
 import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
+import { CriteriaWeightingMccAction } from "./CriteriaWeightingMccAction";
+import { resolveCriteriaWeightingMccAvailability } from "../../logic/createIssueCriteriaWeightingMcc";
 import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
 import { getEvaluationStructureEntryForStage } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry";
 import { requireCompleteEvaluationObject } from "../../../issueEvaluation/logic/requireCompleteEvaluationObject";
@@ -431,6 +434,26 @@ export const CriteriaWeightingPanel = ({
   if (!modelUsesWeights) {
     return null;
   }
+  const equalWeightsActionAvailable =
+    mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL &&
+    leafCriterionItems.length > 1;
+  const equalWeightsActive = (() => {
+    if (!equalWeightsActionAvailable) return false;
+    const equalWeights = buildCreateIssueEqualManualWeights(leafCriterionItems);
+    const currentWeights = safeConfig?.payload?.weightsByCriterion;
+    return leafCriterionItems.every((criterion) => {
+      const current = Number(currentWeights?.[criterion.id]);
+      const expected = Number(equalWeights?.[criterion.id]);
+      return Number.isFinite(current) && Number.isFinite(expected) &&
+        Math.abs(current - expected) <= 0.000001;
+    });
+  })();
+  const mccActionAvailable = resolveCriteriaWeightingMccAvailability({
+    selectedModel,
+    criteria,
+    criteriaWeightingConfig,
+    criteriaWeightingModels,
+  });
   const selectedCriteriaWeightingModelKey = String(
     safeConfig?.criteriaWeightingModelKey || ""
   ).trim();
@@ -441,29 +464,6 @@ export const CriteriaWeightingPanel = ({
     mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL;
   const manualSelected =
     mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL || manualByExpertsSelected;
-  const selectedApiOption = apiCriteriaWeightingOptions.find((option) => {
-    const modelId = String(option.model?._id || option.model?.id || "").trim();
-    const modelKey = String(option.model?.apiModelKey || "").trim();
-
-    return (
-      (selectedCriteriaWeightingModelId && selectedCriteriaWeightingModelId === modelId) ||
-      (selectedCriteriaWeightingModelKey && selectedCriteriaWeightingModelKey === modelKey)
-    );
-  });
-  const selectedMethodSupportsCreator = manualSelected
-    ? true
-    : selectedApiOption?.model?.supportsCreatorCriteriaWeighting === true;
-  const selectedMethodSupportsExperts = manualSelected
-    ? manualExpertWeightingAvailable
-    : selectedApiOption?.model?.supportsExpertCriteriaWeighting === true;
-  const mccExpertsConsensusAvailable =
-    !isFuzzyModel &&
-    !isSingleCriterion &&
-    selectedMethodSupportsCreator &&
-    selectedMethodSupportsExperts;
-  const mccExpertsConsensusActive =
-    mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ||
-    mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL;
   const canRenderCreatorEvaluation =
     selectedStructureCanInitialize &&
     criteriaWeightingDecisionContext !== null;
@@ -481,15 +481,85 @@ export const CriteriaWeightingPanel = ({
     >
       <Stack
         direction={{ xs: "column", sm: "row" }}
-        spacing={0.8}
-        alignItems={{ xs: "flex-start", sm: "baseline" }}
+        spacing={1}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        flexWrap="wrap"
+        useFlexGap
       >
-        <Typography variant="body1" sx={{ fontWeight: 950 }}>
-          Criteria weighting
-        </Typography>
-        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-          Choose how criterion weights are produced.
-        </Typography>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={0.8}
+          alignItems={{ xs: "flex-start", sm: "baseline" }}
+        >
+          <Typography variant="body1" sx={{ fontWeight: 950 }}>
+            Criteria weighting
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+            Choose how criterion weights are produced.
+          </Typography>
+        </Stack>
+        {equalWeightsActionAvailable || mccActionAvailable ? (
+          <Stack
+            direction="row"
+            spacing={0.75}
+            useFlexGap
+            flexWrap="wrap"
+            justifyContent="flex-end"
+          >
+            {equalWeightsActionAvailable ? (
+              <ToggleButton
+                value="equalWeights"
+                selected={equalWeightsActive}
+                onClick={() =>
+                  updateConfig(
+                    {
+                      ...(criteriaWeightingConfig || {}),
+                      payload: {
+                        ...(criteriaWeightingConfig?.payload || {}),
+                        weightsByCriterion:
+                          buildCreateIssueEqualManualWeights(leafCriterionItems),
+                      },
+                    },
+                    { markDirty: true }
+                  )
+                }
+                size="small"
+                color="info"
+                sx={{
+                  px: 1.4,
+                  py: 0.55,
+                  borderColor: equalWeightsActive
+                    ? "rgba(75, 210, 207, 0.72)"
+                    : "rgba(255,255,255,0.16)",
+                  color: equalWeightsActive ? "info.main" : "text.secondary",
+                  fontWeight: "fontWeightBold",
+                  typography: "caption",
+                  letterSpacing: 0.25,
+                  textTransform: "uppercase",
+                  "&.Mui-selected": {
+                    color: "info.main",
+                    backgroundColor: "rgba(75, 210, 207, 0.10)",
+                  },
+                  "&.Mui-selected:hover": {
+                    backgroundColor: "rgba(75, 210, 207, 0.14)",
+                  },
+                }}
+              >
+                Equal weights
+              </ToggleButton>
+            ) : null}
+            {mccActionAvailable ? (
+              <CriteriaWeightingMccAction
+                selectedModel={selectedModel}
+                criteria={criteria}
+                criteriaWeightingConfig={criteriaWeightingConfig}
+                setCriteriaWeightingConfig={setCriteriaWeightingConfig}
+                setDefaultModelParams={setDefaultModelParams}
+              />
+            ) : null}
+          </Stack>
+        ) : null}
       </Stack>
 
       {isFuzzyModel ? (
@@ -586,73 +656,6 @@ export const CriteriaWeightingPanel = ({
           })}
         </Stack>
       )}
-
-      {mccExpertsConsensusAvailable ? (
-        <Stack spacing={0.45} alignItems="flex-end">
-          <ToggleButton
-            value="mccExpertsConsensus"
-            selected={mccExpertsConsensusActive}
-            size="small"
-            color="info"
-            onClick={() => {
-              if (manualSelected) {
-                updateConfig(
-                  buildConfigByMode({
-                    mode: mccExpertsConsensusActive
-                      ? CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL
-                      : CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
-                    leafCriteria,
-                  }),
-                  { markDirty: true }
-                );
-                return;
-              }
-
-              const criteriaModel = selectedApiOption?.model;
-              if (!criteriaModel) return;
-              updateConfig(
-                mccExpertsConsensusActive
-                  ? buildCreatorApiConfig(
-                      criteriaModel,
-                      selectedApiOption.structureEntry
-                    )
-                  : buildApiCriteriaWeightingConfig({
-                      mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
-                      leafCriteria,
-                      criteriaWeightingModel: criteriaModel,
-                    }),
-                { markDirty: true }
-              );
-            }}
-            sx={{
-              px: 1.4,
-              py: 0.55,
-              borderColor: mccExpertsConsensusActive
-                ? "rgba(75, 210, 207, 0.72)"
-                : "rgba(255,255,255,0.16)",
-              color: mccExpertsConsensusActive ? "info.main" : "text.secondary",
-              fontWeight: "fontWeightBold",
-              typography: "caption",
-              letterSpacing: 0.25,
-              textTransform: "uppercase",
-              "&.Mui-selected": {
-                color: "info.main",
-                backgroundColor: "rgba(75, 210, 207, 0.10)",
-              },
-              "&.Mui-selected:hover": {
-                backgroundColor: "rgba(75, 210, 207, 0.14)",
-              },
-            }}
-          >
-            MCC EXPERTS CONSENSUS
-          </ToggleButton>
-          {mccExpertsConsensusActive ? (
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              Experts evaluate criterion importance. MCC produces the collective weights.
-            </Typography>
-          ) : null}
-        </Stack>
-      ) : null}
 
       {!isFuzzyModel && !isSingleCriterion && !manualExpertWeightingAvailable ? (
         <Alert severity="warning">

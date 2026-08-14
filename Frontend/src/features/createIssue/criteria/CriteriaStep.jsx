@@ -12,7 +12,6 @@ import {
   Select,
   MenuItem,
   Typography,
-  ToggleButton,
   Box,
 } from "@mui/material";
 import { TransitionGroup } from "react-transition-group";
@@ -40,7 +39,6 @@ import {
   getCreateIssueStepScrollableSx,
 } from "../styles/createIssueStep.styles";
 import {
-  buildCreateIssueEqualManualWeights,
   isFuzzyCriteriaWeightModel,
   modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
@@ -240,23 +238,6 @@ export const CriteriaStep = () => {
     };
   }, [creatorWeightMode, leafCriterionItems, weightsByCriterion]);
 
-  const equalWeightsActive = useMemo(() => {
-    if (creatorWeightMode !== "manual") return false;
-    if (leafCriterionItems.length === 0) return false;
-
-    const equalWeights = buildCreateIssueEqualManualWeights(leafCriterionItems);
-
-    return leafCriterionItems.every((criterion) => {
-      const current = Number(weightsByCriterion?.[criterion.id]);
-      const expected = Number(equalWeights?.[criterion.id]);
-
-      return (
-        Number.isFinite(current) &&
-        Number.isFinite(expected) &&
-        Math.abs(current - expected) <= 0.000001
-      );
-    });
-  }, [creatorWeightMode, leafCriterionItems, weightsByCriterion]);
 
   const updateWeightsConfigFromUser = (nextConfig) => {
     if (typeof setDefaultModelParams === "function") {
@@ -278,15 +259,6 @@ export const CriteriaStep = () => {
     });
   };
 
-  const handleSetEqualWeights = () => {
-    updateWeightsConfigFromUser({
-      ...(criteriaWeightingConfig || {}),
-      payload: {
-        ...(criteriaWeightingConfig?.payload || {}),
-        weightsByCriterion: buildCreateIssueEqualManualWeights(leafCriterionItems),
-      },
-    });
-  };
 
   const handleFuzzyWeightChange = (criterionId, nextVector) => {
     updateWeightsConfigFromUser({
@@ -496,39 +468,6 @@ export const CriteriaStep = () => {
           setDefaultModelParams={setDefaultModelParams}
           expressionDomainConfig={expressionDomainConfig}
         />
-      ) : null}
-
-      {creatorWeightMode === "manual" && leafCriterionItems.length > 1 ? (
-        <Stack direction="row" justifyContent="flex-end">
-          <ToggleButton
-            value="equalWeights"
-            selected={equalWeightsActive}
-            onClick={handleSetEqualWeights}
-            size="small"
-            color="info"
-            sx={{
-              px: 1.4,
-              py: 0.55,
-              borderColor: equalWeightsActive
-                ? "rgba(75, 210, 207, 0.72)"
-                : "rgba(255,255,255,0.16)",
-              color: equalWeightsActive ? "info.main" : "text.secondary",
-              fontWeight: "fontWeightBold",
-              typography: "caption",
-              letterSpacing: 0.25,
-              textTransform: "uppercase",
-              "&.Mui-selected": {
-                color: "info.main",
-                backgroundColor: "rgba(75, 210, 207, 0.10)",
-              },
-              "&.Mui-selected:hover": {
-                backgroundColor: "rgba(75, 210, 207, 0.14)",
-              },
-            }}
-          >
-            Equal weights
-          </ToggleButton>
-        </Stack>
       ) : null}
 
       <Stack spacing={0.75}>
