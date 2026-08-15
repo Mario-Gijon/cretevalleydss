@@ -21,7 +21,6 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
 import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import TaskAltIcon from '@mui/icons-material/TaskAlt';
 
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhaseLabel";

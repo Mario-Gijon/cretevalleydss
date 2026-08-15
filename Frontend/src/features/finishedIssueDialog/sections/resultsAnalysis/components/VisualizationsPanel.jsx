@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import CenterFocusStrongRoundedIcon from "@mui/icons-material/CenterFocusStrongRounded";
 
@@ -6,6 +6,8 @@ import { AnalyticalScatterChart } from "../../../graphs/components/AnalyticalSca
 import { ComparativeAnalyticalScatterChart } from "../../../graphs/components/ComparativeAnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../../../graphs/components/AnalyticalConsensusLineChart";
 import { RESULTS_ANALYSIS_SLOT_COLORS } from "../logic/resultsAnalysisColors.js";
+import RankingMovementChart from "./RankingMovementChart.jsx";
+import { buildGenericRankingMovement } from "../logic/buildGenericRankingMovement.js";
 
 const cardSx = { border: "1px solid rgba(83,198,214,0.16)", bgcolor: "rgba(8,18,29,0.88)", borderRadius: 3, p: { xs: 1.5, sm: 2 }, minWidth: 0 };
 const chartFrameSx = { width: "100%", height: { xs: 360, sm: 430, md: 500, xl: 540 }, maxHeight: 540, minHeight: 0 };
@@ -44,15 +46,13 @@ const ConsensusCard = ({ consensus }) => (
 
 const SingleVisualization = ({ visualizations, scatterPlotRef, onResetZoom }) => {
   const scatter = visualizations.singleScatter;
-  const showConsensus = visualizations.consensus.enabled;
   return <Stack spacing={1.4}>
-    <Box sx={{ display: "grid", gridTemplateColumns: showConsensus ? { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(300px, 0.85fr)" } : "1fr", gap: 1.4 }}>
+    <Box>
       <Box sx={cardSx}>
         <Header title="Expert–collective map" subtitle="Dispersion of expert points and the collective position." resettable={scatter?.available} onResetZoom={onResetZoom} />
         {scatter?.available ? <Box sx={chartFrameSx}><AnalyticalScatterChart data={scatter.data} phase={scatter.sourcePhase} scatterPlotRef={scatterPlotRef} color={RESULTS_ANALYSIS_SLOT_COLORS[0]} /></Box> : <Typography variant="body2" color="text.secondary" sx={{ minHeight: 180, display: "grid", placeItems: "center" }}>{unavailableMessage(scatter?.unavailableReason)}</Typography>}
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>Coordinates come from the stored analytical projection for this execution.</Typography>
       </Box>
-      {showConsensus ? <ConsensusCard consensus={visualizations.consensus} /> : null}
     </Box>
   </Stack>;
 };
@@ -74,12 +74,22 @@ const ComparisonVisualization = ({ comparison, scatterPlotRef, onResetZoom }) =>
   </Box>;
 };
 
-const VisualizationsPanel = ({ visualizations = {}, scatterPlotRef, onResetZoom }) => {
-  if (visualizations.mode === "comparison") {
-    const showConsensus = visualizations.consensus?.enabled;
-    return <Box sx={{ display: "grid", gridTemplateColumns: showConsensus ? { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(300px, 0.85fr)" } : "1fr", gap: 1.4 }}><ComparisonVisualization comparison={visualizations.expertCollectiveComparison} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} />{showConsensus ? <ConsensusCard consensus={visualizations.consensus} /> : null}</Box>;
-  }
-  return <SingleVisualization visualizations={visualizations} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} />;
+const VisualizationsPanel = ({ visualizations = {}, genericAnalysis = {}, scatterPlotRef, onResetZoom }) => {
+  const rankingEvolution = genericAnalysis.data?.visualizations?.find((entry) => entry.type === "rankingEvolution");
+  const modelVisualizations = visualizations.mode === "comparison"
+    ? <ComparisonVisualization comparison={visualizations.expertCollectiveComparison} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} />
+    : <SingleVisualization visualizations={visualizations} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} />;
+  return <Stack spacing={2}>
+    <Box>
+      <Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>General visualizations</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>General analytical views of the completed decision process.</Typography>
+      {genericAnalysis.loading ? <Alert severity="info">Loading general visualizations…</Alert> : genericAnalysis.error ? <Alert severity="error">General visualizations are unavailable.</Alert> : rankingEvolution ? <RankingMovementChart movement={buildGenericRankingMovement(rankingEvolution)} title="Ranking evolution" subtitle="Position changes across consensus phases." /> : <Alert severity="info">No ranking evolution is available for this issue.</Alert>}
+      <Box sx={{ mt: 1.4, display: "grid", gridTemplateColumns: visualizations.consensus?.enabled ? { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(300px, 0.85fr)" } : "1fr", gap: 1.4 }}>
+        {modelVisualizations}
+        {visualizations.consensus?.enabled ? <ConsensusCard consensus={visualizations.consensus} /> : null}
+      </Box>
+    </Box>
+  </Stack>;
 };
 
 export default VisualizationsPanel;

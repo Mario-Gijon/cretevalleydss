@@ -7,12 +7,12 @@ import InterpretationPanel from "./InterpretationPanel";
 import ResultsAnalysisNavigation from "./ResultsAnalysisNavigation";
 import ExecutionSelectionToolbar from "./ExecutionSelectionToolbar";
 
-const ResultsAnalysisView = ({ data, selection, navigation, scatterPlotRef, onResetZoom }) => (
+const ResultsAnalysisView = ({ data, selection, navigation, genericAnalysis, scatterPlotRef, onResetZoom }) => (
   <Stack spacing={2}>
     <ResultsAnalysisNavigation activeView={navigation.activeView} onChange={navigation.setActiveView} />
     {navigation.activeView !== RESULTS_ANALYSIS_VIEWS.INTERPRETATION ? <ExecutionSelectionToolbar data={data} selectedExecutionKeys={selection.selectedExecutionKeys} onToggleExecution={selection.toggleExecution} onRemoveExecution={selection.removeExecution} /> : null}
-    {navigation.activeView === RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS ? <VisualizationsPanel visualizations={data.visualizations} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} /> : null}
-    {navigation.activeView === RESULTS_ANALYSIS_VIEWS.INTERPRETATION ? <InterpretationPanel interpretation={data.interpretation} /> : null}
+    {navigation.activeView === RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS ? <VisualizationsPanel visualizations={data.visualizations} genericAnalysis={genericAnalysis} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} /> : null}
+    {navigation.activeView === RESULTS_ANALYSIS_VIEWS.INTERPRETATION ? <InterpretationPanel genericAnalysis={genericAnalysis} /> : null}
     {navigation.activeView === RESULTS_ANALYSIS_VIEWS.OUTCOME ? <OutcomePanel data={data} /> : null}
   </Stack>
 );

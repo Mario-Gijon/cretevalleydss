@@ -68,5 +68,7 @@ def test_issue_analysis_keeps_ranking_evolution_but_not_consensus_visualization(
 
     assert [entry["type"] for entry in result["visualizations"]] == ["rankingEvolution"]
     assert "### Ranking evolution" in result["interpretation"]
+    assert "| Alternative | Initial | Final | Change |" in result["interpretation"]
+    assert "| Alpha | 1st | 1st | +0 |" in result["interpretation"]
     assert "### Final ranking" not in result["interpretation"]
     assert "### Execution" not in result["interpretation"]

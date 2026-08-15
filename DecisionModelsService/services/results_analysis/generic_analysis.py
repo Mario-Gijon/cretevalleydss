@@ -406,6 +406,23 @@ def _ranking_evolution_markdown(facts):
             ["", "The final ranking is unchanged from the first executed round."]
         )
 
+    evolution_rows = [
+        "",
+        "| Alternative | Initial | Final | Change |",
+        "|:--|--:|--:|--:|",
+    ]
+    for item in evolution["changes"]:
+        if item["initialRank"] is None or item["finalRank"] is None:
+            continue
+        change = item["positionChange"]
+        change_label = f"{change:+g}" if change is not None else "—"
+        evolution_rows.append(
+            f"| {item['name']} | {_ordinal(item['initialRank'])} | "
+            f"{_ordinal(item['finalRank'])} | {change_label} |"
+        )
+    if len(evolution_rows) > 3:
+        lines.extend(evolution_rows)
+
     return "\n".join(lines)
 
 
