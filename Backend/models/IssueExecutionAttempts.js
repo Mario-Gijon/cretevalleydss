@@ -16,7 +16,7 @@ const issueExecutionAttemptSchema = new Schema({
   startedAt: { type: Date, required: true }, responseReceivedAt: { type: Date, default: null }, completedAt: { type: Date, default: null },
   durationMs: { type: Number, min: 0, default: null }, transportDurationMs: { type: Number, min: 0, default: null },
   response: { type: Schema.Types.Mixed, default: null }, normalizedResult: { type: Schema.Types.Mixed, default: null }, error: { type: Schema.Types.Mixed, default: null },
-  application: { type: Schema.Types.Mixed, required: true, default: () => ({ status: "pending", appliedAt: null, entityType: null, entityId: null, resultSnapshot: null, error: null }) },
+  application: { type: Schema.Types.Mixed, required: true, default: () => ({ status: "pending", completedAt: null, entityType: null, entityId: null, resultSnapshot: null, error: null }) },
   schemaVersion: { type: Number, required: true, default: 1 },
 }, { timestamps: true, minimize: false });
 issueExecutionAttemptSchema.index({ issue: 1, startedAt: 1, _id: 1 });

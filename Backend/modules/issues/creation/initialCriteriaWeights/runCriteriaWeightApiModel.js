@@ -11,7 +11,7 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
-import { executeDecisionModelRequest, executeTrackedDecisionModelRequest } from "../../modelExecution/index.js";
+import { executeTrackedDecisionModelRequest } from "../../modelExecution/index.js";
 import { buildCreatorDecisionContext } from "./buildCreatorDecisionContext.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
@@ -220,15 +220,6 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     },
   };
 
-  if (!executionAttemptInput) {
-    const result = await executeDecisionModelRequest({ apiEndpointPath: criteriaWeightingRuntime.apiEndpoint.path, requestPayload, errorMessage: `Failed to compute ${criteriaWeightingModel.name} weights`, decisionModelsServiceBaseUrl: normalizedBaseUrl, httpClient });
-    const weightsByCriterion = result?.weightsByCriterion;
-    if (!isPlainObject(weightsByCriterion)) throw createBadRequestError(`${criteriaWeightingModel.name} output does not contain weightsByCriterion`, { field: "criteriaWeightingConfig.payload" });
-    const normalizedWeights = criteria.reduce((accumulator, criterion) => { const numeric = Number(weightsByCriterion[criterion.id]); if (!Number.isFinite(numeric)) throw createBadRequestError(`${criteriaWeightingModel.name} output contains invalid weight for '${criterion.name}'`, { field: "criteriaWeightingConfig.payload" }); accumulator[criterion.id] = numeric; return accumulator; }, {});
-    const total = Object.values(normalizedWeights).reduce((sum, value) => sum + value, 0);
-    if (!(total > 0)) throw createBadRequestError(`${criteriaWeightingModel.name} output weights cannot be normalized`, { field: "criteriaWeightingConfig.payload" });
-    return Object.fromEntries(Object.entries(normalizedWeights).map(([criterionId, value]) => [criterionId, value / total]));
-  }
   const tracked = await executeTrackedDecisionModelRequest({
     attemptInput: executionAttemptInput,
     apiEndpointPath: criteriaWeightingRuntime.apiEndpoint.path,
@@ -236,53 +227,14 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     errorMessage: `Failed to compute ${criteriaWeightingModel.name} weights`,
     decisionModelsServiceBaseUrl: normalizedBaseUrl,
     httpClient,
-    normalize: async (result) => result,
+    normalize: async (result) => {
+      const weightsByCriterion = result?.weightsByCriterion;
+      if (!isPlainObject(weightsByCriterion)) throw createBadRequestError(`${criteriaWeightingModel.name} output does not contain weightsByCriterion`, { field: "criteriaWeightingConfig.payload" });
+      const normalized = criteria.reduce((accumulator, criterion) => { const numeric = Number(weightsByCriterion[criterion.id]); if (!Number.isFinite(numeric)) throw createBadRequestError(`${criteriaWeightingModel.name} output contains invalid weight for '${criterion.name}'`, { field: "criteriaWeightingConfig.payload" }); accumulator[criterion.id] = numeric; return accumulator; }, {});
+      const total = Object.values(normalized).reduce((sum, value) => sum + value, 0);
+      if (!(total > 0)) throw createBadRequestError(`${criteriaWeightingModel.name} output weights cannot be normalized`, { field: "criteriaWeightingConfig.payload" });
+      return Object.fromEntries(Object.entries(normalized).map(([criterionId, value]) => [criterionId, value / total]));
+    },
   });
-  const result = tracked.result;
-  const weightsByCriterion = result?.weightsByCriterion;
-  if (!isPlainObject(weightsByCriterion)) {
-    throw createBadRequestError(
-      `${criteriaWeightingModel.name} output does not contain weightsByCriterion`,
-      {
-        field: "criteriaWeightingConfig.payload",
-      }
-    );
-  }
-
-  const normalizedWeightsByCriterion = criteria.reduce((accumulator, criterion) => {
-    const criterionId = criterion.id;
-    const criterionName = criterion.name;
-    const numeric = Number(weightsByCriterion[criterionId]);
-    if (!Number.isFinite(numeric)) {
-      throw createBadRequestError(
-        `${criteriaWeightingModel.name} output contains invalid weight for '${criterionName}'`,
-        {
-          field: "criteriaWeightingConfig.payload",
-        }
-      );
-    }
-    accumulator[criterionId] = numeric;
-    return accumulator;
-  }, {});
-
-  const total = Object.values(normalizedWeightsByCriterion).reduce(
-    (sum, value) => sum + value,
-    0
-  );
-  if (!(total > 0)) {
-    throw createBadRequestError(
-      `${criteriaWeightingModel.name} output weights cannot be normalized`,
-      {
-        field: "criteriaWeightingConfig.payload",
-      }
-    );
-  }
-
-  const normalizedWeights = Object.fromEntries(
-    Object.entries(normalizedWeightsByCriterion).map(([criterionId, value]) => [
-      criterionId,
-      value / total,
-    ])
-  );
-  return { weights: normalizedWeights, executionAttempt: tracked.attempt };
+  return { weights: tracked.result, executionAttempt: tracked.attempt };
 };

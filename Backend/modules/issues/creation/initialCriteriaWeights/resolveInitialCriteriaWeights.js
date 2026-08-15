@@ -589,6 +589,7 @@ export const resolveDeferredCriteriaWeightingAfterPersistenceOrThrow = async ({
   persistedLeafCriteria,
   decisionModelsServiceBaseUrl,
   httpClient,
+  executionAttemptInput,
 }) => {
   if (!resolvedCriteriaWeighting.isDeferredApiCriteriaWeighting) {
     return resolvedCriteriaWeighting;

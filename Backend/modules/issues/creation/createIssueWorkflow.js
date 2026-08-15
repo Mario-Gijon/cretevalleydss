@@ -7,6 +7,8 @@ import {
   prepareIssueCreation,
 } from "./createIssue.js";
 import { createIssueEventOperationMetadata } from "../events/index.js";
+import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
+import { markExecutionApplied, markExecutionApplicationFailed } from "../modelExecution/index.js";
 
 const sendInvitationEmails = async ({ emailsToSend, sendInvitationEmail }) => {
   for (const emailPayload of emailsToSend) {
@@ -41,13 +43,23 @@ export const createIssueWorkflow = async ({
   try {
     let result = null;
 
-    await session.withTransaction(async () => {
-      result = await persist({
-        preparedIssueCreation,
-        ...eventMetadata,
-        session,
+    try {
+      await session.withTransaction(async () => {
+        result = await persist({
+          preparedIssueCreation,
+          ...eventMetadata,
+          session,
+        });
       });
-    });
+    } catch (error) {
+      const attempt = await IssueExecutionAttempt.findOne({ scope: "issueCreation", correlationId: eventMetadata.correlationId, status: "succeeded", "application.status": "pending" }).sort({ startedAt: -1, _id: -1 });
+      if (attempt) await markExecutionApplicationFailed({ attemptId: attempt._id, error });
+      throw error;
+    }
+    if (result.executionAttemptId) {
+      await IssueExecutionAttempt.updateOne({ _id: result.executionAttemptId, issue: null }, { $set: { issue: result.issueId } });
+      await markExecutionApplied({ attemptId: result.executionAttemptId, entityType: "issue", entityId: result.issueId, resultSnapshot: { weights: result.initialWeights } });
+    }
 
     await sendInvitationEmails({
       emailsToSend: result.emailsToSend,

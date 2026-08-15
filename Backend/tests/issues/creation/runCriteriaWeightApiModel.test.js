@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const creatorApiModelState = vi.hoisted(() => ({
   buildCreatorDecisionContext: vi.fn(),
   getEvaluationStructureOrThrow: vi.fn(),
+  executeTrackedDecisionModelRequest: vi.fn(),
 }));
 
 vi.mock("../../../modules/decisionPlugins/evaluations/index.js", () => ({
@@ -17,6 +18,9 @@ vi.mock(
       creatorApiModelState.buildCreatorDecisionContext,
   })
 );
+vi.mock("../../../modules/issues/modelExecution/index.js", () => ({
+  executeTrackedDecisionModelRequest: creatorApiModelState.executeTrackedDecisionModelRequest,
+}));
 
 import {
   resolveCreatorApiCriteriaWeightingModelWeightsOrThrow,
@@ -26,6 +30,7 @@ describe("creator API criteria-weighting execution", () => {
   beforeEach(() => {
     creatorApiModelState.buildCreatorDecisionContext.mockReset();
     creatorApiModelState.getEvaluationStructureOrThrow.mockReset();
+    creatorApiModelState.executeTrackedDecisionModelRequest.mockReset();
   });
 
   it("uses one creator context for payload validation and the DMS request", async () => {
@@ -66,6 +71,7 @@ describe("creator API criteria-weighting execution", () => {
       creatorDecisionContext
     );
     creatorApiModelState.getEvaluationStructureOrThrow.mockReturnValue(structure);
+    creatorApiModelState.executeTrackedDecisionModelRequest.mockImplementation(async ({ normalize }) => ({ result: await normalize({ weightsByCriterion: { "criterion-cost": 2, "criterion-quality": 3 } }), attempt: { _id: "attempt" } }));
 
     await expect(
       resolveCreatorApiCriteriaWeightingModelWeightsOrThrow({
@@ -79,11 +85,9 @@ describe("creator API criteria-weighting execution", () => {
         criteriaWeightingParameters: { alpha: 1 },
         decisionModelsServiceBaseUrl: "https://dms.example.test/",
         httpClient,
+        executionAttemptInput: { issue: null, scope: "issueCreation", actorType: "user", actorUser: "user", correlationId: "creation", evaluationStage: "criteriaWeighting", issueStage: "criteriaWeighting", consensusPhase: 0, modelContext: {} },
       })
-    ).resolves.toEqual({
-      "criterion-cost": 0.4,
-      "criterion-quality": 0.6,
-    });
+    ).resolves.toMatchObject({ weights: { "criterion-cost": 0.4, "criterion-quality": 0.6 } });
 
     expect(creatorApiModelState.buildCreatorDecisionContext).toHaveBeenCalledTimes(1);
     expect(save).toHaveBeenCalledWith({
@@ -91,9 +95,9 @@ describe("creator API criteria-weighting execution", () => {
       payload: { selected: "input" },
       decisionContext: creatorDecisionContext,
     });
-    expect(httpClient.post).toHaveBeenCalledWith(
-      "https://dms.example.test/criteria-weights",
-      {
+    expect(creatorApiModelState.executeTrackedDecisionModelRequest).toHaveBeenCalledWith(expect.objectContaining({
+      apiEndpointPath: "/criteria-weights",
+      requestPayload: {
         modelParameters: { alpha: 1 },
         evaluations: [
           {
@@ -112,7 +116,7 @@ describe("creator API criteria-weighting execution", () => {
           previousStageResult: null,
           structure: creatorDecisionContext.structure,
         },
-      }
-    );
+      },
+    }));
   });
 });

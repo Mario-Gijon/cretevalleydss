@@ -26,6 +26,7 @@ import {
   markExecutionApplicationFailed,
 } from "../modelExecution/index.js";
 import { buildDecisionContext } from "../evaluations/buildDecisionContext.js";
+import { persistIssueEvaluationOperation } from "../evaluations/issueEvaluationPersistence.js";
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
@@ -419,6 +420,7 @@ const applyCriteriaWeightingIssueUpdates = async ({
   issue,
   weightsByCriterion,
   stageResult,
+  executionAttempt = null,
   actorUser,
   occurredAt,
   correlationId,
@@ -453,6 +455,7 @@ const applyCriteriaWeightingIssueUpdates = async ({
     correlationId,
     cause: "criteriaWeightingComputed",
     stageResultId: stageResult?._id,
+    executionAttemptId: executionAttempt?._id,
     structureKey: issue.criteriaWeightsStructureKey,
     session,
   });
@@ -658,6 +661,7 @@ const computeCriteriaWeightingStage = async ({
     decisionModelsServiceBaseUrl,
     httpClient,
     executionAttemptInput,
+    normalizeResult: (result) => normalizeCriteriaWeightingComputeResultOrThrow({ issue, computeResult: result }),
   });
 };
 
@@ -809,6 +813,9 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
   acceptedParticipations,
   suggestions,
   nextPhase,
+  occurredAt,
+  correlationId,
+  sourceExecutionAttempt,
   session = null,
 }) => {
   const expectedExpertIds = acceptedParticipations.map((participation) =>
@@ -856,27 +863,7 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
       decisionContext,
     });
 
-    await IssueEvaluation.findOneAndUpdate(
-      {
-        issue: issue._id,
-        expert: participation.expert,
-        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-        consensusPhase: nextPhase,
-      },
-      {
-        $set: {
-          payload: normalizedPayload,
-          completed: true,
-          submittedAt: new Date(),
-        },
-      },
-      {
-        upsert: true,
-        new: true,
-        setDefaultsOnInsert: true,
-        session,
-      }
-    );
+    await persistIssueEvaluationOperation({ issueId: issue._id, userId: participation.expert, actorId: null, actorType: "system", stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, consensusPhase: nextPhase, action: "generated", structureKey: structure.key, rawPayload: suggestedPayload, normalizedPayload, decisionContext, completed: true, submittedAt: null, occurredAt, correlationId, sourceExecutionAttempt: sourceExecutionAttempt._id, session });
   }
 };
 
@@ -936,6 +923,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       computeResult: phaseComputeResult,
     });
+    const roundOccurredAt = new Date();
 
     const stageResult = await saveStageResult({
       issue,
@@ -958,13 +946,14 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       finalizationReason: lifecycleMetadata.finalizationReason,
       nextConsensusPhase: lifecycleMetadata.nextConsensusPhase,
       stageResultId: toIdString(stageResult?._id) || null,
+      executionAttemptId: toIdString(phaseComputeResult.executionAttempt._id),
     };
     await writeConsensusEvent({
       issue,
       eventType: ISSUE_EVENT_TYPES.CONSENSUS_COMPUTED,
       phase: currentPhase,
       actorUser,
-      occurredAt,
+      occurredAt: phaseComputeResult.executionAttempt.completedAt,
       correlationId,
       details: lifecycleDetails,
       session,
@@ -974,13 +963,14 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_COMPLETED,
       phase: currentPhase,
       actorUser,
-      occurredAt,
+      occurredAt: roundOccurredAt,
       correlationId,
       details: {
         phase: currentPhase,
         consensusMeasure: lifecycleMetadata.consensusMeasure,
         threshold: lifecycleMetadata.threshold,
         cause: lifecycleMetadata.finalizationReason ?? "continue",
+        executionAttemptId: toIdString(phaseComputeResult.executionAttempt._id),
       },
       session,
     });
@@ -1003,6 +993,9 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       acceptedParticipations,
       suggestions,
       nextPhase,
+      occurredAt: roundOccurredAt,
+      correlationId,
+      sourceExecutionAttempt: phaseComputeResult.executionAttempt,
       session,
     });
 
@@ -1014,7 +1007,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED,
       phase: currentPhase,
       actorUser,
-      occurredAt,
+      occurredAt: roundOccurredAt,
       correlationId,
       details: {
         threshold: issue.consensusThreshold,
@@ -1036,16 +1029,15 @@ const computeSimulatedAlternativeConsensusRounds = async ({
   issue.consensusPhase = currentPhase;
   issue.currentStage = ISSUE_STAGES.FINISHED;
   issue.active = false;
-  if (!issue.finishedAt) {
-    issue.finishedAt = occurredAt;
-  }
+  const finalOccurredAt = new Date();
+  if (!issue.finishedAt) issue.finishedAt = finalOccurredAt;
   await issue.save({ session });
   await writeIssueStageChanged({
     issue,
     previousState: previousLifecycleState,
     actorType: "user",
     actorUser,
-    occurredAt,
+    occurredAt: finalOccurredAt,
     correlationId,
     cause: lastLifecycleMetadata?.finalizationReason ?? "modelComputed",
     session,
@@ -1057,7 +1049,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
     actorUser,
     stage: issue.currentStage,
     phase: issue.consensusPhase,
-    occurredAt,
+    occurredAt: finalOccurredAt,
     correlationId,
     previousState: previousLifecycleState,
     nextState: snapshotIssueLifecycle(issue),
@@ -1065,6 +1057,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       finalPhase: issue.consensusPhase,
       isConsensus: true,
       finalizationReason: lastLifecycleMetadata?.finalizationReason ?? null,
+      finalExecutionAttemptId: toIdString(lastComputeResult?.executionAttempt?._id),
     },
     session,
   });
@@ -1178,11 +1171,8 @@ export const computeIssueEvaluationStage = async ({
       });
 
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-    const normalizedCriteriaWeightingResult =
-      await normalizeCriteriaWeightingComputeResultOrThrow({
-        issue,
-        computeResult,
-      });
+    const normalizedCriteriaWeightingResult = computeResult;
+    const applicationOccurredAt = new Date();
 
     let appliedStageResult = null;
     try { await persistComputedStageInTransaction({
@@ -1204,8 +1194,9 @@ export const computeIssueEvaluationStage = async ({
           issue,
           weightsByCriterion: normalizedCriteriaWeightingResult.weightsByCriterion,
           stageResult,
+          executionAttempt: computeResult.executionAttempt,
           actorUser: userId,
-          occurredAt: eventMetadata.occurredAt,
+          occurredAt: applicationOccurredAt,
           correlationId: eventMetadata.correlationId,
           session: persistSession,
         });
@@ -1241,6 +1232,8 @@ export const computeIssueEvaluationStage = async ({
     computeResult,
   });
 
+  const applicationOccurredAt = new Date();
+
   let appliedStageResult = null;
   try { await persistComputedStageInTransaction({
     session,
@@ -1269,13 +1262,14 @@ export const computeIssueEvaluationStage = async ({
           finalizationReason: lifecycleMetadata.finalizationReason,
           nextConsensusPhase: lifecycleMetadata.nextConsensusPhase,
           stageResultId: toIdString(stageResult?._id) || null,
+          executionAttemptId: toIdString(computeResult.executionAttempt._id),
         };
         await writeConsensusEvent({
           issue,
           eventType: ISSUE_EVENT_TYPES.CONSENSUS_COMPUTED,
           phase: computedPhase,
           actorUser: userId,
-          occurredAt: eventMetadata.occurredAt,
+          occurredAt: computeResult.executionAttempt.completedAt,
           correlationId: eventMetadata.correlationId,
           details: lifecycleDetails,
           session: persistSession,
@@ -1285,7 +1279,7 @@ export const computeIssueEvaluationStage = async ({
           eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_COMPLETED,
           phase: computedPhase,
           actorUser: userId,
-          occurredAt: eventMetadata.occurredAt,
+          occurredAt: applicationOccurredAt,
           correlationId: eventMetadata.correlationId,
           details: {
             phase: computedPhase,
@@ -1300,7 +1294,7 @@ export const computeIssueEvaluationStage = async ({
       await applyComputeIssueUpdates({
         issue,
         computeResult: lifecycleComputeResult,
-        occurredAt: eventMetadata.occurredAt,
+        occurredAt: applicationOccurredAt,
         session: persistSession,
       });
 
@@ -1308,7 +1302,7 @@ export const computeIssueEvaluationStage = async ({
         await resetAlternativeRoundCompletion({
           issue,
           actorUser: userId,
-          occurredAt: eventMetadata.occurredAt,
+          occurredAt: applicationOccurredAt,
           correlationId: eventMetadata.correlationId,
           session: persistSession,
         });
@@ -1321,7 +1315,7 @@ export const computeIssueEvaluationStage = async ({
             eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED,
             phase: issue.consensusPhase,
             actorUser: userId,
-            occurredAt: eventMetadata.occurredAt,
+            occurredAt: applicationOccurredAt,
             correlationId: eventMetadata.correlationId,
             details: {
               threshold: issue.consensusThreshold,
@@ -1338,7 +1332,7 @@ export const computeIssueEvaluationStage = async ({
         previousState: previousLifecycleState,
         actorType: "user",
         actorUser: userId,
-        occurredAt: eventMetadata.occurredAt,
+        occurredAt: applicationOccurredAt,
         correlationId: eventMetadata.correlationId,
         cause: lifecycleMetadata?.finalizationReason ?? "modelComputed",
         session: persistSession,
@@ -1351,7 +1345,7 @@ export const computeIssueEvaluationStage = async ({
           actorUser: userId,
           stage: issue.currentStage,
           phase: issue.consensusPhase,
-          occurredAt: eventMetadata.occurredAt,
+          occurredAt: applicationOccurredAt,
           correlationId: eventMetadata.correlationId,
           previousState: previousLifecycleState,
           nextState: snapshotIssueLifecycle(issue),
@@ -1359,6 +1353,7 @@ export const computeIssueEvaluationStage = async ({
             finalPhase: issue.consensusPhase,
             isConsensus: issue.isConsensus === true,
             finalizationReason: lifecycleMetadata?.finalizationReason ?? "modelComputed",
+            finalExecutionAttemptId: toIdString(computeResult.executionAttempt._id),
           },
           session: persistSession,
         });

@@ -4,54 +4,7 @@ import {
 import { buildCriteriaWeightingExecutionResult } from "./buildCriteriaWeightingExecutionResult.js";
 import { buildIssueModelExecutionResult } from "./buildIssueModelExecutionResult.js";
 import { buildIssueModelRequestPayload } from "./buildIssueModelRequestPayload.js";
-import { createBadRequestError } from "../../../utils/common/errors.js";
 import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
-
-const executeCriteriaWeightingApiModel = async ({
-  issue,
-  structureKey,
-  requestPayload,
-  decisionModelsServiceBaseUrl,
-  httpClient,
-}) => {
-  const apiEndpoint = issue.criteriaWeightingApiEndpoint;
-  const apiEndpointPath = apiEndpoint && apiEndpoint.path;
-  const apiModelKey = issue.criteriaWeightingApiModelKey;
-
-  if (typeof apiEndpointPath !== "string" || apiEndpointPath.trim() === "") {
-    throw createBadRequestError(
-      "Issue does not define a criteria weighting DecisionModelsService endpoint path",
-      {
-        field: "issue.criteriaWeightingApiEndpoint.path",
-      }
-    );
-  }
-
-  if (typeof apiModelKey !== "string" || apiModelKey.trim() === "") {
-    throw createBadRequestError(
-      "Issue does not define a criteria weighting DecisionModelsService model key",
-      {
-        field: "issue.criteriaWeightingApiModelKey",
-      }
-    );
-  }
-
-  const result = await executeDecisionModelRequest({
-    apiEndpointPath,
-    requestPayload,
-    errorMessage: "Criteria weighting model execution failed",
-    decisionModelsServiceBaseUrl,
-    httpClient,
-  });
-
-  return buildCriteriaWeightingExecutionResult({
-    structureKey,
-    message: result.message,
-    result,
-    apiModelKey,
-    apiEndpointPath,
-  });
-};
 
 export const executeAlternativeEvaluationModel = async ({
   issue,

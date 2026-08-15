@@ -104,6 +104,7 @@ export const writeCriteriaWeightsChanged = async ({
   correlationId,
   cause,
   stageResultId = null,
+  executionAttemptId = null,
   structureKey = null,
   session = null,
 }) => writeIssueEvent({
@@ -121,6 +122,7 @@ export const writeCriteriaWeightsChanged = async ({
     cause,
     sourceStage: "criteriaWeighting",
     stageResultId: toIdString(stageResultId) || null,
+    executionAttemptId: toIdString(executionAttemptId) || null,
     structureKey,
   },
   session,
