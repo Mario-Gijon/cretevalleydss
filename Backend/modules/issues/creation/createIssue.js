@@ -384,7 +384,7 @@ export const persistPreparedIssueCreation = async ({
   });
 
   await issue.save({ session });
-  await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: eventMetadata.occurredAt, correlationId: eventMetadata.correlationId, session });
+  await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: eventMetadata.occurredAt, correlationId: eventMetadata.correlationId, criteriaWeightingConfiguration: resolvedCriteriaWeighting, session });
   if (phaseStartEvent) await writeIssueStateSnapshot({ issue, snapshotType: "consensusPhaseStart", occurredAt: eventMetadata.occurredAt, correlationId: eventMetadata.correlationId, sourceEvent: phaseStartEvent._id, session });
   return {
     issueName: input.issueName,

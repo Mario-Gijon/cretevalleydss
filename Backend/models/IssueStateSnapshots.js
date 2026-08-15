@@ -1,7 +1,7 @@
 import { Schema, model } from "mongoose";
 
 const issueStateSnapshotSchema = new Schema({
-  issue: { type: Schema.Types.ObjectId, ref: "Issue", required: true, index: true },
+  issue: { type: Schema.Types.ObjectId, ref: "Issue", required: true },
   snapshotType: { type: String, enum: ["creation", "consensusPhaseStart"], required: true },
   stage: { type: String, enum: ["criteriaWeighting", "weightsFinished", "alternativeEvaluation", "finished"], required: true },
   consensusPhase: { type: Number, required: true, min: 0 },
@@ -13,5 +13,6 @@ const issueStateSnapshotSchema = new Schema({
   schemaVersion: { type: Number, required: true, default: 1 },
 }, { timestamps: { createdAt: true, updatedAt: false }, minimize: false });
 issueStateSnapshotSchema.index({ issue: 1, occurredAt: 1, _id: 1 });
-issueStateSnapshotSchema.index({ issue: 1, snapshotType: 1, consensusPhase: 1 }, { unique: true });
+issueStateSnapshotSchema.index({ issue: 1 }, { unique: true, partialFilterExpression: { snapshotType: "creation" } });
+issueStateSnapshotSchema.index({ issue: 1, consensusPhase: 1 }, { unique: true, partialFilterExpression: { snapshotType: "consensusPhaseStart" } });
 export const IssueStateSnapshot = model("IssueStateSnapshot", issueStateSnapshotSchema);

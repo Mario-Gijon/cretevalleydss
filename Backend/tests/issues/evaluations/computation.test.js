@@ -8,6 +8,7 @@ import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevision
 import { IssueEvent } from "../../../models/IssueEvents.js";
 import { Participation } from "../../../models/Participations.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
+import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
 import {
   createConfirmedUser,
   createIssueAlternativesFixture,
@@ -203,7 +204,6 @@ const createCriteriaComputeFixture = async ({
       entryStage: "criteriaWeighting",
     });
   }
-
   return {
     owner,
     acceptedExperts,
@@ -288,6 +288,9 @@ const createAlternativeComputeFixture = async ({
       entryPhase: consensusPhase,
       entryStage: "alternativeEvaluation",
     });
+  }
+  if (issueOverrides.isConsensus === true) {
+    await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: new Date(), correlationId: "fixture-creation" });
   }
 
   return {
