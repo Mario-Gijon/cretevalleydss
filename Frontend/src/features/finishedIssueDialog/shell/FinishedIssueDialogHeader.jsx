@@ -76,7 +76,6 @@ const FinishedIssueDialogHeader = () => {
                 <Typography variant="h4" component="h1" noWrap title={issue?.name || ""} sx={{ ...finishedIssueHeaderTitleSx, flex: 1 }}>
                   {issue?.name || "Finished issue"}
                 </Typography>
-                {!isMobile ? <TaskAltIcon sx={{ color: "success.main", fontSize: { sm: 25, lg: 29 }, flexShrink: 0 }} /> : null}
                 {isMobile ? <IconButton aria-label="Open issue actions" onClick={(event) => setMobileActionsMenuAnchor(event.currentTarget)} sx={{ flexShrink: 0 }}><MoreVertIcon /></IconButton> : null}
               </Stack>
             </Box>
