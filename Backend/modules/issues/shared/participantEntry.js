@@ -26,8 +26,8 @@ export const resolveParticipationEntryStage = (issueStage) => {
 export const resolveParticipationEntryPhase = (issue) =>
   Number.isInteger(issue?.consensusPhase) ? issue.consensusPhase : null;
 
-export const buildParticipationEntryMetadata = ({ issue }) => ({
-  joinedAt: new Date(),
+export const buildParticipationEntryMetadata = ({ issue, occurredAt = new Date() }) => ({
+  joinedAt: occurredAt,
   entryPhase: resolveParticipationEntryPhase(issue),
   entryStage: resolveParticipationEntryStage(issue?.currentStage),
 });

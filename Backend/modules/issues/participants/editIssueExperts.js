@@ -18,6 +18,28 @@ import {
   modelUsesExpertWeights,
   validateAndNormalizeExpertWeightsOrThrow,
 } from "../shared/expertWeights.js";
+import {
+  createIssueEventOperationMetadata,
+  ISSUE_EVENT_TYPES,
+  writeIssueEvent,
+} from "../events/index.js";
+import { toIdString } from "../../../utils/common/ids.js";
+
+const buildWeightsByExpertId = (participations) =>
+  Object.fromEntries(
+    [...participations]
+      .map((participation) => [
+        toIdString(participation?.expert?._id || participation?.expert),
+        typeof participation?.weight === "number" && Number.isFinite(participation.weight)
+          ? participation.weight
+          : null,
+      ])
+      .filter(([expertId]) => Boolean(expertId))
+      .sort(([left], [right]) => left.localeCompare(right))
+  );
+
+const sameWeightVectors = (left, right) =>
+  JSON.stringify(left) === JSON.stringify(right);
 
 const getParticipationEmailOrThrow = ({ participation, issueId }) => {
   const email = normalizeEmail(participation?.expert?.email);
@@ -35,10 +57,13 @@ const getParticipationEmailOrThrow = ({ participation, issueId }) => {
 export const editIssueExperts = async ({
   issueId,
   userId,
+  actorUserId = userId,
   expertsToAdd,
   expertsToRemove,
   expertWeightsByEmail = null,
   hasExpertWeightsByEmail = false,
+  correlationId = null,
+  occurredAt = null,
   session = null,
 }) => {
   const {
@@ -54,6 +79,10 @@ export const editIssueExperts = async ({
     userId,
     session,
   });
+  const eventMetadata =
+    correlationId && occurredAt
+      ? { correlationId, occurredAt }
+      : createIssueEventOperationMetadata();
 
   if (finalExpertsToRemove.includes(normalizeEmail(context.owner.email))) {
     throw createBadRequestError("Issue owner cannot be removed", {
@@ -67,6 +96,7 @@ export const editIssueExperts = async ({
     .populate("expert", "email")
     .session(session);
   const participationByEmail = new Map();
+  const previousWeightsByExpertId = buildWeightsByExpertId(currentParticipations);
 
   for (const participation of currentParticipations) {
     const email = getParticipationEmailOrThrow({
@@ -138,21 +168,27 @@ export const editIssueExperts = async ({
     issue: context.issue,
     owner: context.owner,
     userId,
+    actorUserId,
     expertEmails: actualExpertsToAdd,
     userByEmail,
     leafCriteria: context.leafCriteria,
     currentPhase: context.currentPhase,
     stageForLog: context.stageForLog,
     expertWeightsByEmail: normalizedExpertWeightsByEmail,
+    correlationId: eventMetadata.correlationId,
+    occurredAt: eventMetadata.occurredAt,
     session,
   });
 
   await removeExpertsFromActiveIssue({
     issue: context.issue,
+    actorUserId,
     expertEmails: actualExpertsToRemove,
     userByEmail,
     currentPhase: context.currentPhase,
     stageForLog: context.stageForLog,
+    correlationId: eventMetadata.correlationId,
+    occurredAt: eventMetadata.occurredAt,
     session,
   });
 
@@ -177,6 +213,28 @@ export const editIssueExperts = async ({
     });
 
     await Participation.bulkWrite(operations, { session });
+
+    const finalParticipations = await Participation.find({
+      issue: context.issue._id,
+    }).session(session);
+    const nextWeightsByExpertId = buildWeightsByExpertId(finalParticipations);
+
+    if (!sameWeightVectors(previousWeightsByExpertId, nextWeightsByExpertId)) {
+      await writeIssueEvent({
+        issueId: context.issue._id,
+        eventType: ISSUE_EVENT_TYPES.EXPERT_WEIGHTS_CHANGED,
+        actorType: "user",
+        actorUser: actorUserId,
+        stage: context.stageForLog,
+        phase: context.currentPhase,
+        occurredAt: eventMetadata.occurredAt,
+        correlationId: eventMetadata.correlationId,
+        previousState: { weightsByExpertId: previousWeightsByExpertId },
+        nextState: { weightsByExpertId: nextWeightsByExpertId },
+        details: { cause: "participantEdit" },
+        session,
+      });
+    }
   }
 
   return {

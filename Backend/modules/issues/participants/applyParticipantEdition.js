@@ -7,6 +7,11 @@ import {
   registerUserExit,
 } from "../lifecycle/index.js";
 import { isSingleLeafCriterionCount } from "../shared/participantEntry.js";
+import {
+  ISSUE_EVENT_TYPES,
+  snapshotParticipation,
+  writeIssueEvent,
+} from "../events/index.js";
 
 import { sameId } from "../../../utils/common/ids.js";
 
@@ -14,12 +19,15 @@ export const addExpertsToActiveIssue = async ({
   issue,
   owner,
   userId,
+  actorUserId = userId,
   expertEmails,
   userByEmail,
   leafCriteria,
   currentPhase,
   stageForLog,
   expertWeightsByEmail = null,
+  correlationId,
+  occurredAt,
   session = null,
 }) => {
   const invitationEmailsToSend = [];
@@ -39,7 +47,7 @@ export const addExpertsToActiveIssue = async ({
     const weightsCompleted = isSingleLeafCriterionCount(leafCriteria.length);
     const entryReason = isOwnerExpert ? "Added by owner" : "Invited by owner";
 
-    await Participation.create(
+    const [participation] = await Participation.create(
       [{
         issue: issue._id,
         expert: expertUser._id,
@@ -51,7 +59,7 @@ export const addExpertsToActiveIssue = async ({
           : null,
         entryPhase: currentPhase,
         entryStage: stageForLog,
-        joinedAt: new Date(),
+        joinedAt: occurredAt,
       }],
       { session }
     );
@@ -65,8 +73,35 @@ export const addExpertsToActiveIssue = async ({
       session,
     });
 
+    const eventBase = {
+      issueId: issue._id,
+      actorType: "user",
+      actorUser: actorUserId,
+      subjectUser: expertUser._id,
+      entityType: "participation",
+      entityId: participation._id,
+      stage: stageForLog,
+      phase: currentPhase,
+      occurredAt,
+      correlationId,
+      nextState: snapshotParticipation(participation),
+      details: { initialIssueCreation: false },
+      session,
+    };
+    await writeIssueEvent({
+      ...eventBase,
+      eventType: ISSUE_EVENT_TYPES.PARTICIPATION_CREATED,
+    });
+
+    if (isOwnerExpert) {
+      await writeIssueEvent({
+        ...eventBase,
+        eventType: ISSUE_EVENT_TYPES.PARTICIPATION_ENTERED,
+      });
+    }
+
     if (!isOwnerExpert) {
-      await Notification.create(
+      const [notification] = await Notification.create(
         [{
           expert: expertUser._id,
           issue: issue._id,
@@ -78,6 +113,17 @@ export const addExpertsToActiveIssue = async ({
         { session }
       );
 
+      await writeIssueEvent({
+        ...eventBase,
+        eventType: ISSUE_EVENT_TYPES.INVITATION_CREATED,
+        details: {
+          initialIssueCreation: false,
+          participationId: String(participation._id),
+          notificationId: String(notification._id),
+          initialInvitationStatus: participation.invitationStatus,
+        },
+      });
+
       invitationEmailsToSend.push(email);
     }
   }
@@ -87,10 +133,13 @@ export const addExpertsToActiveIssue = async ({
 
 export const removeExpertsFromActiveIssue = async ({
   issue,
+  actorUserId,
   expertEmails,
   userByEmail,
   currentPhase,
   stageForLog,
+  correlationId,
+  occurredAt,
   session = null,
 }) => {
   for (const email of expertEmails) {
@@ -105,6 +154,7 @@ export const removeExpertsFromActiveIssue = async ({
     }).session(session);
 
     if (!participation) continue;
+    const previousState = snapshotParticipation(participation);
 
     await cleanupIssueEvaluationsForExpertExit({
       issue,
@@ -113,6 +163,25 @@ export const removeExpertsFromActiveIssue = async ({
     });
 
     await Participation.deleteOne({ _id: participation._id }).session(session);
+
+    await writeIssueEvent({
+      issueId: issue._id,
+      eventType: ISSUE_EVENT_TYPES.PARTICIPATION_REMOVED,
+      actorType: "user",
+      actorUser: actorUserId,
+      subjectUser: expertUser._id,
+      entityType: "participation",
+      entityId: participation._id,
+      stage: stageForLog,
+      phase: currentPhase,
+      occurredAt,
+      correlationId,
+      reason: "Expelled by owner",
+      previousState,
+      nextState: null,
+      details: {},
+      session,
+    });
 
     await registerUserExit({
       issueId: issue._id,

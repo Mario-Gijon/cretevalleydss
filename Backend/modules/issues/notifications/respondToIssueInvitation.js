@@ -11,11 +11,20 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
+import {
+  createIssueEventOperationMetadata,
+  ISSUE_EVENT_TYPES,
+  snapshotParticipation,
+  writeIssueEvent,
+} from "../events/index.js";
+import { mapIssueStageToExitStage } from "../lifecycle/mapIssueStageToExitStage.js";
 
 export const respondToIssueInvitation = async ({
   issueId,
   userId,
   action,
+  correlationId = null,
+  occurredAt = null,
   session = null,
 }) => {
   if (!issueId) {
@@ -46,6 +55,13 @@ export const respondToIssueInvitation = async ({
     );
   }
 
+  const eventMetadata =
+    correlationId && occurredAt
+      ? { correlationId, occurredAt }
+      : createIssueEventOperationMetadata();
+  const previousState = snapshotParticipation(participation);
+  const wasAccepted = participation.invitationStatus === "accepted";
+
   participation.invitationStatus = action;
 
   if (action === "accepted") {
@@ -65,13 +81,49 @@ export const respondToIssueInvitation = async ({
     if (criteriaWeightingIsOpen && requiresCriteriaWeighting) {
       participation.weightsCompleted = isSingleCriterion;
     }
-    const participationEntryMetadata = buildParticipationEntryMetadata({ issue });
+    const participationEntryMetadata = buildParticipationEntryMetadata({
+      issue,
+      occurredAt: eventMetadata.occurredAt,
+    });
     participation.joinedAt = participationEntryMetadata.joinedAt;
     participation.entryPhase = participationEntryMetadata.entryPhase;
     participation.entryStage = participationEntryMetadata.entryStage;
   }
 
   await participation.save({ session });
+  const nextState = snapshotParticipation(participation);
+  const eventBase = {
+    issueId: issue._id,
+    actorType: "user",
+    actorUser: userId,
+    subjectUser: userId,
+    entityType: "participation",
+    entityId: participation._id,
+    stage:
+      participation.entryStage ??
+      mapIssueStageToExitStage(issue.currentStage, { issueId: issue._id }),
+    phase: participation.entryPhase ?? issue.consensusPhase,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
+    previousState,
+    nextState,
+    session,
+  };
+
+  await writeIssueEvent({
+    ...eventBase,
+    eventType:
+      action === "accepted"
+        ? ISSUE_EVENT_TYPES.INVITATION_ACCEPTED
+        : ISSUE_EVENT_TYPES.INVITATION_DECLINED,
+  });
+
+  if (action === "accepted" && !wasAccepted) {
+    await writeIssueEvent({
+      ...eventBase,
+      eventType: ISSUE_EVENT_TYPES.PARTICIPATION_ENTERED,
+    });
+  }
 
   return {
     message:

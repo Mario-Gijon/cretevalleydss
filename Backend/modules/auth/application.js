@@ -3,6 +3,7 @@ import {
   sendVerificationEmail,
 } from "../../services/email.service.js";
 import { runManualTransaction } from "../../utils/common/mongoose.js";
+import { createIssueEventOperationMetadata } from "../issues/events/index.js";
 import {
   confirmAccount,
   createSignupAccount,
@@ -141,11 +142,16 @@ export const confirmSignupAccount = ({
 export const deleteAuthenticatedAccount = ({
   userId,
   beforeSessionCleanup,
-}) =>
-  runManualTransaction((session) =>
-    deleteAuthenticatedUserAccount({
-      userId,
-      session,
-    }),
+}) => {
+  const eventMetadata = createIssueEventOperationMetadata();
+
+  return runManualTransaction(
+    (session) =>
+      deleteAuthenticatedUserAccount({
+        userId,
+        ...eventMetadata,
+        session,
+      }),
     { onSuccessBeforeCleanup: beforeSessionCleanup }
   );
+};

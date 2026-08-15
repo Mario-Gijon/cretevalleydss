@@ -2,6 +2,7 @@ import { Alternative } from "../../../models/Alternatives.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
+import { IssueEvent } from "../../../models/IssueEvents.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { Issue } from "../../../models/Issues.js";
@@ -15,7 +16,7 @@ import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 import { uniqueIdStrings } from "../../../utils/common/ids.js";
 
 export const deleteIssueCascade = async ({ issueId, session = null }) => {
-  const [issue, participations, evaluations, revisions, exitLogs, notifications, scenarios] =
+  const [issue, participations, evaluations, revisions, events, exitLogs, notifications, scenarios] =
     await Promise.all([
       applyOptionalSession(
         Issue.findById(issueId).select("ownerId createdBy").lean(),
@@ -32,6 +33,12 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
       applyOptionalSession(
         IssueEvaluationRevision.find({ issue: issueId })
           .select("expert actor")
+          .lean(),
+        session
+      ),
+      applyOptionalSession(
+        IssueEvent.find({ issue: issueId })
+          .select("actorUser subjectUser")
           .lean(),
         session
       ),
@@ -55,6 +62,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
     ...participations.map((participation) => participation.expert),
     ...evaluations.map((evaluation) => evaluation.expert),
     ...revisions.flatMap((revision) => [revision.expert, revision.actor]),
+    ...events.flatMap((event) => [event.actorUser, event.subjectUser]),
     ...exitLogs.map((exitLog) => exitLog.user),
     ...notifications.map((notification) => notification.expert),
     ...scenarios.map((scenario) => scenario.createdBy),
@@ -66,6 +74,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
       IssueEvaluationRevision.deleteMany({ issue: issueId }),
       session
     ),
+    applyOptionalSession(IssueEvent.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Alternative.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Criterion.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Participation.deleteMany({ issue: issueId }), session),

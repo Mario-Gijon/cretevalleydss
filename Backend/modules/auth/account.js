@@ -13,6 +13,12 @@ import { buildDeletedUserEmail, purgeDeletedUserIfUnreferenced } from "./deleted
 import { cleanupIssueEvaluationsForExpertExit } from "../issues/lifecycle/cleanupIssueEvaluationsForExpertExit.js";
 import { mapIssueStageToExitStage } from "../issues/lifecycle/mapIssueStageToExitStage.js";
 import { registerUserExit } from "../issues/lifecycle/leaveActiveIssue.js";
+import {
+  createIssueEventOperationMetadata,
+  ISSUE_EVENT_TYPES,
+  snapshotParticipation,
+  writeIssueEvent,
+} from "../issues/events/index.js";
 
 export const createSignupAccount = async ({
   payload,
@@ -128,6 +134,8 @@ export const confirmAccount = async ({
 
 export const deleteAuthenticatedUserAccount = async ({
   userId,
+  correlationId = null,
+  occurredAt = null,
   session = null,
 }) => {
   const user = await applyOptionalSession(User.findById(userId), session);
@@ -174,6 +182,10 @@ export const deleteAuthenticatedUserAccount = async ({
     ),
     session
   );
+  const eventMetadata =
+    correlationId && occurredAt
+      ? { correlationId, occurredAt }
+      : createIssueEventOperationMetadata();
 
   for (const issue of activeExpertIssues) {
     const participation = await applyOptionalSession(
@@ -187,6 +199,7 @@ export const deleteAuthenticatedUserAccount = async ({
     if (!participation) {
       continue;
     }
+    const previousState = snapshotParticipation(participation);
 
     await cleanupIssueEvaluationsForExpertExit({
       issue,
@@ -199,13 +212,33 @@ export const deleteAuthenticatedUserAccount = async ({
       session
     );
 
+    const stage = mapIssueStageToExitStage(issue.currentStage, {
+      issueId: issue._id,
+    });
+    await writeIssueEvent({
+      issueId: issue._id,
+      eventType: ISSUE_EVENT_TYPES.PARTICIPATION_REMOVED,
+      actorType: "user",
+      actorUser: user._id,
+      subjectUser: user._id,
+      entityType: "participation",
+      entityId: participation._id,
+      stage,
+      phase: issue.consensusPhase,
+      occurredAt: eventMetadata.occurredAt,
+      correlationId: eventMetadata.correlationId,
+      reason: "User account deleted",
+      previousState,
+      nextState: null,
+      details: { cause: "accountDeletion" },
+      session,
+    });
+
     await registerUserExit({
       issueId: issue._id,
       userId: user._id,
       phase: issue.consensusPhase,
-      stage: mapIssueStageToExitStage(issue.currentStage, {
-        issueId: issue._id,
-      }),
+      stage,
       reason: "User account deleted",
       session,
     });

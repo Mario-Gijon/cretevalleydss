@@ -22,7 +22,7 @@ export const getAdminIssueExecutionContextOrThrow = async ({
 };
 
 export const editAdminIssueExperts = async (
-  { issueId, payload },
+  { issueId, payload, actorUserId = null },
   {
     loadExecutionContext = getAdminIssueExecutionContextOrThrow,
     editExperts = editIssueExperts,
@@ -35,6 +35,7 @@ export const editAdminIssueExperts = async (
     editExperts({
       issueId,
       userId: ownerUserId,
+      ...(actorUserId ? { actorUserId } : {}),
       expertsToAdd: payload.expertsToAdd,
       expertsToRemove: payload.expertsToRemove,
       expertWeightsByEmail: payload.expertWeightsByEmail ?? null,

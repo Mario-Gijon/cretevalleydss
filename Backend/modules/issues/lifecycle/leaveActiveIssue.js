@@ -12,6 +12,12 @@ import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
+import {
+  createIssueEventOperationMetadata,
+  ISSUE_EVENT_TYPES,
+  snapshotParticipation,
+  writeIssueEvent,
+} from "../events/index.js";
 
 const requireNonEmptyId = (value, field) => {
   const id = toIdString(value);
@@ -160,6 +166,8 @@ export const registerUserExit = async ({
 export const leaveActiveIssue = async ({
   issueId,
   userId,
+  correlationId = null,
+  occurredAt = null,
   session = null,
 }) => {
   const issue = await getIssueByIdOrThrow(issueId, { lean: false, session });
@@ -183,6 +191,11 @@ export const leaveActiveIssue = async ({
   if (!participation) {
     throw createBadRequestError("You are not a participant of this issue");
   }
+  const eventMetadata =
+    correlationId && occurredAt
+      ? { correlationId, occurredAt }
+      : createIssueEventOperationMetadata();
+  const previousState = snapshotParticipation(participation);
 
   await cleanupIssueEvaluationsForExpertExit({
     issue,
@@ -198,6 +211,25 @@ export const leaveActiveIssue = async ({
   const currentPhase = issue.consensusPhase;
   const stageForLog = mapIssueStageToExitStage(issue.currentStage, {
     issueId: issue._id,
+  });
+
+  await writeIssueEvent({
+    issueId: issue._id,
+    eventType: ISSUE_EVENT_TYPES.PARTICIPATION_LEFT,
+    actorType: "user",
+    actorUser: userId,
+    subjectUser: userId,
+    entityType: "participation",
+    entityId: participation._id,
+    stage: stageForLog,
+    phase: currentPhase,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
+    reason: "Left by user",
+    previousState,
+    nextState: null,
+    details: {},
+    session,
   });
 
   await registerUserExit({

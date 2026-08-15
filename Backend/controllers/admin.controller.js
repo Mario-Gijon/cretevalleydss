@@ -335,6 +335,7 @@ export const editIssueExpertsAdmin = async (req, res) => {
   const result = await editAdminIssueExperts({
     issueId: req.params.id,
     payload: req.body,
+    actorUserId: req.uid,
   });
 
   return sendSuccess(res, result.message, result.data);

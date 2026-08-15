@@ -8,6 +8,12 @@ import { cleanupIssueEvaluationsForExpertExit } from "./cleanupIssueEvaluationsF
 import { resolveIssueExitPhase } from "./resolveIssueExitPhase.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 import { createInternalError } from "../../../utils/common/errors.js";
+import {
+  createIssueEventOperationMetadata,
+  ISSUE_EVENT_TYPES,
+  snapshotParticipation,
+  writeIssueEvent,
+} from "../events/index.js";
 
 const syncActiveIssueStageAfterUserRemoval = async ({
   issue,
@@ -44,9 +50,18 @@ export const removeIssueParticipantFromActiveIssue = async ({
   issue,
   participation,
   userId,
+  actorType = "system",
+  actorUser = null,
   reason,
+  correlationId = null,
+  occurredAt = null,
   session = null,
 }) => {
+  const eventMetadata =
+    correlationId && occurredAt
+      ? { correlationId, occurredAt }
+      : createIssueEventOperationMetadata();
+  const previousState = snapshotParticipation(participation);
   const [evaluationCleanupResult] = await Promise.all([
     cleanupIssueEvaluationsForExpertExit({
       issue,
@@ -83,6 +98,29 @@ export const removeIssueParticipantFromActiveIssue = async ({
   }
 
   const evaluationsDeletedCount = deletedCount;
+  const phase = await resolveIssueExitPhase({ issueId: issue._id, session });
+  const stage = mapIssueStageToExitStage(issue.currentStage, {
+    issueId: issue._id,
+  });
+
+  await writeIssueEvent({
+    issueId: issue._id,
+    eventType: ISSUE_EVENT_TYPES.PARTICIPATION_REMOVED,
+    actorType,
+    actorUser,
+    subjectUser: userId,
+    entityType: "participation",
+    entityId: participation._id,
+    stage,
+    phase,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
+    reason,
+    previousState,
+    nextState: null,
+    details: {},
+    session,
+  });
 
   const remainingParticipations = await applyOptionalSession(
     Participation.find({ issue: issue._id }),
@@ -102,15 +140,11 @@ export const removeIssueParticipantFromActiveIssue = async ({
     };
   }
 
-  const phase = await resolveIssueExitPhase({ issueId: issue._id, session });
-
   await registerUserExit({
     issueId: issue._id,
     userId,
     phase,
-    stage: mapIssueStageToExitStage(issue.currentStage, {
-      issueId: issue._id,
-    }),
+    stage,
     reason,
     session,
   });

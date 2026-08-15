@@ -40,6 +40,7 @@ import { getOrderedLeafCriterionNamesFromInputOrThrow } from "./getOrderedLeafCr
 import {
   validateAndNormalizeExpertWeightsOrThrow,
 } from "../shared/expertWeights.js";
+import { createIssueEventOperationMetadata } from "../events/index.js";
 
 const assertIssueNameAvailableOrThrow = async ({
   issueName,
@@ -202,6 +203,8 @@ export const prepareIssueCreation = async ({
 
 export const persistPreparedIssueCreation = async ({
   preparedIssueCreation,
+  correlationId = null,
+  occurredAt = null,
   session,
 }) => {
   const {
@@ -230,6 +233,10 @@ export const persistPreparedIssueCreation = async ({
     decisionModelsServiceBaseUrl,
     httpClient,
   } = preparedIssueCreation;
+  const eventMetadata =
+    correlationId && occurredAt
+      ? { correlationId, occurredAt }
+      : createIssueEventOperationMetadata();
 
   await assertIssueNameAvailableOrThrow({
     issueName: input.issueName,
@@ -308,6 +315,8 @@ export const persistPreparedIssueCreation = async ({
     isCriteriaWeightingRequired,
     normalizedExpertWeightsByEmail:
       usesExpertWeights ? normalizedExpertWeightsByEmail : null,
+    correlationId: eventMetadata.correlationId,
+    occurredAt: eventMetadata.occurredAt,
     session,
   });
 

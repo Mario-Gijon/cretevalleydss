@@ -15,6 +15,7 @@ import {
   isValidObjectIdLike,
 } from "../../../utils/common/mongoose.js";
 import { removeDeletedUserFromIssues } from "./removeDeletedUserFromIssues.js";
+import { createIssueEventOperationMetadata } from "../../issues/events/index.js";
 
 export const deleteAdminUser = async ({
   targetUserId,
@@ -125,11 +126,14 @@ export const deleteAdminUser = async ({
     activeIssueEvaluationsDeleted: 0,
     domainsDeleted: 0,
   };
+  const eventMetadata = createIssueEventOperationMetadata();
 
   await removeDeletedUserFromIssues({
     issues,
     participationsByIssueId,
     user,
+    actorUserId: adminUserId,
+    ...eventMetadata,
     summary,
     session,
   });

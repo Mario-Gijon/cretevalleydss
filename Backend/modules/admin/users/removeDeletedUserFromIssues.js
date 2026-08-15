@@ -12,6 +12,9 @@ export const removeDeletedUserFromIssues = async ({
   issues,
   participationsByIssueId,
   user,
+  actorUserId,
+  correlationId,
+  occurredAt,
   summary,
   session = null,
 }) => {
@@ -37,7 +40,11 @@ export const removeDeletedUserFromIssues = async ({
         issue,
         participation,
         userId: user._id,
+        actorType: "user",
+        actorUser: actorUserId,
         reason: ACCOUNT_DELETED_BY_ADMIN_REASON,
+        correlationId,
+        occurredAt,
         session,
       });
 

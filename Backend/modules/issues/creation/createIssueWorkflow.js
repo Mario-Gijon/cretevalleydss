@@ -6,6 +6,7 @@ import {
   persistPreparedIssueCreation,
   prepareIssueCreation,
 } from "./createIssue.js";
+import { createIssueEventOperationMetadata } from "../events/index.js";
 
 const sendInvitationEmails = async ({ emailsToSend, sendInvitationEmail }) => {
   for (const emailPayload of emailsToSend) {
@@ -34,6 +35,7 @@ export const createIssueWorkflow = async ({
     issueInfo,
     ownerUserId,
   });
+  const eventMetadata = createIssueEventOperationMetadata();
   const session = await startSession();
 
   try {
@@ -42,6 +44,7 @@ export const createIssueWorkflow = async ({
     await session.withTransaction(async () => {
       result = await persist({
         preparedIssueCreation,
+        ...eventMetadata,
         session,
       });
     });

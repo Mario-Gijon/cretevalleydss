@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { sendExpertInvitationEmail } from "../../../services/email.service.js";
 import { endSessionSafely } from "../../../utils/common/mongoose.js";
 import { editIssueExperts } from "./editIssueExperts.js";
+import { createIssueEventOperationMetadata } from "../events/index.js";
 
 export const editIssueExpertsWorkflow = async ({
   issueId,
@@ -17,6 +18,7 @@ export const editIssueExpertsWorkflow = async ({
   beforeSessionCleanup = (result) => result,
 }) => {
   const session = await startSession();
+  const eventMetadata = createIssueEventOperationMetadata();
 
   try {
     let result = null;
@@ -29,6 +31,7 @@ export const editIssueExpertsWorkflow = async ({
         expertsToRemove,
         expertWeightsByEmail,
         hasExpertWeightsByEmail,
+        ...eventMetadata,
         session,
       });
     });
