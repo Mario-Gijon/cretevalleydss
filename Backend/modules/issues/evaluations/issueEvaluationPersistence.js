@@ -1,4 +1,7 @@
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
+
+export const cloneSerializable = (value) => JSON.parse(JSON.stringify(value));
 
 export const findStoredEvaluation = async ({
   issueId,
@@ -46,4 +49,89 @@ export const upsertIssueEvaluation = async ({
       session,
     }
   );
+};
+
+const findLatestRevision = async ({
+  issueId,
+  userId,
+  stage,
+  consensusPhase,
+  session = null,
+}) => {
+  return IssueEvaluationRevision.findOne({
+    issue: issueId,
+    expert: userId,
+    stage,
+    consensusPhase,
+  })
+    .sort({ createdAt: -1, _id: -1 })
+    .session(session);
+};
+
+/**
+ * Persists one user evaluation operation. The IssueEvaluation remains the
+ * mutable projection while IssueEvaluationRevision is immutable evidence for
+ * this exact operation. Callers that require atomicity must provide a Mongo
+ * transaction session.
+ */
+export const persistIssueEvaluationOperation = async ({
+  issueId,
+  userId,
+  actorId,
+  stage,
+  consensusPhase,
+  action,
+  structureKey,
+  rawPayload,
+  normalizedPayload,
+  decisionContext,
+  completed,
+  submittedAt,
+  session = null,
+}) => {
+  const evaluation = await upsertIssueEvaluation({
+    issueId,
+    userId,
+    stage,
+    consensusPhase,
+    payload: normalizedPayload,
+    completed,
+    submittedAt,
+    session,
+  });
+
+  const previousRevision = await findLatestRevision({
+    issueId,
+    userId,
+    stage,
+    consensusPhase,
+    session,
+  });
+
+  const [revision] = await IssueEvaluationRevision.create(
+    [
+      {
+        issue: issueId,
+        evaluation: evaluation._id,
+        expert: userId,
+        actor: actorId,
+        stage,
+        consensusPhase,
+        action,
+        structureKey,
+        rawPayload: cloneSerializable(rawPayload),
+        normalizedPayload: cloneSerializable(normalizedPayload),
+        decisionContext: cloneSerializable(decisionContext),
+        previousRevision: previousRevision?._id ?? null,
+        submittedAt,
+        schemaVersion: 1,
+      },
+    ],
+    { session }
+  );
+
+  return {
+    evaluation,
+    revision,
+  };
 };

@@ -1,6 +1,7 @@
 import { Alternative } from "../../../models/Alternatives.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { Issue } from "../../../models/Issues.js";
@@ -14,7 +15,7 @@ import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 import { uniqueIdStrings } from "../../../utils/common/ids.js";
 
 export const deleteIssueCascade = async ({ issueId, session = null }) => {
-  const [issue, participations, evaluations, exitLogs, notifications, scenarios] =
+  const [issue, participations, evaluations, revisions, exitLogs, notifications, scenarios] =
     await Promise.all([
       applyOptionalSession(
         Issue.findById(issueId).select("ownerId createdBy").lean(),
@@ -26,6 +27,12 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
       ),
       applyOptionalSession(
         IssueEvaluation.find({ issue: issueId }).select("expert").lean(),
+        session
+      ),
+      applyOptionalSession(
+        IssueEvaluationRevision.find({ issue: issueId })
+          .select("expert actor")
+          .lean(),
         session
       ),
       applyOptionalSession(
@@ -47,6 +54,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
     issue?.createdBy,
     ...participations.map((participation) => participation.expert),
     ...evaluations.map((evaluation) => evaluation.expert),
+    ...revisions.flatMap((revision) => [revision.expert, revision.actor]),
     ...exitLogs.map((exitLog) => exitLog.user),
     ...notifications.map((notification) => notification.expert),
     ...scenarios.map((scenario) => scenario.createdBy),
@@ -54,6 +62,10 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
 
   await Promise.all([
     applyOptionalSession(IssueEvaluation.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(
+      IssueEvaluationRevision.deleteMany({ issue: issueId }),
+      session
+    ),
     applyOptionalSession(Alternative.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Criterion.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Participation.deleteMany({ issue: issueId }), session),

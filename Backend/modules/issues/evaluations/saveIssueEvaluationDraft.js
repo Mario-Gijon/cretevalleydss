@@ -1,17 +1,22 @@
 import { buildDecisionContext } from "./buildDecisionContext.js";
 import { loadIssueEvaluationContext } from "./loadIssueEvaluationContext.js";
-import { upsertIssueEvaluation } from "./issueEvaluationPersistence.js";
+import {
+  cloneSerializable,
+  persistIssueEvaluationOperation,
+} from "./issueEvaluationPersistence.js";
 
 export const saveIssueEvaluationDraft = async ({
   issueId,
   userId,
   stage,
   payload,
+  session = null,
 }) => {
   const { issue, structure } = await loadIssueEvaluationContext({
     issueId,
     userId,
     stage,
+    session,
   });
 
   const decisionContext = await buildDecisionContext({
@@ -20,6 +25,8 @@ export const saveIssueEvaluationDraft = async ({
     stage,
     consensusPhase: issue.consensusPhase,
   });
+  const rawPayload = cloneSerializable(payload);
+  const decisionContextSnapshot = cloneSerializable(decisionContext);
 
   const normalizedPayload = await structure.save({
     mode: "draft",
@@ -27,14 +34,20 @@ export const saveIssueEvaluationDraft = async ({
     decisionContext,
   });
 
-  await upsertIssueEvaluation({
+  await persistIssueEvaluationOperation({
     issueId: issue._id,
     userId,
+    actorId: userId,
     stage,
     consensusPhase: issue.consensusPhase,
-    payload: normalizedPayload,
+    action: "draftSaved",
+    structureKey: structure.key,
+    rawPayload,
+    normalizedPayload,
+    decisionContext: decisionContextSnapshot,
     completed: false,
     submittedAt: null,
+    session,
   });
 
   return {

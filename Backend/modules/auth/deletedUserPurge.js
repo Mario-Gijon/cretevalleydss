@@ -1,6 +1,7 @@
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../models/IssueEvaluations.js";
+import { IssueEvaluationRevision } from "../../models/IssueEvaluationRevisions.js";
 import { IssueScenario } from "../../models/IssueScenarios.js";
 import { Issue } from "../../models/Issues.js";
 import { Notification } from "../../models/Notifications.js";
@@ -32,6 +33,7 @@ export const getDeletedUserReferenceCounts = async ({
     participations,
     notifications,
     evaluations,
+    evaluationRevisions,
     exitLogs,
     expressionDomains,
     issueScenarios,
@@ -41,6 +43,11 @@ export const getDeletedUserReferenceCounts = async ({
     countDocuments(Participation, { expert: userId }, session),
     countDocuments(Notification, { expert: userId }, session),
     countDocuments(IssueEvaluation, { expert: userId }, session),
+    countDocuments(
+      IssueEvaluationRevision,
+      { $or: [{ expert: userId }, { actor: userId }] },
+      session
+    ),
     countDocuments(ExitUserIssue, { user: userId }, session),
     countDocuments(ExpressionDomain, { owner: userId }, session),
     countDocuments(IssueScenario, { createdBy: userId }, session),
@@ -52,6 +59,7 @@ export const getDeletedUserReferenceCounts = async ({
     participations,
     notifications,
     evaluations,
+    evaluationRevisions,
     exitLogs,
     expressionDomains,
     issueScenarios,

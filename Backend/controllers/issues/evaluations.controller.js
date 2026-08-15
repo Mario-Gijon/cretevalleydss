@@ -1,7 +1,7 @@
 import { computeIssueEvaluationStage } from "../../modules/issues/computation/index.js";
 import {
   getIssueEvaluationPayload,
-  saveIssueEvaluationDraft,
+  saveIssueEvaluationDraftWorkflow,
   submitIssueEvaluationWorkflow,
 } from "../../modules/issues/evaluations/index.js";
 import { sendSuccess } from "../../utils/common/responses.js";
@@ -17,7 +17,7 @@ export const getIssueEvaluationByStage = async (req, res) => {
 };
 
 export const saveIssueEvaluationByStage = async (req, res) => {
-  const result = await saveIssueEvaluationDraft({
+  const result = await saveIssueEvaluationDraftWorkflow({
     issueId: req.params.id,
     userId: req.uid,
     stage: req.params.stage,

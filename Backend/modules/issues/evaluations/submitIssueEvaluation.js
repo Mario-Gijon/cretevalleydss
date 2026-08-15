@@ -2,7 +2,10 @@ import { advanceToWeightsFinishedAfterSubmit } from "./advanceIssueAfterEvaluati
 import { buildDecisionContext } from "./buildDecisionContext.js";
 import { loadIssueEvaluationContext } from "./loadIssueEvaluationContext.js";
 import { markParticipationCompleted } from "./issueEvaluationParticipation.js";
-import { upsertIssueEvaluation } from "./issueEvaluationPersistence.js";
+import {
+  cloneSerializable,
+  persistIssueEvaluationOperation,
+} from "./issueEvaluationPersistence.js";
 
 export const submitIssueEvaluation = async ({
   issueId,
@@ -24,6 +27,8 @@ export const submitIssueEvaluation = async ({
     stage,
     consensusPhase: issue.consensusPhase,
   });
+  const rawPayload = cloneSerializable(payload);
+  const decisionContextSnapshot = cloneSerializable(decisionContext);
 
   const normalizedPayload = await structure.save({
     mode: "submit",
@@ -31,14 +36,21 @@ export const submitIssueEvaluation = async ({
     decisionContext,
   });
 
-  await upsertIssueEvaluation({
+  const submittedAt = new Date();
+
+  await persistIssueEvaluationOperation({
     issueId: issue._id,
     userId,
+    actorId: userId,
     stage,
     consensusPhase: issue.consensusPhase,
-    payload: normalizedPayload,
+    action: "submitted",
+    structureKey: structure.key,
+    rawPayload,
+    normalizedPayload,
+    decisionContext: decisionContextSnapshot,
     completed: true,
-    submittedAt: new Date(),
+    submittedAt,
     session,
   });
 
