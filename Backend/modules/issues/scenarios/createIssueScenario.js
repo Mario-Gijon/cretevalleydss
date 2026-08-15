@@ -1,6 +1,6 @@
 import axios from "axios";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import { createBadRequestError, createInternalError } from "../../../utils/common/errors.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 import { buildScenarioExecutionContext } from "./buildScenarioExecutionContext.js";
 import { executeScenarioModel } from "../modelExecution/index.js";
@@ -143,6 +143,9 @@ export const createIssueScenario = async ({
     httpClient,
     executionAttemptInput: { issue: context.issue._id, scope: "scenario", actorType: "user", actorUser: userId, correlationId: createIssueEventOperationMetadata().correlationId, evaluationStage: "alternativeEvaluation", issueStage: context.issue.currentStage, consensusPhase: context.evaluationPhase, modelContext: { modelId: context.targetModel._id, modelName: context.targetModel.name ?? null, apiModelKey: context.targetRuntimeSnapshot.targetApiModelKey ?? null, apiEndpointPath: context.targetRuntimeSnapshot.targetApiEndpoint?.path ?? null, evaluationStructureKey: context.targetRuntimeSnapshot.targetEvaluationStructureKey ?? null, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "scenario" } },
   });
+  if (!executionAttempt?._id || !executionAttempt.startedAt || !executionAttempt.completedAt) {
+    throw createInternalError("Scenario execution must return a tracked execution attempt", { field: "executionAttempt" });
+  }
   let scenario;
   try { scenario = await IssueScenario.create({
     issue: context.issue._id,
@@ -168,12 +171,12 @@ export const createIssueScenario = async ({
       rawOutput: cloneJsonCompatibleOrThrow(rawOutput, "rawOutput"),
     },
     execution: {
-      attemptId: executionAttempt?._id ?? null,
-      startedAt: executionAttempt?.startedAt ?? new Date(),
-      completedAt: executionAttempt?.completedAt ?? new Date(),
+      attemptId: executionAttempt._id,
+      startedAt: executionAttempt.startedAt,
+      completedAt: executionAttempt.completedAt,
     },
-  }); } catch (error) { if (executionAttempt) await markExecutionApplicationFailed({ attemptId: executionAttempt._id, error }); throw error; }
-  if (executionAttempt) await markExecutionApplied({ attemptId: executionAttempt._id, entityType: "scenario", entityId: scenario._id, resultSnapshot: scenario.toObject() });
+  }); } catch (error) { await markExecutionApplicationFailed({ attemptId: executionAttempt._id, error }); throw error; }
+  await markExecutionApplied({ attemptId: executionAttempt._id, entityType: "scenario", entityId: scenario._id, resultSnapshot: scenario.toObject() });
 
   return {
     scenarioId: scenario._id,

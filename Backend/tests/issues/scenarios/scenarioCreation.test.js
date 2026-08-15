@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const scenarioExecutionState = vi.hoisted(() => ({
   buildScenarioExecutionContext: vi.fn(),
   executeScenarioModel: vi.fn(),
+  markExecutionApplied: vi.fn(),
+  markExecutionApplicationFailed: vi.fn(),
 }));
 
 vi.mock("../../../modules/issues/scenarios/buildScenarioExecutionContext.js", () => ({
@@ -13,6 +15,8 @@ vi.mock("../../../modules/issues/scenarios/buildScenarioExecutionContext.js", ()
 
 vi.mock("../../../modules/issues/modelExecution/index.js", () => ({
   executeScenarioModel: scenarioExecutionState.executeScenarioModel,
+  markExecutionApplied: scenarioExecutionState.markExecutionApplied,
+  markExecutionApplicationFailed: scenarioExecutionState.markExecutionApplicationFailed,
 }));
 
 import { createIssueScenario } from "../../../modules/issues/scenarios/createIssueScenario.js";
@@ -78,6 +82,8 @@ describe("createIssueScenario input normalization", () => {
   beforeEach(() => {
     scenarioExecutionState.buildScenarioExecutionContext.mockReset();
     scenarioExecutionState.executeScenarioModel.mockReset();
+    scenarioExecutionState.markExecutionApplied.mockReset();
+    scenarioExecutionState.markExecutionApplicationFailed.mockReset();
   });
 
   it("returns only normalized parameters and resolved weights", () => {
@@ -221,7 +227,7 @@ describe("createIssueScenario input normalization", () => {
 
     const context = buildMockExecutionContext();
     scenarioExecutionState.buildScenarioExecutionContext.mockResolvedValue(context);
-    scenarioExecutionState.executeScenarioModel.mockResolvedValue({ standardResult: {}, modelExecution: {}, rawOutput: {} });
+    scenarioExecutionState.executeScenarioModel.mockResolvedValue({ standardResult: {}, modelExecution: {}, rawOutput: {}, executionAttempt: { _id: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } });
 
     for (const scenarioDescription of [undefined, null, "", "   "]) {
       await createIssueScenario({ ...input, scenarioDescription });
@@ -241,6 +247,7 @@ describe("createIssueScenario input normalization", () => {
       standardResult: { ranking: ["Alternative A"] },
       modelExecution: { ok: true },
       rawOutput: { raw: true },
+      executionAttempt: { _id: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() },
     });
 
     await createIssueScenario({
