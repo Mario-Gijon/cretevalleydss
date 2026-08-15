@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   remapCriteriaWeightIdsToMongoCriteriaOrThrow,
@@ -197,13 +197,130 @@ describe("criteria weighting structure resolution", () => {
     expect(issue.currentStage).toBe("alternativeEvaluation");
     expect(snapshot.state.criteriaWeighting).toMatchObject({ required: false, source: "creator", mode: "creatorManual", method: "manual", structureKey: "manualCriteriaWeights", model: null, apiModelKey: null });
     const weights = snapshot.state.criteriaWeighting.weightsByCriterionId;
+    const costCriterion = leaves.find((criterion) => criterion.name === "Cost");
+    const speedCriterion = leaves.find((criterion) => criterion.name === "Speed");
+    expect(costCriterion).toBeDefined();
+    expect(speedCriterion).toBeDefined();
     expect(Object.keys(weights).sort()).toEqual(leaves.map((leaf) => String(leaf._id)).sort());
     expect(Object.keys(weights)).not.toContain("source-cost");
     expect(Object.keys(weights)).not.toContain("source-speed");
     expect(Object.values(weights).sort()).toEqual([0.3, 0.7]);
+    expect(weights[String(costCriterion._id)]).toBe(0.7);
+    expect(weights[String(speedCriterion._id)]).toBe(0.3);
     expect(weights).toEqual(issue.modelParameters.weights);
     const original = structuredClone(snapshot.state.criteriaWeighting);
     await Issue.updateOne({ _id: issue._id }, { $set: { "modelParameters.weights": {} } });
+    expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state.criteriaWeighting).toEqual(original);
+  });
+
+  it("persists creator API weighting semantics, its frozen model contract, and remapped effective weights", async () => {
+    const owner = await createConfirmedUser({ email: "creator-api-owner@example.com" });
+    const expert = await createConfirmedUser({ email: "creator-api-expert@example.com" });
+    const issueModel = await createIssueModel({
+      usesCriteriaWeights: true,
+      usesFuzzyCriteriaWeights: false,
+    });
+    const criteriaWeightingModel = await createIssueModel({
+      ...criteriaWeightingModelDefaults,
+      name: "Creator API criteria weights",
+      apiModelKey: "creator_api_criteria_weights",
+      apiEndpoint: { method: "POST", path: "/creator-api-criteria-weights" },
+      evaluationStructureKey: "bestWorstCriteria",
+      supportsCreatorCriteriaWeighting: true,
+      supportsExpertCriteriaWeighting: false,
+    });
+    const domain = await createExpressionDomainFixture({ userId: owner._id });
+    const httpClient = { post: vi.fn() };
+    httpClient.post.mockImplementation(async (_url, payload) => ({
+      status: 200,
+      data: {
+        success: true,
+        data: {
+          weightsByCriterion: Object.fromEntries(
+            payload.context.criteria.map((criterion) => [
+              criterion.id,
+              criterion.name === "Cost" ? 2 : 3,
+            ])
+          ),
+        },
+      },
+    }));
+    const issueInfo = buildCreateIssueInfo({
+      selectedModelId: issueModel._id,
+      globalDomainId: domain._id,
+      addedExperts: [expert.email],
+      criteria: [{ id: "source-root", name: "Impact", type: "group", children: [{ id: "source-cost", name: "Cost", type: "cost", children: [] }, { id: "source-speed", name: "Speed", type: "benefit", children: [] }] }],
+      criteriaWeightingConfig: {
+        mode: "creatorApiModel",
+        criteriaWeightingModelId: String(criteriaWeightingModel._id),
+        payload: {
+          bestCriterionId: "source-speed",
+          worstCriterionId: "source-cost",
+          bestToOthers: { "source-cost": 3, "source-speed": 1 },
+          othersToWorst: { "source-cost": 1, "source-speed": 3 },
+        },
+      },
+    });
+
+    await prepareAndPersistIssueCreation({
+      issueInfo,
+      ownerUserId: owner._id,
+      decisionModelsServiceBaseUrl: "https://dms.example.test/",
+      httpClient,
+    });
+
+    const issue = await Issue.findOne({ name: "Example issue" }).lean();
+    const snapshot = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean();
+    expect(snapshot).not.toBeNull();
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "creation" })).toBe(1);
+    const leaves = await Criterion.find({ issue: issue._id, isLeaf: true }).lean();
+    const costCriterion = leaves.find((criterion) => criterion.name === "Cost");
+    const speedCriterion = leaves.find((criterion) => criterion.name === "Speed");
+
+    expect(issue.currentStage).toBe("alternativeEvaluation");
+    expect(snapshot.state.criteriaWeighting).toMatchObject({
+      required: false,
+      source: "creator",
+      mode: "creatorApiModel",
+      method: "apiModel",
+      structureKey: "bestWorstCriteria",
+      apiModelKey: "creator_api_criteria_weights",
+      apiEndpoint: { method: "POST", path: "/creator-api-criteria-weights" },
+      parameters: {},
+      model: {
+        id: String(criteriaWeightingModel._id),
+        name: "Creator API criteria weights",
+        apiModelKey: "creator_api_criteria_weights",
+        evaluationStructureKey: "bestWorstCriteria",
+        apiEndpoint: { method: "POST", path: "/creator-api-criteria-weights" },
+        parameters: [],
+      },
+    });
+    expect(costCriterion).toBeDefined();
+    expect(speedCriterion).toBeDefined();
+    const weights = snapshot.state.criteriaWeighting.weightsByCriterionId;
+    expect(Object.keys(weights).sort()).toEqual(leaves.map((leaf) => String(leaf._id)).sort());
+    expect(Object.keys(weights)).not.toContain("source-cost");
+    expect(Object.keys(weights)).not.toContain("source-speed");
+    expect(weights[String(costCriterion._id)]).toBe(0.4);
+    expect(weights[String(speedCriterion._id)]).toBe(0.6);
+    expect(weights).toEqual(issue.modelParameters.weights);
+    expect(httpClient.post).toHaveBeenCalledTimes(1);
+    expect(httpClient.post).toHaveBeenCalledWith(
+      "https://dms.example.test/creator-api-criteria-weights",
+      expect.objectContaining({
+        context: expect.objectContaining({
+          criteria: expect.arrayContaining([
+            expect.objectContaining({ id: String(costCriterion._id), name: "Cost" }),
+            expect.objectContaining({ id: String(speedCriterion._id), name: "Speed" }),
+          ]),
+        }),
+      })
+    );
+
+    const original = structuredClone(snapshot.state.criteriaWeighting);
+    await Issue.updateOne({ _id: issue._id }, { $set: { "modelParameters.weights": {} } });
+    await criteriaWeightingModel.updateOne({ $set: { name: "Changed creator API model" } });
     expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state.criteriaWeighting).toEqual(original);
   });
 
