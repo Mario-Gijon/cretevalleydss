@@ -6,7 +6,6 @@ const labels = {
   [RESULTS_ANALYSIS_VIEWS.OUTCOME]: "Outcome",
   [RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS]: "Visualizations",
   [RESULTS_ANALYSIS_VIEWS.INTERPRETATION]: "Interpretation",
-  [RESULTS_ANALYSIS_VIEWS.GLOBAL]: "Global",
 };
 
 const ResultsAnalysisNavigation = ({ activeView, onChange }) => (

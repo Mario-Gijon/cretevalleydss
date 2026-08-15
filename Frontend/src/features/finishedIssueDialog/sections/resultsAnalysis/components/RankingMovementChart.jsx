@@ -25,9 +25,9 @@ const useViewportWidth = () => {
   return [viewportRef, width];
 };
 
-const RankingMovementChart = ({ movement }) => {
+const RankingMovementChart = ({ movement, title = "Ranking movement", subtitle = "Position changes across selected executions." }) => {
   const [viewportRef, width] = useViewportWidth();
-  if (!movement.available) return <Box sx={comparisonDetailPanelSx}><Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>Ranking movement</Typography><Typography sx={{ mt: 1, color: "text.secondary", fontSize: 12 }}>{movement.reason}</Typography></Box>;
+  if (!movement.available) return <Box sx={comparisonDetailPanelSx}><Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>{title}</Typography><Typography sx={{ mt: 1, color: "text.secondary", fontSize: 12 }}>{movement.reason}</Typography></Box>;
   const height = movementChartHeight(movement.alternatives.length);
   const left = 58;
   const right = 32;
@@ -40,7 +40,7 @@ const RankingMovementChart = ({ movement }) => {
   const yFor = (position) => top + ((position - 1) / Math.max(1, movement.maxPosition - 1)) * plotHeight;
 
   return <Box sx={comparisonDetailPanelSx}>
-    <Stack direction="row" spacing={1} alignItems="center"><TimelineRoundedIcon sx={{ color: "secondary.light" }} /><Box><Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>Ranking movement</Typography><Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>Position changes across selected executions.</Typography></Box></Stack>
+    <Stack direction="row" spacing={1} alignItems="center"><TimelineRoundedIcon sx={{ color: "secondary.light" }} /><Box><Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>{title}</Typography><Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>{subtitle}</Typography></Box></Stack>
     <Box ref={viewportRef} sx={movementChartViewportSx}>{width > 0 ? <svg width={chartWidth} height={height} viewBox={`0 0 ${chartWidth} ${height}`} role="img" aria-label="Ranking movement chart" style={{ display: "block" }}>
       {Array.from({ length: movement.maxPosition }, (_, index) => index + 1).map((position) => <g key={`grid-${position}`}><line x1={left} x2={chartWidth - right} y1={yFor(position)} y2={yFor(position)} stroke="rgba(255,255,255,0.10)" strokeDasharray="4 5" /><text x={left - 18} y={yFor(position) + 4} textAnchor="end" fill="rgba(255,255,255,0.65)" fontSize="12">{position}</text></g>)}
       {movement.executions.map((execution, index) => <text key={execution.key} x={xFor(index)} y={height - 25} textAnchor="middle" fill="rgba(255,255,255,0.78)" fontSize="12">{execution.label}</text>)}

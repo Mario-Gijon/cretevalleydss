@@ -74,8 +74,8 @@ def create_application() -> FastAPI:
     app.include_router(health_router)
     app.include_router(model_manifest_router)
     app.include_router(system_router)
-    app.include_router(models_router)
     app.include_router(results_analysis_router)
+    app.include_router(models_router)
 
     def custom_openapi():
         if app.openapi_schema:

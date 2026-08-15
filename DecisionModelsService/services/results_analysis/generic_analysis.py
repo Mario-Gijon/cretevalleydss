@@ -457,14 +457,6 @@ def _consensus_markdown(consensus):
 def _issue_interpretation(facts):
     sections = []
 
-    final_ranking = _ranking_markdown(
-        facts["finalRanking"],
-        "### Final ranking",
-        "**{name}** finishes as the highest-ranked alternative.",
-    )
-    if final_ranking:
-        sections.append(final_ranking)
-
     evolution = _ranking_evolution_markdown(facts)
     if evolution:
         sections.append(evolution)
@@ -481,16 +473,6 @@ def _issue_interpretation(facts):
             f"**{participants['evaluationCompletedCurrentCount']} of "
             f"{participants['currentCount']}** current participants are "
             "recorded with a completed evaluation."
-        )
-
-    execution = facts["execution"]
-    if execution["failed"] or execution["hadRetries"]:
-        sections.append(
-            "### Execution\n\n"
-            f"The process recorded **{execution['total']}** execution attempts "
-            f"across **{execution['executedRounds']}** executed rounds: "
-            f"**{execution['succeeded']}** succeeded and "
-            f"**{execution['failed']}** failed."
         )
 
     return "\n\n".join(sections)
@@ -516,19 +498,6 @@ def _visualizations(facts):
                         for item in evolution["series"]
                     ],
                     "lowerIsBetter": True,
-                },
-            }
-        )
-
-    consensus = facts["consensus"]
-    if consensus["enabled"] and consensus["points"]:
-        result.append(
-            {
-                "type": "consensusEvolution",
-                "title": "Consensus evolution",
-                "data": {
-                    "points": consensus["points"],
-                    "threshold": consensus["threshold"],
                 },
             }
         )
