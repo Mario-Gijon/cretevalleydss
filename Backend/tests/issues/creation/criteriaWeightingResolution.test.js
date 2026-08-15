@@ -324,6 +324,79 @@ describe("criteria weighting structure resolution", () => {
     expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state.criteriaWeighting).toEqual(original);
   });
 
+  it("persists creator fuzzy weighting semantics, remapped tuples, and the interpreting fuzzy domain", async () => {
+    const owner = await createConfirmedUser({ email: "creator-fuzzy-owner@example.com" });
+    const expert = await createConfirmedUser({ email: "creator-fuzzy-expert@example.com" });
+    const issueModel = await createIssueModel({
+      usesCriteriaWeights: true,
+      usesFuzzyCriteriaWeights: true,
+      isMultiCriteria: true,
+      supportedExpressionDomains: [{ typeKey: "linguisticFuzzy", constraints: {} }],
+    });
+    const domain = await createExpressionDomainFixture({
+      userId: owner._id,
+      type: "linguistic",
+    });
+    const httpClient = { post: vi.fn() };
+    const issueInfo = buildCreateIssueInfo({
+      selectedModelId: issueModel._id,
+      globalDomainId: domain._id,
+      addedExperts: [expert.email],
+      criteria: [{ id: "source-root", name: "Impact", type: "group", children: [{ id: "source-cost", name: "Cost", type: "cost", children: [] }, { id: "source-speed", name: "Speed", type: "benefit", children: [] }] }],
+      criteriaWeightingConfig: {
+        mode: "creatorFuzzy",
+        payload: {
+          weightsByCriterion: {
+            "source-cost": [0.1, 0.2, 0.3],
+            "source-speed": [0.5, 0.6, 0.8],
+          },
+        },
+      },
+    });
+
+    await prepareAndPersistIssueCreation({ issueInfo, ownerUserId: owner._id, httpClient });
+
+    const issue = await Issue.findOne({ name: "Example issue" }).lean();
+    const snapshot = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean();
+    expect(snapshot).not.toBeNull();
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "creation" })).toBe(1);
+    const leaves = await Criterion.find({ issue: issue._id, isLeaf: true }).lean();
+    const costCriterion = leaves.find((criterion) => criterion.name === "Cost");
+    const speedCriterion = leaves.find((criterion) => criterion.name === "Speed");
+
+    expect(issue.currentStage).toBe("alternativeEvaluation");
+    expect(snapshot.state.criteriaWeighting).toMatchObject({
+      required: false,
+      source: "creator",
+      mode: "creatorFuzzy",
+      method: "fuzzy",
+      structureKey: null,
+      model: null,
+      apiModelKey: null,
+      apiEndpoint: null,
+      parameters: {},
+    });
+    expect(costCriterion).toBeDefined();
+    expect(speedCriterion).toBeDefined();
+    const weights = snapshot.state.criteriaWeighting.weightsByCriterionId;
+    expect(Object.keys(weights).sort()).toEqual(leaves.map((leaf) => String(leaf._id)).sort());
+    expect(Object.keys(weights)).not.toContain("source-cost");
+    expect(Object.keys(weights)).not.toContain("source-speed");
+    expect(weights[String(costCriterion._id)]).toEqual([0.1, 0.2, 0.3]);
+    expect(weights[String(speedCriterion._id)]).toEqual([0.5, 0.6, 0.8]);
+    expect(Array.isArray(weights[String(costCriterion._id)])).toBe(true);
+    expect(Array.isArray(weights[String(speedCriterion._id)])).toBe(true);
+    expect(weights).toEqual(issue.modelParameters.weights);
+    const snapshotDomain = snapshot.state.expressionDomains.find((entry) => entry.typeKey === "linguisticFuzzy");
+    expect(snapshotDomain).toMatchObject({ typeKey: "linguisticFuzzy" });
+    expect(snapshotDomain.definition.labels.every((label) => label.values.length === 3)).toBe(true);
+    expect(httpClient.post).not.toHaveBeenCalled();
+
+    const original = structuredClone(snapshot.state.criteriaWeighting);
+    await Issue.updateOne({ _id: issue._id }, { $set: { "modelParameters.weights": {} } });
+    expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state.criteriaWeighting).toEqual(original);
+  });
+
   it("continues using a generic expert API model's runtime-defined structure", async () => {
     await createIssueModel({
       ...criteriaWeightingModelDefaults,
