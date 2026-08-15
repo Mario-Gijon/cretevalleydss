@@ -49,9 +49,14 @@ const identitySnapshotOrThrow = ({ user, userId, role }) => {
 export const buildIssueStateSnapshot = async ({ issue, snapshotType, consensusPhase = issue.consensusPhase, criteriaWeightingConfiguration = null, session = null }) => {
   const creationSnapshot = snapshotType === "consensusPhaseStart" ? await q(IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean(), session) : null;
   if (snapshotType === "consensusPhaseStart" && !creationSnapshot) throw createInternalError("Issue creation snapshot is required before a consensus phase snapshot", { field: "issue" });
-  const [model, criteriaWeightingModel, alternatives, criteria, domains, participations, evaluations, previousStageResult] = await Promise.all([
-    snapshotType === "creation" ? q(IssueModel.findById(issue.model).lean(), session) : null, snapshotType === "creation" ? q(IssueModel.findById(issue.criteriaWeightingModel).lean(), session) : null, q(Alternative.find({ issue: issue._id }).sort({ position: 1, _id: 1 }).lean(), session), q(Criterion.find({ issue: issue._id }).sort({ parentCriterion: 1, position: 1, _id: 1 }).lean(), session), q(IssueExpressionDomain.find({ issue: issue._id }).sort({ _id: 1 }).lean(), session), q(Participation.find({ issue: issue._id }).sort({ expert: 1, _id: 1 }).lean(), session), q(IssueEvaluation.find({ issue: issue._id, stage: snapshotType === "consensusPhaseStart" ? "alternativeEvaluation" : issue.currentStage === "criteriaWeighting" ? "criteriaWeighting" : "alternativeEvaluation", consensusPhase }).sort({ expert: 1, _id: 1 }).lean(), session), consensusPhase > 0 ? q(IssueStageResult.findOne({ issue: issue._id, stage: "alternativeEvaluation", consensusPhase: consensusPhase - 1 }).lean(), session) : null,
-  ]);
+  const model = snapshotType === "creation" ? await q(IssueModel.findById(issue.model).lean(), session) : null;
+  const criteriaWeightingModel = snapshotType === "creation" ? await q(IssueModel.findById(issue.criteriaWeightingModel).lean(), session) : null;
+  const alternatives = await q(Alternative.find({ issue: issue._id }).sort({ position: 1, _id: 1 }).lean(), session);
+  const criteria = await q(Criterion.find({ issue: issue._id }).sort({ parentCriterion: 1, position: 1, _id: 1 }).lean(), session);
+  const domains = await q(IssueExpressionDomain.find({ issue: issue._id }).sort({ _id: 1 }).lean(), session);
+  const participations = await q(Participation.find({ issue: issue._id }).sort({ expert: 1, _id: 1 }).lean(), session);
+  const evaluations = await q(IssueEvaluation.find({ issue: issue._id, stage: snapshotType === "consensusPhaseStart" ? "alternativeEvaluation" : issue.currentStage === "criteriaWeighting" ? "criteriaWeighting" : "alternativeEvaluation", consensusPhase }).sort({ expert: 1, _id: 1 }).lean(), session);
+  const previousStageResult = consensusPhase > 0 ? await q(IssueStageResult.findOne({ issue: issue._id, stage: "alternativeEvaluation", consensusPhase: consensusPhase - 1 }).lean(), session) : null;
   const identityUserIds = snapshotType === "creation" ? [issue.ownerId, issue.createdBy] : [];
   const users = await q(User.find({ _id: { $in: [...participations.map((p) => p.expert), ...identityUserIds] } }).select("name email university").lean(), session);
   const usersById = new Map(users.map((user) => [toIdString(user._id), user]));
