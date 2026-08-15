@@ -25,11 +25,13 @@ vi.mock("../../../services/email.service.js", () => ({
 import app from "../../../app.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import {
   getIssueScenariosPayload,
   getScenarioByIdPayload,
   removeIssueScenario,
 } from "../../../modules/issues/scenarios/index.js";
+import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
 import {
   createConfirmedUser,
   createIssueFixture,
@@ -368,6 +370,8 @@ describe("issue scenarios access and payloads", () => {
       issueId: issue._id,
       createdBy: creator._id,
     });
+    const snapshot = await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: new Date(), correlationId: "scenario-deletion-snapshot" });
+    const originalSnapshotState = structuredClone(snapshot.state);
 
     await removeIssueScenario({
       scenarioId: scenario._id,
@@ -375,6 +379,8 @@ describe("issue scenarios access and payloads", () => {
     });
 
     expect(await IssueScenario.findById(scenario._id)).toBeNull();
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(1);
+    expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state).toEqual(originalSnapshotState);
   });
 
   it("issue owner can delete another user's scenario for the issue", async () => {

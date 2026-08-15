@@ -335,4 +335,26 @@ describe("issue creation integration", () => {
         "Some assigned expression domains are not compatible with the selected model",
     });
   });
+
+  it("creates the committed phase-zero snapshot when a consensus issue starts directly in alternative evaluation", async () => {
+    const owner = await createConfirmedUser({ email: "phase-zero-owner@example.com" });
+    const expert = await createConfirmedUser({ email: "phase-zero-expert@example.com" });
+    const model = await createIssueModel({ supportsConsensus: true });
+    const domain = await createExpressionDomainFixture({ userId: owner._id });
+    const issueInfo = buildCreateIssueInfo({
+      selectedModelId: model._id,
+      globalDomainId: domain._id,
+      addedExperts: [expert.email],
+      isConsensus: true,
+      consensusThreshold: 0.8,
+      consensusMaxPhases: 3,
+    });
+
+    await prepareAndPersistIssueCreation({ issueInfo, ownerUserId: owner._id });
+
+    const issue = await Issue.findOne({ name: "Example issue" }).lean();
+    expect(issue.currentStage).toBe("alternativeEvaluation");
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "creation" })).toBe(1);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 0 })).toBe(1);
+  });
 });

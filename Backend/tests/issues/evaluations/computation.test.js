@@ -702,6 +702,29 @@ describe("criteria weighting compute orchestration", () => {
     });
   });
 
+  it("creates the phase-zero boundary only after expert criteria weighting moves a consensus issue forward", async () => {
+    const { owner, issue, acceptedExperts, leafCriteria } = await createCriteriaComputeFixture({
+      issueOverrides: { isConsensus: true, supportsConsensus: true, consensusThreshold: 0.8, consensusMaxPhases: 3 },
+    });
+    await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: new Date(), correlationId: "criteria-boundary-creation" });
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "creation" })).toBe(1);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 0 })).toBe(0);
+    await createCompletedCriteriaEvaluations({ issueId: issue._id, experts: acceptedExperts, leafCriteria });
+
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "criteriaWeighting",
+      httpClient: createHttpClientMock(buildModelSuccessResponse(buildCriteriaWeightingServiceResult({ leafCriteria, weights: [0.65, 0.35] }))),
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const phaseZero = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 0 }).lean();
+    expect(phaseZero).not.toBeNull();
+    expect(phaseZero.state.evaluations).toEqual([]);
+    expect(phaseZero.state.criteriaWeighting.weightsByCriterionId).toEqual({ [String(leafCriteria[0]._id)]: 0.65, [String(leafCriteria[1]._id)]: 0.35 });
+  });
+
   it("rejects invalid criteria weighting model responses before persistence", async () => {
     const { owner, issue, acceptedExperts, leafCriteria } =
       await createCriteriaComputeFixture();
@@ -1171,6 +1194,7 @@ describe("consensus compute lifecycle", () => {
       consensusReached: true,
       finalizationReason: "consensusReached",
     });
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 1 })).toBe(0);
   });
 
   it("advances to the next consensus round and resets accepted participation completion when consensus is not reached", async () => {
@@ -1294,6 +1318,7 @@ describe("consensus compute lifecycle", () => {
       currentConsensusPhase: 3,
       nextConsensusPhase: 3,
     });
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 4 })).toBe(0);
   });
 });
 
@@ -1491,6 +1516,12 @@ describe("simulated consensus orchestration", () => {
     expect(generatedRevisions).toHaveLength(2);
     expect(generatedRevisions.every((revision) => revision.actorType === "system" && revision.actorUser === null && revision.submittedAt === null && String(revision.sourceExecutionAttempt) === String(attempts[0]._id))).toBe(true);
     expect(phaseOneSnapshot).toMatchObject({ sourceExecutionAttempt: attempts[0]._id, state: { issue: { consensusPhase: 1 }, evaluations: expect.arrayContaining([expect.objectContaining({ stage: "alternativeEvaluation", consensusPhase: 1, completed: true, submittedAt: null })]), previousPhase: { stageResultId: String(stageResults[0]._id), executionAttemptId: String(attempts[0]._id) } } });
+    const originalPreviousPhase = structuredClone(phaseOneSnapshot.state.previousPhase);
+    const snapshotCount = await IssueStateSnapshot.countDocuments({ issue: issue._id });
+    await IssueStageResult.updateOne({ _id: stageResults[0]._id }, { $set: { "result.standardResult.consensusMeasure": 0.01, "result.standardResult.rankedAlternatives": [], "result.standardResult.collectiveEvaluations": { overwritten: true }, "result.modelExecution": { overwritten: true } } });
+    expect((await IssueStateSnapshot.findById(phaseOneSnapshot._id).lean()).state.previousPhase).toEqual(originalPreviousPhase);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(snapshotCount);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 2 })).toBe(0);
     expect(storedIssue.currentStage).toBe("finished");
     expect(storedIssue.active).toBe(false);
     expect(storedIssue.consensusPhase).toBe(1);
@@ -1516,6 +1547,7 @@ describe("simulated consensus orchestration", () => {
   it("rolls back a later continuing round, preserves the completed attempt, and stops further DMS calls", async () => {
     const { owner, issue, acceptedExperts, alternatives, leafCriteria } = await createAlternativeComputeFixture({ issueOverrides: { isConsensus: true, simulateConsensus: true, consensusThreshold: 0.9, consensusMaxPhases: 3 } });
     await createCompletedAlternativeEvaluations({ issueId: issue._id, experts: acceptedExperts, alternatives, leafCriteria });
+    const committedSnapshots = structuredClone(await IssueStateSnapshot.find({ issue: issue._id }).sort({ snapshotType: 1, consensusPhase: 1, _id: 1 }).lean());
     const suggestions = (value) => Object.fromEntries(acceptedExperts.map((expert) => [String(expert._id), { payload: buildAlternativeMatrixPayload({ alternatives, leafCriteria, valuesByAlternativeId: { [String(alternatives[0]._id)]: value, [String(alternatives[1]._id)]: 2 } }) }]));
     const httpClient = createHttpClientMock(
       buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives, leafCriteria, consensusMeasure: 0.2, rawOutput: { suggested_next_evaluations: suggestions(8) } })),
@@ -1547,6 +1579,11 @@ describe("simulated consensus orchestration", () => {
     expect(events.some((event) => event.eventType === "model.execution.applicationFailed" && String(event.entityId) === String(attempts[1]._id))).toBe(true);
     expect(events.some((event) => event.eventType === "consensus.phase.completed" && event.phase === 1)).toBe(false);
     expect(events.some((event) => event.eventType === "consensus.phase.started" && event.phase === 2)).toBe(false);
+    const snapshots = await IssueStateSnapshot.find({ issue: issue._id }).sort({ snapshotType: 1, consensusPhase: 1, _id: 1 }).lean();
+    expect(snapshots.find((snapshot) => snapshot.snapshotType === "creation").state).toEqual(committedSnapshots.find((snapshot) => snapshot.snapshotType === "creation").state);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 1 })).toBe(1);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 2 })).toBe(0);
+    expect(snapshots).toHaveLength(committedSnapshots.length + 1);
   });
 
   it("rolls back final-round finalization after DMS succeeds", async () => {
@@ -1577,6 +1614,8 @@ describe("simulated consensus orchestration", () => {
     expect(events.some((event) => event.eventType === "issue.finished" && event.phase === 1)).toBe(false);
     expect(events.some((event) => event.eventType === "issue.stage.changed" && event.stage === "finished")).toBe(false);
     expect(events.some((event) => event.eventType === "model.execution.applicationFailed" && String(event.entityId) === String(attempts[1]._id))).toBe(true);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 1 })).toBe(1);
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 2 })).toBe(0);
   });
 });
 

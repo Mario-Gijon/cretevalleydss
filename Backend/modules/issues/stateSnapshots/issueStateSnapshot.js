@@ -19,14 +19,26 @@ const validateJson = (value, field, seen = new WeakSet()) => {
   if (seen.has(value)) throw createInternalError(`${field} must not contain circular references`, { field });
   seen.add(value); Object.entries(value).forEach(([key, entry]) => validateJson(entry, `${field}.${key}`, seen)); seen.delete(value);
 };
-const canonicalize = (value) => {
+const canonicalize = (value, field, seen = new WeakSet()) => {
   if (value instanceof Date) return value.toISOString();
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (value && typeof value.toObject === "function") return canonicalize(value.toObject());
-  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, canonicalize(entry)]));
+  if (Array.isArray(value)) {
+    if (seen.has(value)) throw createInternalError(`${field} must not contain circular references`, { field });
+    seen.add(value);
+    const result = value.map((entry, index) => canonicalize(entry, `${field}[${index}]`, seen));
+    seen.delete(value);
+    return result;
+  }
+  if (value && typeof value.toObject === "function") return canonicalize(value.toObject(), field, seen);
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    if (seen.has(value)) throw createInternalError(`${field} must not contain circular references`, { field });
+    seen.add(value);
+    const result = Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, canonicalize(entry, `${field}.${key}`, seen)]));
+    seen.delete(value);
+    return result;
+  }
   return value;
 };
-const clone = (value, field) => { const canonical = canonicalize(value); validateJson(canonical, field); return JSON.parse(JSON.stringify(canonical)); };
+const clone = (value, field) => { const canonical = canonicalize(value, field); validateJson(canonical, field); return JSON.parse(JSON.stringify(canonical)); };
 const iso = (value) => value instanceof Date ? value.toISOString() : value ?? null;
 const q = (query, session) => session ? query.session(session) : query;
 const modelSnapshot = (doc) => doc ? { id: toIdString(doc._id), name: doc.name, apiModelKey: doc.apiModelKey, modelKind: doc.modelKind, apiEndpoint: clone(doc.apiEndpoint ?? null, "model.apiEndpoint"), evaluationStructureKey: doc.evaluationStructureKey ?? null, supportsConsensus: doc.supportsConsensus === true, supportsConsensusSimulation: doc.supportsConsensusSimulation === true, supportsCreatorCriteriaWeighting: doc.supportsCreatorCriteriaWeighting === true, supportsExpertCriteriaWeighting: doc.supportsExpertCriteriaWeighting === true, usesCriteriaWeights: doc.usesCriteriaWeights === true, usesExpertWeights: doc.usesExpertWeights === true, usesFuzzyCriteriaWeights: doc.usesFuzzyCriteriaWeights === true, usesCriterionTypes: doc.usesCriterionTypes === true, supportedExpressionDomains: clone(doc.supportedExpressionDomains ?? [], "model.supportedExpressionDomains"), parameters: clone(doc.parameters ?? [], "model.parameters"), request: clone(doc.request ?? null, "model.request"), response: clone(doc.response ?? null, "model.response"), implementationStatus: doc.implementationStatus ?? null, publicUsable: doc.publicUsable === true, smallDescription: doc.smallDescription ?? null, extendDescription: doc.extendDescription ?? null } : null;

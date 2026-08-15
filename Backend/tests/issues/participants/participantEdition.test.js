@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 import { editIssueExperts } from "../../../modules/issues/participants/editIssueExperts.js";
+import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
 import { normalizeParticipantEditionRequest } from "../../../modules/issues/participants/loadParticipantEditionContext.js";
 import {
   createConfirmedUser,
@@ -368,6 +370,24 @@ describe("editIssueExperts", () => {
     expect(await Participation.findOne({ issue: issue._id, expert: expert._id })).not.toBeNull();
     expect(remainingEvaluations).toHaveLength(2);
     expect(exitLog).toBeNull();
+  });
+
+  it("preserves complete historical snapshot state when a participant is removed", async () => {
+    const owner = await createConfirmedUser({ email: "snapshot-owner@example.com" });
+    const retainedExpert = await createConfirmedUser({ email: "snapshot-retained@example.com" });
+    const removedExpert = await createConfirmedUser({ email: "snapshot-removed@example.com" });
+    const issue = await createIssueFixture({ ownerId: owner._id, currentStage: "alternativeEvaluation" });
+    await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Leaf criterion"] });
+    await createParticipationFixture({ issueId: issue._id, expertId: retainedExpert._id, invitationStatus: "accepted", entryPhase: 0, entryStage: "alternativeEvaluation" });
+    await createParticipationFixture({ issueId: issue._id, expertId: removedExpert._id, invitationStatus: "accepted", entryPhase: 0, entryStage: "alternativeEvaluation" });
+    const snapshot = await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: new Date(), correlationId: "participant-removal-snapshot" });
+    const original = structuredClone(snapshot.state);
+
+    await editIssueExperts({ issueId: issue._id, userId: owner._id, expertsToAdd: [], expertsToRemove: [removedExpert.email] });
+
+    expect(await Participation.findOne({ issue: issue._id, expert: removedExpert._id })).toBeNull();
+    expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(1);
+    expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state).toEqual(original);
   });
 
   it("rejects removing the final expert without changing their timeline record", async () => {
