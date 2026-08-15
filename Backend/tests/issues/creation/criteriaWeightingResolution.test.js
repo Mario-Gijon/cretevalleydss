@@ -5,6 +5,7 @@ import {
   resolveCriteriaWeightingConfigOrThrow,
 } from "../../../modules/issues/creation/initialCriteriaWeights/resolveInitialCriteriaWeights.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import {
   buildCreateIssueInfo,
   createConfirmedUser,
@@ -166,6 +167,8 @@ describe("criteria weighting structure resolution", () => {
       criteriaWeightingApiModelKey: "manual_criteria_weights",
       currentStage: "criteriaWeighting",
     });
+    const snapshot = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean();
+    expect(snapshot.state.criteriaWeighting).toMatchObject({ required: true, source: "experts", mode: "expertManual", method: "manual", structureKey: "manualCriteriaWeights", apiModelKey: "manual_criteria_weights" });
   });
 
   it("continues using a generic expert API model's runtime-defined structure", async () => {
