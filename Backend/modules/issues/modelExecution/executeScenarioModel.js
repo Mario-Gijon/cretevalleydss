@@ -1,4 +1,4 @@
-import { executeDecisionModelRequest } from "./executeApiModelRequest.js";
+import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
 import { normalizeModelExecutionResult } from "./normalizeModelExecutionResult.js";
 
 const SCENARIO_NORMALIZATION_MESSAGES = {
@@ -24,16 +24,16 @@ export const executeScenarioModel = async ({
   targetRuntimeSnapshot,
   decisionModelsServiceBaseUrl,
   httpClient,
+  executionAttemptInput,
 }) => {
-  const modelOutput = await executeDecisionModelRequest({
+  const tracked = await executeTrackedDecisionModelRequest({
+    attemptInput: executionAttemptInput,
     apiEndpointPath: targetRuntimeSnapshot.targetApiEndpoint.path,
     requestPayload,
     errorMessage: "Scenario model execution failed",
     decisionModelsServiceBaseUrl,
     httpClient,
-  });
-
-  const standardResult = normalizeModelExecutionResult({
+    normalize: async (modelOutput) => normalizeModelExecutionResult({
     result: modelOutput,
     messages: SCENARIO_NORMALIZATION_MESSAGES,
     options: {
@@ -41,7 +41,9 @@ export const executeScenarioModel = async ({
       validateAlternativeIdType: false,
       enforceRankOrdering: false,
     },
+  }),
   });
+  const standardResult = tracked.result;
 
   const modelExecution = {
     kind: "decisionModelsService",
@@ -49,12 +51,14 @@ export const executeScenarioModel = async ({
       targetRuntimeSnapshot.targetEvaluationStructureKey,
     apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
     apiEndpointPath: targetRuntimeSnapshot.targetApiEndpoint.path,
-    executedAt: new Date(),
+    executedAt: tracked.attempt.completedAt,
+    executionAttemptId: String(tracked.attempt._id), startedAt: tracked.attempt.startedAt, completedAt: tracked.attempt.completedAt, durationMs: tracked.attempt.durationMs,
   };
 
   return {
     standardResult,
     modelExecution,
     rawOutput: standardResult.rawOutput,
+    executionAttempt: tracked.attempt,
   };
 };

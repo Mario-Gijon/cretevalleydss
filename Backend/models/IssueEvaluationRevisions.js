@@ -20,11 +20,8 @@ const issueEvaluationRevisionSchema = new Schema(
       required: true,
       index: true,
     },
-    actor: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    actorType: { type: String, enum: ["user", "system"], required: true },
+    actorUser: { type: Schema.Types.ObjectId, ref: "User", default: null },
     stage: {
       type: String,
       enum: ["criteriaWeighting", "alternativeEvaluation"],
@@ -40,7 +37,7 @@ const issueEvaluationRevisionSchema = new Schema(
     },
     action: {
       type: String,
-      enum: ["draftSaved", "submitted"],
+      enum: ["draftSaved", "submitted", "generated"],
       required: true,
     },
     structureKey: {
@@ -71,6 +68,7 @@ const issueEvaluationRevisionSchema = new Schema(
     },
     occurredAt: { type: Date, required: true },
     correlationId: { type: String, required: true, trim: true, index: true },
+    sourceExecutionAttempt: { type: Schema.Types.ObjectId, ref: "IssueExecutionAttempt", default: null },
     schemaVersion: {
       type: Number,
       required: true,
@@ -86,6 +84,7 @@ const issueEvaluationRevisionSchema = new Schema(
     minimize: false,
   }
 );
+issueEvaluationRevisionSchema.path("actorUser").validate(function(value) { return this.actorType === "user" ? value != null : value == null; }, "actorUser is inconsistent with actorType");
 
 issueEvaluationRevisionSchema.index({
   issue: 1,

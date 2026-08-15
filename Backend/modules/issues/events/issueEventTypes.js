@@ -14,6 +14,11 @@ export const ISSUE_EVENT_TYPES = Object.freeze({
   CONSENSUS_COMPUTED: "consensus.computed",
   CONSENSUS_PHASE_COMPLETED: "consensus.phase.completed",
   ISSUE_FINISHED: "issue.finished",
+  MODEL_EXECUTION_STARTED: "model.execution.started",
+  MODEL_EXECUTION_SUCCEEDED: "model.execution.succeeded",
+  MODEL_EXECUTION_FAILED: "model.execution.failed",
+  MODEL_EXECUTION_APPLIED: "model.execution.applied",
+  MODEL_EXECUTION_APPLICATION_FAILED: "model.execution.applicationFailed",
 });
 
 export const ISSUE_EVENT_TYPE_VALUES = Object.freeze(

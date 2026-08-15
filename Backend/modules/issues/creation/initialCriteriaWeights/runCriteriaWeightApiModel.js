@@ -11,7 +11,7 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
-import { executeDecisionModelRequest } from "../../modelExecution/index.js";
+import { executeDecisionModelRequest, executeTrackedDecisionModelRequest } from "../../modelExecution/index.js";
 import { buildCreatorDecisionContext } from "./buildCreatorDecisionContext.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
@@ -141,6 +141,7 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
   criteriaWeightingParameters,
   decisionModelsServiceBaseUrl,
   httpClient,
+  executionAttemptInput,
 }) => {
   if (!decisionModelsServiceBaseUrl || typeof decisionModelsServiceBaseUrl !== "string") {
     throw createInternalError(
@@ -219,14 +220,25 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     },
   };
 
-  const result = await executeDecisionModelRequest({
+  if (!executionAttemptInput) {
+    const result = await executeDecisionModelRequest({ apiEndpointPath: criteriaWeightingRuntime.apiEndpoint.path, requestPayload, errorMessage: `Failed to compute ${criteriaWeightingModel.name} weights`, decisionModelsServiceBaseUrl: normalizedBaseUrl, httpClient });
+    const weightsByCriterion = result?.weightsByCriterion;
+    if (!isPlainObject(weightsByCriterion)) throw createBadRequestError(`${criteriaWeightingModel.name} output does not contain weightsByCriterion`, { field: "criteriaWeightingConfig.payload" });
+    const normalizedWeights = criteria.reduce((accumulator, criterion) => { const numeric = Number(weightsByCriterion[criterion.id]); if (!Number.isFinite(numeric)) throw createBadRequestError(`${criteriaWeightingModel.name} output contains invalid weight for '${criterion.name}'`, { field: "criteriaWeightingConfig.payload" }); accumulator[criterion.id] = numeric; return accumulator; }, {});
+    const total = Object.values(normalizedWeights).reduce((sum, value) => sum + value, 0);
+    if (!(total > 0)) throw createBadRequestError(`${criteriaWeightingModel.name} output weights cannot be normalized`, { field: "criteriaWeightingConfig.payload" });
+    return Object.fromEntries(Object.entries(normalizedWeights).map(([criterionId, value]) => [criterionId, value / total]));
+  }
+  const tracked = await executeTrackedDecisionModelRequest({
+    attemptInput: executionAttemptInput,
     apiEndpointPath: criteriaWeightingRuntime.apiEndpoint.path,
     requestPayload,
     errorMessage: `Failed to compute ${criteriaWeightingModel.name} weights`,
     decisionModelsServiceBaseUrl: normalizedBaseUrl,
     httpClient,
+    normalize: async (result) => result,
   });
-
+  const result = tracked.result;
   const weightsByCriterion = result?.weightsByCriterion;
   if (!isPlainObject(weightsByCriterion)) {
     throw createBadRequestError(
@@ -266,10 +278,11 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     );
   }
 
-  return Object.fromEntries(
+  const normalizedWeights = Object.fromEntries(
     Object.entries(normalizedWeightsByCriterion).map(([criterionId, value]) => [
       criterionId,
       value / total,
     ])
   );
+  return { weights: normalizedWeights, executionAttempt: tracked.attempt };
 };

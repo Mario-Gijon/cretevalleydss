@@ -4,6 +4,8 @@ import { createBadRequestError } from "../../../utils/common/errors.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 import { buildScenarioExecutionContext } from "./buildScenarioExecutionContext.js";
 import { executeScenarioModel } from "../modelExecution/index.js";
+import { markExecutionApplied, markExecutionApplicationFailed } from "../modelExecution/index.js";
+import { createIssueEventOperationMetadata } from "../events/index.js";
 
 const cloneJsonCompatibleOrThrow = (value, field) => {
   try {
@@ -129,20 +131,20 @@ export const createIssueScenario = async ({
     context.requestPayload,
     "requestSnapshot"
   );
-  const startedAt = new Date();
   const {
     standardResult,
     modelExecution,
     rawOutput,
+    executionAttempt,
   } = await executeScenarioModel({
     requestPayload: requestSnapshot,
     targetRuntimeSnapshot: context.targetRuntimeSnapshot,
     decisionModelsServiceBaseUrl,
     httpClient,
+    executionAttemptInput: { issue: context.issue._id, scope: "scenario", actorType: "user", actorUser: userId, correlationId: createIssueEventOperationMetadata().correlationId, evaluationStage: "alternativeEvaluation", issueStage: context.issue.currentStage, consensusPhase: context.evaluationPhase, modelContext: { modelId: context.targetModel._id, modelName: context.targetModel.name ?? null, apiModelKey: context.targetRuntimeSnapshot.targetApiModelKey ?? null, apiEndpointPath: context.targetRuntimeSnapshot.targetApiEndpoint?.path ?? null, evaluationStructureKey: context.targetRuntimeSnapshot.targetEvaluationStructureKey ?? null, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "scenario" } },
   });
-  const completedAt = new Date();
-
-  const scenario = await IssueScenario.create({
+  let scenario;
+  try { scenario = await IssueScenario.create({
     issue: context.issue._id,
     createdBy: userId,
     name: normalizedInput.scenarioName,
@@ -166,10 +168,12 @@ export const createIssueScenario = async ({
       rawOutput: cloneJsonCompatibleOrThrow(rawOutput, "rawOutput"),
     },
     execution: {
-      startedAt,
-      completedAt,
+      attemptId: executionAttempt?._id ?? null,
+      startedAt: executionAttempt?.startedAt ?? new Date(),
+      completedAt: executionAttempt?.completedAt ?? new Date(),
     },
-  });
+  }); } catch (error) { if (executionAttempt) await markExecutionApplicationFailed({ attemptId: executionAttempt._id, error }); throw error; }
+  if (executionAttempt) await markExecutionApplied({ attemptId: executionAttempt._id, entityType: "scenario", entityId: scenario._id, resultSnapshot: scenario.toObject() });
 
   return {
     scenarioId: scenario._id,

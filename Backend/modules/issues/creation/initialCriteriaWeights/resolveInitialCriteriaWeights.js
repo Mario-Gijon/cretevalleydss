@@ -323,6 +323,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   fuzzyValueCount = null,
   decisionModelsServiceBaseUrl,
   httpClient,
+  executionAttemptInput = null,
   session = null,
 }) => {
   ensureCriteriaNamesOrThrow(criterionNames);
@@ -593,7 +594,7 @@ export const resolveDeferredCriteriaWeightingAfterPersistenceOrThrow = async ({
     return resolvedCriteriaWeighting;
   }
 
-  const modelWeights =
+  const execution =
     await resolveCreatorApiCriteriaWeightingModelWeightsOrThrow({
       payload: resolvedCriteriaWeighting.deferredPayload,
       leafCriteria: persistedLeafCriteria,
@@ -603,11 +604,13 @@ export const resolveDeferredCriteriaWeightingAfterPersistenceOrThrow = async ({
         resolvedCriteriaWeighting.criteriaWeightingParameters,
       decisionModelsServiceBaseUrl,
       httpClient,
+      executionAttemptInput,
     });
 
   return {
     ...resolvedCriteriaWeighting,
-    modelWeights,
+    modelWeights: execution.weights,
+    executionAttempt: execution.executionAttempt,
     deferredPayload: null,
     isDeferredApiCriteriaWeighting: false,
   };

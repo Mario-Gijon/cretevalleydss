@@ -46,6 +46,7 @@ const issueStageResultSchema = new Schema(
       default: 0,
       index: true,
     },
+    executionAttempt: { type: Schema.Types.ObjectId, ref: "IssueExecutionAttempt", default: null },
     inputSnapshot: {
       type: stageResultInputSnapshotSchema,
       required: true,

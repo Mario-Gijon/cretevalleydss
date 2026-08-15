@@ -5,7 +5,7 @@ import { buildCriteriaWeightingExecutionResult } from "./buildCriteriaWeightingE
 import { buildIssueModelExecutionResult } from "./buildIssueModelExecutionResult.js";
 import { buildIssueModelRequestPayload } from "./buildIssueModelRequestPayload.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-import { executeDecisionModelRequest } from "./executeApiModelRequest.js";
+import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
 
 const executeCriteriaWeightingApiModel = async ({
   issue,
@@ -65,6 +65,7 @@ export const executeAlternativeEvaluationModel = async ({
   executionErrorMessage = "Alternative evaluation model execution failed",
   issueUpdates = {},
   nextCurrentStage = null,
+  executionAttemptInput,
 }) => {
   const requestPayload = await buildIssueModelRequestPayload({
     issue,
@@ -74,22 +75,16 @@ export const executeAlternativeEvaluationModel = async ({
     expertWeightsByExpertId,
   });
 
-  const result = await executeDecisionModelRequest({
+  const tracked = await executeTrackedDecisionModelRequest({
+    attemptInput: executionAttemptInput,
     apiEndpointPath: issue.apiEndpoint.path,
     requestPayload,
     errorMessage: executionErrorMessage,
     decisionModelsServiceBaseUrl,
     httpClient,
+    normalize: async (result) => buildIssueModelExecutionResult({ issue, message, result, structureKey, issueUpdates, nextCurrentStage }),
   });
-
-  return buildIssueModelExecutionResult({
-    issue,
-    message,
-    result,
-    structureKey,
-    issueUpdates,
-    nextCurrentStage,
-  });
+  return { ...tracked.result, executionAttempt: tracked.attempt };
 };
 
 export const executeCriteriaWeightingModel = async ({
@@ -101,6 +96,8 @@ export const executeCriteriaWeightingModel = async ({
   expertWeightsByExpertId = null,
   decisionModelsServiceBaseUrl,
   httpClient,
+  executionAttemptInput,
+  normalizeResult = null,
 }) => {
   const requestPayload = await buildCriteriaWeightingRequestPayload({
     issue,
@@ -110,11 +107,9 @@ export const executeCriteriaWeightingModel = async ({
     expertWeightsByExpertId,
   });
 
-  return executeCriteriaWeightingApiModel({
-    issue,
-    structureKey,
-    requestPayload,
-    decisionModelsServiceBaseUrl,
-    httpClient,
-  });
+  const apiEndpointPath = issue.criteriaWeightingApiEndpoint?.path;
+  const apiModelKey = issue.criteriaWeightingApiModelKey;
+  const tracked = await executeTrackedDecisionModelRequest({ attemptInput: executionAttemptInput, apiEndpointPath, requestPayload, errorMessage: "Criteria weighting model execution failed", decisionModelsServiceBaseUrl, httpClient,
+    normalize: async (result) => { const built = buildCriteriaWeightingExecutionResult({ structureKey, message: result.message, result, apiModelKey, apiEndpointPath }); return normalizeResult ? normalizeResult(built) : built; }, });
+  return { ...tracked.result, executionAttempt: tracked.attempt };
 };

@@ -22,6 +22,8 @@ import { formatConsensusRoundLabel } from "../shared/formatConsensusRoundLabel.j
 import {
   executeAlternativeEvaluationModel,
   executeCriteriaWeightingModel,
+  markExecutionApplied,
+  markExecutionApplicationFailed,
 } from "../modelExecution/index.js";
 import { buildDecisionContext } from "../evaluations/buildDecisionContext.js";
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
@@ -300,6 +302,7 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
     "collectiveEvaluations",
     "modelExecution",
     "rawOutput",
+    "executionAttempt",
   ]);
   const unexpectedField = Object.keys(computeResult).find(
     (field) => !allowedFields.has(field)
@@ -488,6 +491,7 @@ const saveStageResult = async ({
   lifecycleMetadata = null,
   consensusPhase = issue.consensusPhase,
   expertWeights = [],
+  executionAttempt = null,
   session = null,
 }) => {
   let standardResult = null;
@@ -495,6 +499,12 @@ const saveStageResult = async ({
     modelExecution: computeResult.modelExecution,
     consensusLifecycle: lifecycleMetadata,
   });
+  if (executionAttempt) {
+    modelExecution.executionAttemptId = toIdString(executionAttempt._id);
+    modelExecution.startedAt = executionAttempt.startedAt;
+    modelExecution.completedAt = executionAttempt.completedAt;
+    modelExecution.durationMs = executionAttempt.durationMs;
+  }
 
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
     standardResult = {
@@ -554,6 +564,7 @@ const saveStageResult = async ({
     {
       $set: {
         inputSnapshot: { expertWeights },
+        executionAttempt: executionAttempt?._id,
         result: {
           standardResult,
           modelExecution,
@@ -635,6 +646,7 @@ const computeCriteriaWeightingStage = async ({
   expertWeightsByExpertId,
   decisionModelsServiceBaseUrl,
   httpClient,
+  executionAttemptInput,
 }) => {
   return executeCriteriaWeightingModel({
     issue,
@@ -645,6 +657,7 @@ const computeCriteriaWeightingStage = async ({
     expertWeightsByExpertId,
     decisionModelsServiceBaseUrl,
     httpClient,
+    executionAttemptInput,
   });
 };
 
@@ -656,6 +669,7 @@ const computeAlternativeEvaluationStage = async ({
   expertWeightsByExpertId,
   decisionModelsServiceBaseUrl,
   httpClient,
+  executionAttemptInput,
 }) => {
   return executeAlternativeEvaluationModel({
     issue,
@@ -675,6 +689,7 @@ const computeAlternativeEvaluationStage = async ({
         : { active: false },
     nextCurrentStage:
       issue.isConsensus === true ? null : ISSUE_STAGES.FINISHED,
+    executionAttemptInput,
   });
 };
 
@@ -907,6 +922,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       expertWeightsByExpertId,
       decisionModelsServiceBaseUrl,
       httpClient,
+      executionAttemptInput: { issue: issue._id, scope: "issueStage", actorType: "user", actorUser, correlationId, evaluationStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, issueStage: issue.currentStage, consensusPhase: currentPhase, modelContext: { modelId: issue.model?._id ?? issue.model ?? null, modelName: issue.model?.name ?? null, apiModelKey: issue.apiModelKey ?? null, apiEndpointPath: issue.apiEndpoint?.path ?? null, evaluationStructureKey: structure.key, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "alternativeEvaluation" } },
     });
 
     const {
@@ -928,6 +944,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       lifecycleMetadata,
       consensusPhase: currentPhase,
       expertWeights,
+      executionAttempt: phaseComputeResult.executionAttempt,
       session,
     });
 
@@ -1148,6 +1165,7 @@ export const computeIssueEvaluationStage = async ({
         expertWeightsByExpertId: weightsByExpertId,
         decisionModelsServiceBaseUrl,
         httpClient,
+        executionAttemptInput: { issue: issue._id, scope: "issueStage", actorType: "user", actorUser: userId, correlationId: eventMetadata.correlationId, evaluationStage: stage, issueStage: issue.currentStage, consensusPhase: issue.consensusPhase, modelContext: { modelId: issue.criteriaWeightingModel ?? null, modelName: null, apiModelKey: issue.criteriaWeightingApiModelKey ?? null, apiEndpointPath: issue.criteriaWeightingApiEndpoint?.path ?? null, evaluationStructureKey: structure.key, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "criteriaWeighting" } },
       })
       : await computeAlternativeEvaluationStage({
         structure,
@@ -1156,6 +1174,7 @@ export const computeIssueEvaluationStage = async ({
         expertWeightsByExpertId: weightsByExpertId,
         decisionModelsServiceBaseUrl,
         httpClient,
+        executionAttemptInput: { issue: issue._id, scope: "issueStage", actorType: "user", actorUser: userId, correlationId: eventMetadata.correlationId, evaluationStage: stage, issueStage: issue.currentStage, consensusPhase: issue.consensusPhase, modelContext: { modelId: issue.model?._id ?? issue.model ?? null, modelName: issue.model?.name ?? null, apiModelKey: issue.apiModelKey ?? null, apiEndpointPath: issue.apiEndpoint?.path ?? null, evaluationStructureKey: structure.key, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "alternativeEvaluation" } },
       });
 
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
@@ -1165,7 +1184,8 @@ export const computeIssueEvaluationStage = async ({
         computeResult,
       });
 
-    await persistComputedStageInTransaction({
+    let appliedStageResult = null;
+    try { await persistComputedStageInTransaction({
       session,
       persist: async (persistSession) => {
         const stageResult = await saveStageResult({
@@ -1176,6 +1196,7 @@ export const computeIssueEvaluationStage = async ({
           ),
           lifecycleMetadata: null,
           expertWeights,
+          executionAttempt: computeResult.executionAttempt,
           session: persistSession,
         });
 
@@ -1188,8 +1209,10 @@ export const computeIssueEvaluationStage = async ({
           correlationId: eventMetadata.correlationId,
           session: persistSession,
         });
+        appliedStageResult = stageResult;
       },
-    });
+    }); } catch (error) { await markExecutionApplicationFailed({ attemptId: computeResult.executionAttempt._id, error }); throw error; }
+    await markExecutionApplied({ attemptId: computeResult.executionAttempt._id, entityType: "stageResult", entityId: appliedStageResult._id, resultSnapshot: appliedStageResult.toObject() });
 
     return {
       message: normalizedCriteriaWeightingResult.message,
@@ -1218,7 +1241,8 @@ export const computeIssueEvaluationStage = async ({
     computeResult,
   });
 
-  await persistComputedStageInTransaction({
+  let appliedStageResult = null;
+  try { await persistComputedStageInTransaction({
     session,
     persist: async (persistSession) => {
       const previousLifecycleState = snapshotIssueLifecycle(issue);
@@ -1229,8 +1253,10 @@ export const computeIssueEvaluationStage = async ({
         computeResult: lifecycleComputeResult,
         lifecycleMetadata,
         expertWeights,
+        executionAttempt: computeResult.executionAttempt,
         session: persistSession,
       });
+      appliedStageResult = stageResult;
 
       if (lifecycleMetadata) {
         const lifecycleDetails = {
@@ -1338,7 +1364,8 @@ export const computeIssueEvaluationStage = async ({
         });
       }
     },
-  });
+  }); } catch (error) { await markExecutionApplicationFailed({ attemptId: computeResult.executionAttempt._id, error }); throw error; }
+  await markExecutionApplied({ attemptId: computeResult.executionAttempt._id, entityType: "stageResult", entityId: appliedStageResult._id, resultSnapshot: appliedStageResult.toObject() });
 
   return {
     message: lifecycleComputeResult.message,

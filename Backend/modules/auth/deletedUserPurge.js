@@ -4,6 +4,7 @@ import { IssueEvaluation } from "../../models/IssueEvaluations.js";
 import { IssueEvaluationRevision } from "../../models/IssueEvaluationRevisions.js";
 import { IssueEvent } from "../../models/IssueEvents.js";
 import { IssueScenario } from "../../models/IssueScenarios.js";
+import { IssueExecutionAttempt } from "../../models/IssueExecutionAttempts.js";
 import { Issue } from "../../models/Issues.js";
 import { Notification } from "../../models/Notifications.js";
 import { Participation } from "../../models/Participations.js";
@@ -39,6 +40,7 @@ export const getDeletedUserReferenceCounts = async ({
     exitLogs,
     expressionDomains,
     issueScenarios,
+    executionAttempts,
   ] = await Promise.all([
     countDocuments(Issue, { ownerId: userId }, session),
     countDocuments(Issue, { createdBy: userId }, session),
@@ -47,7 +49,7 @@ export const getDeletedUserReferenceCounts = async ({
     countDocuments(IssueEvaluation, { expert: userId }, session),
     countDocuments(
       IssueEvaluationRevision,
-      { $or: [{ expert: userId }, { actor: userId }] },
+      { $or: [{ expert: userId }, { actorUser: userId }] },
       session
     ),
     countDocuments(
@@ -58,6 +60,7 @@ export const getDeletedUserReferenceCounts = async ({
     countDocuments(ExitUserIssue, { user: userId }, session),
     countDocuments(ExpressionDomain, { owner: userId }, session),
     countDocuments(IssueScenario, { createdBy: userId }, session),
+    countDocuments(IssueExecutionAttempt, { actorUser: userId }, session),
   ]);
 
   return {
@@ -71,6 +74,7 @@ export const getDeletedUserReferenceCounts = async ({
     exitLogs,
     expressionDomains,
     issueScenarios,
+    executionAttempts,
   };
 };
 

@@ -8,6 +8,7 @@ import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js
 import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 import { purgeDeletedUserIfUnreferenced } from "../../auth/deletedUserPurge.js";
@@ -32,7 +33,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
       ),
       applyOptionalSession(
         IssueEvaluationRevision.find({ issue: issueId })
-          .select("expert actor")
+          .select("expert actorUser")
           .lean(),
         session
       ),
@@ -61,7 +62,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
     issue?.createdBy,
     ...participations.map((participation) => participation.expert),
     ...evaluations.map((evaluation) => evaluation.expert),
-    ...revisions.flatMap((revision) => [revision.expert, revision.actor]),
+    ...revisions.flatMap((revision) => [revision.expert, revision.actorUser]),
     ...events.flatMap((event) => [event.actorUser, event.subjectUser]),
     ...exitLogs.map((exitLog) => exitLog.user),
     ...notifications.map((notification) => notification.expert),
@@ -83,6 +84,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
     applyOptionalSession(ExitUserIssue.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueScenario.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueStageResult.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(IssueExecutionAttempt.deleteMany({ issue: issueId }), session),
   ]);
 
   await applyOptionalSession(Issue.deleteOne({ _id: issueId }), session);

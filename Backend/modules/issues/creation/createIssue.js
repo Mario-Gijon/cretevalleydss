@@ -48,6 +48,7 @@ import {
   writeConsensusEvent,
   writeIssueEvent,
 } from "../events/index.js";
+import { markExecutionApplied, markExecutionApplicationFailed } from "../modelExecution/index.js";
 
 const assertIssueNameAvailableOrThrow = async ({
   issueName,
@@ -303,6 +304,7 @@ export const persistPreparedIssueCreation = async ({
       persistedLeafCriteria: leafCriteria,
       decisionModelsServiceBaseUrl,
       httpClient,
+      executionAttemptInput: { issue: issue._id, scope: "issueCreation", actorType: "user", actorUser: ownerUserId, correlationId: eventMetadata.correlationId, evaluationStage: "criteriaWeighting", issueStage: issue.currentStage, consensusPhase: issue.consensusPhase, modelContext: { modelId: remappedCriteriaWeighting.criteriaWeightingModel?._id ?? null, modelName: remappedCriteriaWeighting.criteriaWeightingModel?.name ?? null, apiModelKey: remappedCriteriaWeighting.criteriaWeightingApiModelKey ?? null, apiEndpointPath: remappedCriteriaWeighting.criteriaWeightingApiEndpoint?.path ?? null, evaluationStructureKey: remappedCriteriaWeighting.criteriaWeightsStructureKey ?? null, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "criteriaWeighting" } },
     });
 
   applyInitialCriteriaWeightsToIssue({
@@ -381,6 +383,9 @@ export const persistPreparedIssueCreation = async ({
   });
 
   await issue.save({ session });
+  if (persistedCriteriaWeighting.executionAttempt) {
+    await markExecutionApplied({ attemptId: persistedCriteriaWeighting.executionAttempt._id, entityType: "issue", entityId: issue._id, resultSnapshot: { weights: issue.modelParameters.weights } });
+  }
 
   return {
     issueName: input.issueName,

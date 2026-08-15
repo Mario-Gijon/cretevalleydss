@@ -147,7 +147,8 @@ describe("IssueEvaluationRevision", () => {
     expect(revisions).toHaveLength(3);
     expect(firstRevision).toMatchObject({
       evaluation: projection._id,
-      actor: expert._id,
+      actorType: "user",
+      actorUser: expert._id,
       action: "draftSaved",
       rawPayload: firstPayload,
       normalizedPayload: {
@@ -167,7 +168,8 @@ describe("IssueEvaluationRevision", () => {
         "__v",
         "_id",
         "action",
-        "actor",
+        "actorType",
+        "actorUser",
         "consensusPhase",
         "correlationId",
         "createdAt",
@@ -180,6 +182,7 @@ describe("IssueEvaluationRevision", () => {
         "previousRevision",
         "rawPayload",
         "schemaVersion",
+        "sourceExecutionAttempt",
         "stage",
         "structureKey",
         "submittedAt",

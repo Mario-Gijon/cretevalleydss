@@ -88,6 +88,7 @@ const issueScenarioSchema = new Schema(
     },
 
     execution: {
+      attemptId: { type: Schema.Types.ObjectId, ref: "IssueExecutionAttempt", default: null },
       startedAt: {
         type: Date,
         required: true,
