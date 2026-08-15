@@ -75,6 +75,8 @@ describe("buildIssueHistoryDocument", () => {
     expect(second).toEqual(first);
     expect(first).toMatchObject({ schemaVersion: 1, issueId: String(fixture.issue._id), currentState: { issue: { active: true, finishedAt: null } }, completeness: { creationSnapshot: { status: "exact" }, stageResults: { status: "currentProjection" }, scenarioDeletionHistory: { status: "unavailable" } } });
     expect(first.stateSnapshots.creation.state.model.name).toBe("Frozen History Model");
+    expect(first.stateSnapshots.creation.state.issue).toMatchObject({ owner: { id: String(fixture.owner._id), name: fixture.owner.name, email: fixture.owner.email, university: fixture.owner.university }, creator: { id: String(fixture.owner._id), name: fixture.owner.name, email: fixture.owner.email, university: fixture.owner.university } });
+    expect(first.stateSnapshots.consensusPhaseStarts[0].state.issue).toMatchObject({ owner: first.stateSnapshots.creation.state.issue.owner, creator: first.stateSnapshots.creation.state.issue.creator });
     expect(first.evidence.executionAttempts).toEqual(expect.arrayContaining([expect.objectContaining({ id: String(fixture.failedAttempt._id), status: "failed", failureStage: "transport", error: { name: "Error", message: "transport failed", nested: { at: "2026-01-01T00:00:02.000Z" } } }), expect.objectContaining({ id: String(fixture.scenarioAttempt._id), scope: "scenario" })]));
     expect(first.scenarios.current).toMatchObject([{ execution: { attemptId: String(fixture.scenarioAttempt._id) } }]);
     expect(first.evidence.events[0].details.nestedDate).toBe("2026-01-01T00:00:16.000Z");

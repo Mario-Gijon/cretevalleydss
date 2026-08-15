@@ -101,7 +101,7 @@ describe("issue creation integration", () => {
 
     expect(issues).toHaveLength(1);
     expect(snapshots).toHaveLength(1);
-    expect(snapshots[0]).toMatchObject({ snapshotType: "creation", state: { issue: { name: "Example issue", effectiveModelParameters: expect.any(Object) }, model: { id: String(model._id) }, alternatives: [{ name: "Alpha", position: 0 }, { name: "Beta", position: 1 }], criteria: expect.any(Array), expressionDomains: [{ name: domain.name, definition: domain.definition }], participants: expect.any(Array) } });
+    expect(snapshots[0]).toMatchObject({ snapshotType: "creation", state: { issue: { name: "Example issue", ownerId: String(owner._id), createdBy: String(owner._id), owner: { id: String(owner._id), name: "Owner User", email: "owner@example.com", university: owner.university }, creator: { id: String(owner._id), name: "Owner User", email: "owner@example.com", university: owner.university }, effectiveModelParameters: expect.any(Object) }, model: { id: String(model._id) }, alternatives: [{ name: "Alpha", position: 0 }, { name: "Beta", position: 1 }], criteria: expect.any(Array), expressionDomains: [{ name: domain.name, definition: domain.definition }], participants: expect.any(Array) } });
     expect(snapshots[0].state.criteriaWeighting).toMatchObject({ required: false, source: null, mode: null, method: null, structureKey: null, model: null, apiModelKey: null });
     expect(issues[0]).toMatchObject({
       ownerId: owner._id,

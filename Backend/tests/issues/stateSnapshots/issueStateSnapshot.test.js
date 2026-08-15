@@ -6,6 +6,7 @@ import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { Participation } from "../../../models/Participations.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
+import { User } from "../../../models/Users.js";
 import { deleteIssueCascade } from "../../../modules/issues/lifecycle/deleteIssueCascade.js";
 import { buildIssueStateSnapshot, writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
 import { createConfirmedUser, createIssueFixture, createIssueModel } from "../../setup/fixtures.js";
@@ -37,6 +38,32 @@ describe("IssueStateSnapshot", () => {
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(0);
     await write(issue, "creation");
     await expect(write(issue, "consensusPhaseStart", 0)).resolves.toMatchObject({ snapshotType: "consensusPhaseStart" });
+  });
+
+  it("freezes distinct owner and creator identities and reuses them for later phase snapshots", async () => {
+    const owner = await createConfirmedUser({ name: "Original Owner", email: "owner-identity@example.com", university: "Owner University" });
+    const creator = await createConfirmedUser({ name: "Original Creator", email: "creator-identity@example.com", university: "Creator University" });
+    const model = await createIssueModel({ supportsConsensus: true });
+    const issue = await createIssueFixture({ ownerId: owner._id, createdBy: creator._id, modelId: model._id, currentStage: "alternativeEvaluation", isConsensus: true, supportsConsensus: true });
+    const creation = await write(issue, "creation");
+    const expectedOwner = { id: String(owner._id), name: "Original Owner", email: "owner-identity@example.com", university: "Owner University" };
+    const expectedCreator = { id: String(creator._id), name: "Original Creator", email: "creator-identity@example.com", university: "Creator University" };
+    expect(creation.state.issue).toMatchObject({ ownerId: String(owner._id), createdBy: String(creator._id), owner: expectedOwner, creator: expectedCreator });
+    await User.updateOne({ _id: owner._id }, { $set: { name: "Mutated Owner", email: "mutated-owner@example.com", university: "Mutated University" } });
+    await User.updateOne({ _id: creator._id }, { $set: { name: "Mutated Creator", email: "mutated-creator@example.com", university: "Mutated University" } });
+    issue.consensusPhase = 1;
+    const phase = await write(issue, "consensusPhaseStart", 1);
+    expect((await IssueStateSnapshot.findById(creation._id).lean()).state.issue).toMatchObject({ owner: expectedOwner, creator: expectedCreator });
+    expect(phase.state.issue).toMatchObject({ owner: expectedOwner, creator: expectedCreator });
+  });
+
+  it("rejects a creation snapshot when owner or creator identity evidence is missing", async () => {
+    const owner = await createConfirmedUser();
+    const creator = await createConfirmedUser();
+    const model = await createIssueModel();
+    const issue = await createIssueFixture({ ownerId: owner._id, createdBy: creator._id, modelId: model._id });
+    await User.deleteOne({ _id: creator._id });
+    await expect(write(issue, "creation")).rejects.toMatchObject({ field: "issue.createdBy", message: "Issue creator identity is required for a creation snapshot" });
   });
 
   it("rejects silently lossy snapshot evidence", async () => {
