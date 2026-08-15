@@ -111,22 +111,29 @@ const validateTimelineReferences = ({ timeline, snapshots, events, revisions, at
 export const buildIssueHistoryDocument = async ({ issueId, session = null }) => {
   const issue = await read(Issue.findById(issueId).lean(), session);
   if (!issue) throw createBadRequestError("Issue does not exist", { field: "issueId" });
-  const [creation, phaseSnapshots, participations, evaluations, notifications, events, revisions, attempts, stageResults, exits, scenarios] = await Promise.all([
-    read(IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean(), session),
-    read(IssueStateSnapshot.find({ issue: issue._id, snapshotType: "consensusPhaseStart" }).sort({ consensusPhase: 1, occurredAt: 1, _id: 1 }).lean(), session),
-    read(Participation.find({ issue: issue._id }).sort({ expert: 1, _id: 1 }).lean(), session),
-    read(IssueEvaluation.find({ issue: issue._id }).sort({ stage: 1, consensusPhase: 1, expert: 1, _id: 1 }).lean(), session),
-    read(Notification.find({ issue: issue._id }).sort({ createdAt: 1, _id: 1 }).lean(), session),
-    read(IssueEvent.find({ issue: issue._id }).sort({ occurredAt: 1, _id: 1 }).lean(), session),
-    read(IssueEvaluationRevision.find({ issue: issue._id }).sort({ occurredAt: 1, _id: 1 }).lean(), session),
-    read(IssueExecutionAttempt.find({ issue: issue._id }).sort({ startedAt: 1, _id: 1 }).lean(), session),
-    read(IssueStageResult.find({ issue: issue._id }).sort({ stage: 1, consensusPhase: 1, _id: 1 }).lean(), session),
-    read(ExitUserIssue.find({ issue: issue._id }).sort({ user: 1, _id: 1 }).lean(), session),
-    read(IssueScenario.find({ issue: issue._id }).sort({ createdAt: 1, _id: 1 }).lean(), session),
-  ]);
+  const creation = await read(IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean(), session);
+  const phaseSnapshots = await read(IssueStateSnapshot.find({ issue: issue._id, snapshotType: "consensusPhaseStart" }).sort({ consensusPhase: 1, occurredAt: 1, _id: 1 }).lean(), session);
+  const participations = await read(Participation.find({ issue: issue._id }).sort({ expert: 1, _id: 1 }).lean(), session);
+  const evaluations = await read(IssueEvaluation.find({ issue: issue._id }).sort({ stage: 1, consensusPhase: 1, expert: 1, _id: 1 }).lean(), session);
+  const notifications = await read(Notification.find({ issue: issue._id }).sort({ createdAt: 1, _id: 1 }).lean(), session);
+  const events = await read(IssueEvent.find({ issue: issue._id }).sort({ occurredAt: 1, _id: 1 }).lean(), session);
+  const revisions = await read(IssueEvaluationRevision.find({ issue: issue._id }).sort({ occurredAt: 1, _id: 1 }).lean(), session);
+  const attempts = await read(IssueExecutionAttempt.find({ issue: issue._id }).sort({ startedAt: 1, _id: 1 }).lean(), session);
+  const stageResults = await read(IssueStageResult.find({ issue: issue._id }).sort({ stage: 1, consensusPhase: 1, _id: 1 }).lean(), session);
+  const exits = await read(ExitUserIssue.find({ issue: issue._id }).sort({ user: 1, _id: 1 }).lean(), session);
+  const scenarios = await read(IssueScenario.find({ issue: issue._id }).sort({ createdAt: 1, _id: 1 }).lean(), session);
   if (!creation) throw createInternalError("Issue creation snapshot is required for history", { field: "issueId", details: { issueId: id(issue._id) } });
   const serializedSnapshots = [serializeSnapshot(creation), ...phaseSnapshots.map(serializeSnapshot)];
-  const serializedExits = exits.map((entry) => ({ ...serializeExitHistory(entry), history: [...entry.history].map((item, index) => ({ ...item, index })).sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp) || left.index - right.index).map(({ index, ...item }) => item) }));
+  const serializedExits = exits.map((entry) => {
+    const serialized = serializeExitHistory(entry);
+    return {
+      ...serialized,
+      history: serialized.history
+        .map((item, index) => ({ item, index }))
+        .sort((left, right) => new Date(left.item.timestamp) - new Date(right.item.timestamp) || left.index - right.index)
+        .map(({ item }) => item),
+    };
+  });
   const dossier = {
     schemaVersion: 1, issueId: id(issue._id), completeness,
     stateSnapshots: { creation: serializedSnapshots[0], consensusPhaseStarts: serializedSnapshots.slice(1) },

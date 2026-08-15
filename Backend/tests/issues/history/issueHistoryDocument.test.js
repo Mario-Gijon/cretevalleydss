@@ -80,7 +80,15 @@ describe("buildIssueHistoryDocument", () => {
     expect(first.evidence.events[0].details.nestedDate).toBe("2026-01-01T00:00:16.000Z");
     expect(first.currentState.issue.id).toBe(String(fixture.issue._id));
     expect(first.currentState.evaluations[0].submittedAt).toBe("2026-01-01T00:00:06.000Z");
-    expect(first.evidence.participantExitHistory[0].history.map((entry) => entry.reason)).toEqual(["Earlier inserted second", "Later inserted first"]);
+    const exitHistory = first.evidence.participantExitHistory[0];
+    const firstExitHistoryEntry = exitHistory.history[0];
+    expect(exitHistory.history.map((entry) => entry.reason)).toEqual(["Earlier inserted second", "Later inserted first"]);
+    expect(firstExitHistoryEntry).toEqual({ timestamp: "2026-01-01T00:00:20.000Z", phase: 0, stage: "alternativeEvaluation", action: "entered", reason: "Earlier inserted second" });
+    expect(Object.keys(firstExitHistoryEntry).sort()).toEqual(["action", "phase", "reason", "stage", "timestamp"]);
+    expect(firstExitHistoryEntry).not.toHaveProperty("_id");
+    const exitTimeline = first.timeline.filter((entry) => entry.kind === "participantExitHistory");
+    expect(exitTimeline.map((entry) => entry.refId)).toEqual([`${exitHistory.id}:history:0`, `${exitHistory.id}:history:1`]);
+    expect(exitTimeline[0].occurredAt).toBe(firstExitHistoryEntry.timestamp);
     expect(first.timeline.some((entry) => entry.kind === "executionAttempt" && entry.refId === String(fixture.failedAttempt._id))).toBe(true);
     first.currentState.issue.modelParameters.alpha = 999;
     expect((await buildIssueHistoryDocument({ issueId: fixture.issue._id })).currentState.issue.modelParameters.alpha).toBe(1);
