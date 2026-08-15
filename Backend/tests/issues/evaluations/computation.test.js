@@ -6,6 +6,7 @@ import { Issue } from "../../../models/Issues.js";
 import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
 import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
 import { IssueEvent } from "../../../models/IssueEvents.js";
+import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Participation } from "../../../models/Participations.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
 import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
@@ -1479,6 +1480,7 @@ describe("simulated consensus orchestration", () => {
     }).lean();
     const attempts = await IssueExecutionAttempt.find({ issue: issue._id, scope: "issueStage" }).sort({ consensusPhase: 1 }).lean();
     const generatedRevisions = await IssueEvaluationRevision.find({ issue: issue._id, action: "generated" }).lean();
+    const phaseOneSnapshot = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 1 }).lean();
 
     expect(httpClient.post).toHaveBeenCalledTimes(2);
     expect(stageResults.map((entry) => entry.consensusPhase)).toEqual([0, 1]);
@@ -1488,6 +1490,7 @@ describe("simulated consensus orchestration", () => {
     expect(stageResults.map((result, index) => String(result.executionAttempt))).toEqual(attempts.map((attempt) => String(attempt._id)));
     expect(generatedRevisions).toHaveLength(2);
     expect(generatedRevisions.every((revision) => revision.actorType === "system" && revision.actorUser === null && revision.submittedAt === null && String(revision.sourceExecutionAttempt) === String(attempts[0]._id))).toBe(true);
+    expect(phaseOneSnapshot).toMatchObject({ sourceExecutionAttempt: attempts[0]._id, state: { issue: { consensusPhase: 1 }, evaluations: expect.arrayContaining([expect.objectContaining({ stage: "alternativeEvaluation", consensusPhase: 1, completed: true, submittedAt: null })]), previousPhase: { stageResultId: String(stageResults[0]._id), executionAttemptId: String(attempts[0]._id) } } });
     expect(storedIssue.currentStage).toBe("finished");
     expect(storedIssue.active).toBe(false);
     expect(storedIssue.consensusPhase).toBe(1);
