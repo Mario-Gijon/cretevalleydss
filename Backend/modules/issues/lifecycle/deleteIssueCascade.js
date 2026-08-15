@@ -9,6 +9,7 @@ import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
+import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 import { purgeDeletedUserIfUnreferenced } from "../../auth/deletedUserPurge.js";
@@ -85,6 +86,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
     applyOptionalSession(IssueScenario.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueStageResult.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueExecutionAttempt.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(IssueStateSnapshot.deleteMany({ issue: issueId }), session),
   ]);
 
   await applyOptionalSession(Issue.deleteOne({ _id: issueId }), session);

@@ -5,6 +5,7 @@ import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Issue } from "../../../models/Issues.js";
 import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
 import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
+import { IssueEvent } from "../../../models/IssueEvents.js";
 import { Participation } from "../../../models/Participations.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
 import {
@@ -1504,6 +1505,72 @@ describe("simulated consensus orchestration", () => {
         },
       },
     });
+  });
+
+  it("rolls back a later continuing round, preserves the completed attempt, and stops further DMS calls", async () => {
+    const { owner, issue, acceptedExperts, alternatives, leafCriteria } = await createAlternativeComputeFixture({ issueOverrides: { isConsensus: true, simulateConsensus: true, consensusThreshold: 0.9, consensusMaxPhases: 3 } });
+    await createCompletedAlternativeEvaluations({ issueId: issue._id, experts: acceptedExperts, alternatives, leafCriteria });
+    const suggestions = (value) => Object.fromEntries(acceptedExperts.map((expert) => [String(expert._id), { payload: buildAlternativeMatrixPayload({ alternatives, leafCriteria, valuesByAlternativeId: { [String(alternatives[0]._id)]: value, [String(alternatives[1]._id)]: 2 } }) }]));
+    const httpClient = createHttpClientMock(
+      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives, leafCriteria, consensusMeasure: 0.2, rawOutput: { suggested_next_evaluations: suggestions(8) } })),
+      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives, leafCriteria, consensusMeasure: 0.3, rawOutput: { suggested_next_evaluations: suggestions(7) } })),
+      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives, leafCriteria, consensusMeasure: 0.95, rawOutput: { settled: true } }))
+    );
+    const originalCreate = IssueEvent.create;
+    const injected = new Error("round 1 application persistence failed");
+    const createSpy = vi.spyOn(IssueEvent, "create").mockImplementation(async function(docs, options) {
+      const event = Array.isArray(docs) ? docs[0] : docs;
+      if (event.eventType === "consensus.phase.completed" && event.phase === 1) throw injected;
+      return originalCreate.call(this, docs, options);
+    });
+    await expect(computeIssueEvaluationStage({ issueId: issue._id, userId: owner._id, stage: "alternativeEvaluation", httpClient, decisionModelsServiceBaseUrl: MODELS_BASE_URL })).rejects.toThrow(injected.message);
+    createSpy.mockRestore();
+    const attempts = await IssueExecutionAttempt.find({ issue: issue._id }).sort({ consensusPhase: 1 }).lean();
+    const stageResults = await IssueStageResult.find({ issue: issue._id, stage: "alternativeEvaluation" }).sort({ consensusPhase: 1 }).lean();
+    const events = await IssueEvent.find({ issue: issue._id }).lean();
+    const revisions = await IssueEvaluationRevision.find({ issue: issue._id, action: "generated" }).lean();
+    const storedIssue = await Issue.findById(issue._id).lean();
+    expect(httpClient.post).toHaveBeenCalledTimes(2);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0].application.status).toBe("applied");
+    expect(attempts[1]).toMatchObject({ status: "succeeded", application: { status: "failed", error: { message: injected.message } } });
+    expect(attempts[1].application.completedAt).toBeInstanceOf(Date);
+    expect(stageResults.map((result) => result.consensusPhase)).toEqual([0]);
+    expect(revisions).toHaveLength(acceptedExperts.length);
+    expect(storedIssue).toMatchObject({ consensusPhase: 1, currentStage: "alternativeEvaluation", active: true, finishedAt: null });
+    expect(events.some((event) => event.eventType === "model.execution.applicationFailed" && String(event.entityId) === String(attempts[1]._id))).toBe(true);
+    expect(events.some((event) => event.eventType === "consensus.phase.completed" && event.phase === 1)).toBe(false);
+    expect(events.some((event) => event.eventType === "consensus.phase.started" && event.phase === 2)).toBe(false);
+  });
+
+  it("rolls back final-round finalization after DMS succeeds", async () => {
+    const { owner, issue, acceptedExperts, alternatives, leafCriteria } = await createAlternativeComputeFixture({ issueOverrides: { isConsensus: true, simulateConsensus: true, consensusThreshold: 0.9, consensusMaxPhases: 2 } });
+    await createCompletedAlternativeEvaluations({ issueId: issue._id, experts: acceptedExperts, alternatives, leafCriteria });
+    const suggestions = Object.fromEntries(acceptedExperts.map((expert) => [String(expert._id), { payload: buildAlternativeMatrixPayload({ alternatives, leafCriteria, valuesByAlternativeId: { [String(alternatives[0]._id)]: 8, [String(alternatives[1]._id)]: 2 } }) }]));
+    const httpClient = createHttpClientMock(
+      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives, leafCriteria, consensusMeasure: 0.2, rawOutput: { suggested_next_evaluations: suggestions } })),
+      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives, leafCriteria, consensusMeasure: 0.95, rawOutput: { settled: true } }))
+    );
+    const originalCreate = IssueEvent.create;
+    const createSpy = vi.spyOn(IssueEvent, "create").mockImplementation(async function(docs, options) {
+      const event = Array.isArray(docs) ? docs[0] : docs;
+      if (event.eventType === "issue.finished" && event.phase === 1) throw new Error("finalization persistence failed");
+      return originalCreate.call(this, docs, options);
+    });
+    await expect(computeIssueEvaluationStage({ issueId: issue._id, userId: owner._id, stage: "alternativeEvaluation", httpClient, decisionModelsServiceBaseUrl: MODELS_BASE_URL })).rejects.toThrow("finalization persistence failed");
+    createSpy.mockRestore();
+    const attempts = await IssueExecutionAttempt.find({ issue: issue._id }).sort({ consensusPhase: 1 }).lean();
+    const storedIssue = await Issue.findById(issue._id).lean();
+    const finalStageResult = await IssueStageResult.findOne({ issue: issue._id, stage: "alternativeEvaluation", consensusPhase: 1 });
+    const events = await IssueEvent.find({ issue: issue._id }).lean();
+    expect(httpClient.post).toHaveBeenCalledTimes(2);
+    expect(attempts[0].application.status).toBe("applied");
+    expect(attempts[1]).toMatchObject({ status: "succeeded", application: { status: "failed" } });
+    expect(finalStageResult).toBeNull();
+    expect(storedIssue).toMatchObject({ consensusPhase: 1, currentStage: "alternativeEvaluation", active: true, finishedAt: null });
+    expect(events.some((event) => event.eventType === "issue.finished" && event.phase === 1)).toBe(false);
+    expect(events.some((event) => event.eventType === "issue.stage.changed" && event.stage === "finished")).toBe(false);
+    expect(events.some((event) => event.eventType === "model.execution.applicationFailed" && String(event.entityId) === String(attempts[1]._id))).toBe(true);
   });
 });
 

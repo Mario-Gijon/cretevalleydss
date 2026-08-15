@@ -27,6 +27,7 @@ import {
 } from "../modelExecution/index.js";
 import { buildDecisionContext } from "../evaluations/buildDecisionContext.js";
 import { persistIssueEvaluationOperation } from "../evaluations/issueEvaluationPersistence.js";
+import { writeIssueStateSnapshot } from "../stateSnapshots/issueStateSnapshot.js";
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
@@ -470,7 +471,7 @@ const applyCriteriaWeightingIssueUpdates = async ({
     session,
   });
   if (issue.isConsensus === true) {
-    await writeConsensusEvent({
+    const phaseStartEvent = await writeConsensusEvent({
       issue,
       eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED,
       phase: issue.consensusPhase,
@@ -484,6 +485,7 @@ const applyCriteriaWeightingIssueUpdates = async ({
       },
       session,
     });
+    await writeIssueStateSnapshot({ issue, snapshotType: "consensusPhaseStart", occurredAt, correlationId, sourceEvent: phaseStartEvent._id, sourceExecutionAttempt: executionAttempt?._id ?? null, session });
   }
 };
 
@@ -941,7 +943,8 @@ const computeSimulatedAlternativeConsensusRounds = async ({
             await saveSimulatedEvaluationsForNextPhaseOrThrow({ issue, structure, acceptedParticipations, suggestions: getSuggestedEvaluationsOrThrow(lifecycleComputeResult.rawOutput), nextPhase, occurredAt: applicationOccurredAt, correlationId, sourceExecutionAttempt: phaseComputeResult.executionAttempt, session: roundSession });
             issue.consensusPhase = nextPhase;
             await issue.save({ session: roundSession });
-            await writeConsensusEvent({ issue, eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED, phase: nextPhase, actorUser, occurredAt: applicationOccurredAt, correlationId, details: { threshold: issue.consensusThreshold, maxPhases: issue.consensusMaxPhases, simulated: true }, session: roundSession });
+            const phaseStartEvent = await writeConsensusEvent({ issue, eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED, phase: nextPhase, actorUser, occurredAt: applicationOccurredAt, correlationId, details: { threshold: issue.consensusThreshold, maxPhases: issue.consensusMaxPhases, simulated: true }, session: roundSession });
+            await writeIssueStateSnapshot({ issue, snapshotType: "consensusPhaseStart", consensusPhase: nextPhase, occurredAt: applicationOccurredAt, correlationId, sourceEvent: phaseStartEvent._id, sourceExecutionAttempt: phaseComputeResult.executionAttempt._id, session: roundSession });
           } else {
             const previousLifecycleState = snapshotIssueLifecycle(issue);
             issue.consensusPhase = currentPhase; issue.currentStage = ISSUE_STAGES.FINISHED; issue.active = false; if (!issue.finishedAt) issue.finishedAt = applicationOccurredAt;
@@ -1211,7 +1214,7 @@ export const computeIssueEvaluationStage = async ({
 
       if (lifecycleMetadata) {
         if (!lifecycleMetadata.consensusReached && !lifecycleMetadata.maxPhasesReached) {
-          await writeConsensusEvent({
+          const phaseStartEvent = await writeConsensusEvent({
             issue,
             eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED,
             phase: issue.consensusPhase,
@@ -1225,6 +1228,7 @@ export const computeIssueEvaluationStage = async ({
             },
             session: persistSession,
           });
+          await writeIssueStateSnapshot({ issue, snapshotType: "consensusPhaseStart", occurredAt: applicationOccurredAt, correlationId: eventMetadata.correlationId, sourceEvent: phaseStartEvent._id, sourceExecutionAttempt: computeResult.executionAttempt._id, session: persistSession });
         }
       }
 

@@ -5,6 +5,7 @@ import { Alternative } from "../../../models/Alternatives.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 import { prepareIssueCreation } from "../../../modules/issues/creation/createIssue.js";
@@ -96,8 +97,11 @@ describe("issue creation integration", () => {
     const domainSnapshots = await IssueExpressionDomain.find().lean();
     const participations = await Participation.find().lean();
     const notifications = await Notification.find().lean();
+    const snapshots = await IssueStateSnapshot.find().lean();
 
     expect(issues).toHaveLength(1);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toMatchObject({ snapshotType: "creation", state: { issue: { name: "Example issue", effectiveModelParameters: expect.any(Object) }, model: { id: String(model._id) }, alternatives: [{ name: "Alpha", position: 0 }, { name: "Beta", position: 1 }], criteria: expect.any(Array), expressionDomains: [{ name: domain.name, definition: domain.definition }], participants: expect.any(Array) } });
     expect(issues[0]).toMatchObject({
       ownerId: owner._id,
       createdBy: owner._id,

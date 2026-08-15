@@ -48,6 +48,7 @@ import {
   writeConsensusEvent,
   writeIssueEvent,
 } from "../events/index.js";
+import { writeIssueStateSnapshot } from "../stateSnapshots/issueStateSnapshot.js";
 
 const assertIssueNameAvailableOrThrow = async ({
   issueName,
@@ -347,8 +348,9 @@ export const persistPreparedIssueCreation = async ({
     });
   }
 
+  let phaseStartEvent = null;
   if (issue.isConsensus === true && issue.currentStage === "alternativeEvaluation") {
-    await writeConsensusEvent({
+    phaseStartEvent = await writeConsensusEvent({
       issue,
       eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED,
       phase: issue.consensusPhase,
@@ -382,6 +384,8 @@ export const persistPreparedIssueCreation = async ({
   });
 
   await issue.save({ session });
+  await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: eventMetadata.occurredAt, correlationId: eventMetadata.correlationId, session });
+  if (phaseStartEvent) await writeIssueStateSnapshot({ issue, snapshotType: "consensusPhaseStart", occurredAt: eventMetadata.occurredAt, correlationId: eventMetadata.correlationId, sourceEvent: phaseStartEvent._id, session });
   return {
     issueName: input.issueName,
     emailsToSend,
