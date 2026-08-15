@@ -5,6 +5,7 @@ import {
   resolveCriteriaWeightingConfigOrThrow,
 } from "../../../modules/issues/creation/initialCriteriaWeights/resolveInitialCriteriaWeights.js";
 import { Issue } from "../../../models/Issues.js";
+import { Criterion } from "../../../models/Criteria.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import {
   buildCreateIssueInfo,
@@ -33,6 +34,14 @@ const criteriaWeightingModelDefaults = {
 };
 
 describe("criteria weighting structure resolution", () => {
+  it("preserves creator-manual historical semantics without requiring an expert stage", async () => {
+    const resolved = await resolveCriteriaWeightingConfigOrThrow({
+      criteriaWeightingConfig: { mode: "creatorManual", payload: { weightsByCriterion: { "criterion-cost": 0.7, "criterion-speed": 0.3 } } },
+      criteriaWeightingParameters: {}, criterionNames: leafCriteria.map((criterion) => criterion.name), leafCriteria, isSingleLeafCriterion: false,
+      model: { usesCriteriaWeights: true, usesFuzzyCriteriaWeights: false },
+    });
+    expect(resolved).toMatchObject({ isCriteriaWeightingRequired: false, source: "creator", mode: "creatorManual", method: "manual", currentStage: "alternativeEvaluation", criteriaWeightsStructureKey: "manualCriteriaWeights" });
+  });
   it("remaps the canonical deferred BWM payload without legacy fields", () => {
     const remapped = remapCriteriaWeightIdsToMongoCriteriaOrThrow({
       resolvedCriteriaWeighting: {
@@ -169,6 +178,33 @@ describe("criteria weighting structure resolution", () => {
     });
     const snapshot = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean();
     expect(snapshot.state.criteriaWeighting).toMatchObject({ required: true, source: "experts", mode: "expertManual", method: "manual", structureKey: "manualCriteriaWeights", apiModelKey: "manual_criteria_weights" });
+  });
+
+  it("persists creator-manual weighting semantics and remapped effective weights in the creation snapshot", async () => {
+    const owner = await createConfirmedUser({ email: "creator-manual-owner@example.com" });
+    const expert = await createConfirmedUser({ email: "creator-manual-expert@example.com" });
+    const issueModel = await createIssueModel({ usesCriteriaWeights: true });
+    const domain = await createExpressionDomainFixture({ userId: owner._id });
+    const issueInfo = buildCreateIssueInfo({
+      selectedModelId: issueModel._id, globalDomainId: domain._id, addedExperts: [expert.email],
+      criteria: [{ id: "source-root", name: "Impact", type: "group", children: [{ id: "source-cost", name: "Cost", type: "cost", children: [] }, { id: "source-speed", name: "Speed", type: "benefit", children: [] }] }],
+      criteriaWeightingConfig: { mode: "creatorManual", payload: { weightsByCriterion: { "source-cost": 0.7, "source-speed": 0.3 } } },
+    });
+    await prepareAndPersistIssueCreation({ issueInfo, ownerUserId: owner._id });
+    const issue = await Issue.findOne({ name: "Example issue" }).lean();
+    const leaves = await Criterion.find({ issue: issue._id, isLeaf: true }).sort({ position: 1 }).lean();
+    const snapshot = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean();
+    expect(issue.currentStage).toBe("alternativeEvaluation");
+    expect(snapshot.state.criteriaWeighting).toMatchObject({ required: false, source: "creator", mode: "creatorManual", method: "manual", structureKey: "manualCriteriaWeights", model: null, apiModelKey: null });
+    const weights = snapshot.state.criteriaWeighting.weightsByCriterionId;
+    expect(Object.keys(weights).sort()).toEqual(leaves.map((leaf) => String(leaf._id)).sort());
+    expect(Object.keys(weights)).not.toContain("source-cost");
+    expect(Object.keys(weights)).not.toContain("source-speed");
+    expect(Object.values(weights).sort()).toEqual([0.3, 0.7]);
+    expect(weights).toEqual(issue.modelParameters.weights);
+    const original = structuredClone(snapshot.state.criteriaWeighting);
+    await Issue.updateOne({ _id: issue._id }, { $set: { "modelParameters.weights": {} } });
+    expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state.criteriaWeighting).toEqual(original);
   });
 
   it("continues using a generic expert API model's runtime-defined structure", async () => {
