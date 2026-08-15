@@ -92,6 +92,9 @@ const buildResolvedCriteriaWeightingConfig = ({
   isDeferredApiCriteriaWeighting = false,
   currentStage,
   isCriteriaWeightingRequired,
+  source = null,
+  mode = null,
+  method = null,
 }) => {
   return {
     criteriaWeightsStructureKey,
@@ -105,6 +108,9 @@ const buildResolvedCriteriaWeightingConfig = ({
     isDeferredApiCriteriaWeighting,
     currentStage,
     isCriteriaWeightingRequired,
+    source,
+    mode,
+    method,
   };
 };
 
@@ -412,6 +418,9 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       isDeferredApiCriteriaWeighting: false,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
+      source: resolvedConfig.source,
+      mode: resolvedConfig.mode,
+      method: resolvedConfig.method,
     });
     }
 
@@ -433,6 +442,9 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       isDeferredApiCriteriaWeighting: false,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
+      source: resolvedConfig.source,
+      mode: resolvedConfig.mode,
+      method: resolvedConfig.method,
     });
   }
 
@@ -453,6 +465,9 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       isDeferredApiCriteriaWeighting: false,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
+      source: resolvedConfig.source,
+      mode: resolvedConfig.mode,
+      method: resolvedConfig.method,
     });
   }
 
@@ -469,6 +484,9 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       isDeferredApiCriteriaWeighting: false,
       currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       isCriteriaWeightingRequired: true,
+      source: resolvedConfig.source,
+      mode: resolvedConfig.mode,
+      method: resolvedConfig.method,
     });
 
     validateExpertCriteriaWeightingResolutionOrThrow({
@@ -517,6 +535,9 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     isDeferredApiCriteriaWeighting,
     currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     isCriteriaWeightingRequired: false,
+    source: resolvedConfig.source,
+    mode: resolvedConfig.mode,
+    method: resolvedConfig.method,
   });
 };
 

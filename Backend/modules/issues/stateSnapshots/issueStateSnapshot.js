@@ -8,13 +8,31 @@ import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Participation } from "../../../models/Participations.js";
 import { User } from "../../../models/Users.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { createInternalError } from "../../../utils/common/errors.js";
 
-const clone = (value, field) => { try { return JSON.parse(JSON.stringify(value)); } catch { throw new TypeError(`${field} must be JSON-compatible`); } };
+const validateJson = (value, field, seen = new WeakSet()) => {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return;
+  if (typeof value === "number") { if (Number.isFinite(value)) return; throw createInternalError(`${field} must contain finite numbers only`, { field }); }
+  if (typeof value === "undefined" || typeof value === "function" || typeof value === "symbol" || typeof value === "bigint") throw createInternalError(`${field} must be JSON-compatible`, { field });
+  if (Array.isArray(value)) { value.forEach((entry, index) => validateJson(entry, `${field}[${index}]`, seen)); return; }
+  if (typeof value !== "object" || Object.getPrototypeOf(value) !== Object.prototype) throw createInternalError(`${field} must be a plain JSON object`, { field });
+  if (seen.has(value)) throw createInternalError(`${field} must not contain circular references`, { field });
+  seen.add(value); Object.entries(value).forEach(([key, entry]) => validateJson(entry, `${field}.${key}`, seen)); seen.delete(value);
+};
+const canonicalize = (value) => {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value.toObject === "function") return canonicalize(value.toObject());
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, canonicalize(entry)]));
+  return value;
+};
+const clone = (value, field) => { const canonical = canonicalize(value); validateJson(canonical, field); return JSON.parse(JSON.stringify(canonical)); };
 const iso = (value) => value instanceof Date ? value.toISOString() : value ?? null;
 const q = (query, session) => session ? query.session(session) : query;
 const modelSnapshot = (doc) => doc ? { id: toIdString(doc._id), name: doc.name, apiModelKey: doc.apiModelKey, modelKind: doc.modelKind, apiEndpoint: clone(doc.apiEndpoint ?? null, "model.apiEndpoint"), evaluationStructureKey: doc.evaluationStructureKey ?? null, supportsConsensus: doc.supportsConsensus === true, supportsConsensusSimulation: doc.supportsConsensusSimulation === true, supportsCreatorCriteriaWeighting: doc.supportsCreatorCriteriaWeighting === true, supportsExpertCriteriaWeighting: doc.supportsExpertCriteriaWeighting === true, usesCriteriaWeights: doc.usesCriteriaWeights === true, usesExpertWeights: doc.usesExpertWeights === true, usesFuzzyCriteriaWeights: doc.usesFuzzyCriteriaWeights === true, usesCriterionTypes: doc.usesCriterionTypes === true, supportedExpressionDomains: clone(doc.supportedExpressionDomains ?? [], "model.supportedExpressionDomains"), parameters: clone(doc.parameters ?? [], "model.parameters"), request: clone(doc.request ?? null, "model.request"), response: clone(doc.response ?? null, "model.response"), implementationStatus: doc.implementationStatus ?? null, publicUsable: doc.publicUsable === true, smallDescription: doc.smallDescription ?? null, extendDescription: doc.extendDescription ?? null } : null;
 export const buildIssueStateSnapshot = async ({ issue, snapshotType, consensusPhase = issue.consensusPhase, criteriaWeightingConfiguration = null, session = null }) => {
   const creationSnapshot = snapshotType === "consensusPhaseStart" ? await q(IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean(), session) : null;
+  if (snapshotType === "consensusPhaseStart" && !creationSnapshot) throw createInternalError("Issue creation snapshot is required before a consensus phase snapshot", { field: "issue" });
   const [model, criteriaWeightingModel, alternatives, criteria, domains, participations, evaluations, previousStageResult] = await Promise.all([
     snapshotType === "creation" ? q(IssueModel.findById(issue.model).lean(), session) : null, snapshotType === "creation" ? q(IssueModel.findById(issue.criteriaWeightingModel).lean(), session) : null, q(Alternative.find({ issue: issue._id }).sort({ position: 1, _id: 1 }).lean(), session), q(Criterion.find({ issue: issue._id }).sort({ parentCriterion: 1, position: 1, _id: 1 }).lean(), session), q(IssueExpressionDomain.find({ issue: issue._id }).sort({ _id: 1 }).lean(), session), q(Participation.find({ issue: issue._id }).sort({ expert: 1, _id: 1 }).lean(), session), q(IssueEvaluation.find({ issue: issue._id, stage: snapshotType === "consensusPhaseStart" ? "alternativeEvaluation" : issue.currentStage === "criteriaWeighting" ? "criteriaWeighting" : "alternativeEvaluation", consensusPhase }).sort({ expert: 1, _id: 1 }).lean(), session), consensusPhase > 0 ? q(IssueStageResult.findOne({ issue: issue._id, stage: "alternativeEvaluation", consensusPhase: consensusPhase - 1 }).lean(), session) : null,
   ]);
