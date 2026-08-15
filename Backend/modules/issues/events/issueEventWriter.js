@@ -4,8 +4,9 @@ import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeOptionalString, normalizeString } from "../../../utils/common/strings.js";
 import { ISSUE_EVENT_TYPE_VALUES } from "./issueEventTypes.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
 
-const EVENT_STAGES = new Set(["criteriaWeighting", "alternativeEvaluation"]);
+const EVENT_STAGES = new Set(Object.values(ISSUE_STAGES));
 
 export const cloneIssueEventValue = (value, fallback = null) => {
   if (value === undefined) return fallback;

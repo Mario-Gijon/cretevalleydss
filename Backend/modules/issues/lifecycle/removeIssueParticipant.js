@@ -14,10 +14,15 @@ import {
   snapshotParticipation,
   writeIssueEvent,
 } from "../events/index.js";
+import { snapshotIssueLifecycle, writeIssueStageChanged } from "../events/index.js";
 
 const syncActiveIssueStageAfterUserRemoval = async ({
   issue,
   remainingParticipations,
+  actorType,
+  actorUser,
+  occurredAt,
+  correlationId,
   session = null,
 }) => {
   if (issue.currentStage !== "criteriaWeighting") {
@@ -38,8 +43,19 @@ const syncActiveIssueStageAfterUserRemoval = async ({
     totalParticipants === totalWeightsDone &&
     issue.currentStage !== "weightsFinished"
   ) {
+    const previousState = snapshotIssueLifecycle(issue);
     issue.currentStage = "weightsFinished";
     await issue.save({ session });
+    await writeIssueStageChanged({
+      issue,
+      previousState,
+      actorType,
+      actorUser,
+      occurredAt,
+      correlationId,
+      cause: "participantRemovalCompletedCriteriaWeighting",
+      session,
+    });
     return true;
   }
 
@@ -152,6 +168,10 @@ export const removeIssueParticipantFromActiveIssue = async ({
   await syncActiveIssueStageAfterUserRemoval({
     issue,
     remainingParticipations,
+    actorType,
+    actorUser,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
     session,
   });
 

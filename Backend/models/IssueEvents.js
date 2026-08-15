@@ -11,7 +11,7 @@ const issueEventSchema = new Schema(
     entityId: { type: Schema.Types.ObjectId, default: null },
     stage: {
       type: String,
-      enum: ["criteriaWeighting", "alternativeEvaluation", null],
+      enum: ["criteriaWeighting", "weightsFinished", "alternativeEvaluation", "finished", null],
       default: null,
     },
     phase: { type: Number, min: 0, default: null },

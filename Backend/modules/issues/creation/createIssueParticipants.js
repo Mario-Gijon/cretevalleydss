@@ -5,7 +5,6 @@ import {
   snapshotParticipation,
   writeIssueEvent,
 } from "../events/index.js";
-import { mapIssueStageToExitStage } from "../lifecycle/mapIssueStageToExitStage.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
 
 export const createIssueParticipationsAndNotifications = async ({
@@ -81,9 +80,7 @@ export const createIssueParticipationsAndNotifications = async ({
       notification,
     ])
   );
-  const stage = mapIssueStageToExitStage(issue.currentStage, {
-    issueId: issue._id,
-  });
+  const stage = issue.currentStage;
 
   for (const participation of createdParticipations) {
     const isOwnerExpert = sameId(participation.expert, issue.ownerId);

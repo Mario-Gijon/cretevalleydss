@@ -64,7 +64,7 @@ const findLatestRevision = async ({
     stage,
     consensusPhase,
   })
-    .sort({ createdAt: -1, _id: -1 })
+    .sort({ occurredAt: -1, _id: -1 })
     .session(session);
 };
 
@@ -87,6 +87,8 @@ export const persistIssueEvaluationOperation = async ({
   decisionContext,
   completed,
   submittedAt,
+  occurredAt,
+  correlationId,
   session = null,
 }) => {
   const evaluation = await upsertIssueEvaluation({
@@ -124,6 +126,8 @@ export const persistIssueEvaluationOperation = async ({
         decisionContext: cloneSerializable(decisionContext),
         previousRevision: previousRevision?._id ?? null,
         submittedAt,
+        occurredAt,
+        correlationId,
         schemaVersion: 1,
       },
     ],

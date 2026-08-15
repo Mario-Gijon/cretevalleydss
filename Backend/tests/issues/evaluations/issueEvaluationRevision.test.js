@@ -157,6 +157,8 @@ describe("IssueEvaluationRevision", () => {
         },
       },
       submittedAt: null,
+      occurredAt: expect.any(Date),
+      correlationId: expect.any(String),
       previousRevision: null,
       schemaVersion: 1,
     });
@@ -167,12 +169,14 @@ describe("IssueEvaluationRevision", () => {
         "action",
         "actor",
         "consensusPhase",
+        "correlationId",
         "createdAt",
         "decisionContext",
         "evaluation",
         "expert",
         "issue",
         "normalizedPayload",
+        "occurredAt",
         "previousRevision",
         "rawPayload",
         "schemaVersion",
@@ -197,6 +201,9 @@ describe("IssueEvaluationRevision", () => {
     });
     expect(revisions[2].submittedAt.getTime()).toBe(
       projection.submittedAt.getTime()
+    );
+    expect(revisions[2].occurredAt.getTime()).toBe(
+      revisions[2].submittedAt.getTime()
     );
     expect(revisions[0].decisionContext.issue.currentStage).toBe(
       "criteriaWeighting"

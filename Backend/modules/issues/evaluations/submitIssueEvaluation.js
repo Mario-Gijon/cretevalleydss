@@ -6,14 +6,21 @@ import {
   cloneSerializable,
   persistIssueEvaluationOperation,
 } from "./issueEvaluationPersistence.js";
+import { createIssueEventOperationMetadata } from "../events/index.js";
 
 export const submitIssueEvaluation = async ({
   issueId,
   userId,
   stage,
   payload,
+  occurredAt = null,
+  correlationId = null,
   session = null,
 }) => {
+  const eventMetadata =
+    occurredAt && correlationId
+      ? { occurredAt, correlationId }
+      : createIssueEventOperationMetadata();
   const { issue, structure } = await loadIssueEvaluationContext({
     issueId,
     userId,
@@ -36,7 +43,7 @@ export const submitIssueEvaluation = async ({
     decisionContext,
   });
 
-  const submittedAt = new Date();
+  const submittedAt = eventMetadata.occurredAt;
 
   await persistIssueEvaluationOperation({
     issueId: issue._id,
@@ -51,6 +58,8 @@ export const submitIssueEvaluation = async ({
     decisionContext: decisionContextSnapshot,
     completed: true,
     submittedAt,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
     session,
   });
 
@@ -58,10 +67,21 @@ export const submitIssueEvaluation = async ({
     issueId: issue._id,
     userId,
     stage,
+    issue,
+    actorUser: userId,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
     session,
   });
 
-  await advanceToWeightsFinishedAfterSubmit({ issue, stage, session });
+  await advanceToWeightsFinishedAfterSubmit({
+    issue,
+    stage,
+    actorUser: userId,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
+    session,
+  });
 
   return {
     message: "Evaluation submitted successfully",

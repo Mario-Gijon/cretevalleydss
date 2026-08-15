@@ -69,6 +69,8 @@ const issueEvaluationRevisionSchema = new Schema(
       type: Date,
       default: null,
     },
+    occurredAt: { type: Date, required: true },
+    correlationId: { type: String, required: true, trim: true, index: true },
     schemaVersion: {
       type: Number,
       required: true,
@@ -90,12 +92,12 @@ issueEvaluationRevisionSchema.index({
   expert: 1,
   stage: 1,
   consensusPhase: 1,
-  createdAt: 1,
+  occurredAt: 1,
 });
 
 issueEvaluationRevisionSchema.index({
   evaluation: 1,
-  createdAt: 1,
+  occurredAt: 1,
 });
 
 export const IssueEvaluationRevision = model(

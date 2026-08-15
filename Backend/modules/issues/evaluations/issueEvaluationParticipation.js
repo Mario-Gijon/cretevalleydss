@@ -1,6 +1,10 @@
 import { Participation } from "../../../models/Participations.js";
 import { createForbiddenError } from "../../../utils/common/errors.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
+import {
+  snapshotParticipation,
+  writeParticipationCompletionChanged,
+} from "../events/index.js";
 
 const requireParticipationEntryWindowOrThrow = ({
   participation,
@@ -103,6 +107,10 @@ export const markParticipationCompleted = async ({
   issueId,
   userId,
   stage,
+  issue,
+  actorUser,
+  occurredAt,
+  correlationId,
   session = null,
 }) => {
   const completionUpdate =
@@ -110,22 +118,15 @@ export const markParticipationCompleted = async ({
       ? { weightsCompleted: true }
       : { evaluationCompleted: true };
 
-  const updatedParticipation = await Participation.findOneAndUpdate(
+  const participation = await Participation.findOne(
     {
       issue: issueId,
       expert: userId,
       invitationStatus: "accepted",
-    },
-    {
-      $set: completionUpdate,
-    },
-    {
-      new: true,
-      session,
     }
-  );
+  ).session(session);
 
-  if (!updatedParticipation) {
+  if (!participation) {
     throw createForbiddenError(
       "You are no longer an accepted participant for this issue",
       {
@@ -133,4 +134,27 @@ export const markParticipationCompleted = async ({
       }
     );
   }
+
+  const previousState = snapshotParticipation(participation);
+  const changedFields = Object.keys(completionUpdate).filter(
+    (field) => participation[field] !== completionUpdate[field]
+  );
+  if (changedFields.length === 0) return participation;
+
+  Object.assign(participation, completionUpdate);
+  await participation.save({ session });
+  await writeParticipationCompletionChanged({
+    issue,
+    participation,
+    previousState,
+    actorType: "user",
+    actorUser,
+    occurredAt,
+    correlationId,
+    cause: "evaluationSubmitted",
+    changedFields,
+    session,
+  });
+
+  return participation;
 };

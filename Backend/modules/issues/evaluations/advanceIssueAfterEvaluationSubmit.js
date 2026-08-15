@@ -1,10 +1,14 @@
 import { Participation } from "../../../models/Participations.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { ISSUE_STAGES } from "../shared/issueStages.js";
+import { snapshotIssueLifecycle, writeIssueStageChanged } from "../events/index.js";
 
 export const advanceToWeightsFinishedAfterSubmit = async ({
   issue,
   stage,
+  actorUser,
+  occurredAt,
+  correlationId,
   session = null,
 }) => {
   if (stage !== EVALUATION_STAGES.CRITERIA_WEIGHTING) {
@@ -40,7 +44,18 @@ export const advanceToWeightsFinishedAfterSubmit = async ({
     allWeightsCompleted &&
     issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING
   ) {
+    const previousState = snapshotIssueLifecycle(issue);
     issue.currentStage = ISSUE_STAGES.WEIGHTS_FINISHED;
     await issue.save({ session });
+    await writeIssueStageChanged({
+      issue,
+      previousState,
+      actorType: "user",
+      actorUser,
+      occurredAt,
+      correlationId,
+      cause: "allCriteriaWeightingSubmitted",
+      session,
+    });
   }
 };

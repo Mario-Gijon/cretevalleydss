@@ -212,7 +212,7 @@ export const deleteAuthenticatedUserAccount = async ({
       session
     );
 
-    const stage = mapIssueStageToExitStage(issue.currentStage, {
+    const exitStage = mapIssueStageToExitStage(issue.currentStage, {
       issueId: issue._id,
     });
     await writeIssueEvent({
@@ -223,7 +223,7 @@ export const deleteAuthenticatedUserAccount = async ({
       subjectUser: user._id,
       entityType: "participation",
       entityId: participation._id,
-      stage,
+      stage: issue.currentStage,
       phase: issue.consensusPhase,
       occurredAt: eventMetadata.occurredAt,
       correlationId: eventMetadata.correlationId,
@@ -238,7 +238,7 @@ export const deleteAuthenticatedUserAccount = async ({
       issueId: issue._id,
       userId: user._id,
       phase: issue.consensusPhase,
-      stage,
+      stage: exitStage,
       reason: "User account deleted",
       session,
     });

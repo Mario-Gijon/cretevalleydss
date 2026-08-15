@@ -40,7 +40,14 @@ import { getOrderedLeafCriterionNamesFromInputOrThrow } from "./getOrderedLeafCr
 import {
   validateAndNormalizeExpertWeightsOrThrow,
 } from "../shared/expertWeights.js";
-import { createIssueEventOperationMetadata } from "../events/index.js";
+import {
+  createIssueEventOperationMetadata,
+  ISSUE_EVENT_TYPES,
+  snapshotIssueLifecycle,
+  writeCriteriaWeightsChanged,
+  writeConsensusEvent,
+  writeIssueEvent,
+} from "../events/index.js";
 
 const assertIssueNameAvailableOrThrow = async ({
   issueName,
@@ -302,6 +309,59 @@ export const persistPreparedIssueCreation = async ({
     issue,
     resolvedCriteriaWeighting: persistedCriteriaWeighting,
   });
+
+  const initialLifecycleState = snapshotIssueLifecycle(issue);
+  await writeIssueEvent({
+    issueId: issue._id,
+    eventType: ISSUE_EVENT_TYPES.ISSUE_STAGE_CHANGED,
+    actorType: "user",
+    actorUser: ownerUserId,
+    stage: issue.currentStage,
+    phase: issue.consensusPhase,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
+    previousState: { ...initialLifecycleState, currentStage: null },
+    nextState: initialLifecycleState,
+    details: {
+      previousStage: null,
+      nextStage: issue.currentStage,
+      cause: "issueCreated",
+    },
+    session,
+  });
+
+  const initialWeights = issue?.modelParameters?.weights;
+  if (initialWeights && typeof initialWeights === "object" && !Array.isArray(initialWeights)) {
+    await writeCriteriaWeightsChanged({
+      issue,
+      previousWeightsByCriterionId: {},
+      nextWeightsByCriterionId: initialWeights,
+      actorType: "user",
+      actorUser: ownerUserId,
+      occurredAt: eventMetadata.occurredAt,
+      correlationId: eventMetadata.correlationId,
+      cause: "initialCriteriaWeights",
+      structureKey: issue.criteriaWeightsStructureKey,
+      session,
+    });
+  }
+
+  if (issue.isConsensus === true && issue.currentStage === "alternativeEvaluation") {
+    await writeConsensusEvent({
+      issue,
+      eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED,
+      phase: issue.consensusPhase,
+      actorUser: ownerUserId,
+      occurredAt: eventMetadata.occurredAt,
+      correlationId: eventMetadata.correlationId,
+      details: {
+        threshold: issue.consensusThreshold,
+        maxPhases: issue.consensusMaxPhases,
+        simulated: issue.simulateConsensus === true,
+      },
+      session,
+    });
+  }
 
   const isCriteriaWeightingRequired =
     persistedCriteriaWeighting.isCriteriaWeightingRequired;

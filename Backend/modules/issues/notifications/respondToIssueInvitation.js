@@ -15,9 +15,9 @@ import {
   createIssueEventOperationMetadata,
   ISSUE_EVENT_TYPES,
   snapshotParticipation,
+  writeParticipationCompletionChanged,
   writeIssueEvent,
 } from "../events/index.js";
-import { mapIssueStageToExitStage } from "../lifecycle/mapIssueStageToExitStage.js";
 
 export const respondToIssueInvitation = async ({
   issueId,
@@ -99,10 +99,8 @@ export const respondToIssueInvitation = async ({
     subjectUser: userId,
     entityType: "participation",
     entityId: participation._id,
-    stage:
-      participation.entryStage ??
-      mapIssueStageToExitStage(issue.currentStage, { issueId: issue._id }),
-    phase: participation.entryPhase ?? issue.consensusPhase,
+    stage: issue.currentStage,
+    phase: issue.consensusPhase,
     occurredAt: eventMetadata.occurredAt,
     correlationId: eventMetadata.correlationId,
     previousState,
@@ -116,6 +114,22 @@ export const respondToIssueInvitation = async ({
       action === "accepted"
         ? ISSUE_EVENT_TYPES.INVITATION_ACCEPTED
         : ISSUE_EVENT_TYPES.INVITATION_DECLINED,
+  });
+
+  const changedCompletionFields = ["evaluationCompleted", "weightsCompleted"].filter(
+    (field) => previousState[field] !== nextState[field]
+  );
+  await writeParticipationCompletionChanged({
+    issue,
+    participation,
+    previousState,
+    actorType: "user",
+    actorUser: userId,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
+    cause: "invitationAccepted",
+    changedFields: changedCompletionFields,
+    session,
   });
 
   if (action === "accepted" && !wasAccepted) {

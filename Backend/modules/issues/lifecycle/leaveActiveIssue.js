@@ -221,7 +221,7 @@ export const leaveActiveIssue = async ({
     subjectUser: userId,
     entityType: "participation",
     entityId: participation._id,
-    stage: stageForLog,
+    stage: issue.currentStage,
     phase: currentPhase,
     occurredAt: eventMetadata.occurredAt,
     correlationId: eventMetadata.correlationId,

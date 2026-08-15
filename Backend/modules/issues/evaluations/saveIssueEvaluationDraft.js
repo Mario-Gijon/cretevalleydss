@@ -4,14 +4,21 @@ import {
   cloneSerializable,
   persistIssueEvaluationOperation,
 } from "./issueEvaluationPersistence.js";
+import { createIssueEventOperationMetadata } from "../events/index.js";
 
 export const saveIssueEvaluationDraft = async ({
   issueId,
   userId,
   stage,
   payload,
+  occurredAt = null,
+  correlationId = null,
   session = null,
 }) => {
+  const eventMetadata =
+    occurredAt && correlationId
+      ? { occurredAt, correlationId }
+      : createIssueEventOperationMetadata();
   const { issue, structure } = await loadIssueEvaluationContext({
     issueId,
     userId,
@@ -47,6 +54,8 @@ export const saveIssueEvaluationDraft = async ({
     decisionContext: decisionContextSnapshot,
     completed: false,
     submittedAt: null,
+    occurredAt: eventMetadata.occurredAt,
+    correlationId: eventMetadata.correlationId,
     session,
   });
 
