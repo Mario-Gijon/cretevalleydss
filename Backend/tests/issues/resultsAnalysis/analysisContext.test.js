@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildAnalysisContext } from "../../../modules/issues/resultsAnalysis/index.js";
+import { AppError } from "../../../utils/common/errors.js";
 
 const time = (second) => `2026-01-01T00:00:0${second}.000Z`;
 const identity = (id, name, email, university) => ({ id, name, email, university });
@@ -58,5 +59,90 @@ describe("buildAnalysisContext", () => {
     const input = history();
     input.stateSnapshots.creation.state.issue.owner.id = "wrong-owner";
     expect(() => buildAnalysisContext(input)).toThrow(/owner identity does not match ownerId/);
+  });
+
+  it("excludes only top-level raw output from semantic results while preserving exact execution input", () => {
+    const input = history();
+    input.evidence.executionAttempts[1].application.resultSnapshot.result.standardResult = { consensusMeasure: 0.95, rawOutput: { internal: true } };
+    input.evidence.executionAttempts[1].request.body.context.rawOutput = { requestEvidence: true };
+    input.evidence.executionAttempts[2].application.resultSnapshot.result.standardResult = { rankedAlternatives: [], rawOutput: { internal: true } };
+
+    const context = buildAnalysisContext(input);
+    expect(context.rounds[1].selectedExecution.result.standardResult).toEqual({ consensusMeasure: 0.95 });
+    expect(context.rounds[1].selectedExecution.input.context.rawOutput).toEqual({ requestEvidence: true });
+    expect(context.scenarios.current[0].execution.result.standardResult).toEqual({ rankedAlternatives: [] });
+    expect(input.evidence.executionAttempts[1].application.resultSnapshot.result.standardResult.rawOutput).toEqual({ internal: true });
+    expect(input.evidence.executionAttempts[2].application.resultSnapshot.result.standardResult.rawOutput).toEqual({ internal: true });
+  });
+
+  it("selects the final recomputation by application completion, start time, and id while retaining all attempts", () => {
+    const input = history();
+    const base = input.evidence.executionAttempts[1];
+    const recomputation = (id, completedAt, startedAt, marker) => ({
+      ...structuredClone(base), id, correlationId: id, startedAt, completedAt: time(9),
+      request: request("expert-1", { marker }),
+      application: { ...applied("stage-result-1", { marker }, { apiModelKey: marker }), completedAt },
+    });
+    input.evidence.executionAttempts.push(
+      recomputation("recompute-earlier", time(8), time(9), "earlier-completion"),
+      recomputation("recompute-a", time(9), time(8), "same-start-a"),
+      recomputation("recompute-z", time(9), time(8), "same-start-z"),
+    );
+    input.evidence.stageResults[1].executionAttemptId = "recompute-z";
+
+    const round = buildAnalysisContext(input).rounds.find((entry) => entry.phase === 1);
+    expect(round.executionAttempts.map((entry) => entry.id)).toEqual(["attempt-1", "recompute-a", "recompute-z", "recompute-earlier"]);
+    expect(round.selectedExecution.attemptId).toBe("recompute-z");
+    expect(round.selectedExecution.input.evaluations[0].payload).toEqual({ marker: "same-start-z" });
+    expect(round.selectedExecution.result.standardResult).toEqual({ marker: "same-start-z" });
+  });
+
+  it("rejects inconsistent or duplicate current stage-result evidence", () => {
+    const mismatch = history();
+    mismatch.evidence.stageResults[1].executionAttemptId = "attempt-0";
+    expect(() => buildAnalysisContext(mismatch)).toThrow(/does not match selected applied execution/);
+
+    const duplicate = history();
+    duplicate.evidence.stageResults.push({ id: "stage-result-1-duplicate", stage: "alternativeEvaluation", consensusPhase: 1, executionAttemptId: "attempt-1" });
+    expect(() => buildAnalysisContext(duplicate)).toThrow(/More than one current stage result/);
+  });
+
+  it("keeps active uncomputed rounds as evidence-only rounds", () => {
+    const input = history();
+    input.evidence.evaluationRevisions.push({ id: "revision-active", evaluationId: "evaluation-active", expertId: "expert-1", stage: "alternativeEvaluation", consensusPhase: 2, action: "draftSaved", occurredAt: time(8), submittedAt: null, previousRevisionId: null, sourceExecutionAttemptId: null });
+    input.evidence.executionAttempts.push({ id: "attempt-active-failed", scope: "issueStage", evaluationStage: "alternativeEvaluation", consensusPhase: 2, status: "failed", failureStage: "execution", correlationId: "active", startedAt: time(8), completedAt: time(9), modelContext: {}, request: request("expert-1", {}), error: { message: "not computed" }, application: { status: "notApplicable" } });
+
+    const round = buildAnalysisContext(input).rounds.find((entry) => entry.phase === 2);
+    expect(round).toMatchObject({ start: null, selectedExecution: null, revisions: [expect.objectContaining({ id: "revision-active" })], executionAttempts: [expect.objectContaining({ id: "attempt-active-failed", status: "failed" })] });
+  });
+
+  it("reconstructs non-consensus phase zero without a phase-start snapshot and omits deleted scenarios", () => {
+    const input = history();
+    input.stateSnapshots.creation.state.issue.isConsensus = false;
+    input.stateSnapshots.consensusPhaseStarts = [];
+    input.evidence.executionAttempts.push({ ...structuredClone(input.evidence.executionAttempts[2]), id: "scenario-deleted", correlationId: "deleted", application: { ...structuredClone(input.evidence.executionAttempts[2].application), entityId: "deleted-scenario" } });
+
+    const context = buildAnalysisContext(input);
+    const phaseZero = context.rounds.find((entry) => entry.phase === 0);
+    expect(phaseZero).toMatchObject({ start: null, selectedExecution: { attemptId: "attempt-0", result: { standardResult: { consensusMeasure: 0.4 } } } });
+    expect(context.issue.consensus.enabled).toBe(false);
+    expect(context.scenarios.current.map((entry) => entry.id)).toEqual(["scenario-1"]);
+  });
+
+  it("is smaller than its forensic source and rejects malformed required current-state structures with application errors", () => {
+    const input = history();
+    const contextLength = JSON.stringify(buildAnalysisContext(input)).length;
+    const historyLength = JSON.stringify(input).length;
+    expect(contextLength).toBeLessThan(historyLength);
+
+    const missingIssue = history();
+    delete missingIssue.currentState.issue;
+    expect(() => buildAnalysisContext(missingIssue)).toThrow(AppError);
+    expect(() => buildAnalysisContext(missingIssue)).toThrow(/history.currentState.issue must be an object/);
+
+    const invalidParticipants = history();
+    invalidParticipants.currentState.participants = {};
+    expect(() => buildAnalysisContext(invalidParticipants)).toThrow(AppError);
+    expect(() => buildAnalysisContext(invalidParticipants)).toThrow(/history.currentState.participants must be an array/);
   });
 });

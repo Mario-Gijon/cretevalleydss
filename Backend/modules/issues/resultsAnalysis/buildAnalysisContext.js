@@ -19,6 +19,11 @@ const array = (value, field) => {
 const byId = (entries, project) => Object.fromEntries(entries.map(project));
 const sortById = (entries) => [...entries].sort((left, right) => String(left.id).localeCompare(String(right.id)));
 const sameIdentity = (left, right) => left.id === right.id && left.name === right.name && left.email === right.email && left.university === right.university;
+const semanticStandardResult = (value, field) => {
+  const standardResult = object(value, field);
+  const { rawOutput, ...semanticResult } = standardResult;
+  return clone(semanticResult);
+};
 
 const validateHistory = (history) => {
   object(history, "history");
@@ -30,9 +35,11 @@ const validateHistory = (history) => {
   const owner = required(issue.owner, "history.stateSnapshots.creation.state.issue.owner");
   const creator = required(issue.creator, "history.stateSnapshots.creation.state.issue.creator");
   required(history.completeness, "history.completeness");
-  required(history.evidence, "history.evidence");
-  required(history.currentState, "history.currentState");
-  required(history.scenarios, "history.scenarios");
+  object(history.evidence, "history.evidence");
+  const currentState = object(history.currentState, "history.currentState");
+  object(currentState.issue, "history.currentState.issue");
+  array(currentState.participants, "history.currentState.participants");
+  object(history.scenarios, "history.scenarios");
   if (owner.id !== issue.ownerId) fail("Creation snapshot owner identity does not match ownerId", "history.stateSnapshots.creation.state.issue.owner");
   if (creator.id !== issue.createdBy) fail("Creation snapshot creator identity does not match createdBy", "history.stateSnapshots.creation.state.issue.creator");
   return { creation, state, issue, owner, creator };
@@ -64,7 +71,7 @@ const appliedResult = (attempt, field) => {
   const application = object(attempt.application, `${field}.application`);
   const snapshot = object(application.resultSnapshot, `${field}.application.resultSnapshot`);
   const result = object(snapshot.result, `${field}.application.resultSnapshot.result`);
-  required(result.standardResult, `${field}.application.resultSnapshot.result.standardResult`);
+  object(result.standardResult, `${field}.application.resultSnapshot.result.standardResult`);
   required(application.entityId, `${field}.application.entityId`);
   return { application, result };
 };
@@ -83,7 +90,7 @@ const buildRound = ({ phase, phaseSnapshot, revisions, attempts, stageResults, e
   let selectedExecution = null;
   if (selected) {
     const { application, result } = appliedResult(selected, `history.evidence.executionAttempts.${selected.id}`);
-    selectedExecution = { attemptId: selected.id, correlationId: selected.correlationId, startedAt: selected.startedAt, completedAt: selected.completedAt, modelContext: clone(selected.modelContext), input: clone(attemptInput(selected, `history.evidence.executionAttempts.${selected.id}`)), result: { standardResult: clone(result.standardResult), modelExecution: clone(result.modelExecution) }, application: { completedAt: application.completedAt, stageResultId: application.entityId } };
+    selectedExecution = { attemptId: selected.id, correlationId: selected.correlationId, startedAt: selected.startedAt, completedAt: selected.completedAt, modelContext: clone(selected.modelContext), input: clone(attemptInput(selected, `history.evidence.executionAttempts.${selected.id}`)), result: { standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${selected.id}.application.resultSnapshot.result.standardResult`), modelExecution: clone(result.modelExecution) }, application: { completedAt: application.completedAt, stageResultId: application.entityId } };
   }
   return {
     phase,
@@ -99,7 +106,7 @@ const buildCurrentScenario = (scenario, attemptsById) => {
   const attempt = attemptsById.get(scenario.execution?.attemptId);
   if (!attempt || attempt.scope !== "scenario" || attempt.status !== "succeeded" || attempt.application?.status !== "applied" || attempt.application.entityId !== scenario.id) fail("Current scenario does not have matching applied scenario execution evidence", "history.scenarios.current", { scenarioId: scenario.id, attemptId: scenario.execution?.attemptId ?? null });
   const { result } = appliedResult(attempt, `history.evidence.executionAttempts.${attempt.id}`);
-  return { id: scenario.id, name: scenario.name, description: scenario.description, source: clone(scenario.source), targetModelId: scenario.targetModelId, parameterOverrides: clone(scenario.config.parameterOverrides), attemptId: attempt.id, execution: { modelContext: clone(attempt.modelContext), input: clone(attemptInput(attempt, `history.evidence.executionAttempts.${attempt.id}`)), result: { standardResult: clone(result.standardResult), modelExecution: clone(result.modelExecution) } }, createdAt: scenario.createdAt };
+  return { id: scenario.id, name: scenario.name, description: scenario.description, source: clone(scenario.source), targetModelId: scenario.targetModelId, parameterOverrides: clone(scenario.config.parameterOverrides), attemptId: attempt.id, execution: { modelContext: clone(attempt.modelContext), input: clone(attemptInput(attempt, `history.evidence.executionAttempts.${attempt.id}`)), result: { standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${attempt.id}.application.resultSnapshot.result.standardResult`), modelExecution: clone(result.modelExecution) } }, createdAt: scenario.createdAt };
 };
 
 export const buildAnalysisContext = (history) => {
