@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
+import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
 import { Participation } from "../../../models/Participations.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
 import {
@@ -1471,10 +1473,17 @@ describe("simulated consensus orchestration", () => {
       consensusPhase: 1,
       completed: true,
     }).lean();
+    const attempts = await IssueExecutionAttempt.find({ issue: issue._id, scope: "issueStage" }).sort({ consensusPhase: 1 }).lean();
+    const generatedRevisions = await IssueEvaluationRevision.find({ issue: issue._id, action: "generated" }).lean();
 
     expect(httpClient.post).toHaveBeenCalledTimes(2);
     expect(stageResults.map((entry) => entry.consensusPhase)).toEqual([0, 1]);
     expect(nextPhaseEvaluations).toHaveLength(2);
+    expect(attempts).toHaveLength(2);
+    expect(attempts.map((attempt) => attempt.application.status)).toEqual(["applied", "applied"]);
+    expect(stageResults.map((result, index) => String(result.executionAttempt))).toEqual(attempts.map((attempt) => String(attempt._id)));
+    expect(generatedRevisions).toHaveLength(2);
+    expect(generatedRevisions.every((revision) => revision.actorType === "system" && revision.actorUser === null && revision.submittedAt === null && String(revision.sourceExecutionAttempt) === String(attempts[0]._id))).toBe(true);
     expect(storedIssue.currentStage).toBe("finished");
     expect(storedIssue.active).toBe(false);
     expect(storedIssue.consensusPhase).toBe(1);

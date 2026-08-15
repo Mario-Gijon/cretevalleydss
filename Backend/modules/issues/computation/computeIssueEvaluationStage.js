@@ -923,144 +923,45 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       computeResult: phaseComputeResult,
     });
-    const roundOccurredAt = new Date();
-
-    const stageResult = await saveStageResult({
-      issue,
-      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-      computeResult: lifecycleComputeResult,
-      lifecycleMetadata,
-      consensusPhase: currentPhase,
-      expertWeights,
-      executionAttempt: phaseComputeResult.executionAttempt,
-      session,
-    });
-
-    const lifecycleDetails = {
-      phase: currentPhase,
-      consensusMeasure: lifecycleMetadata.consensusMeasure,
-      threshold: lifecycleMetadata.threshold,
-      maxPhases: lifecycleMetadata.maxPhases,
-      consensusReached: lifecycleMetadata.consensusReached,
-      maxPhasesReached: lifecycleMetadata.maxPhasesReached,
-      finalizationReason: lifecycleMetadata.finalizationReason,
-      nextConsensusPhase: lifecycleMetadata.nextConsensusPhase,
-      stageResultId: toIdString(stageResult?._id) || null,
-      executionAttemptId: toIdString(phaseComputeResult.executionAttempt._id),
-    };
-    await writeConsensusEvent({
-      issue,
-      eventType: ISSUE_EVENT_TYPES.CONSENSUS_COMPUTED,
-      phase: currentPhase,
-      actorUser,
-      occurredAt: phaseComputeResult.executionAttempt.completedAt,
-      correlationId,
-      details: lifecycleDetails,
-      session,
-    });
-    await writeConsensusEvent({
-      issue,
-      eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_COMPLETED,
-      phase: currentPhase,
-      actorUser,
-      occurredAt: roundOccurredAt,
-      correlationId,
-      details: {
-        phase: currentPhase,
-        consensusMeasure: lifecycleMetadata.consensusMeasure,
-        threshold: lifecycleMetadata.threshold,
-        cause: lifecycleMetadata.finalizationReason ?? "continue",
-        executionAttemptId: toIdString(phaseComputeResult.executionAttempt._id),
-      },
-      session,
-    });
-
+    const applicationOccurredAt = new Date();
+    const isFinal = lifecycleMetadata.consensusReached || lifecycleMetadata.maxPhasesReached;
+    let committedStageResult = null;
+    try {
+      await persistComputedStageInTransaction({
+        // Simulated rounds deliberately own an independent short transaction.
+        session: null,
+        persist: async (roundSession) => {
+          const stageResult = await saveStageResult({ issue, stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, computeResult: lifecycleComputeResult, lifecycleMetadata, consensusPhase: currentPhase, expertWeights, executionAttempt: phaseComputeResult.executionAttempt, session: roundSession });
+          committedStageResult = stageResult;
+          const executionAttemptId = toIdString(phaseComputeResult.executionAttempt._id);
+          await writeConsensusEvent({ issue, eventType: ISSUE_EVENT_TYPES.CONSENSUS_COMPUTED, phase: currentPhase, actorUser, occurredAt: phaseComputeResult.executionAttempt.completedAt, correlationId, details: { phase: currentPhase, consensusMeasure: lifecycleMetadata.consensusMeasure, threshold: lifecycleMetadata.threshold, maxPhases: lifecycleMetadata.maxPhases, consensusReached: lifecycleMetadata.consensusReached, maxPhasesReached: lifecycleMetadata.maxPhasesReached, finalizationReason: lifecycleMetadata.finalizationReason, nextConsensusPhase: lifecycleMetadata.nextConsensusPhase, stageResultId: toIdString(stageResult._id), executionAttemptId }, session: roundSession });
+          await writeConsensusEvent({ issue, eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_COMPLETED, phase: currentPhase, actorUser, occurredAt: applicationOccurredAt, correlationId, details: { phase: currentPhase, consensusMeasure: lifecycleMetadata.consensusMeasure, threshold: lifecycleMetadata.threshold, cause: lifecycleMetadata.finalizationReason ?? "continue", executionAttemptId }, session: roundSession });
+          if (!isFinal) {
+            const nextPhase = currentPhase + 1;
+            await saveSimulatedEvaluationsForNextPhaseOrThrow({ issue, structure, acceptedParticipations, suggestions: getSuggestedEvaluationsOrThrow(lifecycleComputeResult.rawOutput), nextPhase, occurredAt: applicationOccurredAt, correlationId, sourceExecutionAttempt: phaseComputeResult.executionAttempt, session: roundSession });
+            issue.consensusPhase = nextPhase;
+            await issue.save({ session: roundSession });
+            await writeConsensusEvent({ issue, eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED, phase: nextPhase, actorUser, occurredAt: applicationOccurredAt, correlationId, details: { threshold: issue.consensusThreshold, maxPhases: issue.consensusMaxPhases, simulated: true }, session: roundSession });
+          } else {
+            const previousLifecycleState = snapshotIssueLifecycle(issue);
+            issue.consensusPhase = currentPhase; issue.currentStage = ISSUE_STAGES.FINISHED; issue.active = false; if (!issue.finishedAt) issue.finishedAt = applicationOccurredAt;
+            await issue.save({ session: roundSession });
+            await writeIssueStageChanged({ issue, previousState: previousLifecycleState, actorType: "user", actorUser, occurredAt: applicationOccurredAt, correlationId, cause: lifecycleMetadata.finalizationReason ?? "modelComputed", session: roundSession });
+            await writeIssueEvent({ issueId: issue._id, eventType: ISSUE_EVENT_TYPES.ISSUE_FINISHED, actorType: "user", actorUser, stage: issue.currentStage, phase: issue.consensusPhase, occurredAt: applicationOccurredAt, correlationId, previousState: previousLifecycleState, nextState: snapshotIssueLifecycle(issue), details: { finalPhase: currentPhase, isConsensus: true, finalizationReason: lifecycleMetadata.finalizationReason ?? null, finalExecutionAttemptId: executionAttemptId }, session: roundSession });
+          }
+        },
+      });
+    } catch (error) {
+      await markExecutionApplicationFailed({ attemptId: phaseComputeResult.executionAttempt._id, error });
+      throw error;
+    }
+    await markExecutionApplied({ attemptId: phaseComputeResult.executionAttempt._id, entityType: "stageResult", entityId: committedStageResult._id, resultSnapshot: committedStageResult.toObject() });
     lastComputeResult = lifecycleComputeResult;
     lastLifecycleMetadata = lifecycleMetadata;
-
-    if (lifecycleMetadata.consensusReached || lifecycleMetadata.maxPhasesReached) {
-      break;
-    }
-
-    const suggestions = getSuggestedEvaluationsOrThrow(
-      lifecycleComputeResult.rawOutput
-    );
-    const nextPhase = currentPhase + 1;
-
-    await saveSimulatedEvaluationsForNextPhaseOrThrow({
-      issue,
-      structure,
-      acceptedParticipations,
-      suggestions,
-      nextPhase,
-      occurredAt: roundOccurredAt,
-      correlationId,
-      sourceExecutionAttempt: phaseComputeResult.executionAttempt,
-      session,
-    });
-
-    currentPhase = nextPhase;
-    issue.consensusPhase = currentPhase;
-    await issue.save({ session });
-    await writeConsensusEvent({
-      issue,
-      eventType: ISSUE_EVENT_TYPES.CONSENSUS_PHASE_STARTED,
-      phase: currentPhase,
-      actorUser,
-      occurredAt: roundOccurredAt,
-      correlationId,
-      details: {
-        threshold: issue.consensusThreshold,
-        maxPhases: issue.consensusMaxPhases,
-        simulated: true,
-      },
-      session,
-    });
-
-    currentEvaluations = await loadEvaluationsForCompute({
-      issueId: issue._id,
-      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-      consensusPhase: currentPhase,
-      participations: acceptedParticipations,
-    });
+    if (isFinal) break;
+    currentPhase += 1;
+    currentEvaluations = await loadEvaluationsForCompute({ issueId: issue._id, stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, consensusPhase: currentPhase, participations: acceptedParticipations });
   }
-
-  const previousLifecycleState = snapshotIssueLifecycle(issue);
-  issue.consensusPhase = currentPhase;
-  issue.currentStage = ISSUE_STAGES.FINISHED;
-  issue.active = false;
-  const finalOccurredAt = new Date();
-  if (!issue.finishedAt) issue.finishedAt = finalOccurredAt;
-  await issue.save({ session });
-  await writeIssueStageChanged({
-    issue,
-    previousState: previousLifecycleState,
-    actorType: "user",
-    actorUser,
-    occurredAt: finalOccurredAt,
-    correlationId,
-    cause: lastLifecycleMetadata?.finalizationReason ?? "modelComputed",
-    session,
-  });
-  await writeIssueEvent({
-    issueId: issue._id,
-    eventType: ISSUE_EVENT_TYPES.ISSUE_FINISHED,
-    actorType: "user",
-    actorUser,
-    stage: issue.currentStage,
-    phase: issue.consensusPhase,
-    occurredAt: finalOccurredAt,
-    correlationId,
-    previousState: previousLifecycleState,
-    nextState: snapshotIssueLifecycle(issue),
-    details: {
-      finalPhase: issue.consensusPhase,
-      isConsensus: true,
-      finalizationReason: lastLifecycleMetadata?.finalizationReason ?? null,
-      finalExecutionAttemptId: toIdString(lastComputeResult?.executionAttempt?._id),
-    },
-    session,
-  });
 
   return {
     message: "Simulated consensus rounds computed successfully.",
