@@ -104,6 +104,7 @@ describe("criteria weighting structure resolution", () => {
     expect(resolved.criteriaWeightsStructureKey).toBe("manualCriteriaWeights");
     expect(resolved.criteriaWeightingApiModelKey).toBe("manual_criteria_weights");
     expect(resolved.currentStage).toBe("criteriaWeighting");
+    expect(resolved).toMatchObject({ isCriteriaWeightingRequired: true, source: "experts", mode: "expertManual", method: "manual" });
   });
 
   it("stores the canonical manual structure on a newly created issue", async () => {
@@ -193,5 +194,6 @@ describe("criteria weighting structure resolution", () => {
     });
 
     expect(resolved.criteriaWeightsStructureKey).toBe("bestWorstCriteria");
+    expect(resolved).toMatchObject({ isCriteriaWeightingRequired: true, source: "experts", mode: "expertApiModel", method: "apiModel" });
   });
 });

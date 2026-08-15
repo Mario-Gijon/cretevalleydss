@@ -2,14 +2,15 @@ import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
-import { createConfirmedUser, createIssueFixture } from "../../setup/fixtures.js";
+import { createConfirmedUser, createIssueFixture, createIssueModel } from "../../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 
 const createIssue = async () => {
   const owner = await createConfirmedUser();
-  return createIssueFixture({ ownerId: owner._id, createdBy: owner._id, currentStage: "alternativeEvaluation", isConsensus: true, supportsConsensus: true, consensusMaxPhases: 3, consensusThreshold: 0.8, modelParameters: { alpha: 1 } });
+  const model = await createIssueModel({ name: "Snapshot V1", supportsConsensus: true, supportsConsensusSimulation: true, smallDescription: "V1", parameters: [{ key: "alpha", name: "Alpha", parameterStructureKey: "number", required: false }] });
+  return createIssueFixture({ ownerId: owner._id, createdBy: owner._id, modelId: model._id, currentStage: "alternativeEvaluation", isConsensus: true, supportsConsensus: true, consensusMaxPhases: 3, consensusThreshold: 0.8, modelParameters: { alpha: 1 } });
 };
 const write = (issue, snapshotType, consensusPhase = 0) => writeIssueStateSnapshot({ issue, snapshotType, consensusPhase, occurredAt: new Date(), correlationId: new mongoose.Types.ObjectId().toString() });
 
@@ -37,5 +38,22 @@ describe("IssueStateSnapshot", () => {
     issue.modelParameters = { invalid: undefined };
     await expect(write(issue, "creation")).rejects.toMatchObject({ field: "issue.modelParameters.invalid" });
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(0);
+  });
+
+  it("keeps complete creation state immutable and reuses its frozen model definition for phase snapshots", async () => {
+    const issue = await createIssue();
+    const creation = await write(issue, "creation");
+    const originalState = structuredClone(creation.state);
+    const { Issue } = await import("../../../models/Issues.js");
+    const { IssueModel } = await import("../../../models/IssueModels.js");
+    await Issue.updateOne({ _id: issue._id }, { $set: { modelParameters: { alpha: 99 }, active: false } });
+    await IssueModel.updateOne({ _id: issue.model }, { $set: { name: "Snapshot V2", supportsConsensusSimulation: false, smallDescription: "V2", parameters: [] } });
+    expect((await IssueStateSnapshot.findById(creation._id).lean()).state).toEqual(originalState);
+    const currentIssue = await Issue.findById(issue._id);
+    currentIssue.consensusPhase = 1;
+    await currentIssue.save();
+    const phase = await write(currentIssue, "consensusPhaseStart", 1);
+    expect(phase.state.model).toEqual(originalState.model);
+    expect(phase.state.issue).toMatchObject({ consensusPhase: 1, effectiveModelParameters: { alpha: 99 }, active: false });
   });
 });
