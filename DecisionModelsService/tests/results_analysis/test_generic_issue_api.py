@@ -1,6 +1,16 @@
 import asyncio
 
 from api.routers.results_analysis import analyze_generic_issue
+from core.application import create_application
+
+
+def test_real_application_registers_generic_issue_analysis_route():
+    application = create_application()
+    assert any(
+        route.path == "/results-analysis/generic-issue" and "POST" in route.methods
+        for route in application.routes
+        if hasattr(route, "methods")
+    )
 
 
 def test_generic_issue_endpoint_projects_context_and_returns_standard_success():

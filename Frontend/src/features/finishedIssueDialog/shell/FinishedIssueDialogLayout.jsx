@@ -5,7 +5,6 @@ import { FINISHED_ISSUE_VIEWS } from "../shared/logic/finishedIssueNavigation";
 import { DashboardSection } from "../sections/dashboard";
 import { OverviewSection } from "../sections/overview";
 import { ResultsAnalysisSection } from "../sections/resultsAnalysis";
-import { GlobalAnalysisSection } from "../sections/globalAnalysis";
 import { EvaluationsSection } from "../sections/evaluations";
 import { ModelsSection } from "../sections/models";
 import { finishedIssueDialogLayoutSx } from "./finishedIssueShell.styles";
@@ -17,7 +16,6 @@ const FinishedIssueDialogLayout = () => {
     [FINISHED_ISSUE_VIEWS.DASHBOARD]: <DashboardSection />,
     [FINISHED_ISSUE_VIEWS.OVERVIEW]: <OverviewSection />,
     [FINISHED_ISSUE_VIEWS.RESULTS_ANALYSIS]: <ResultsAnalysisSection />,
-    [FINISHED_ISSUE_VIEWS.GLOBAL_ANALYSIS]: <GlobalAnalysisSection />,
     [FINISHED_ISSUE_VIEWS.EVALUATIONS]: <EvaluationsSection />,
     [FINISHED_ISSUE_VIEWS.MODELS]: <ModelsSection />,
   }[view] || <DashboardSection />;

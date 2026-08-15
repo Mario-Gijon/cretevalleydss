@@ -29,6 +29,7 @@ Backend/.env
 Backend/.env.*
 !Backend/.env.example
 !Backend/.env.*.example
+Backend/analysis-context.json
 
 Frontend/.env
 Frontend/.env.*

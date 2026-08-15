@@ -11,7 +11,6 @@ const TAB_LABELS = {
   dashboard: "Summary",
   overview: "Overview",
   "results-analysis": "Results analysis",
-  "global-analysis": "Global analysis",
   evaluations: "Evaluations",
   models: "Models",
 };
@@ -20,7 +19,6 @@ const TAB_ICONS = {
   dashboard: <DashboardRoundedIcon fontSize="small" />,
   overview: <InfoOutlinedIcon fontSize="small" />,
   "results-analysis": <InsightsRoundedIcon fontSize="small" />,
-  "global-analysis": <InsightsRoundedIcon fontSize="small" />,
   evaluations: <GroupsRoundedIcon fontSize="small" />,
   models: <ScienceRoundedIcon fontSize="small" />,
 };
