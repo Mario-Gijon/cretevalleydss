@@ -248,6 +248,15 @@ export const getFinishedIssueInfo = async (issueOrId) => {
   );
 };
 
+export const getFinishedIssueGlobalAnalysis = async (issueOrId) => {
+  const issueId = getIssueId(issueOrId);
+  return requestWithAuth(
+    `/issues/finished/${issueId}/global-analysis`,
+    { method: "GET" },
+    "Error fetching global issue analysis."
+  );
+};
+
 /**
  * Oculta o elimina un issue finalizado para el usuario actual.
  *

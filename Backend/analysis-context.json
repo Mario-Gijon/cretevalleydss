@@ -1,0 +1,1336 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "issueHistorySchemaVersion": 1,
+    "issueId": "6a80b84fa5554ec1544e6182",
+    "completeness": {
+      "creationSnapshot": {
+        "status": "exact"
+      },
+      "consensusPhaseStartSnapshots": {
+        "status": "exact"
+      },
+      "issueEvents": {
+        "status": "exact"
+      },
+      "evaluationRevisions": {
+        "status": "exact"
+      },
+      "executionAttempts": {
+        "status": "exact"
+      },
+      "stageResults": {
+        "status": "currentProjection"
+      },
+      "currentIssueState": {
+        "status": "currentProjection"
+      },
+      "currentParticipants": {
+        "status": "currentProjection"
+      },
+      "currentEvaluations": {
+        "status": "currentProjection"
+      },
+      "currentNotifications": {
+        "status": "currentProjection"
+      },
+      "currentScenarios": {
+        "status": "currentProjection"
+      },
+      "participantExitHistory": {
+        "status": "partial"
+      },
+      "historicalIdentityPreservation": {
+        "status": "partial"
+      },
+      "scenarioDeletionHistory": {
+        "status": "unavailable"
+      },
+      "decisionModelCodeProvenance": {
+        "status": "unavailable"
+      },
+      "dependencyEnvironmentProvenance": {
+        "status": "unavailable"
+      }
+    }
+  },
+  "issue": {
+    "id": "6a80b84fa5554ec1544e6182",
+    "name": "[AUTO:f2e16bb90d] Consensus · later round",
+    "description": "Generated local phase-zero Herrera Viedma consensus comparison.",
+    "owner": {
+      "id": "6a2a9d70e125cb3057005337",
+      "name": "Admin",
+      "email": "admin@gmail.com",
+      "university": "UJA"
+    },
+    "creator": {
+      "id": "6a2a9d70e125cb3057005337",
+      "name": "Admin",
+      "email": "admin@gmail.com",
+      "university": "UJA"
+    },
+    "lifecycle": {
+      "active": false,
+      "currentStage": "finished",
+      "currentPhase": 1,
+      "finishedAt": "2026-08-15T19:04:53.409Z"
+    },
+    "consensus": {
+      "enabled": true,
+      "simulated": false,
+      "threshold": 0.9,
+      "maxPhases": 3
+    },
+    "evaluationStructureKey": "alternativePairwiseByCriterion",
+    "model": {
+      "id": "6a2aa1d3a8af45990bfe0da3",
+      "name": "Herrera Viedma CRP",
+      "apiModelKey": "herrera_viedma_crp",
+      "modelKind": "issue",
+      "apiEndpoint": {
+        "method": "POST",
+        "path": "/herrera_viedma_crp"
+      },
+      "evaluationStructureKey": "alternativePairwiseByCriterion",
+      "supportsConsensus": true,
+      "supportsConsensusSimulation": true,
+      "supportsCreatorCriteriaWeighting": false,
+      "supportsExpertCriteriaWeighting": false,
+      "usesCriteriaWeights": true,
+      "usesExpertWeights": false,
+      "usesFuzzyCriteriaWeights": false,
+      "usesCriterionTypes": false,
+      "supportedExpressionDomains": [
+        {
+          "typeKey": "numericContinuous",
+          "constraints": {
+            "min": 0,
+            "max": 1
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "key": "ag_lq",
+          "name": "ag_lq",
+          "label": "Agreement interval",
+          "description": null,
+          "valueType": null,
+          "parameterStructureKey": "intervalGlobal",
+          "required": true,
+          "default": [
+            0.3,
+            0.8
+          ],
+          "restrictions": {
+            "min": 0,
+            "max": 1,
+            "ordered": "strictIncreasing",
+            "length": null,
+            "allowed": null
+          }
+        },
+        {
+          "key": "b",
+          "name": "b",
+          "label": "B selector",
+          "description": null,
+          "valueType": "number",
+          "parameterStructureKey": "selectGlobal",
+          "required": true,
+          "default": 1,
+          "restrictions": {
+            "min": null,
+            "max": null,
+            "allowed": [
+              0.5,
+              0.7,
+              0.9,
+              1
+            ]
+          }
+        },
+        {
+          "key": "beta",
+          "name": "beta",
+          "label": "Beta",
+          "description": null,
+          "valueType": "number",
+          "parameterStructureKey": "numberGlobal",
+          "required": true,
+          "default": 0.8,
+          "restrictions": {
+            "min": 0,
+            "max": 1,
+            "allowed": null
+          }
+        },
+        {
+          "key": "ex_lq",
+          "name": "ex_lq",
+          "label": "Expert interval",
+          "description": null,
+          "valueType": null,
+          "parameterStructureKey": "intervalGlobal",
+          "required": true,
+          "default": [
+            0.5,
+            1
+          ],
+          "restrictions": {
+            "min": 0,
+            "max": 1,
+            "ordered": "strictIncreasing",
+            "length": null,
+            "allowed": null
+          }
+        }
+      ],
+      "request": {
+        "contentType": "application/json",
+        "example": {
+          "context": {
+            "issue": {
+              "id": "issue-herrera-viedma-001",
+              "name": "Supplier consensus with Herrera-Viedma CRP",
+              "consensusThreshold": 0.8,
+              "consensusMaxPhases": 3
+            },
+            "alternatives": [
+              {
+                "id": "alt-supplier-a",
+                "name": "Supplier A"
+              },
+              {
+                "id": "alt-supplier-b",
+                "name": "Supplier B"
+              },
+              {
+                "id": "alt-supplier-c",
+                "name": "Supplier C"
+              }
+            ],
+            "criteria": [
+              {
+                "id": "crit-overall",
+                "name": "Overall preference"
+              }
+            ],
+            "consensusPhase": 0,
+            "previousStageResult": null,
+            "structure": {
+              "key": "alternativePairwiseByCriterion",
+              "stage": "alternativeEvaluation"
+            }
+          },
+          "modelParameters": {
+            "ag_lq": [
+              0.3,
+              0.8
+            ],
+            "ex_lq": [
+              0.5,
+              1
+            ],
+            "b": 1,
+            "beta": 0.8
+          },
+          "evaluations": [
+            {
+              "expert": {
+                "id": "expert-ana",
+                "name": "Ana Torres",
+                "email": "ana.torres@example.com"
+              },
+              "payload": {
+                "crit-overall": {
+                  "alt-supplier-a": {
+                    "alt-supplier-b": 0.35,
+                    "alt-supplier-c": 0.7
+                  },
+                  "alt-supplier-b": {
+                    "alt-supplier-a": 0.65,
+                    "alt-supplier-c": 0.8
+                  },
+                  "alt-supplier-c": {
+                    "alt-supplier-a": 0.3,
+                    "alt-supplier-b": 0.2
+                  }
+                }
+              }
+            },
+            {
+              "expert": {
+                "id": "expert-luis",
+                "name": "Luis Romero",
+                "email": "luis.romero@example.com"
+              },
+              "payload": {
+                "crit-overall": {
+                  "alt-supplier-a": {
+                    "alt-supplier-b": 0.55,
+                    "alt-supplier-c": 0.75
+                  },
+                  "alt-supplier-b": {
+                    "alt-supplier-a": 0.45,
+                    "alt-supplier-c": 0.6
+                  },
+                  "alt-supplier-c": {
+                    "alt-supplier-a": 0.25,
+                    "alt-supplier-b": 0.4
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "example": {
+          "success": true,
+          "message": "Herrera Viedma CRP executed successfully",
+          "data": {
+            "rankedAlternatives": [
+              {
+                "alternativeId": "alt-supplier-b",
+                "name": "Supplier B",
+                "score": 0.5099,
+                "rank": 1
+              },
+              {
+                "alternativeId": "alt-supplier-a",
+                "name": "Supplier A",
+                "score": 0.4531,
+                "rank": 2
+              },
+              {
+                "alternativeId": "alt-supplier-c",
+                "name": "Supplier C",
+                "score": 0.2733,
+                "rank": 3
+              }
+            ],
+            "collectiveEvaluations": {
+              "crit-overall": {
+                "alt-supplier-a": {
+                  "alt-supplier-b": 0.43,
+                  "alt-supplier-c": 0.72
+                },
+                "alt-supplier-b": {
+                  "alt-supplier-a": 0.53,
+                  "alt-supplier-c": 0.68
+                },
+                "alt-supplier-c": {
+                  "alt-supplier-a": 0.27,
+                  "alt-supplier-b": 0.28
+                }
+              }
+            },
+            "plotsGraphic": {
+              "expert_points": [
+                [
+                  0.2075,
+                  -0.0159
+                ],
+                [
+                  -0.1927,
+                  -0.0786
+                ]
+              ],
+              "collective_point": [
+                -0.0049,
+                0.0315
+              ]
+            },
+            "consensusMeasure": 0.85,
+            "rawOutput": {
+              "alternatives_rankings": [
+                [
+                  1,
+                  0,
+                  2
+                ],
+                [
+                  0,
+                  1,
+                  2
+                ],
+                [
+                  1,
+                  0,
+                  2
+                ]
+              ],
+              "cm": 0.85,
+              "collective_scores": [
+                0.4531,
+                0.5099,
+                0.2733
+              ],
+              "collective_evaluations": {
+                "crit-overall": [
+                  [
+                    0.5,
+                    0.43,
+                    0.72
+                  ],
+                  [
+                    0.53,
+                    0.5,
+                    0.68
+                  ],
+                  [
+                    0.27,
+                    0.28,
+                    0.5
+                  ]
+                ]
+              },
+              "plots_graphic": {
+                "expert_points": [
+                  [
+                    0.2075,
+                    -0.0159
+                  ],
+                  [
+                    -0.1927,
+                    -0.0786
+                  ]
+                ],
+                "collective_point": [
+                  -0.0049,
+                  0.0315
+                ]
+              },
+              "diagnostics": {
+                "expert_rankings": [
+                  [
+                    1,
+                    0,
+                    2
+                  ],
+                  [
+                    0,
+                    1,
+                    2
+                  ]
+                ],
+                "collective_ranking": [
+                  1,
+                  0,
+                  2
+                ],
+                "differences_rankings": [
+                  [
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    1,
+                    -1,
+                    0
+                  ]
+                ],
+                "consensus_degree_exp_alt": [
+                  [
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    0.5,
+                    0.5,
+                    0
+                  ]
+                ],
+                "consensus_degree_alt": [
+                  0.75,
+                  0.75,
+                  1
+                ],
+                "solution_set": [
+                  1
+                ],
+                "proximity_measures": [],
+                "farthest_experts": []
+              }
+            }
+          }
+        }
+      },
+      "implementationStatus": "ready",
+      "publicUsable": true,
+      "smallDescription": "Consensus reaching model for group decisions based on pairwise preference matrices and iterative agreement improvement.",
+      "extendDescription": "Herrera-Viedma CRP is a consensus reaching process for group decision-making. It works with pairwise preference matrices provided by experts, measures the current consensus level, and supports iterative consensus phases until the required threshold is reached or the process is finalized."
+    },
+    "criteriaWeighting": {
+      "required": false,
+      "source": "creator",
+      "mode": "creatorManual",
+      "method": "manual",
+      "structureKey": "manualCriteriaWeights",
+      "model": null,
+      "apiModelKey": null,
+      "apiEndpoint": null,
+      "parameters": {},
+      "weightsByCriterionId": {
+        "6a80b84fa5554ec1544e618a": 1
+      }
+    }
+  },
+  "decisionSpace": {
+    "alternatives": [
+      {
+        "id": "6a80b84fa5554ec1544e6184",
+        "name": "Balanced choice",
+        "description": "A balanced option with broadly preferred performance.",
+        "position": 0
+      },
+      {
+        "id": "6a80b84fa5554ec1544e6185",
+        "name": "Premium choice",
+        "description": "A strong option that is slightly less preferred overall.",
+        "position": 1
+      },
+      {
+        "id": "6a80b84fa5554ec1544e6186",
+        "name": "Budget choice",
+        "description": "A lower-ranked option in the initial consensus round.",
+        "position": 2
+      }
+    ],
+    "criteria": [
+      {
+        "id": "6a80b84fa5554ec1544e6188",
+        "parentCriterionId": null,
+        "name": "Decision factors",
+        "description": null,
+        "type": "group",
+        "isLeaf": false,
+        "expressionDomainId": null,
+        "position": 0
+      },
+      {
+        "id": "6a80b84fa5554ec1544e618a",
+        "parentCriterionId": "6a80b84fa5554ec1544e6188",
+        "name": "Overall preference",
+        "description": null,
+        "type": "benefit",
+        "isLeaf": true,
+        "expressionDomainId": "6a80b84fa5554ec1544e618c",
+        "position": 0
+      }
+    ],
+    "expressionDomains": [
+      {
+        "id": "6a80b84fa5554ec1544e618c",
+        "sourceDomainId": "6a54e93ce5906d222b9519db",
+        "name": "Continuous 0-1",
+        "typeKey": "numericContinuous",
+        "definition": {
+          "min": 0,
+          "max": 1,
+          "step": null
+        }
+      }
+    ]
+  },
+  "participants": {
+    "historicalIdentities": [
+      {
+        "id": "6a31ae24c9ab3713eb39cbc3",
+        "name": "Adrian Popescu",
+        "email": "expert06@cretevalley.test",
+        "university": "Autonomous University of Barcelona",
+        "firstSeenSnapshotId": "6a80b850a5554ec1544e61ac",
+        "firstSeenPhase": 0,
+        "identityChangedInLaterSnapshot": false
+      },
+      {
+        "id": "6a31ae25c9ab3713eb39cbd8",
+        "name": "Alicia Moreno",
+        "email": "expert13@cretevalley.test",
+        "university": "Sapienza University of Rome",
+        "firstSeenSnapshotId": "6a80b850a5554ec1544e61ac",
+        "firstSeenPhase": 0,
+        "identityChangedInLaterSnapshot": false
+      }
+    ],
+    "current": [
+      {
+        "id": "6a80b84fa5554ec1544e6195",
+        "expertId": "6a31ae24c9ab3713eb39cbc3",
+        "invitationStatus": "accepted",
+        "evaluationCompleted": true,
+        "weightsCompleted": true,
+        "weight": null,
+        "entryPhase": 0,
+        "entryStage": "alternativeEvaluation",
+        "joinedAt": "2026-08-15T19:04:48.705Z",
+        "createdAt": "2026-08-15T19:04:47.517Z",
+        "updatedAt": "2026-08-15T19:04:52.464Z"
+      },
+      {
+        "id": "6a80b84fa5554ec1544e6196",
+        "expertId": "6a31ae25c9ab3713eb39cbd8",
+        "invitationStatus": "accepted",
+        "evaluationCompleted": true,
+        "weightsCompleted": true,
+        "weight": null,
+        "entryPhase": 0,
+        "entryStage": "alternativeEvaluation",
+        "joinedAt": "2026-08-15T19:04:48.945Z",
+        "createdAt": "2026-08-15T19:04:47.518Z",
+        "updatedAt": "2026-08-15T19:04:52.857Z"
+      }
+    ]
+  },
+  "semanticDirectory": {
+    "owner": {
+      "id": "6a2a9d70e125cb3057005337",
+      "name": "Admin",
+      "email": "admin@gmail.com",
+      "university": "UJA"
+    },
+    "creator": {
+      "id": "6a2a9d70e125cb3057005337",
+      "name": "Admin",
+      "email": "admin@gmail.com",
+      "university": "UJA"
+    },
+    "expertsById": {
+      "6a31ae24c9ab3713eb39cbc3": {
+        "id": "6a31ae24c9ab3713eb39cbc3",
+        "name": "Adrian Popescu",
+        "email": "expert06@cretevalley.test",
+        "university": "Autonomous University of Barcelona",
+        "firstSeenSnapshotId": "6a80b850a5554ec1544e61ac",
+        "firstSeenPhase": 0,
+        "identityChangedInLaterSnapshot": false
+      },
+      "6a31ae25c9ab3713eb39cbd8": {
+        "id": "6a31ae25c9ab3713eb39cbd8",
+        "name": "Alicia Moreno",
+        "email": "expert13@cretevalley.test",
+        "university": "Sapienza University of Rome",
+        "firstSeenSnapshotId": "6a80b850a5554ec1544e61ac",
+        "firstSeenPhase": 0,
+        "identityChangedInLaterSnapshot": false
+      }
+    },
+    "alternativesById": {
+      "6a80b84fa5554ec1544e6184": {
+        "id": "6a80b84fa5554ec1544e6184",
+        "name": "Balanced choice",
+        "description": "A balanced option with broadly preferred performance."
+      },
+      "6a80b84fa5554ec1544e6185": {
+        "id": "6a80b84fa5554ec1544e6185",
+        "name": "Premium choice",
+        "description": "A strong option that is slightly less preferred overall."
+      },
+      "6a80b84fa5554ec1544e6186": {
+        "id": "6a80b84fa5554ec1544e6186",
+        "name": "Budget choice",
+        "description": "A lower-ranked option in the initial consensus round."
+      }
+    },
+    "criteriaById": {
+      "6a80b84fa5554ec1544e6188": {
+        "id": "6a80b84fa5554ec1544e6188",
+        "name": "Decision factors",
+        "description": null,
+        "type": "group",
+        "isLeaf": false,
+        "parentCriterionId": null,
+        "expressionDomainId": null
+      },
+      "6a80b84fa5554ec1544e618a": {
+        "id": "6a80b84fa5554ec1544e618a",
+        "name": "Overall preference",
+        "description": null,
+        "type": "benefit",
+        "isLeaf": true,
+        "parentCriterionId": "6a80b84fa5554ec1544e6188",
+        "expressionDomainId": "6a80b84fa5554ec1544e618c"
+      }
+    },
+    "expressionDomainsById": {
+      "6a80b84fa5554ec1544e618c": {
+        "id": "6a80b84fa5554ec1544e618c",
+        "name": "Continuous 0-1",
+        "typeKey": "numericContinuous"
+      }
+    }
+  },
+  "rounds": [
+    {
+      "phase": 0,
+      "start": {
+        "snapshotId": "6a80b850a5554ec1544e61b5",
+        "occurredAt": "2026-08-15T19:04:47.153Z",
+        "sourceEventId": "6a80b84fa5554ec1544e6193",
+        "sourceExecutionAttemptId": null,
+        "participants": [
+          {
+            "participationId": "6a80b84fa5554ec1544e6195",
+            "expert": {
+              "id": "6a31ae24c9ab3713eb39cbc3",
+              "name": "Adrian Popescu",
+              "email": "expert06@cretevalley.test",
+              "university": "Autonomous University of Barcelona"
+            },
+            "invitationStatus": "pending",
+            "evaluationCompleted": false,
+            "weightsCompleted": true,
+            "weight": null,
+            "entryStage": null,
+            "entryPhase": null,
+            "joinedAt": "2026-08-15T19:04:47.153Z"
+          },
+          {
+            "participationId": "6a80b84fa5554ec1544e6196",
+            "expert": {
+              "id": "6a31ae25c9ab3713eb39cbd8",
+              "name": "Alicia Moreno",
+              "email": "expert13@cretevalley.test",
+              "university": "Sapienza University of Rome"
+            },
+            "invitationStatus": "pending",
+            "evaluationCompleted": false,
+            "weightsCompleted": true,
+            "weight": null,
+            "entryStage": null,
+            "entryPhase": null,
+            "joinedAt": "2026-08-15T19:04:47.153Z"
+          }
+        ],
+        "evaluations": [],
+        "effectiveModelParameters": {
+          "ag_lq": [
+            0.3,
+            0.8
+          ],
+          "b": 1,
+          "beta": 0.8,
+          "ex_lq": [
+            0.5,
+            1
+          ],
+          "weights": {
+            "6a80b84fa5554ec1544e618a": 1
+          }
+        }
+      },
+      "revisions": [
+        {
+          "id": "6a80b851a5554ec1544e61f6",
+          "evaluationId": "6a80b8516c47ace27d46309f",
+          "expertId": "6a31ae24c9ab3713eb39cbc3",
+          "action": "submitted",
+          "occurredAt": "2026-08-15T19:04:49.561Z",
+          "submittedAt": "2026-08-15T19:04:49.561Z",
+          "previousRevisionId": null,
+          "sourceExecutionAttemptId": null
+        },
+        {
+          "id": "6a80b852a5554ec1544e6208",
+          "evaluationId": "6a80b8526c47ace27d4630a0",
+          "expertId": "6a31ae25c9ab3713eb39cbd8",
+          "action": "submitted",
+          "occurredAt": "2026-08-15T19:04:49.939Z",
+          "submittedAt": "2026-08-15T19:04:49.939Z",
+          "previousRevisionId": null,
+          "sourceExecutionAttemptId": null
+        }
+      ],
+      "executionAttempts": [
+        {
+          "id": "6a80b852a5554ec1544e6218",
+          "status": "succeeded",
+          "failureStage": null,
+          "startedAt": "2026-08-15T19:04:50.574Z",
+          "completedAt": "2026-08-15T19:04:50.716Z",
+          "applicationStatus": "applied"
+        }
+      ],
+      "selectedExecution": {
+        "attemptId": "6a80b852a5554ec1544e6218",
+        "correlationId": "bab0e6e0-dd02-4d68-8bb5-13a5f5091e68",
+        "startedAt": "2026-08-15T19:04:50.574Z",
+        "completedAt": "2026-08-15T19:04:50.716Z",
+        "modelContext": {
+          "modelId": "6a2aa1d3a8af45990bfe0da3",
+          "modelName": "Herrera Viedma CRP",
+          "apiModelKey": "herrera_viedma_crp",
+          "apiEndpointPath": "/herrera_viedma_crp",
+          "evaluationStructureKey": "alternativePairwiseByCriterion",
+          "serviceBaseUrl": null,
+          "modelKind": "alternativeEvaluation"
+        },
+        "input": {
+          "modelParameters": {
+            "ag_lq": [
+              0.3,
+              0.8
+            ],
+            "b": 1,
+            "beta": 0.8,
+            "ex_lq": [
+              0.5,
+              1
+            ],
+            "weights": {
+              "6a80b84fa5554ec1544e618a": 1
+            }
+          },
+          "evaluations": [
+            {
+              "expert": {
+                "id": "6a31ae24c9ab3713eb39cbc3",
+                "name": "Adrian Popescu",
+                "email": "expert06@cretevalley.test"
+              },
+              "payload": {
+                "6a80b84fa5554ec1544e618a": {
+                  "6a80b84fa5554ec1544e6184": {
+                    "6a80b84fa5554ec1544e6185": 0.9,
+                    "6a80b84fa5554ec1544e6186": 0.95
+                  },
+                  "6a80b84fa5554ec1544e6185": {
+                    "6a80b84fa5554ec1544e6184": 0.1,
+                    "6a80b84fa5554ec1544e6186": 0.8
+                  },
+                  "6a80b84fa5554ec1544e6186": {
+                    "6a80b84fa5554ec1544e6184": 0.05,
+                    "6a80b84fa5554ec1544e6185": 0.2
+                  }
+                }
+              }
+            },
+            {
+              "expert": {
+                "id": "6a31ae25c9ab3713eb39cbd8",
+                "name": "Alicia Moreno",
+                "email": "expert13@cretevalley.test"
+              },
+              "payload": {
+                "6a80b84fa5554ec1544e618a": {
+                  "6a80b84fa5554ec1544e6184": {
+                    "6a80b84fa5554ec1544e6185": 0.1,
+                    "6a80b84fa5554ec1544e6186": 0.05
+                  },
+                  "6a80b84fa5554ec1544e6185": {
+                    "6a80b84fa5554ec1544e6184": 0.9,
+                    "6a80b84fa5554ec1544e6186": 0.2
+                  },
+                  "6a80b84fa5554ec1544e6186": {
+                    "6a80b84fa5554ec1544e6184": 0.95,
+                    "6a80b84fa5554ec1544e6185": 0.8
+                  }
+                }
+              }
+            }
+          ],
+          "context": {
+            "issue": {
+              "id": "6a80b84fa5554ec1544e6182",
+              "name": "[AUTO:f2e16bb90d] Consensus · later round",
+              "consensusThreshold": 0.9,
+              "consensusMaxPhases": 3
+            },
+            "alternatives": [
+              {
+                "id": "6a80b84fa5554ec1544e6184",
+                "name": "Balanced choice",
+                "description": "A balanced option with broadly preferred performance."
+              },
+              {
+                "id": "6a80b84fa5554ec1544e6185",
+                "name": "Premium choice",
+                "description": "A strong option that is slightly less preferred overall."
+              },
+              {
+                "id": "6a80b84fa5554ec1544e6186",
+                "name": "Budget choice",
+                "description": "A lower-ranked option in the initial consensus round."
+              }
+            ],
+            "criteria": [
+              {
+                "id": "6a80b84fa5554ec1544e618a",
+                "name": "Overall preference",
+                "description": null,
+                "type": "benefit",
+                "expressionDomain": {
+                  "id": "6a80b84fa5554ec1544e618c",
+                  "_id": "6a80b84fa5554ec1544e618c",
+                  "name": "Continuous 0-1",
+                  "typeKey": "numericContinuous",
+                  "definition": {
+                    "min": 0,
+                    "max": 1,
+                    "step": null
+                  }
+                }
+              }
+            ],
+            "consensusPhase": 0,
+            "previousStageResult": null,
+            "structure": {
+              "key": "alternativePairwiseByCriterion",
+              "stage": "alternativeEvaluation"
+            }
+          }
+        },
+        "result": {
+          "standardResult": {
+            "consensusMeasure": 0.5,
+            "rankedAlternatives": [
+              {
+                "alternativeId": "6a80b84fa5554ec1544e6185",
+                "name": "Premium choice",
+                "score": 0.4266,
+                "rank": 1
+              },
+              {
+                "alternativeId": "6a80b84fa5554ec1544e6186",
+                "name": "Budget choice",
+                "score": 0.4199,
+                "rank": 2
+              },
+              {
+                "alternativeId": "6a80b84fa5554ec1544e6184",
+                "name": "Balanced choice",
+                "score": 0.4133,
+                "rank": 3
+              }
+            ],
+            "collectiveEvaluations": {
+              "6a80b84fa5554ec1544e618a": {
+                "6a80b84fa5554ec1544e6184": {
+                  "6a80b84fa5554ec1544e6185": 0.42,
+                  "6a80b84fa5554ec1544e6186": 0.41
+                },
+                "6a80b84fa5554ec1544e6185": {
+                  "6a80b84fa5554ec1544e6184": 0.42,
+                  "6a80b84fa5554ec1544e6186": 0.44
+                },
+                "6a80b84fa5554ec1544e6186": {
+                  "6a80b84fa5554ec1544e6184": 0.41,
+                  "6a80b84fa5554ec1544e6185": 0.44
+                }
+              }
+            },
+            "plotsGraphic": {
+              "expert_points": [
+                [
+                  0.9721,
+                  -0.0744
+                ],
+                [
+                  -0.9027,
+                  -0.3683
+                ]
+              ],
+              "collective_point": [
+                -0.0231,
+                0.1476
+              ]
+            }
+          },
+          "modelExecution": {
+            "kind": "decisionModelsService",
+            "structureKey": "alternativePairwiseByCriterion",
+            "apiModelKey": "herrera_viedma_crp",
+            "apiEndpointPath": "/herrera_viedma_crp",
+            "executedAt": "2026-08-15T19:04:50.716Z",
+            "consensusLifecycle": {
+              "isConsensus": true,
+              "consensusReached": false,
+              "maxPhasesReached": false,
+              "finalizationReason": null,
+              "currentConsensusPhase": 0,
+              "nextConsensusPhase": 1,
+              "threshold": 0.9,
+              "maxPhases": 3,
+              "consensusMeasure": 0.5
+            },
+            "executionAttemptId": "6a80b852a5554ec1544e6218",
+            "startedAt": "2026-08-15T19:04:50.574Z",
+            "completedAt": "2026-08-15T19:04:50.716Z",
+            "durationMs": 57.899635000154376
+          }
+        },
+        "application": {
+          "completedAt": "2026-08-15T19:04:51.485Z",
+          "stageResultId": "6a80b8526c47ace27d4630a1"
+        }
+      },
+      "evidenceRefs": {
+        "snapshotId": "6a80b850a5554ec1544e61b5",
+        "revisionIds": [
+          "6a80b851a5554ec1544e61f6",
+          "6a80b852a5554ec1544e6208"
+        ],
+        "executionAttemptIds": [
+          "6a80b852a5554ec1544e6218"
+        ],
+        "stageResultId": "6a80b8526c47ace27d4630a1",
+        "eventIds": [
+          "6a80b84fa5554ec1544e618f",
+          "6a80b84fa5554ec1544e6191",
+          "6a80b84fa5554ec1544e6193",
+          "6a80b84fa5554ec1544e619b",
+          "6a80b84fa5554ec1544e619d",
+          "6a80b84fa5554ec1544e619f",
+          "6a80b84fa5554ec1544e61a1",
+          "6a80b850a5554ec1544e61c8",
+          "6a80b850a5554ec1544e61ca",
+          "6a80b851a5554ec1544e61d0",
+          "6a80b851a5554ec1544e61d2",
+          "6a80b851a5554ec1544e61fa",
+          "6a80b852a5554ec1544e620c",
+          "6a80b852a5554ec1544e621a",
+          "6a80b852a5554ec1544e621d",
+          "6a80b852a5554ec1544e6220",
+          "6a80b852a5554ec1544e6222",
+          "6a80b853a5554ec1544e6239"
+        ]
+      }
+    },
+    {
+      "phase": 1,
+      "start": {
+        "snapshotId": "6a80b853a5554ec1544e6236",
+        "occurredAt": "2026-08-15T19:04:50.796Z",
+        "sourceEventId": "6a80b853a5554ec1544e622c",
+        "sourceExecutionAttemptId": "6a80b852a5554ec1544e6218",
+        "participants": [
+          {
+            "participationId": "6a80b84fa5554ec1544e6195",
+            "expert": {
+              "id": "6a31ae24c9ab3713eb39cbc3",
+              "name": "Adrian Popescu",
+              "email": "expert06@cretevalley.test",
+              "university": "Autonomous University of Barcelona"
+            },
+            "invitationStatus": "accepted",
+            "evaluationCompleted": false,
+            "weightsCompleted": true,
+            "weight": null,
+            "entryStage": "alternativeEvaluation",
+            "entryPhase": 0,
+            "joinedAt": "2026-08-15T19:04:48.705Z"
+          },
+          {
+            "participationId": "6a80b84fa5554ec1544e6196",
+            "expert": {
+              "id": "6a31ae25c9ab3713eb39cbd8",
+              "name": "Alicia Moreno",
+              "email": "expert13@cretevalley.test",
+              "university": "Sapienza University of Rome"
+            },
+            "invitationStatus": "accepted",
+            "evaluationCompleted": false,
+            "weightsCompleted": true,
+            "weight": null,
+            "entryStage": "alternativeEvaluation",
+            "entryPhase": 0,
+            "joinedAt": "2026-08-15T19:04:48.945Z"
+          }
+        ],
+        "evaluations": [],
+        "effectiveModelParameters": {
+          "ag_lq": [
+            0.3,
+            0.8
+          ],
+          "b": 1,
+          "beta": 0.8,
+          "ex_lq": [
+            0.5,
+            1
+          ],
+          "weights": {
+            "6a80b84fa5554ec1544e618a": 1
+          }
+        }
+      },
+      "revisions": [
+        {
+          "id": "6a80b854a5554ec1544e626f",
+          "evaluationId": "6a80b8546c47ace27d4630a2",
+          "expertId": "6a31ae24c9ab3713eb39cbc3",
+          "action": "submitted",
+          "occurredAt": "2026-08-15T19:04:52.172Z",
+          "submittedAt": "2026-08-15T19:04:52.172Z",
+          "previousRevisionId": null,
+          "sourceExecutionAttemptId": null
+        },
+        {
+          "id": "6a80b854a5554ec1544e6282",
+          "evaluationId": "6a80b8546c47ace27d4630a3",
+          "expertId": "6a31ae25c9ab3713eb39cbd8",
+          "action": "submitted",
+          "occurredAt": "2026-08-15T19:04:52.555Z",
+          "submittedAt": "2026-08-15T19:04:52.555Z",
+          "previousRevisionId": null,
+          "sourceExecutionAttemptId": null
+        }
+      ],
+      "executionAttempts": [
+        {
+          "id": "6a80b855a5554ec1544e6292",
+          "status": "succeeded",
+          "failureStage": null,
+          "startedAt": "2026-08-15T19:04:53.233Z",
+          "completedAt": "2026-08-15T19:04:53.331Z",
+          "applicationStatus": "applied"
+        }
+      ],
+      "selectedExecution": {
+        "attemptId": "6a80b855a5554ec1544e6292",
+        "correlationId": "6ac4ee11-b485-4fd2-ae39-1ee65e9922f4",
+        "startedAt": "2026-08-15T19:04:53.233Z",
+        "completedAt": "2026-08-15T19:04:53.331Z",
+        "modelContext": {
+          "modelId": "6a2aa1d3a8af45990bfe0da3",
+          "modelName": "Herrera Viedma CRP",
+          "apiModelKey": "herrera_viedma_crp",
+          "apiEndpointPath": "/herrera_viedma_crp",
+          "evaluationStructureKey": "alternativePairwiseByCriterion",
+          "serviceBaseUrl": null,
+          "modelKind": "alternativeEvaluation"
+        },
+        "input": {
+          "modelParameters": {
+            "ag_lq": [
+              0.3,
+              0.8
+            ],
+            "b": 1,
+            "beta": 0.8,
+            "ex_lq": [
+              0.5,
+              1
+            ],
+            "weights": {
+              "6a80b84fa5554ec1544e618a": 1
+            }
+          },
+          "evaluations": [
+            {
+              "expert": {
+                "id": "6a31ae24c9ab3713eb39cbc3",
+                "name": "Adrian Popescu",
+                "email": "expert06@cretevalley.test"
+              },
+              "payload": {
+                "6a80b84fa5554ec1544e618a": {
+                  "6a80b84fa5554ec1544e6184": {
+                    "6a80b84fa5554ec1544e6185": 0.64,
+                    "6a80b84fa5554ec1544e6186": 0.65
+                  },
+                  "6a80b84fa5554ec1544e6185": {
+                    "6a80b84fa5554ec1544e6184": 0.36,
+                    "6a80b84fa5554ec1544e6186": 0.65
+                  },
+                  "6a80b84fa5554ec1544e6186": {
+                    "6a80b84fa5554ec1544e6184": 0.35,
+                    "6a80b84fa5554ec1544e6185": 0.35
+                  }
+                }
+              }
+            },
+            {
+              "expert": {
+                "id": "6a31ae25c9ab3713eb39cbd8",
+                "name": "Alicia Moreno",
+                "email": "expert13@cretevalley.test"
+              },
+              "payload": {
+                "6a80b84fa5554ec1544e618a": {
+                  "6a80b84fa5554ec1544e6184": {
+                    "6a80b84fa5554ec1544e6185": 0.62,
+                    "6a80b84fa5554ec1544e6186": 0.63
+                  },
+                  "6a80b84fa5554ec1544e6185": {
+                    "6a80b84fa5554ec1544e6184": 0.38,
+                    "6a80b84fa5554ec1544e6186": 0.64
+                  },
+                  "6a80b84fa5554ec1544e6186": {
+                    "6a80b84fa5554ec1544e6184": 0.37,
+                    "6a80b84fa5554ec1544e6185": 0.36
+                  }
+                }
+              }
+            }
+          ],
+          "context": {
+            "issue": {
+              "id": "6a80b84fa5554ec1544e6182",
+              "name": "[AUTO:f2e16bb90d] Consensus · later round",
+              "consensusThreshold": 0.9,
+              "consensusMaxPhases": 3
+            },
+            "alternatives": [
+              {
+                "id": "6a80b84fa5554ec1544e6184",
+                "name": "Balanced choice",
+                "description": "A balanced option with broadly preferred performance."
+              },
+              {
+                "id": "6a80b84fa5554ec1544e6185",
+                "name": "Premium choice",
+                "description": "A strong option that is slightly less preferred overall."
+              },
+              {
+                "id": "6a80b84fa5554ec1544e6186",
+                "name": "Budget choice",
+                "description": "A lower-ranked option in the initial consensus round."
+              }
+            ],
+            "criteria": [
+              {
+                "id": "6a80b84fa5554ec1544e618a",
+                "name": "Overall preference",
+                "description": null,
+                "type": "benefit",
+                "expressionDomain": {
+                  "id": "6a80b84fa5554ec1544e618c",
+                  "_id": "6a80b84fa5554ec1544e618c",
+                  "name": "Continuous 0-1",
+                  "typeKey": "numericContinuous",
+                  "definition": {
+                    "min": 0,
+                    "max": 1,
+                    "step": null
+                  }
+                }
+              }
+            ],
+            "consensusPhase": 1,
+            "previousStageResult": null,
+            "structure": {
+              "key": "alternativePairwiseByCriterion",
+              "stage": "alternativeEvaluation"
+            }
+          }
+        },
+        "result": {
+          "standardResult": {
+            "consensusMeasure": 1,
+            "rankedAlternatives": [
+              {
+                "alternativeId": "6a80b84fa5554ec1544e6184",
+                "name": "Balanced choice",
+                "score": 0.54224,
+                "rank": 1
+              },
+              {
+                "alternativeId": "6a80b84fa5554ec1544e6185",
+                "name": "Premium choice",
+                "score": 0.41156,
+                "rank": 2
+              },
+              {
+                "alternativeId": "6a80b84fa5554ec1544e6186",
+                "name": "Budget choice",
+                "score": 0.35532,
+                "rank": 3
+              }
+            ],
+            "collectiveEvaluations": {
+              "6a80b84fa5554ec1544e618a": {
+                "6a80b84fa5554ec1544e6184": {
+                  "6a80b84fa5554ec1544e6185": 0.63,
+                  "6a80b84fa5554ec1544e6186": 0.64
+                },
+                "6a80b84fa5554ec1544e6185": {
+                  "6a80b84fa5554ec1544e6184": 0.37,
+                  "6a80b84fa5554ec1544e6186": 0.64
+                },
+                "6a80b84fa5554ec1544e6186": {
+                  "6a80b84fa5554ec1544e6184": 0.36,
+                  "6a80b84fa5554ec1544e6185": 0.35
+                }
+              }
+            },
+            "plotsGraphic": {
+              "expert_points": [
+                [
+                  0.0217,
+                  -0.0017
+                ],
+                [
+                  -0.0201,
+                  -0.0082
+                ]
+              ],
+              "collective_point": [
+                -0.0005,
+                0.0033
+              ]
+            }
+          },
+          "modelExecution": {
+            "kind": "decisionModelsService",
+            "structureKey": "alternativePairwiseByCriterion",
+            "apiModelKey": "herrera_viedma_crp",
+            "apiEndpointPath": "/herrera_viedma_crp",
+            "executedAt": "2026-08-15T19:04:53.331Z",
+            "consensusLifecycle": {
+              "isConsensus": true,
+              "consensusReached": true,
+              "maxPhasesReached": false,
+              "finalizationReason": "consensusReached",
+              "currentConsensusPhase": 1,
+              "nextConsensusPhase": 1,
+              "threshold": 0.9,
+              "maxPhases": 3,
+              "consensusMeasure": 1
+            },
+            "executionAttemptId": "6a80b855a5554ec1544e6292",
+            "startedAt": "2026-08-15T19:04:53.233Z",
+            "completedAt": "2026-08-15T19:04:53.331Z",
+            "durationMs": 23.38325499999337
+          }
+        },
+        "application": {
+          "completedAt": "2026-08-15T19:04:53.649Z",
+          "stageResultId": "6a80b8556c47ace27d4630a4"
+        }
+      },
+      "evidenceRefs": {
+        "snapshotId": "6a80b853a5554ec1544e6236",
+        "revisionIds": [
+          "6a80b854a5554ec1544e626f",
+          "6a80b854a5554ec1544e6282"
+        ],
+        "executionAttemptIds": [
+          "6a80b855a5554ec1544e6292"
+        ],
+        "stageResultId": "6a80b8556c47ace27d4630a4",
+        "eventIds": [
+          "6a80b853a5554ec1544e6227",
+          "6a80b853a5554ec1544e622a",
+          "6a80b853a5554ec1544e622c",
+          "6a80b854a5554ec1544e6273",
+          "6a80b854a5554ec1544e6286",
+          "6a80b855a5554ec1544e6294",
+          "6a80b855a5554ec1544e6297",
+          "6a80b855a5554ec1544e629a",
+          "6a80b855a5554ec1544e629c",
+          "6a80b855a5554ec1544e62a4"
+        ]
+      }
+    }
+  ],
+  "scenarios": {
+    "current": [],
+    "failedAttempts": []
+  }
+}

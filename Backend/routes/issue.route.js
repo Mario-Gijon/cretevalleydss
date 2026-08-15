@@ -14,6 +14,7 @@ import {
   removeNotificationById,
   getAllFinishedIssues,
   getFinishedIssueInfo,
+  getFinishedIssueGlobalAnalysis,
   removeFinishedIssue,
   editExperts,
   leaveIssue,
@@ -61,6 +62,8 @@ router
   .route("/finished/:id")
   .get(asyncHandler(getFinishedIssueInfo))
   .delete(asyncHandler(removeFinishedIssue));
+
+router.get("/finished/:id/global-analysis", asyncHandler(getFinishedIssueGlobalAnalysis));
 
 router.delete("/:id", asyncHandler(removeIssue));
 
