@@ -29,7 +29,7 @@ describe("InterpretationPanel", () => {
     expect(screen.getAllByText("Alternative evaluation")).toHaveLength(2);
     expect(screen.getByText("Base model interpretation")).toBeInTheDocument();
     expect(screen.getByText("Scenario model interpretation")).toBeInTheDocument();
-    expect(screen.getByText("Scenario model")).toBeInTheDocument();
+    expect(screen.getAllByText("Scenario model")).toHaveLength(2);
   });
 
   it("keeps General analysis visible and omits the optional section when model analysis is absent", () => {
