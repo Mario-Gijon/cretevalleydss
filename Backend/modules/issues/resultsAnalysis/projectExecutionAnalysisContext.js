@@ -19,7 +19,13 @@ const scenarioRoundOrThrow = ({ baseRoundsByPhase, phaseResult, scenarioId }) =>
   }
   return {
     ...clone(sourceRound),
-    selectedExecution: clone(phaseResult.execution),
+    selectedExecution: {
+      attemptId: phaseResult.attemptId,
+      correlationId: phaseResult.correlationId,
+      startedAt: phaseResult.startedAt,
+      completedAt: phaseResult.completedAt,
+      ...clone(phaseResult.execution),
+    },
     executionAttempts: [{
       id: phaseResult.attemptId,
       status: "succeeded",

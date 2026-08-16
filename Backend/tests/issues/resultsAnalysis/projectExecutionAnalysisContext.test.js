@@ -14,8 +14,8 @@ const context = () => ({
     current: [{
       id: "scenario-1",
       phaseResults: [
-        { phase: 5, attemptId: "scenario-5", startedAt: "2026-01-01T00:00:05.000Z", completedAt: "2026-01-01T00:00:06.000Z", execution: { attemptId: "scenario-5", startedAt: "2026-01-01T00:00:05.000Z", completedAt: "2026-01-01T00:00:06.000Z", modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 2 }], consensusMeasure: 0.8 }, modelExecution: {} }, application: { entityType: "scenario" } } },
-        { phase: 0, attemptId: "scenario-0", startedAt: "2026-01-01T00:00:01.000Z", completedAt: "2026-01-01T00:00:02.000Z", execution: { attemptId: "scenario-0", startedAt: "2026-01-01T00:00:01.000Z", completedAt: "2026-01-01T00:00:02.000Z", modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 1 }], consensusMeasure: 0.5 }, modelExecution: {} }, application: { entityType: "scenario" } } },
+        { phase: 5, source: { stageResultId: "stage-5", domainType: "scenario" }, attemptId: "scenario-5", correlationId: "corr-5", startedAt: "2026-01-01T00:00:05.000Z", completedAt: "2026-01-01T00:00:06.000Z", execution: { modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 2 }], consensusMeasure: 0.8 }, modelExecution: { provider: "test" } }, application: { entityType: "scenario" } } },
+        { phase: 0, source: { stageResultId: "stage-0", domainType: "scenario" }, attemptId: "scenario-0", correlationId: "corr-0", startedAt: "2026-01-01T00:00:01.000Z", completedAt: "2026-01-01T00:00:02.000Z", execution: { modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 1 }], consensusMeasure: 0.5 }, modelExecution: {} }, application: { entityType: "scenario" } } },
       ],
     }],
   },
@@ -36,6 +36,24 @@ describe("projectExecutionAnalysisContext", () => {
     expect(projected.execution).toEqual({ key: "scenario-1", type: "scenario", scenarioId: "scenario-1" });
     expect(projected.analysisContext.rounds.map((entry) => entry.phase)).toEqual([0, 5]);
     expect(projected.analysisContext.rounds.map((entry) => entry.selectedExecution.attemptId)).toEqual(["scenario-0", "scenario-5"]);
+    expect(projected.analysisContext.rounds[0].selectedExecution).toMatchObject({
+      attemptId: "scenario-0",
+      correlationId: "corr-0",
+      startedAt: "2026-01-01T00:00:01.000Z",
+      completedAt: "2026-01-01T00:00:02.000Z",
+      modelContext: { apiModelKey: "scenario" },
+      input: { evaluations: [] },
+      result: {
+        standardResult: { consensusMeasure: 0.5 },
+        modelExecution: {},
+      },
+      application: { entityType: "scenario" },
+    });
+    expect(projected.analysisContext.rounds[0].executionAttempts[0]).toMatchObject({
+      id: "scenario-0",
+      startedAt: "2026-01-01T00:00:01.000Z",
+      completedAt: "2026-01-01T00:00:02.000Z",
+    });
     expect(projected.analysisContext.rounds.map((entry) => entry.selectedExecution.result.standardResult.rankedAlternatives[0].rank)).toEqual([1, 2]);
     expect(projected.analysisContext.rounds[1].start.participants).toEqual([{ id: "expert-2" }]);
     expect(projected.analysisContext.rounds[1].revisions).toEqual([{ id: "real-phase-5" }]);
