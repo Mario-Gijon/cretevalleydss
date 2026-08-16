@@ -56,4 +56,34 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByText("Ranking evolution is not available for this execution.")).toBeInTheDocument();
     expect(screen.getAllByText("Alpha")).toHaveLength(2);
   });
+
+  it("renders future persisted overview, stability, and agreement data without deriving it", () => {
+    const futureAnalysis = {
+      facts: { processOverview: { phaseCount: 3, leaderChangeCount: 2, stabilizationPhase: 2, consensus: { enabled: true, change: 0.3, reached: false }, participation: { completedCount: 2, totalCount: 2, completionRate: 1 } } },
+      visualizations: [
+        { type: "rankingEvolution", data: { phases: [0, 1], series: [{ alternativeId: "a", label: "Alpha", values: [1, 2] }] } },
+        { type: "rankingStability", alternatives: [{ alternativeId: "a", name: "Alpha", initialRank: 1, finalRank: 2, bestRank: 1, worstRank: 3, totalMovement: 5, positionChangeCount: 2 }] },
+        { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: -1 }, { fromPhase: 1, toPhase: 2, coefficient: 1 }], stabilizationPhase: 2 },
+      ],
+    };
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", color: "#27d5e4", genericAnalysis: futureAnalysis }, { key: "test", displayLabel: "Test", genericAnalysis: { visualizations: [] } }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
+
+    expect(screen.getByText("Process overview")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("Round 2")).toBeInTheDocument();
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(screen.getByText("Ranking stability")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Alpha: initial rank 1, final rank 2, best rank 1, worst rank 3, total movement 5/)).toBeInTheDocument();
+    expect(screen.getByText("Phase-to-phase ranking agreement")).toBeInTheDocument();
+    expect(screen.getByLabelText("Initial to Round 1: -1.00")).toBeInTheDocument();
+    expect(screen.getByText("Ranking agreement is not available for this execution.")).toBeInTheDocument();
+  });
+
+  it("hides future visualization sections when persisted analyses do not provide them", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis: rankingAnalysis() }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
+
+    expect(screen.queryByText("Process overview")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ranking stability")).not.toBeInTheDocument();
+    expect(screen.queryByText("Phase-to-phase ranking agreement")).not.toBeInTheDocument();
+  });
 });
