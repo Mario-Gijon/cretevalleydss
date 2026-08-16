@@ -78,7 +78,9 @@ describe("buildIssueHistoryDocument", () => {
     expect(first.stateSnapshots.creation.state.issue).toMatchObject({ owner: { id: String(fixture.owner._id), name: fixture.owner.name, email: fixture.owner.email, university: fixture.owner.university }, creator: { id: String(fixture.owner._id), name: fixture.owner.name, email: fixture.owner.email, university: fixture.owner.university } });
     expect(first.stateSnapshots.consensusPhaseStarts[0].state.issue).toMatchObject({ owner: first.stateSnapshots.creation.state.issue.owner, creator: first.stateSnapshots.creation.state.issue.creator });
     expect(first.evidence.executionAttempts).toEqual(expect.arrayContaining([expect.objectContaining({ id: String(fixture.failedAttempt._id), status: "failed", failureStage: "transport", error: { name: "Error", message: "transport failed", nested: { at: "2026-01-01T00:00:02.000Z" } } }), expect.objectContaining({ id: String(fixture.scenarioAttempt._id), scope: "scenario" })]));
-    expect(first.scenarios.current).toMatchObject([{ execution: { attemptId: String(fixture.scenarioAttempt._id) } }]);
+    expect(first.scenarios.current[0].phaseResults).toMatchObject([{ phase: 0, execution: { attemptId: String(fixture.scenarioAttempt._id) } }]);
+    expect(first.scenarios.current[0]).not.toHaveProperty("source");
+    expect(first.timeline.find((entry) => entry.kind === "scenario")).toMatchObject({ stage: null, phase: null });
     expect(first.evidence.events[0].details.nestedDate).toBe("2026-01-01T00:00:16.000Z");
     expect(first.currentState.issue.id).toBe(String(fixture.issue._id));
     expect(first.currentState.evaluations[0].submittedAt).toBe("2026-01-01T00:00:06.000Z");
@@ -108,6 +110,55 @@ describe("buildIssueHistoryDocument", () => {
     expect(history.evidence.executionAttempts).toHaveLength(2);
     expect(history.evidence.stageResults).toHaveLength(2);
     expect(history.timeline).toEqual([...history.timeline].sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.kind.localeCompare(right.kind) || left.refId.localeCompare(right.refId)));
+  });
+
+  it("serializes a new aggregate scenario with ordered phaseResults and an aggregate timeline entry", async () => {
+    const fixture = await createHistoryFixture();
+    const laterStageResult = await IssueStageResult.create({
+      issue: fixture.issue._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+      executionAttempt: null,
+      inputSnapshot: { expertWeights: [] },
+      result: { standardResult: { consensusMeasure: 0.9 }, modelExecution: { phase: 1 }, rawOutput: { phase: 1 } },
+    });
+    await IssueScenario.create({
+      issue: fixture.issue._id,
+      createdBy: fixture.owner._id,
+      name: "Aggregate scenario",
+      targetModel: fixture.model._id,
+      config: { parameterOverrides: { alpha: 3 } },
+      phaseResults: [
+        { phase: 1, source: { stageResult: laterStageResult._id, domainType: "numeric" }, requestSnapshot: { context: { phase: 1 } }, result: { standardResult: { consensusMeasure: 0.9 }, modelExecution: { phase: 1 }, rawOutput: { phase: 1 } }, execution: { attemptId: fixture.scenarioAttempt._id, startedAt: at(16), completedAt: at(17) } },
+        { phase: 0, source: { stageResult: fixture.stageResult._id, domainType: "numeric" }, requestSnapshot: { context: { phase: 0 } }, result: { standardResult: { consensusMeasure: 0.4 }, modelExecution: { phase: 0 }, rawOutput: { phase: 0 } }, execution: { attemptId: fixture.scenarioAttempt._id, startedAt: at(14), completedAt: at(15) } },
+      ],
+    });
+
+    const history = await buildIssueHistoryDocument({ issueId: fixture.issue._id });
+    const scenario = history.scenarios.current.find((entry) => entry.name === "Aggregate scenario");
+    expect(scenario.phaseResults.map((entry) => entry.phase)).toEqual([0, 1]);
+    expect(scenario.phaseResults[1]).toMatchObject({ source: { stageResultId: String(laterStageResult._id) }, requestSnapshot: { context: { phase: 1 } }, result: { standardResult: { consensusMeasure: 0.9 } } });
+    expect(history.timeline.find((entry) => entry.kind === "scenario" && entry.refId === scenario.id)).toMatchObject({ stage: null, phase: null });
+    expect(() => JSON.stringify(history)).not.toThrow();
+  });
+
+  it("does not emit an undefined legacy source phase", async () => {
+    const fixture = await createHistoryFixture();
+    await IssueScenario.create({
+      issue: fixture.issue._id,
+      createdBy: fixture.owner._id,
+      name: "Legacy without phase",
+      targetModel: fixture.model._id,
+      source: { stageResult: null, domainType: "numeric" },
+      config: { parameterOverrides: {} },
+      requestSnapshot: {},
+      result: { standardResult: {}, modelExecution: {}, rawOutput: {} },
+      execution: { startedAt: at(14), completedAt: at(15) },
+    });
+    const history = await buildIssueHistoryDocument({ issueId: fixture.issue._id });
+    const scenario = history.scenarios.current.find((entry) => entry.name === "Legacy without phase");
+    expect(scenario.phaseResults).toMatchObject([{ phase: 0 }]);
+    expect(scenario).not.toHaveProperty("source");
   });
 
   it("rejects invalid persisted Mixed evidence instead of silently altering it", async () => {

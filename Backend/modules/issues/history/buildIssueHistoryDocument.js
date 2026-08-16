@@ -73,7 +73,65 @@ const serializeRevision = (entry) => ({ id: id(entry._id), evaluationId: id(entr
 const serializeAttempt = (entry) => ({ id: id(entry._id), scope: entry.scope, actorType: entry.actorType, actorUserId: id(entry.actorUser), correlationId: entry.correlationId, evaluationStage: entry.evaluationStage, issueStage: entry.issueStage, consensusPhase: entry.consensusPhase, modelContext: entry.modelContext, request: entry.request, status: entry.status, failureStage: entry.failureStage, startedAt: entry.startedAt, responseReceivedAt: entry.responseReceivedAt, completedAt: entry.completedAt, durationMs: entry.durationMs, transportDurationMs: entry.transportDurationMs, response: entry.response, normalizedResult: entry.normalizedResult, error: entry.error, application: entry.application, schemaVersion: entry.schemaVersion, createdAt: entry.createdAt, updatedAt: entry.updatedAt });
 const serializeStageResult = (entry) => ({ id: id(entry._id), stage: entry.stage, consensusPhase: entry.consensusPhase, executionAttemptId: id(entry.executionAttempt), inputSnapshot: entry.inputSnapshot, result: entry.result, createdAt: entry.createdAt, updatedAt: entry.updatedAt });
 const serializeExitHistory = (entry) => ({ id: id(entry._id), userId: id(entry.user), hidden: entry.hidden, timestamp: entry.timestamp, phase: entry.phase, stage: entry.stage, reason: entry.reason, history: entry.history.map((item) => ({ timestamp: item.timestamp, phase: item.phase, stage: item.stage, action: item.action, reason: item.reason })), createdAt: entry.createdAt, updatedAt: entry.updatedAt });
-const serializeScenario = (entry) => ({ id: id(entry._id), createdById: id(entry.createdBy), name: entry.name, description: entry.description, targetModelId: id(entry.targetModel), source: { consensusPhase: entry.source.consensusPhase, stageResultId: id(entry.source.stageResult), domainType: entry.source.domainType }, config: { parameterOverrides: entry.config.parameterOverrides }, requestSnapshot: entry.requestSnapshot, result: entry.result, execution: { attemptId: id(entry.execution.attemptId), startedAt: entry.execution.startedAt, completedAt: entry.execution.completedAt }, createdAt: entry.createdAt, updatedAt: entry.updatedAt });
+
+const cloneScenarioValue = (value, field, fallback = {}) => {
+  if (value === undefined || value === null) return fallback;
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    throw createInternalError(`${field} must be JSON-compatible`, { field });
+  }
+};
+
+const omitUndefined = (value) => Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));
+
+const serializeScenarioPhaseResult = (phaseResult) => {
+  const standardResult = cloneScenarioValue(phaseResult?.result?.standardResult, "scenario.phaseResults.result.standardResult");
+  const modelExecution = cloneScenarioValue(phaseResult?.result?.modelExecution, "scenario.phaseResults.result.modelExecution");
+  const rawOutput = cloneScenarioValue(phaseResult?.result?.rawOutput, "scenario.phaseResults.result.rawOutput");
+  return {
+    phase: Number.isInteger(phaseResult?.phase) && phaseResult.phase >= 0 ? phaseResult.phase : 0,
+    source: omitUndefined({
+      stageResultId: id(phaseResult?.source?.stageResult),
+      domainType: phaseResult?.source?.domainType,
+    }),
+    requestSnapshot: cloneScenarioValue(phaseResult?.requestSnapshot, "scenario.phaseResults.requestSnapshot"),
+    result: { standardResult, modelExecution, rawOutput },
+    execution: {
+      attemptId: id(phaseResult?.execution?.attemptId),
+      startedAt: time(phaseResult?.execution?.startedAt ?? null),
+      completedAt: time(phaseResult?.execution?.completedAt ?? null),
+    },
+  };
+};
+
+const serializeScenario = (entry) => {
+  const storedPhaseResults = Array.isArray(entry.phaseResults)
+    ? entry.phaseResults.filter((phaseResult) => Number.isInteger(phaseResult?.phase) && phaseResult.phase >= 0)
+    : [];
+  const phaseResults = storedPhaseResults.length
+    ? storedPhaseResults.map((phaseResult) => serializeScenarioPhaseResult(phaseResult))
+    : [serializeScenarioPhaseResult({
+        phase: Number.isInteger(entry.source?.consensusPhase) && entry.source.consensusPhase >= 0 ? entry.source.consensusPhase : 0,
+        source: entry.source,
+        requestSnapshot: entry.requestSnapshot,
+        result: entry.result,
+        execution: entry.execution,
+      })];
+
+  phaseResults.sort((left, right) => left.phase - right.phase);
+  return omitUndefined({
+    id: id(entry._id),
+    createdById: id(entry.createdBy),
+    name: entry.name,
+    description: entry.description,
+    targetModelId: id(entry.targetModel),
+    config: { parameterOverrides: cloneScenarioValue(entry.config?.parameterOverrides, "scenario.config.parameterOverrides") },
+    phaseResults,
+    createdAt: time(entry.createdAt ?? null),
+    updatedAt: time(entry.updatedAt ?? null),
+  });
+};
 
 const completeness = Object.freeze({
   creationSnapshot: { status: "exact" }, consensusPhaseStartSnapshots: { status: "exact" },
@@ -92,7 +150,7 @@ const buildTimeline = ({ snapshots, events, revisions, attempts, stageResults, s
     ...revisions.map((entry) => ({ occurredAt: time(entry.occurredAt), kind: "evaluationRevision", refId: entry.id, stage: entry.stage, phase: entry.consensusPhase, correlationId: entry.correlationId })),
     ...attempts.map((entry) => ({ occurredAt: time(entry.startedAt), kind: "executionAttempt", refId: entry.id, stage: entry.issueStage, phase: entry.consensusPhase, correlationId: entry.correlationId })),
     ...stageResults.map((entry) => ({ occurredAt: time(entry.createdAt), kind: "stageResult", refId: entry.id, stage: entry.stage, phase: entry.consensusPhase, correlationId: null })),
-    ...scenarios.map((entry) => ({ occurredAt: time(entry.createdAt), kind: "scenario", refId: entry.id, stage: entry.source.stageResultId ? null : null, phase: entry.source.consensusPhase, correlationId: null })),
+    ...scenarios.map((entry) => ({ occurredAt: time(entry.createdAt), kind: "scenario", refId: entry.id, stage: null, phase: null, correlationId: null })),
     ...exits.flatMap((entry) => entry.history.map((history, index) => ({ occurredAt: time(history.timestamp), kind: "participantExitHistory", refId: `${entry.id}:history:${index}`, stage: history.stage, phase: history.phase, correlationId: null }))),
   ];
   return entries.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.kind.localeCompare(right.kind) || left.refId.localeCompare(right.refId));
