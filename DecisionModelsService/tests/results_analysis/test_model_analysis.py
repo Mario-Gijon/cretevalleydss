@@ -25,6 +25,14 @@ def test_model_analysis_discovery_treats_missing_analysis_as_optional(monkeypatc
     assert load_model_analysis_handlers("no_analysis") is None
 
 
+def test_model_analysis_discovery_treats_missing_model_package_as_optional(monkeypatch, tmp_path):
+    models = importlib.import_module("models")
+    monkeypatch.setattr(models, "__path__", [str(tmp_path / "models")])
+    monkeypatch.delitem(sys.modules, "models.missing_model", raising=False)
+
+    assert load_model_analysis_handlers("missing_model") is None
+
+
 def test_model_analysis_discovery_treats_modules_without_handlers_as_optional(monkeypatch, tmp_path):
     install_model_package(monkeypatch, tmp_path, "no_handlers", "VALUE = 1\n")
     assert load_model_analysis_handlers("no_handlers") is None

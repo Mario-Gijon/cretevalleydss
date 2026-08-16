@@ -106,3 +106,13 @@ def test_model_issue_endpoint_rejects_invalid_results_and_propagates_handler_fai
     monkeypatch.setattr(results_analysis, "load_model_analysis_handlers", lambda _: {"analyze_issue": lambda _: (_ for _ in ()).throw(RuntimeError("handler failed"))})
     with pytest.raises(RuntimeError, match="handler failed"):
         asyncio.run(analyze_model_issue({"apiModelKey": "failure", "analysisContext": analysis_context()}))
+
+
+def test_model_issue_endpoint_propagates_an_internal_analysis_module_import_failure(monkeypatch):
+    def fail_loading_existing_analysis_module(_):
+        raise ModuleNotFoundError("No module named 'model_private_dependency'")
+
+    monkeypatch.setattr(results_analysis, "load_model_analysis_handlers", fail_loading_existing_analysis_module)
+
+    with pytest.raises(ModuleNotFoundError, match="model_private_dependency"):
+        asyncio.run(analyze_model_issue({"apiModelKey": "broken", "analysisContext": analysis_context()}))
