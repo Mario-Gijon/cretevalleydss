@@ -74,14 +74,18 @@ const ComparisonVisualization = ({ comparison, scatterPlotRef, onResetZoom }) =>
   </Box>;
 };
 
-const RankingEvolution = ({ executions }) => <Box sx={{ overflowX: executions.length > 1 ? "auto" : "visible", maxWidth: "100%" }}>
-  <Box sx={{ display: "grid", gridTemplateColumns: executions.length > 1 ? { xs: "1fr", md: `repeat(${executions.length}, minmax(360px, 1fr))` } : "1fr", gap: 1.4, minWidth: executions.length > 1 ? { md: executions.length * 360 } : 0 }}>
-    {executions.map((execution) => {
+const RankingEvolution = ({ executions }) => <Box sx={cardSx}>
+  <Header title="Ranking evolution" subtitle="Position changes across consensus phases." />
+  <Box data-testid="ranking-evolution-comparison" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: executions.length > 1 ? `${"minmax(0, 1fr) 1px ".repeat(Math.min(executions.length, 3) - 1)}minmax(0, 1fr)` : "minmax(0, 1fr)", xl: executions.length > 1 ? `${"minmax(0, 1fr) 1px ".repeat(Math.min(executions.length, 3) - 1)}minmax(0, 1fr)` : "minmax(0, 1fr)" }, gap: 1.4, minWidth: 0, overflowX: "hidden", overflowY: "hidden" }}>
+    {executions.flatMap((execution, index) => {
       const visualization = execution.genericAnalysis?.visualizations?.find((entry) => entry?.type === "rankingEvolution");
-      return <Box key={execution.key} sx={cardSx}>
+      const panel = <Box key={execution.key} data-testid="ranking-evolution-execution" sx={{ minWidth: 0 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 0.8 }}>{execution.displayLabel}</Typography>
-        {visualization ? <RankingMovementChart movement={buildGenericRankingMovement(visualization)} title="Ranking evolution" subtitle="Position changes across consensus phases." /> : <Alert severity="info">Ranking evolution is not available for this execution.</Alert>}
+        {visualization ? <RankingMovementChart movement={buildGenericRankingMovement(visualization)} embedded /> : <Alert severity="info">Ranking evolution is not available for this execution.</Alert>}
       </Box>;
+      return index < executions.length - 1
+        ? [panel, <Box key={`${execution.key}-divider`} data-testid="ranking-evolution-divider" aria-hidden="true" sx={{ bgcolor: "rgba(83,198,214,0.22)", width: "100%", height: { xs: "1px", md: "100%" } }} />]
+        : [panel];
     })}
   </Box>
 </Box>;
