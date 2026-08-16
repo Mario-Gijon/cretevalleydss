@@ -23,6 +23,11 @@ const InterpretationPanel = ({ executions = [] }) => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>{execution.modelName}</Typography>
         <Typography component="h3" sx={{ mb: 1.25, fontSize: 17, fontWeight: 900 }}>General analysis</Typography>
         {execution.genericAnalysis?.interpretation ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{execution.genericAnalysis.interpretation}</ReactMarkdown> : <Alert severity="info">General analysis is not available for this execution. Reload Analysis to generate it.</Alert>}
+        {execution.alternativeEvaluationAnalysis?.analysis?.interpretation ? <Box sx={{ mt: 2 }}>
+          <Typography component="h3" sx={{ mb: 0.35, fontSize: 17, fontWeight: 900 }}>Alternative evaluation</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.8 }}>{execution.modelName}</Typography>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{execution.alternativeEvaluationAnalysis.analysis.interpretation}</ReactMarkdown>
+        </Box> : null}
       </Box>)}
     </Box>
   </Box>;

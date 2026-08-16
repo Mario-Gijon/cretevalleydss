@@ -4,6 +4,7 @@ import { buildRankingMovement, buildSpearmanCorrelationMatrix } from "./buildRan
 import { buildResultsVisualizationsData } from "./buildResultsVisualizationsData.js";
 import { RESULTS_ANALYSIS_SLOT_COLORS } from "./resultsAnalysisColors.js";
 import { selectExecutionGenericAnalysis } from "./selectExecutionGenericAnalysis.js";
+import { selectExecutionAlternativeEvaluationAnalysis } from "./selectExecutionAlternativeEvaluationAnalysis.js";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -103,6 +104,7 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     modelSpecificOutput: execution?.modelSpecificOutput ?? null,
     rawOutput: execution?.rawOutput ?? null,
     genericAnalysis: selectExecutionGenericAnalysis(payload, option.key),
+    alternativeEvaluationAnalysis: selectExecutionAlternativeEvaluationAnalysis(payload, option.key),
   };
 };
 

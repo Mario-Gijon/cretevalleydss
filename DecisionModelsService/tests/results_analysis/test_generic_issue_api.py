@@ -2,8 +2,10 @@ import asyncio
 from copy import deepcopy
 
 import httpx
+import pytest
 
-from api.routers.results_analysis import analyze_generic_issue
+from api.routers import results_analysis
+from api.routers.results_analysis import analyze_generic_issue, analyze_model_issue
 from core.application import create_application
 
 
@@ -72,3 +74,35 @@ def test_issue_analysis_keeps_ranking_evolution_but_not_consensus_visualization(
     assert "| Alpha | 1st | 1st | +0 |" in result["interpretation"]
     assert "### Final ranking" not in result["interpretation"]
     assert "### Execution" not in result["interpretation"]
+
+
+def test_model_issue_endpoint_uses_dynamic_handler_and_exact_model_context(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        results_analysis,
+        "load_model_analysis_handlers",
+        lambda key: {"analyze_issue": lambda context: captured.update({"key": key, "context": context}) or {"facts": {}, "interpretation": "Model", "visualizations": []}},
+    )
+
+    response = asyncio.run(analyze_model_issue({"apiModelKey": "dynamic_model", "analysisContext": analysis_context()}))
+
+    assert response["success"] is True
+    assert response["data"]["interpretation"] == "Model"
+    assert captured["key"] == "dynamic_model"
+    assert captured["context"]["rounds"][0]["execution"]["result"]["modelExecution"] == {"private": True}
+
+
+def test_model_issue_endpoint_treats_missing_or_round_only_analysis_as_optional(monkeypatch):
+    monkeypatch.setattr(results_analysis, "load_model_analysis_handlers", lambda _: None)
+    assert asyncio.run(analyze_model_issue({"apiModelKey": "missing", "analysisContext": analysis_context()}))["data"] is None
+    monkeypatch.setattr(results_analysis, "load_model_analysis_handlers", lambda _: {"analyze_round": lambda _: None})
+    assert asyncio.run(analyze_model_issue({"apiModelKey": "round_only", "analysisContext": analysis_context()}))["data"] is None
+
+
+def test_model_issue_endpoint_rejects_invalid_results_and_propagates_handler_failures(monkeypatch):
+    monkeypatch.setattr(results_analysis, "load_model_analysis_handlers", lambda _: {"analyze_issue": lambda _: {"facts": []}})
+    invalid = asyncio.run(analyze_model_issue({"apiModelKey": "invalid", "analysisContext": analysis_context()}))
+    assert invalid.status_code == 422
+    monkeypatch.setattr(results_analysis, "load_model_analysis_handlers", lambda _: {"analyze_issue": lambda _: (_ for _ in ()).throw(RuntimeError("handler failed"))})
+    with pytest.raises(RuntimeError, match="handler failed"):
+        asyncio.run(analyze_model_issue({"apiModelKey": "failure", "analysisContext": analysis_context()}))

@@ -23,7 +23,8 @@ const fixture = () => {
       getIssue: vi.fn(async () => issue),
       historyBuilder: vi.fn(async () => ({ history: true })),
       analysisContextBuilder: vi.fn(() => ({ rounds: [], scenarios: { current: [] } })),
-      executionProjector: vi.fn(({ executionKey }) => ({ execution: { key: executionKey }, analysisContext: { projectedFor: executionKey } })),
+      executionProjector: vi.fn(({ executionKey }) => ({ execution: { key: executionKey }, analysisContext: { projectedFor: executionKey, rounds: [{ selectedExecution: { modelContext: { apiModelKey: executionKey === "base" ? "base-model" : "scenario-model" } } }] } })),
+      requestModelAnalysis: vi.fn(async () => null),
     },
   };
 };
@@ -38,7 +39,7 @@ describe("finished Issue execution analysis service", () => {
     const second = await getOrGenerateFinishedIssueExecutionAnalysis({ executionKey: "base", ...common });
     const global = await getFinishedIssueGlobalAnalysis(common);
 
-    expect(first).toMatchObject({ executionKey: "base", executionType: "base", scenarioId: null, genericAnalysis: { interpretation: "Base" } });
+    expect(first).toMatchObject({ executionKey: "base", executionType: "base", scenarioId: null, genericAnalysis: { interpretation: "Base" }, stageAnalyses: { alternativeEvaluation: { apiModelKey: "base-model", analysis: null } } });
     expect(second).toEqual(first);
     expect(global).toEqual(first.genericAnalysis);
     expect(requestAnalysis).toHaveBeenCalledTimes(1);

@@ -27,6 +27,10 @@ const issueResultsAnalysisSchema = new Schema(
       type: Schema.Types.Mixed,
       required: true,
     },
+    stageAnalyses: {
+      type: Schema.Types.Mixed,
+      required: false,
+    },
     generatedAt: {
       type: Date,
       required: true,

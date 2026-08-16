@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { selectExecutionGenericAnalysis } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/selectExecutionGenericAnalysis.js";
+import { selectExecutionAlternativeEvaluationAnalysis } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/selectExecutionAlternativeEvaluationAnalysis.js";
 
 describe("selectExecutionGenericAnalysis", () => {
   it("resolves persisted Base and Scenario analyses by execution key", () => {
@@ -16,5 +17,15 @@ describe("selectExecutionGenericAnalysis", () => {
     expect(selectExecutionGenericAnalysis(payload, "base")).toEqual({ interpretation: "Base" });
     expect(selectExecutionGenericAnalysis(payload, "scenario-1")).toEqual({ interpretation: "Scenario" });
     expect(selectExecutionGenericAnalysis(payload, "missing")).toBeNull();
+  });
+
+  it("resolves optional alternative evaluation analysis by its own execution key", () => {
+    const payload = { resultsAnalysis: { executions: [
+      { executionKey: "base", stageAnalyses: { alternativeEvaluation: { apiModelKey: "base-model", analysis: { interpretation: "Base model" } } } },
+      { executionKey: "scenario-1", stageAnalyses: { alternativeEvaluation: { apiModelKey: "scenario-model", analysis: { interpretation: "Scenario model" } } } },
+    ] } };
+    expect(selectExecutionAlternativeEvaluationAnalysis(payload, "base")).toMatchObject({ apiModelKey: "base-model" });
+    expect(selectExecutionAlternativeEvaluationAnalysis(payload, "scenario-1")).toMatchObject({ apiModelKey: "scenario-model" });
+    expect(selectExecutionAlternativeEvaluationAnalysis(payload, "missing")).toBeNull();
   });
 });

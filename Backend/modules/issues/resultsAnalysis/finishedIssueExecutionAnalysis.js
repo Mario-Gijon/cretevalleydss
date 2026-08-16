@@ -1,6 +1,7 @@
 import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { requestGenericIssueAnalysis } from "../../../services/modelApi/genericResultsAnalysisClient.js";
+import { requestModelIssueAnalysis } from "../../../services/modelApi/modelResultsAnalysisClient.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { buildIssueHistoryDocument } from "../history/index.js";
@@ -45,8 +46,17 @@ export const serializePersistedExecutionAnalysis = (entry) => ({
   executionType: entry.executionType,
   scenarioId: entry.scenario ? String(entry.scenario) : null,
   genericAnalysis: clone(entry.genericAnalysis),
+  ...(entry.stageAnalyses ? { stageAnalyses: clone(entry.stageAnalyses) } : {}),
   generatedAt: entry.generatedAt instanceof Date ? entry.generatedAt.toISOString() : entry.generatedAt,
 });
+
+const resolveAlternativeEvaluationApiModelKeyOrThrow = (analysisContext) => {
+  const keys = [...new Set((analysisContext?.rounds || []).map((round) => round?.selectedExecution?.modelContext?.apiModelKey).filter((value) => typeof value === "string" && value.trim()).map((value) => value.trim()))];
+  if (keys.length !== 1) {
+    throw createBadRequestError("Projected alternativeEvaluation execution evidence must contain exactly one apiModelKey", { field: "analysisContext.rounds", details: { apiModelKeys: keys } });
+  }
+  return keys[0];
+};
 
 const generateAndReplace = async ({
   issue,
@@ -56,13 +66,17 @@ const generateAndReplace = async ({
   analysisContextBuilder = buildAnalysisContext,
   executionProjector = projectExecutionAnalysisContext,
   requestAnalysis = requestGenericIssueAnalysis,
+  requestModelAnalysis = requestModelIssueAnalysis,
   now = () => new Date(),
 }) => {
   const history = await historyBuilder({ issueId: issue._id });
   const context = analysisContextBuilder(history);
   const projected = executionProjector({ analysisContext: context, executionKey: descriptor.key });
-  const generatedAt = now();
   const genericAnalysis = await requestAnalysis({ analysisContext: projected.analysisContext });
+  const apiModelKey = resolveAlternativeEvaluationApiModelKeyOrThrow(projected.analysisContext);
+  const modelAnalysis = await requestModelAnalysis({ apiModelKey, analysisContext: projected.analysisContext });
+  const stageAnalyses = { alternativeEvaluation: { apiModelKey, analysis: clone(modelAnalysis) } };
+  const generatedAt = now();
   const entry = await analysisModel.findOneAndUpdate(
     { issue: issue._id, executionKey: descriptor.key },
     {
@@ -72,6 +86,7 @@ const generateAndReplace = async ({
         executionType: descriptor.type,
         scenario: descriptor.scenarioId,
         genericAnalysis: clone(genericAnalysis),
+        stageAnalyses,
         generatedAt,
       },
     },
@@ -92,6 +107,7 @@ export const getOrGenerateFinishedIssueExecutionAnalysis = async ({
   analysisContextBuilder = buildAnalysisContext,
   executionProjector = projectExecutionAnalysisContext,
   requestAnalysis = requestGenericIssueAnalysis,
+  requestModelAnalysis = requestModelIssueAnalysis,
   now,
 }) => {
   const issue = await assertFinishedIssueAccess({ issueId, userId, getIssue });
@@ -100,7 +116,7 @@ export const getOrGenerateFinishedIssueExecutionAnalysis = async ({
     const existing = await analysisModel.findOne({ issue: issue._id, executionKey: descriptor.key }).lean();
     if (existing) return serializePersistedExecutionAnalysis(existing);
   }
-  return generateAndReplace({ issue, descriptor, analysisModel, historyBuilder, analysisContextBuilder, executionProjector, requestAnalysis, now });
+  return generateAndReplace({ issue, descriptor, analysisModel, historyBuilder, analysisContextBuilder, executionProjector, requestAnalysis, requestModelAnalysis, now });
 };
 
 export const reloadFinishedIssueExecutionAnalyses = async ({ issueId, userId, executionKeys, ...dependencies }) => {

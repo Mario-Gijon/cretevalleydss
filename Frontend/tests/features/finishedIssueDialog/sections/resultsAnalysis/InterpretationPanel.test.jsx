@@ -20,4 +20,15 @@ describe("InterpretationPanel", () => {
     expect(screen.queryByText("Model analysis")).not.toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
+
+  it("renders each execution's optional alternative evaluation interpretation independently", () => {
+    render(<InterpretationPanel executions={[
+      { key: "base", displayLabel: "Base", modelName: "Base model", genericAnalysis: { interpretation: "Base general" }, alternativeEvaluationAnalysis: { analysis: { interpretation: "Base model interpretation" } } },
+      { key: "scenario", displayLabel: "Scenario", modelName: "Scenario model", genericAnalysis: { interpretation: "Scenario general" }, alternativeEvaluationAnalysis: { analysis: { interpretation: "Scenario model interpretation" } } },
+    ]} />);
+    expect(screen.getAllByText("Alternative evaluation")).toHaveLength(2);
+    expect(screen.getByText("Base model interpretation")).toBeInTheDocument();
+    expect(screen.getByText("Scenario model interpretation")).toBeInTheDocument();
+    expect(screen.getByText("Scenario model")).toBeInTheDocument();
+  });
 });
