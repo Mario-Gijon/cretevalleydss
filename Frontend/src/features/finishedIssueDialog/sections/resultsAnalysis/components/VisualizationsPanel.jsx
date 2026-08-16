@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Alert,
   Box,
@@ -9,6 +8,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import { useState } from "react";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import CenterFocusStrongRoundedIcon from "@mui/icons-material/CenterFocusStrongRounded";
 
@@ -19,7 +19,6 @@ import { RESULTS_ANALYSIS_SLOT_COLORS } from "../logic/resultsAnalysisColors.js"
 import RankingMovementChart from "./RankingMovementChart.jsx";
 import { buildGenericRankingMovement } from "../logic/buildGenericRankingMovement.js";
 import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js";
-import AlternativeRelationshipsCard from "./AlternativeRelationshipsCard.jsx";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 
 const cardSx = {
@@ -33,6 +32,12 @@ const chartFrameSx = {
   width: "100%",
   height: { xs: 360, sm: 430, md: 500, xl: 540 },
   maxHeight: 540,
+  minHeight: 0,
+};
+const expertChartFrameSx = {
+  width: "100%",
+  height: { xs: 320, sm: 360, md: 420, xl: 430 },
+  maxHeight: 430,
   minHeight: 0,
 };
 const compactChartFrameSx = {
@@ -52,7 +57,7 @@ const unavailableMessage = (reason) => {
   return "No stored expert–collective analytical projection is available for this execution.";
 };
 
-const Header = ({ title, subtitle, resettable, onResetZoom }) => (
+const Header = ({ title, subtitle, resettable, onResetZoom, extraAction }) => (
   <Stack
     direction="row"
     justifyContent="space-between"
@@ -69,17 +74,10 @@ const Header = ({ title, subtitle, resettable, onResetZoom }) => (
         {subtitle ? <Typography variant="body2" color="text.secondary">{subtitle}</Typography> : null}
       </Box>
     </Stack>
-    {resettable ? (
-      <Button
-        variant="outlined"
-        color="secondary"
-        size="small"
-        startIcon={<CenterFocusStrongRoundedIcon />}
-        onClick={onResetZoom}
-      >
-        Reset zoom
-      </Button>
-    ) : null}
+    <Stack direction="row" spacing={0.8} alignItems="center">
+      {resettable ? <Button variant="outlined" color="secondary" size="small" startIcon={<CenterFocusStrongRoundedIcon />} onClick={onResetZoom}>Reset zoom</Button> : null}
+      {extraAction}
+    </Stack>
   </Stack>
 );
 
@@ -129,22 +127,14 @@ const ConsensusCard = ({ consensus }) => (
 const SingleVisualization = ({
   visualizations,
   scatterPlotRef,
-  onResetZoom,
-  embedded = false,
 }) => {
   const scatter = visualizations.singleScatter;
   return (
     <Stack spacing={1.4}>
       <Box>
-        <Box sx={embedded ? {} : cardSx}>
-          <Header
-            title={embedded ? "Dispersion chart" : "Expert–collective map"}
-            subtitle={embedded ? null : "Dispersion of expert points and the collective position."}
-            resettable={scatter?.available}
-            onResetZoom={onResetZoom}
-          />
+        <Box>
           {scatter?.available ? (
-            <Box sx={chartFrameSx}>
+            <Box sx={expertChartFrameSx}>
               <AnalyticalScatterChart
                 data={scatter.data}
                 phase={scatter.sourcePhase}
@@ -161,10 +151,6 @@ const SingleVisualization = ({
               {unavailableMessage(scatter?.unavailableReason)}
             </Typography>
           )}
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-            Coordinates come from the stored analytical projection for this
-            execution.
-          </Typography>
         </Box>
       </Box>
     </Stack>
@@ -174,16 +160,10 @@ const SingleVisualization = ({
 const ComparisonVisualization = ({
   comparison,
   scatterPlotRef,
-  onResetZoom,
-  embedded = false,
 }) => {
   if (comparison.presentation === "unavailable")
     return (
-      <Box sx={embedded ? { minWidth: 0 } : cardSx}>
-        <Header
-          title="Comparative visualizations"
-          subtitle="Stored analytical projections."
-        />
+      <Box sx={{ minWidth: 0 }}>
         <Typography
           color="text.secondary"
           sx={{
@@ -200,11 +180,6 @@ const ComparisonVisualization = ({
   if (comparison.presentation === "separate")
     return (
       <Stack spacing={1.1}>
-        {comparison.footerMessages.map((message) => (
-          <Typography variant="body2" key={message} color="text.secondary">
-            {message}
-          </Typography>
-        ))}
         {comparison.unavailableExecutions.filter(
           (execution) => !execution.displayAvailable,
         ).length ? (
@@ -229,11 +204,7 @@ const ComparisonVisualization = ({
           }}
         >
           {comparison.separateExecutions.map((group) => (
-            <Box key={group.id} sx={embedded ? { minWidth: 0 } : cardSx}>
-              <Header
-                title="Dispersion chart"
-                subtitle={null}
-              />{" "}
+            <Box key={group.id} sx={{ minWidth: 0 }}>
               <GroupChips
                 group={{
                   ...group,
@@ -262,26 +233,13 @@ const ComparisonVisualization = ({
       ? [comparison.sharedProjection]
       : comparison.alignedExecutions;
   return (
-    <Box sx={embedded ? {} : cardSx}>
-      <Header
-        title={embedded ? "Dispersion chart" : "Expert–collective map"}
-        subtitle={embedded ? null : "Dispersion of expert points and the collective position."}
-        resettable
-        onResetZoom={onResetZoom}
-      />
-      <Box sx={{ ...chartFrameSx, mt: 1 }}>
+    <Box>
+      <Box sx={expertChartFrameSx}>
         <ComparativeAnalyticalScatterChart
           groups={groups}
           scatterPlotRef={scatterPlotRef}
         />
       </Box>
-      <Stack spacing={0.3} sx={{ mt: 1 }}>
-        {comparison.footerMessages.map((message) => (
-          <Typography variant="caption" key={message} color="text.secondary">
-            {message}
-          </Typography>
-        ))}
-      </Stack>
     </Box>
   );
 };
@@ -642,63 +600,40 @@ const ExpertCollectiveRelationship = ({
   onResetZoom,
 }) => {
   const [representation, setRepresentation] = useState("map");
+  const toggleMode = Boolean(visualizations.consensus?.available);
+  const showMap = !toggleMode || representation === "map";
+  const scatterAvailable = visualizations.mode === "comparison"
+    ? visualizations.expertCollectiveComparison?.presentation !== "unavailable"
+    : visualizations.singleScatter?.available;
   const map =
     visualizations.mode === "comparison" ? (
       <ComparisonVisualization
         comparison={visualizations.expertCollectiveComparison}
         scatterPlotRef={scatterPlotRef}
-        onResetZoom={onResetZoom}
-        embedded
       />
     ) : (
       <SingleVisualization
         visualizations={visualizations}
         scatterPlotRef={scatterPlotRef}
-        onResetZoom={onResetZoom}
-        embedded
       />
     );
   return (
     <Box sx={cardSx}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="flex-start"
-        spacing={1}
-        sx={{ mb: 1.25 }}
-      >
-        <Box>
-          <Typography variant="h6" component="h2">
-            Expert–collective relationship
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Compare expert positions with the collective result.
-          </Typography>
-        </Box>
-        <ToggleButtonGroup
-          color="secondary"
-          exclusive
-          size="small"
-          value={representation}
-          onChange={(_, value) => value && setRepresentation(value)}
-          aria-label="Expert collective representation"
-        >
-          <ToggleButton value="map">Map</ToggleButton>
-          <ToggleButton value="distances">Distances</ToggleButton>
-        </ToggleButtonGroup>
-      </Stack>
-      {representation === "map" ? (
-        map
+      <Header
+        title="Expert–collective relationship"
+        subtitle="Compare expert positions with the collective result."
+        resettable={scatterAvailable && showMap}
+        onResetZoom={onResetZoom}
+        extraAction={toggleMode ? <ToggleButtonGroup color="secondary" exclusive size="small" value={representation} onChange={(_, value) => value && setRepresentation(value)} aria-label="Expert collective representation"><ToggleButton value="map">Map</ToggleButton><ToggleButton value="distances">Distances</ToggleButton></ToggleButtonGroup> : null}
+      />
+      {toggleMode ? (
+        showMap ? map : <Box sx={expertChartFrameSx}><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
       ) : (
-        <Box sx={cardSx}>
-          <Header
-            title="Projected distance to collective"
-            subtitle="Distance in this execution’s stored analytical projection."
-          />
-          <ProjectedExpertDistances
-            projections={visualizations.canonicalProjections || []}
-            phase={visualizations.phase}
-          />
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: { xs: 1.2, md: 0 }, alignItems: "start" }}>
+          <Box sx={{ minWidth: 0 }}>{map}</Box>
+          <Box aria-hidden="true" sx={{ display: { xs: "block", md: "none" }, borderTop: "1px solid rgba(83,198,214,0.18)" }} />
+          <Box aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
+          <Box sx={{ minWidth: 0 }}><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
         </Box>
       )}
     </Box>
@@ -741,14 +676,11 @@ const VisualizationsPanel = ({
             <RankingEvolution executions={executions} />
           </Stack>
         ) : null}
-        <Box sx={{ mt: hasRankingEvolution ? 1.4 : 0 }}>
-          <AlternativeRelationshipsCard executions={executions} />
-        </Box>
         <Box
           sx={{
             mt: 1.4,
             display: "grid",
-            gridTemplateColumns: visualizations.consensus?.enabled
+            gridTemplateColumns: visualizations.consensus?.available
               ? { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(300px, 0.85fr)" }
               : "1fr",
             gap: 1.4,

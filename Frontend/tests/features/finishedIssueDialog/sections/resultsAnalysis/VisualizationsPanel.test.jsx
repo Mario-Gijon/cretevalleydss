@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalScatterChart", () => ({
@@ -7,6 +7,9 @@ vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/Analy
 }));
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalConsensusLineChart", () => ({
   AnalyticalConsensusLineChart: () => <div>Consensus chart</div>,
+}));
+vi.mock("@mui/x-charts/BarChart", () => ({
+  BarChart: ({ height, xAxis }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} />,
 }));
 
 import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
@@ -30,6 +33,62 @@ describe("VisualizationsPanel", () => {
     );
 
     expect(screen.getByTestId("analytical-scatter")).toHaveAttribute("data-phase", "5");
+  });
+
+  it("shows scatter and stored distances together while harmlessly ignoring alternative relationships", () => {
+    const onResetZoom = vi.fn();
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      scatterPlotRef={{ current: null }}
+      onResetZoom={onResetZoom}
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        genericAnalysis: {
+          visualizations: [{ type: "alternativeRelationships", phases: [{ phase: 1, pairs: [] }] }],
+        },
+      }]}
+      visualizations={{
+        mode: "single",
+        singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
+        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", label: "Expert 1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }] }],
+        consensus: { enabled: false },
+      }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
+    expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "expert01@creteval…");
+    expect(screen.getByRole("button", { name: "Reset zoom" })).toBeInTheDocument();
+    expect(screen.queryByText("Alternative relationships")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pairwise separation")).not.toBeInTheDocument();
+    expect(screen.queryByText("Relationship network")).not.toBeInTheDocument();
+    expect(screen.queryByText("Map")).not.toBeInTheDocument();
+    expect(screen.queryByText("Distances")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dispersion chart")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bar chart")).not.toBeInTheDocument();
+    expect(screen.queryByText("Projected distance to collective")).not.toBeInTheDocument();
+    expect(screen.queryByText("Base")).not.toBeInTheDocument();
+  });
+
+  it("uses the existing meaningful consensus availability to switch between map and distances", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      scatterPlotRef={{ current: null }}
+      onResetZoom={vi.fn()}
+      visualizations={{
+        mode: "single",
+        singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
+        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }] }],
+        consensus: { enabled: true, available: true, graph: { labels: ["Phase 0", "Round 1"], series: [] } },
+      }}
+    /></ThemeProvider>);
+
+    expect(screen.getByRole("group", { name: "Expert collective representation" })).toBeInTheDocument();
+    expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
+    expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reset zoom" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Distances" }));
+    expect(screen.queryByTestId("analytical-scatter")).not.toBeInTheDocument();
+    expect(screen.getByTestId("projected-distance-bars")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
   });
 
   it("renders one shared Ranking evolution section with execution labels in selected order", () => {

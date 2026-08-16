@@ -35,7 +35,6 @@
     "chart.js": "^4.5.0",
     "chartjs-plugin-zoom": "^2.2.0",
     "dayjs": "^1.11.13",
-    "echarts": "^6.1.0",
     "invariant": "^2.2.4",
     "js-cookie": "^3.0.5",
     "moment": "^2.30.1",

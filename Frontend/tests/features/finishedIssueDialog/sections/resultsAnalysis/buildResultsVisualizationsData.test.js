@@ -36,6 +36,7 @@ describe("Results Analysis analytical projection comparison", () => {
       standardizedOutput: { plotsGraphic: { expert_points: [[0, 0], [1, 1]], collective_point: [0, 0], expert_ids: ["expert-2", "expert-1"], expert_emails: ["second@example.test", "first@example.test"], expert_labels: ["Second", "First"] } },
     } });
     expect(result.expertPoints.map((point) => point.identity)).toEqual(["expert-1", "expert-2"]);
+    expect(result.expertPoints.map((point) => point.email)).toEqual(["first@example.test", "second@example.test"]);
   });
 
   it("detects equivalent projections independently of expert order and includes the collective point", () => {
