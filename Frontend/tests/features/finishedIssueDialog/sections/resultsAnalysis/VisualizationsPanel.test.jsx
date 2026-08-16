@@ -130,7 +130,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByText("Process overview")).not.toBeInTheDocument();
     expect(screen.getByText("Ranking stability")).toBeInTheDocument();
     expect(screen.getByLabelText(/Alpha: initial rank 1, final rank 2, best rank 1, worst rank 3, total movement 5/)).toBeInTheDocument();
-    expect(screen.getByText("Ranking similarity between rounds")).toBeInTheDocument();
+    expect(screen.getAllByText("Ranking similarity between rounds")).toHaveLength(2);
     expect(screen.getByLabelText("Initial to Round 1: -1.00")).toBeInTheDocument();
     expect(screen.getByText("Ranking similarity is not available for this execution.")).toBeInTheDocument();
   });
@@ -154,9 +154,8 @@ describe("VisualizationsPanel", () => {
     const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis }, { key: "test", displayLabel: "Test", genericAnalysis }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
     expect(screen.queryByTestId("secondary-visualizations-single-layout")).not.toBeInTheDocument();
-    expect(screen.getByTestId("ranking-stability")).toBeInTheDocument();
-    expect(screen.getByTestId("ranking-agreement")).toBeInTheDocument();
-    expect(screen.getAllByTestId("ranking-stability-divider")).toHaveLength(1);
-    expect(screen.getAllByTestId("ranking-agreement-divider")).toHaveLength(1);
+    expect(screen.getByTestId("ranking-temporal-card")).toBeInTheDocument();
+    expect(screen.getAllByTestId("ranking-stability")).toHaveLength(2);
+    expect(screen.getAllByTestId("ranking-agreement")).toHaveLength(2);
   });
 });

@@ -296,14 +296,14 @@ const ExecutionComparisonLayout = ({
   </Box>
 );
 
-const ExecutionLabel = ({ execution }) => (
+const ExecutionLabel = ({ execution, visible = true }) => visible ? (
   <Typography
     variant="subtitle1"
     sx={{ fontWeight: 900, mb: 0.8, color: execution.color || "text.primary" }}
   >
     {execution.displayLabel}
   </Typography>
-);
+) : null;
 
 const RankingEvolution = ({ executions }) => (
   <Box sx={cardSx}>
@@ -322,7 +322,7 @@ const RankingEvolution = ({ executions }) => (
         );
         return (
           <>
-            <ExecutionLabel execution={execution} />
+            <ExecutionLabel execution={execution} visible={executions.length > 1} />
             {visualization ? (
               <RankingMovementChart
                 movement={buildGenericRankingMovement(visualization)}
@@ -431,36 +431,12 @@ const RankingStabilityChart = ({ visualization }) => {
   );
 };
 
-const RankingStability = ({ executions }) => {
-  if (!executionWithVisualization(executions, "rankingStability")) return null;
-  return (
-    <Box sx={cardSx}>
-      <Header
-        title="Ranking stability"
-        subtitle="Observed positional range and movement across recorded phases."
-      />
-      <ExecutionComparisonLayout
-        executions={executions}
-        testId="ranking-stability"
-      >
-        {(execution) => {
-          const visualization = visualizationFor(execution, "rankingStability");
-          return (
-            <>
-              <ExecutionLabel execution={execution} />
-              {visualization ? (
-                <RankingStabilityChart visualization={visualization} />
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Ranking stability is not available for this execution.
-                </Typography>
-              )}
-            </>
-          );
-        }}
-      </ExecutionComparisonLayout>
-    </Box>
-  );
+const RankingStabilityContent = ({ execution, executions }) => {
+  const visualization = visualizationFor(execution, "rankingStability");
+  return <Box data-testid="ranking-stability" sx={{ minWidth: 0 }}>
+    <ExecutionLabel execution={execution} visible={executions.length > 1} />
+    {visualization ? <RankingStabilityChart visualization={visualization} /> : <Typography variant="body2" color="text.secondary">Ranking stability is not available for this execution.</Typography>}
+  </Box>;
 };
 
 const RankingAgreementChart = ({ visualization, color }) => {
@@ -559,39 +535,35 @@ const RankingAgreementChart = ({ visualization, color }) => {
   );
 };
 
-const RankingAgreement = ({ executions }) => {
-  if (!executionWithVisualization(executions, "rankingAgreement")) return null;
-  return (
-    <Box sx={cardSx}>
-      <Header
-        title="Ranking similarity between rounds"
-        subtitle="How similar the ranking order is from one round to the next."
-      />
-      <ExecutionComparisonLayout
-        executions={executions}
-        testId="ranking-agreement"
-      >
-        {(execution) => {
-          const visualization = visualizationFor(execution, "rankingAgreement");
-          return (
-            <>
-              <ExecutionLabel execution={execution} />
-              {visualization ? (
-                <RankingAgreementChart
-                  visualization={visualization}
-                  color={execution.color || "#27d5e4"}
-                />
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Ranking similarity is not available for this execution.
-                </Typography>
-              )}
-            </>
-          );
-        }}
-      </ExecutionComparisonLayout>
-    </Box>
-  );
+const RankingAgreementContent = ({ execution, executions, showHeading = false }) => {
+  const visualization = visualizationFor(execution, "rankingAgreement");
+  return <Box data-testid="ranking-agreement" sx={{ minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
+    {showHeading ? <Box sx={{ mb: 1 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Ranking similarity between rounds</Typography><Typography variant="caption" color="text.secondary">How similar the ranking order is from one round to the next.</Typography></Box> : null}
+    <ExecutionLabel execution={execution} visible={executions.length > 1} />
+    {visualization ? <RankingAgreementChart visualization={visualization} color={execution.color || "#27d5e4"} /> : <Typography variant="body2" color="text.secondary">Ranking similarity is not available for this execution.</Typography>}
+  </Box>;
+};
+
+const RankingTemporalSection = ({ executions }) => {
+  const hasStability = executionWithVisualization(executions, "rankingStability");
+  const hasAgreement = executionWithVisualization(executions, "rankingAgreement");
+  if (!hasStability && !hasAgreement) return null;
+  const both = hasStability && hasAgreement;
+  const groups = executions;
+  return <Box sx={cardSx} data-testid={executions.length === 1 ? "secondary-visualizations-single-layout" : "ranking-temporal-card"}>
+    <Header title={hasStability ? "Ranking stability" : "Ranking similarity between rounds"} subtitle={hasStability ? "Observed positional range and movement across recorded phases." : "How similar the ranking order is from one round to the next."} />
+    <Stack spacing={1.4} divider={groups.length > 1 ? <Box sx={{ borderTop: "1px solid rgba(83,198,214,0.16)" }} /> : null}>
+      {groups.map((execution) => <Box key={execution.key} sx={{ minWidth: 0 }}>
+        {executions.length > 1 ? <ExecutionLabel execution={execution} /> : null}
+        {both ? <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.8fr) 1px minmax(240px, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: { xs: 1.2, md: 0 }, alignItems: "start" }}>
+          <RankingStabilityContent execution={execution} executions={[]} />
+          <Box aria-hidden="true" sx={{ display: { xs: "block", md: "none" }, gridColumn: "1 / -1", borderTop: "1px solid rgba(83,198,214,0.18)" }} />
+          <Box aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
+          <RankingAgreementContent execution={execution} executions={[]} showHeading />
+        </Box> : hasStability ? <RankingStabilityContent execution={execution} executions={[]} /> : <RankingAgreementContent execution={execution} executions={[]} />}
+      </Box>)}
+    </Stack>
+  </Box>;
 };
 
 const ExpertCollectiveRelationship = ({
@@ -646,14 +618,6 @@ const VisualizationsPanel = ({
   scatterPlotRef,
   onResetZoom,
 }) => {
-  const hasRankingStability = executionWithVisualization(
-    executions,
-    "rankingStability",
-  );
-  const hasRankingAgreement = executionWithVisualization(
-    executions,
-    "rankingAgreement",
-  );
   const hasRankingEvolution = executionWithVisualization(
     executions,
     "rankingEvolution",
@@ -695,31 +659,9 @@ const VisualizationsPanel = ({
             <ConsensusCard consensus={visualizations.consensus} />
           ) : null}
         </Box>
-        {executions.length === 1 &&
-        hasRankingStability &&
-        hasRankingAgreement ? (
-          <Box
-            data-testid="secondary-visualizations-single-layout"
-            sx={{
-              mt: 1.4,
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "minmax(0, 1fr)",
-                md: "repeat(2, minmax(0, 1fr))",
-              },
-              gap: 1.4,
-              alignItems: "start",
-            }}
-          >
-            <RankingStability executions={executions} />
-            <RankingAgreement executions={executions} />
-          </Box>
-        ) : (
-          <Stack spacing={1.4} sx={{ mt: 1.4 }}>
-            <RankingStability executions={executions} />
-            <RankingAgreement executions={executions} />
-          </Stack>
-        )}
+        <Box sx={{ mt: 1.4 }}>
+          <RankingTemporalSection executions={executions} />
+        </Box>
       </Box>
     </Stack>
   );
