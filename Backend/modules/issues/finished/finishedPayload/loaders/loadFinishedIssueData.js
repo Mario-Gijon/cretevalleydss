@@ -8,6 +8,7 @@ import { IssueResultsAnalysis } from "../../../../../models/IssueResultsAnalyses
 import { IssueStageResult } from "../../../../../models/IssueStageResults.js";
 import { Participation } from "../../../../../models/Participations.js";
 import { ExitUserIssue } from "../../../../../models/ExitUserIssue.js";
+import { IssueEvent } from "../../../../../models/IssueEvents.js";
 
 const USER_SELECT = "_id name email university";
 
@@ -24,6 +25,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     scenarios,
     resultsAnalyses,
     exitUsers,
+    issueEvents,
   ] = await Promise.all([
     Alternative.find({ issue: issueId }).sort({ position: 1, _id: 1 }).lean(),
     Criterion.find({ issue: issueId }).lean(),
@@ -50,6 +52,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     ExitUserIssue.find({ issue: issueId })
       .populate("user", USER_SELECT)
       .lean(),
+    IssueEvent.find({ issue: issueId }).sort({ occurredAt: 1, _id: 1 }).lean(),
   ]);
 
   return {
@@ -63,5 +66,6 @@ export const loadFinishedIssueData = async ({ issue }) => {
     scenarios,
     resultsAnalyses,
     exitUsers,
+    issueEvents,
   };
 };

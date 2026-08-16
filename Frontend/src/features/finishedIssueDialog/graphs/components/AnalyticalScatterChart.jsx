@@ -12,6 +12,8 @@ import {
 import zoomPlugin from "chartjs-plugin-zoom";
 import { buildAnalyticalScatterViewModel } from "../logic/buildAnalyticalScatterViewModel.js";
 import { collectiveColorFor } from "../logic/analyticalScatterColors.js";
+import { buildExpertCollectiveConnectors } from "../logic/buildExpertCollectiveConnectors.js";
+import { expertCollectiveConnectorPlugin } from "../logic/expertCollectiveConnectorPlugin.js";
 
 ChartJS.register(
   ScatterController,
@@ -20,7 +22,8 @@ ChartJS.register(
   CTooltip,
   Legend,
   Title,
-  zoomPlugin
+  zoomPlugin,
+  expertCollectiveConnectorPlugin
 );
 
 /**
@@ -35,6 +38,7 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = 
   if (!viewModel) return null;
 
   const { expertPoints, collectivePoint, xRange, yRange } = viewModel;
+  const connectors = buildExpertCollectiveConnectors({ expertPoints, collectivePoint });
 
   const chartData = {
     datasets: [
@@ -78,6 +82,7 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = 
           },
         },
       },
+      expertCollectiveConnectors: { groups: [{ color, connectors }] },
       zoom: {
         zoom: { wheel: { enabled: !compact }, pinch: { enabled: !compact }, mode: "xy" },
         pan: { enabled: !compact, mode: "xy" },

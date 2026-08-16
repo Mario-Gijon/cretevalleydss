@@ -124,10 +124,7 @@ export const evaluationPluginRendererViewportSx = {
 
 export const evaluationsLowerGridSx = {
   display: "grid",
-  gridTemplateColumns: {
-    xs: "minmax(0, 1fr)",
-    lg: "minmax(0, 0.95fr) minmax(0, 1.05fr)",
-  },
+  gridTemplateColumns: "minmax(0, 1fr)",
   gap: { xs: 1.5, md: 1.75 },
   mt: { xs: 1.5, md: 1.75 },
   alignItems: "stretch",

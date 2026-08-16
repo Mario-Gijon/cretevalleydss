@@ -11,8 +11,10 @@ import {
 } from "chart.js";
 import zoomPlugin from "chartjs-plugin-zoom";
 import { buildComparativeAnalyticalScatterData } from "../logic/buildComparativeAnalyticalScatterData.js";
+import { buildExpertCollectiveConnectors } from "../logic/buildExpertCollectiveConnectors.js";
+import { expertCollectiveConnectorPlugin } from "../logic/expertCollectiveConnectorPlugin.js";
 
-ChartJS.register(ScatterController, LinearScale, PointElement, CTooltip, Legend, Title, zoomPlugin);
+ChartJS.register(ScatterController, LinearScale, PointElement, CTooltip, Legend, Title, zoomPlugin, expertCollectiveConnectorPlugin);
 
 const range = (points, coordinate) => {
   const values = points.map((point) => point[coordinate]);
@@ -28,12 +30,14 @@ export const ComparativeAnalyticalScatterChart = ({ groups = [], scatterPlotRef,
   const points = groups.flatMap((group) => [...group.expertPoints, group.collectivePoint]);
   if (!points.length) return null;
   const chartData = buildComparativeAnalyticalScatterData({ groups, compact });
+  const connectorGroups = groups.map((group) => ({ color: group.color, connectors: buildExpertCollectiveConnectors({ expertPoints: group.expertPoints, collectivePoint: group.collectivePoint, executionLabel: group.tooltipLabel || group.groupLabel }) }));
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: true, position: "top", labels: { color: alpha("#fff", 0.85) } },
       tooltip: { callbacks: { label: (ctx) => ctx.raw.pointType === "collective" ? `Collective — ${ctx.raw.executionLabel} ${coordinates(ctx.raw)}` : `${ctx.raw.label} — ${ctx.raw.executionLabel} ${coordinates(ctx.raw)}` } },
+      expertCollectiveConnectors: { groups: connectorGroups },
       zoom: { zoom: { wheel: { enabled: !compact }, pinch: { enabled: !compact }, mode: "xy" }, pan: { enabled: !compact, mode: "xy" } },
     },
     scales: {

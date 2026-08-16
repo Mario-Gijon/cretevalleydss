@@ -57,7 +57,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByText("Alpha")).toHaveLength(2);
   });
 
-  it("renders future persisted overview, stability, and agreement data without deriving it", () => {
+  it("renders persisted stability and agreement data while ignoring process overview", () => {
     const futureAnalysis = {
       facts: { processOverview: { phaseCount: 3, leaderChangeCount: 2, stabilizationPhase: 2, consensus: { enabled: true, change: 0.3, reached: false }, participation: { completedCount: 2, totalCount: 2, completionRate: 1 } } },
       visualizations: [
@@ -68,22 +68,36 @@ describe("VisualizationsPanel", () => {
     };
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", color: "#27d5e4", genericAnalysis: futureAnalysis }, { key: "test", displayLabel: "Test", genericAnalysis: { visualizations: [] } }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
 
-    expect(screen.getByText("Process overview")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("Round 2")).toBeInTheDocument();
-    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(screen.queryByText("Process overview")).not.toBeInTheDocument();
     expect(screen.getByText("Ranking stability")).toBeInTheDocument();
     expect(screen.getByLabelText(/Alpha: initial rank 1, final rank 2, best rank 1, worst rank 3, total movement 5/)).toBeInTheDocument();
-    expect(screen.getByText("Phase-to-phase ranking agreement")).toBeInTheDocument();
+    expect(screen.getByText("Ranking similarity between rounds")).toBeInTheDocument();
     expect(screen.getByLabelText("Initial to Round 1: -1.00")).toBeInTheDocument();
-    expect(screen.getByText("Ranking agreement is not available for this execution.")).toBeInTheDocument();
+    expect(screen.getByText("Ranking similarity is not available for this execution.")).toBeInTheDocument();
   });
 
   it("hides future visualization sections when persisted analyses do not provide them", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis: rankingAnalysis() }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
 
-    expect(screen.queryByText("Process overview")).not.toBeInTheDocument();
     expect(screen.queryByText("Ranking stability")).not.toBeInTheDocument();
-    expect(screen.queryByText("Phase-to-phase ranking agreement")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ranking similarity between rounds")).not.toBeInTheDocument();
+  });
+
+  it("places both secondary visualizations side by side for one execution", () => {
+    const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
+    expect(screen.getByTestId("secondary-visualizations-single-layout")).toBeInTheDocument();
+    expect(screen.getByText("Rank · 1 = best")).toBeInTheDocument();
+    expect(screen.getByText(/1 = same ranking order/)).toBeInTheDocument();
+  });
+
+  it("keeps secondary visualizations as separate rows for multiple executions", () => {
+    const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis }, { key: "test", displayLabel: "Test", genericAnalysis }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
+    expect(screen.queryByTestId("secondary-visualizations-single-layout")).not.toBeInTheDocument();
+    expect(screen.getByTestId("ranking-stability")).toBeInTheDocument();
+    expect(screen.getByTestId("ranking-agreement")).toBeInTheDocument();
+    expect(screen.getAllByTestId("ranking-stability-divider")).toHaveLength(1);
+    expect(screen.getAllByTestId("ranking-agreement-divider")).toHaveLength(1);
   });
 });

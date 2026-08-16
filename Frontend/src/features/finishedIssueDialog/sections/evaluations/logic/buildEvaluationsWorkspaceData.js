@@ -161,11 +161,24 @@ const criterionDomainRows = (payload) => {
         domainName: domain?.name || "—",
         domainTypeLabel: formatTechnicalLabel(domain?.typeKey),
         domainDefinition: domain?.definition ?? null,
+        domain,
       };
     });
 };
 
 const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
+  const audit = payload?.evaluations?.participation;
+  if (Array.isArray(audit?.experts)) {
+    const coverage = (submissions, phases) => ({ submissions: asArray(submissions), completed: asArray(submissions).filter((entry) => entry?.completed === true).length, total: phases.length });
+    return audit.experts.map((expert) => {
+      const criteriaWeighting = coverage(expert.criteriaWeighting?.submissions, audit.stagePhases?.criteriaWeighting || []);
+      const alternativeEvaluation = coverage(expert.alternativeEvaluation?.submissions, audit.stagePhases?.alternativeEvaluation || []);
+      const events = asArray(expert.participationEvents);
+      const irregular = events.filter((event) => ["entered", "left", "removed"].includes(event?.type));
+      const lifecycle = irregular.length ? irregular.at(-1)?.type === "left" ? `Left after ${irregular.at(-1)?.phase === 0 ? "Initial" : `Round ${irregular.at(-1)?.phase}`}` : irregular.length > 1 ? "Re-entered" : `Joined · ${irregular[0]?.phase === 0 ? "Initial" : `Round ${irregular[0]?.phase}`}` : criteriaWeighting.completed && alternativeEvaluation.completed ? "Full process" : criteriaWeighting.completed ? "Criteria only" : alternativeEvaluation.completed ? "Alternatives only" : "No submissions";
+      return { ...expert, criteriaWeighting, alternativeEvaluation, participationLabel: lifecycle, events };
+    });
+  }
   const criteriaByExpert = new Map(
     asArray(payload?.evaluations?.individual)
       .filter(
@@ -213,13 +226,10 @@ const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
 };
 
 const participationSummary = (rows, hasCriteriaWeighting) => ({
-  both: hasCriteriaWeighting ? rows.filter((row) => row.submittedBoth).length : 0,
-  criteriaOnly: hasCriteriaWeighting
-    ? rows.filter((row) => row.criteriaWeighting && !row.alternativeEvaluation).length
-    : 0,
-  alternativeOnly: rows.filter(
-    (row) => !row.criteriaWeighting && row.alternativeEvaluation
-  ).length,
+  both: hasCriteriaWeighting ? rows.filter((row) => row.criteriaWeighting?.completed && row.alternativeEvaluation?.completed).length : 0,
+  criteriaOnly: hasCriteriaWeighting ? rows.filter((row) => row.criteriaWeighting?.completed && !row.alternativeEvaluation?.completed).length : 0,
+  alternativeOnly: rows.filter((row) => !row.criteriaWeighting?.completed && row.alternativeEvaluation?.completed).length,
+  none: rows.filter((row) => !row.criteriaWeighting?.completed && !row.alternativeEvaluation?.completed).length,
   total: rows.length,
 });
 

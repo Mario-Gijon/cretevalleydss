@@ -7,6 +7,7 @@ import {
   serializeFinalWeights,
 } from "./serializers/serializeCriteria.js";
 import { serializeEvaluations } from "./serializers/serializeEvaluations.js";
+import { serializeEvaluationParticipation } from "./serializers/serializeEvaluationParticipation.js";
 import { serializeExecutionMetadata } from "./serializers/serializeExecutionMetadata.js";
 import { serializeExpressionDomains } from "./serializers/serializeExpressionDomains.js";
 import { serializeIssue, serializeLifecycle } from "./serializers/serializeIssue.js";
@@ -65,6 +66,7 @@ export const buildFinishedIssuePayload = async ({ issue }) => {
     expressionDomains,
     participants: loaded.participations,
   });
+  evaluations.participation = serializeEvaluationParticipation({ participations: loaded.participations, evaluations: loaded.evaluations, issueEvents: loaded.issueEvents });
   const models = serializeModels({
     issue,
     compatibleModels: loaded.compatibleModels,

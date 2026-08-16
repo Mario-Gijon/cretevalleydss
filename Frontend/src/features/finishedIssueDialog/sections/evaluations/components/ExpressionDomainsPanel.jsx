@@ -1,20 +1,14 @@
 import {
   Box,
   Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
+import { ExpressionDomainPreview } from "../../../../createIssue/expressionDomains/components/ExpressionDomainPreview.jsx";
 
 import {
   evaluationsPanelHeaderSx,
   evaluationsPanelSx,
-  evaluationsScrollableSx,
 } from "../evaluations.styles";
 
 const definitionSummary = (definition) => {
@@ -25,18 +19,6 @@ const definitionSummary = (definition) => {
   if (Array.isArray(definition.labels)) return `${definition.labels.length} labels`;
   if (Array.isArray(definition.values)) return `${definition.values.length} values`;
   return null;
-};
-
-const headerCellSx = {
-  py: 0.75,
-  px: 0.85,
-  bgcolor: "rgba(12, 33, 47, 0.98)",
-  color: "text.secondary",
-  typography: "caption",
-  fontWeight: "fontWeightBold",
-  textTransform: "uppercase",
-  letterSpacing: 0.35,
-  whiteSpace: "nowrap",
 };
 
 const ExpressionDomainsPanel = ({ domains }) => (
@@ -61,16 +43,7 @@ const ExpressionDomainsPanel = ({ domains }) => (
     </Box>
 
     {domains.length ? (
-      <TableContainer sx={evaluationsScrollableSx("domains")}>
-        <Table size="small" stickyHeader aria-label="Expression domains by criterion" sx={{ minWidth: { xs: 560, md: "100%" } }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={headerCellSx}>Criterion</TableCell>
-              <TableCell sx={headerCellSx}>Type</TableCell>
-              <TableCell sx={headerCellSx}>Expression domain</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 1 }} aria-label="Expression domains by criterion">
             {domains.map((item) => {
               const metadata = [
                 item.domainTypeLabel,
@@ -79,14 +52,10 @@ const ExpressionDomainsPanel = ({ domains }) => (
                 .filter((value) => value && value !== "—")
                 .join(" · ");
 
-              return (
-                <TableRow key={item.criterionId} hover>
-                  <TableCell sx={{ maxWidth: 210, py: 0.7, px: 0.85 }}>
+              return <Box key={item.criterionId} sx={{ minWidth: 0, p: 1, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 2, bgcolor: "rgba(3,10,17,0.26)" }}>
                     <Typography variant="body2" noWrap title={item.name} sx={{ fontWeight: "fontWeightBold" }}>
                       {item.name}
                     </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 0.7, px: 0.85, whiteSpace: "nowrap" }}>
                     {item.criterionTypeLabel ? (
                       <Chip
                         size="small"
@@ -96,21 +65,16 @@ const ExpressionDomainsPanel = ({ domains }) => (
                         sx={{ height: 23, fontWeight: "fontWeightBold" }}
                       />
                     ) : "—"}
-                  </TableCell>
-                  <TableCell sx={{ minWidth: 175, py: 0.7, px: 0.85 }}>
                     <Typography variant="body2" noWrap title={item.domainName} sx={{ color: "secondary.light", fontWeight: "fontWeightBold" }}>
                       {item.domainName}
                     </Typography>
                     <Typography variant="caption" noWrap title={metadata || "—"} sx={{ color: "text.secondary" }}>
                       {metadata || "—"}
                     </Typography>
-                  </TableCell>
-                </TableRow>
-              );
+                    {item.domain ? <Box sx={{ mt: 0.8, minWidth: 0 }}><ExpressionDomainPreview domain={item.domain} /></Box> : null}
+              </Box>;
             })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      </Box>
     ) : (
       <Typography variant="body2" color="text.secondary">
         No criterion domain assignments are available.

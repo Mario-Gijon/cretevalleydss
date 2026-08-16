@@ -67,11 +67,11 @@ const EvaluationsView = ({ data, state, actions }) => {
       </Box>
 
       <Box sx={evaluationsLowerGridSx}>
-        <ExpressionDomainsPanel domains={data.domains} />
         <EvaluationParticipationPanel
           participation={data.participation}
           hasCriteriaWeighting={data.criteriaWeighting.available}
         />
+        <ExpressionDomainsPanel domains={data.domains} />
       </Box>
 
       <EvaluationsEvidenceFooter evidence={data.evidence} />

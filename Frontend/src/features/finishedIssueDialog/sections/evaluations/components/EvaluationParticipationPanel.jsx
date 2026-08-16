@@ -33,6 +33,7 @@ const initials = (value) =>
     : "?";
 
 const submissionLabel = (row, hasCriteriaWeighting) => {
+  if (row.participationLabel) return row.participationLabel;
   if (hasCriteriaWeighting && row.submittedBoth) return "Both stages";
   if (row.criteriaWeighting) return "Criteria weighting";
   if (row.alternativeEvaluation) return "Alternative evaluation";
@@ -43,6 +44,8 @@ const latestSubmittedAt = (row) => {
   const values = [
     row.criteriaWeighting?.submittedAt,
     row.alternativeEvaluation?.submittedAt,
+    ...(row.criteriaWeighting?.submissions || []).filter((entry) => entry.completed).map((entry) => entry.submittedAt),
+    ...(row.alternativeEvaluation?.submissions || []).filter((entry) => entry.completed).map((entry) => entry.submittedAt),
   ].filter(Boolean);
 
   return values.sort(
@@ -69,14 +72,14 @@ const EvaluationParticipationPanel = ({
             color: "text.secondary",
           }}
         >
-          Experts with stored submissions in this context.
+          Complete stored participation and submission audit.
         </Typography>
       </Box>
       <Chip
         size="small"
         variant="outlined"
         color="secondary"
-        label={`${participation.summary.total} visible`}
+        label={`${participation.summary.total} experts`}
         sx={{ ml: "auto", height: 24, fontWeight: 850 }}
       />
     </Box>
@@ -98,6 +101,7 @@ const EvaluationParticipationPanel = ({
             <Typography variant="caption">
               Alternative only: {participation.summary.alternativeOnly}
             </Typography>
+            <Typography variant="caption">No submissions: {participation.summary.none || 0}</Typography>
           </Stack>
         ) : null}
       </Stack>
@@ -163,7 +167,9 @@ const EvaluationParticipationPanel = ({
                 </Typography>
               </Box>
 
-              {row.currentlyRemoved ? (
+              {row.invitation ? (
+                <Chip size="small" variant="outlined" color={row.invitation.status === "accepted" ? "success" : row.invitation.status === "declined" ? "error" : "default"} label={row.invitation.status} sx={{ gridArea: "status", height: 23 }} />
+              ) : row.currentlyRemoved ? (
                 <Chip
                   size="small"
                   variant="outlined"

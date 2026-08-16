@@ -227,7 +227,7 @@ describe("EvaluationsView", () => {
     const data = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 5 });
     renderView(data);
 
-    expect(screen.getByRole("table", { name: "Expression domains by criterion" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Expression domains by criterion" })).toBeInTheDocument();
     expect(screen.getAllByText("Cost")).toHaveLength(2);
     expect(screen.getByText("Quality")).toBeInTheDocument();
     expect(screen.getByText("Benefit")).toBeInTheDocument();
