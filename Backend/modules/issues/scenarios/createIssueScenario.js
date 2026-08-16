@@ -6,6 +6,7 @@ import { buildScenarioExecutionContext } from "./buildScenarioExecutionContext.j
 import { discoverScenarioReplayPhasesOrThrow } from "./loadScenarioEvaluationData.js";
 import { executeScenarioModel, markExecutionApplied, markExecutionApplicationFailed } from "../modelExecution/index.js";
 import { createIssueEventOperationMetadata } from "../events/index.js";
+import { tryGenerateFinishedIssueExecutionAnalysis } from "../resultsAnalysis/index.js";
 
 const cloneJsonCompatibleOrThrow = (value, field) => {
   try { return JSON.parse(JSON.stringify(value)); } catch {
@@ -49,6 +50,7 @@ export const createIssueScenario = async ({
   userId, issueId, targetModelId, scenarioName, scenarioDescription, paramOverrides,
   decisionModelsServiceBaseUrl = process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
   httpClient = axios,
+  generateAnalysis = tryGenerateFinishedIssueExecutionAnalysis,
 }) => {
   const normalizedInput = normalizeScenarioCreationInputOrThrow({ targetModelId, scenarioName, scenarioDescription, paramOverrides });
   // Authorization is enforced by the phase-specific context builder before
@@ -99,5 +101,10 @@ export const createIssueScenario = async ({
   await Promise.all(completedPhaseRuns.map(({ executionAttempt }) => markExecutionApplied({
     attemptId: executionAttempt._id, entityType: "scenario", entityId: scenario._id, resultSnapshot: scenario.toObject(),
   })));
+  try {
+    await generateAnalysis({ issueId: scenario.issue, userId, executionKey: String(scenario._id) });
+  } catch {
+    // Analysis is ancillary; the already-applied Scenario remains valid.
+  }
   return { scenarioId: scenario._id };
 };

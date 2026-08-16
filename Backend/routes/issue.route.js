@@ -15,6 +15,7 @@ import {
   getAllFinishedIssues,
   getFinishedIssueInfo,
   getFinishedIssueGlobalAnalysis,
+  reloadFinishedIssueResultsAnalysis,
   removeFinishedIssue,
   editExperts,
   leaveIssue,
@@ -64,6 +65,7 @@ router
   .delete(asyncHandler(removeFinishedIssue));
 
 router.get("/finished/:id/global-analysis", asyncHandler(getFinishedIssueGlobalAnalysis));
+router.post("/finished/:id/results-analysis/reload", asyncHandler(reloadFinishedIssueResultsAnalysis));
 
 router.delete("/:id", asyncHandler(removeIssue));
 

@@ -1,4 +1,5 @@
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import {
   assertUserCanAccessIssue,
   getIssueByIdOrThrow,
@@ -43,5 +44,8 @@ export const removeIssueScenario = async ({ scenarioId, userId }) => {
     throw createForbiddenError("Not authorized to delete this scenario");
   }
 
-  await IssueScenario.deleteOne({ _id: scenario._id });
+  await Promise.all([
+    IssueResultsAnalysis.deleteMany({ issue: scenario.issue, scenario: scenario._id }),
+    IssueScenario.deleteOne({ _id: scenario._id }),
+  ]);
 };

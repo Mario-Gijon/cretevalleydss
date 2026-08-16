@@ -16,6 +16,7 @@ export {
   getAllFinishedIssues,
   getFinishedIssueInfo,
   getFinishedIssueGlobalAnalysis,
+  reloadFinishedIssueResultsAnalysis,
   removeFinishedIssue,
 } from "./issues/finishedIssue.controller.js";
 export {

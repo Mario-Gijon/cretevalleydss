@@ -7,6 +7,7 @@ import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Issue } from "../../../models/Issues.js";
 import { Notification } from "../../../models/Notifications.js";
@@ -141,13 +142,14 @@ const createCascadeFixture = async () => {
     },
   });
 
-  await IssueScenario.create({
+  const scenario = await IssueScenario.create({
     issue: issue._id,
     createdBy: owner._id,
     name: "Scenario A",
     targetModel: targetModelId,
     phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }],
   });
+  await IssueResultsAnalysis.create({ issue: issue._id, executionKey: String(scenario._id), executionType: "scenario", scenario: scenario._id, genericAnalysis: { facts: {}, interpretation: "Scenario", visualizations: [] }, generatedAt: new Date() });
 
   return {
     owner,
@@ -177,6 +179,7 @@ describe("issue lifecycle", () => {
     expect(await ExitUserIssue.countDocuments({ issue: issue._id })).toBe(0);
     expect(await IssueEvaluation.countDocuments({ issue: issue._id })).toBe(0);
     expect(await IssueScenario.countDocuments({ issue: issue._id })).toBe(0);
+    expect(await IssueResultsAnalysis.countDocuments({ issue: issue._id })).toBe(0);
     expect(await IssueStageResult.countDocuments({ issue: issue._id })).toBe(0);
   });
 

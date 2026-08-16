@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { getFinishedIssueInfoPayload } from "../../../modules/issues/finished/getFinishedIssueInfoPayload.js";
 import {
@@ -288,6 +289,12 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
 describe("definitive Finished Issue contract", () => {
   it("serializes a complete consensus issue as a single canonical factual contract", async () => {
     const fixture = await createCompleteIssue({ consensus: true });
+    const orphanScenarioId = new mongoose.Types.ObjectId();
+    await IssueResultsAnalysis.create([
+      { issue: fixture.issue._id, executionKey: "base", executionType: "base", genericAnalysis: { facts: { rounds: 2 }, interpretation: "Base", visualizations: [] }, generatedAt: new Date("2026-01-12T12:00:00.000Z") },
+      { issue: fixture.issue._id, executionKey: String(fixture.scenarios.scenario._id), executionType: "scenario", scenario: fixture.scenarios.scenario._id, genericAnalysis: { facts: { rounds: 2 }, interpretation: "Scenario", visualizations: [] }, generatedAt: new Date("2026-01-12T12:01:00.000Z") },
+      { issue: fixture.issue._id, executionKey: String(orphanScenarioId), executionType: "scenario", scenario: orphanScenarioId, genericAnalysis: { facts: {}, interpretation: "Deleted", visualizations: [] }, generatedAt: new Date("2026-01-12T12:02:00.000Z") },
+    ]);
     const payload = await getFinishedIssueInfoPayload({
       issueId: fixture.issue._id,
       userId: fixture.owner._id,
@@ -296,7 +303,7 @@ describe("definitive Finished Issue contract", () => {
     expect(Object.keys(payload).sort()).toEqual([
       "alternatives", "configuration", "consensus", "criteria", "evaluations",
       "executionMetadata", "expressionDomains", "issue", "lifecycle", "models",
-      "participantHistory", "participants", "phaseResults", "scenarios",
+      "participantHistory", "participants", "phaseResults", "resultsAnalysis", "scenarios",
     ]);
     expect(payload).not.toHaveProperty("summary");
     expect(payload).not.toHaveProperty("alternativesRankings");
@@ -433,6 +440,10 @@ describe("definitive Finished Issue contract", () => {
     });
     expect(payload.models.criteriaWeighting).toMatchObject({ name: "Weight model" });
     expect(payload.models.compatible.some((model) => model.id === payload.models.base.id)).toBe(true);
+    expect(payload.resultsAnalysis.executions).toEqual([
+      expect.objectContaining({ executionKey: "base", executionType: "base", scenarioId: null, genericAnalysis: { facts: { rounds: 2 }, interpretation: "Base", visualizations: [] } }),
+      expect.objectContaining({ executionKey: String(fixture.scenarios.scenario._id), executionType: "scenario", scenarioId: String(fixture.scenarios.scenario._id), genericAnalysis: { facts: { rounds: 2 }, interpretation: "Scenario", visualizations: [] } }),
+    ]);
     const serializedScenario = payload.scenarios.find((entry) => entry.id === String(fixture.scenarios.scenario._id));
     const serializedFailedScenario = payload.scenarios.find((entry) => entry.id === String(fixture.scenarios.failedScenario._id));
     expect(serializedScenario).toMatchObject({ description: "Stored scenario description", targetModel: { paperUrl: "https://papers.example.test/base" } });

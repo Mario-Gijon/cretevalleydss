@@ -7,6 +7,7 @@ import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
@@ -84,6 +85,7 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
     applyOptionalSession(IssueExpressionDomain.deleteMany({ issue: issueId }), session),
     applyOptionalSession(ExitUserIssue.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueScenario.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(IssueResultsAnalysis.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueStageResult.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueExecutionAttempt.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueStateSnapshot.deleteMany({ issue: issueId }), session),

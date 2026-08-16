@@ -249,6 +249,7 @@ describe("createIssueScenario input normalization", () => {
 
   it("replays every discovered phase and persists one aggregate scenario", async () => {
     const userId = new mongoose.Types.ObjectId();
+    const generateAnalysis = vi.fn().mockRejectedValue(new Error("Analysis unavailable"));
     const context = buildMockExecutionContext();
     scenarioExecutionState.discoverScenarioReplayPhasesOrThrow.mockResolvedValue([0, 2]);
     scenarioExecutionState.buildScenarioExecutionContext.mockImplementation(async ({ phase }) => ({ ...context, evaluationPhase: phase }));
@@ -266,6 +267,7 @@ describe("createIssueScenario input normalization", () => {
       scenarioName: "Historical run",
       scenarioDescription: "  Replays the stored phase.  ",
       paramOverrides: { alpha: 0.4 },
+      generateAnalysis,
     });
 
     expect(scenarioExecutionState.buildScenarioExecutionContext).toHaveBeenNthCalledWith(1, {
@@ -298,6 +300,11 @@ describe("createIssueScenario input normalization", () => {
     expect(scenario).not.toHaveProperty("inputs");
     expect(scenario).not.toHaveProperty("outputs");
     expect(scenario).not.toHaveProperty("targetModelName");
+    expect(generateAnalysis).toHaveBeenCalledWith(expect.objectContaining({
+      issueId: context.issue._id,
+      userId,
+      executionKey: String(scenario._id),
+    }));
   });
 
   it("does not persist a scenario when model execution fails", async () => {

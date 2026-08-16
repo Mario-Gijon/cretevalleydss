@@ -15,6 +15,7 @@ import { serializeParticipants } from "./serializers/serializeParticipants.js";
 import { serializeParticipantHistory } from "./serializers/serializeParticipantHistory.js";
 import { serializePhaseResults } from "./serializers/serializePhaseResults.js";
 import { serializeScenarios } from "./serializers/serializeScenarios.js";
+import { serializeResultsAnalysis } from "./serializers/serializeResultsAnalysis.js";
 import {
   isFinishedIssue,
   validateFinishedEvidenceOrThrow,
@@ -91,6 +92,10 @@ export const buildFinishedIssuePayload = async ({ issue }) => {
     consensus: serializeConsensus({ issue, phaseResults }),
     models,
     scenarios: serializeScenarios(loaded),
+    resultsAnalysis: serializeResultsAnalysis({
+      analyses: loaded.resultsAnalyses,
+      scenarios: loaded.scenarios,
+    }),
     executionMetadata: serializeExecutionMetadata({ scenarios: loaded.scenarios }),
   };
 };

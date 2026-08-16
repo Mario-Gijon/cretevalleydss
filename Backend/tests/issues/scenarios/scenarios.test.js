@@ -25,6 +25,7 @@ vi.mock("../../../services/email.service.js", () => ({
 import app from "../../../app.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import {
   getIssueScenariosPayload,
@@ -352,6 +353,7 @@ describe("issue scenarios access and payloads", () => {
       issueId: issue._id,
       createdBy: creator._id,
     });
+    await IssueResultsAnalysis.create({ issue: issue._id, executionKey: String(scenario._id), executionType: "scenario", scenario: scenario._id, genericAnalysis: { facts: {}, interpretation: "Scenario", visualizations: [] }, generatedAt: new Date() });
     const snapshot = await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: new Date(), correlationId: "scenario-deletion-snapshot" });
     const originalSnapshotState = structuredClone(snapshot.state);
 
@@ -361,6 +363,7 @@ describe("issue scenarios access and payloads", () => {
     });
 
     expect(await IssueScenario.findById(scenario._id)).toBeNull();
+    expect(await IssueResultsAnalysis.countDocuments({ scenario: scenario._id })).toBe(0);
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(1);
     expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state).toEqual(originalSnapshotState);
   });

@@ -4,6 +4,7 @@ import { IssueEvaluation } from "../../../../../models/IssueEvaluations.js";
 import { IssueExpressionDomain } from "../../../../../models/IssueExpressionDomains.js";
 import { IssueModel } from "../../../../../models/IssueModels.js";
 import { IssueScenario } from "../../../../../models/IssueScenarios.js";
+import { IssueResultsAnalysis } from "../../../../../models/IssueResultsAnalyses.js";
 import { IssueStageResult } from "../../../../../models/IssueStageResults.js";
 import { Participation } from "../../../../../models/Participations.js";
 import { ExitUserIssue } from "../../../../../models/ExitUserIssue.js";
@@ -21,6 +22,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     phaseResults,
     compatibleModels,
     scenarios,
+    resultsAnalyses,
     exitUsers,
   ] = await Promise.all([
     Alternative.find({ issue: issueId }).sort({ position: 1, _id: 1 }).lean(),
@@ -44,6 +46,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
       .populate("targetModel", "name moreInfoUrl")
       .sort({ createdAt: -1, _id: -1 })
       .lean(),
+    IssueResultsAnalysis.find({ issue: issueId }).lean(),
     ExitUserIssue.find({ issue: issueId })
       .populate("user", USER_SELECT)
       .lean(),
@@ -58,6 +61,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     phaseResults,
     compatibleModels,
     scenarios,
+    resultsAnalyses,
     exitUsers,
   };
 };

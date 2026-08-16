@@ -43,6 +43,7 @@ import {
   writeIssueStageChanged,
   writeParticipationCompletionChanged,
 } from "../events/index.js";
+import { tryGenerateFinishedIssueExecutionAnalysis } from "../resultsAnalysis/index.js";
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
@@ -966,6 +967,10 @@ const computeSimulatedAlternativeConsensusRounds = async ({
     currentEvaluations = await loadEvaluationsForCompute({ issueId: issue._id, stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, consensusPhase: currentPhase, participations: acceptedParticipations });
   }
 
+  if (issue.currentStage === ISSUE_STAGES.FINISHED && issue.active === false) {
+    await tryGenerateFinishedIssueExecutionAnalysis({ issueId: issue._id, userId: actorUser, executionKey: "base" });
+  }
+
   return {
     message: "Simulated consensus rounds computed successfully.",
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
@@ -1266,6 +1271,10 @@ export const computeIssueEvaluationStage = async ({
     },
   }); } catch (error) { await markExecutionApplicationFailed({ attemptId: computeResult.executionAttempt._id, error }); throw error; }
   await markExecutionApplied({ attemptId: computeResult.executionAttempt._id, entityType: "stageResult", entityId: appliedStageResult._id, resultSnapshot: appliedStageResult.toObject() });
+
+  if (issue.currentStage === ISSUE_STAGES.FINISHED && issue.active === false) {
+    await tryGenerateFinishedIssueExecutionAnalysis({ issueId: issue._id, userId, executionKey: "base" });
+  }
 
   return {
     message: lifecycleComputeResult.message,

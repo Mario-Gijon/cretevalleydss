@@ -2,7 +2,10 @@ import {
   getFinishedIssueInfoPayload,
   getFinishedIssuesPayload,
 } from "../../modules/issues/finished/index.js";
-import { getFinishedIssueGlobalAnalysis as getFinishedIssueGlobalAnalysisPayload } from "../../modules/issues/resultsAnalysis/index.js";
+import {
+  getFinishedIssueGlobalAnalysis as getFinishedIssueGlobalAnalysisPayload,
+  reloadFinishedIssueExecutionAnalyses,
+} from "../../modules/issues/resultsAnalysis/index.js";
 import { hideFinishedIssueWorkflow } from "../../modules/issues/lifecycle/index.js";
 import { sendSuccess } from "../../utils/common/responses.js";
 
@@ -24,6 +27,15 @@ export const getFinishedIssueInfo = async (req, res) => {
 export const getFinishedIssueGlobalAnalysis = async (req, res) => {
   const analysis = await getFinishedIssueGlobalAnalysisPayload({ issueId: req.params.id, userId: req.uid });
   return sendSuccess(res, "Global issue analysis completed successfully", analysis);
+};
+
+export const reloadFinishedIssueResultsAnalysis = async (req, res) => {
+  const analyses = await reloadFinishedIssueExecutionAnalyses({
+    issueId: req.params.id,
+    userId: req.uid,
+    executionKeys: req.body?.executionKeys,
+  });
+  return sendSuccess(res, "Results analyses reloaded successfully", { executions: analyses });
 };
 
 export const removeFinishedIssue = async (req, res) => {
