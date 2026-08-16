@@ -257,6 +257,15 @@ export const getFinishedIssueGlobalAnalysis = async (issueOrId) => {
   );
 };
 
+export const reloadFinishedIssueResultsAnalysis = async (issueOrId, executionKeys) => {
+  const issueId = getIssueId(issueOrId);
+  return requestWithAuth(
+    `/issues/finished/${issueId}/results-analysis/reload`,
+    jsonRequest("POST", { executionKeys }),
+    "Error reloading results analysis."
+  );
+};
+
 /**
  * Oculta o elimina un issue finalizado para el usuario actual.
  *

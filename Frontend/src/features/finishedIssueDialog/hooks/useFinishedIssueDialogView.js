@@ -6,6 +6,7 @@ import { useFinishedIssueEvaluationsSelection } from "./useFinishedIssueEvaluati
 import { useFinishedIssueNavigation } from "./useFinishedIssueNavigation.js";
 import { useFinishedIssueResultsSelection } from "./useFinishedIssueResultsSelection.js";
 import { useFinishedIssueRuns } from "./useFinishedIssueRuns.js";
+import { useFinishedIssueResultsReload } from "./useFinishedIssueResultsReload.js";
 import { buildResultsAnalysisSelectableOptions } from "../sections/resultsAnalysis/logic/buildResultsAnalysisWorkspaceData.js";
 
 export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDialog }) => {
@@ -30,6 +31,7 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
     executionOptions: resultsExecutionOptions,
   });
   const scatterPlotRef = useRef(null);
+  const resultsReload = useFinishedIssueResultsReload({ issueId: data.issueId, refreshPayload: data.refreshPayload, showSnackbarAlert });
 
   return {
     selectedIssue,
@@ -55,6 +57,7 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       resetZoom: () => scatterPlotRef.current?.resetZoom?.(),
       selectedPhase: navigation.selectedPhase,
       selection: resultsSelection,
+      reload: resultsReload,
     },
     evaluationsSelection: { ...evaluationsSelection, selectedPhase: navigation.selectedPhase },
     runs,

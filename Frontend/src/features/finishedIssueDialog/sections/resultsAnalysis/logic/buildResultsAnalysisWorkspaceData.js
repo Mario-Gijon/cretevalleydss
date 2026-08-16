@@ -3,6 +3,7 @@ import { formatFinishedIssuePhaseLabel } from "../../../logic/formatFinishedIssu
 import { buildRankingMovement, buildSpearmanCorrelationMatrix } from "./buildRankingComparison.js";
 import { buildResultsVisualizationsData } from "./buildResultsVisualizationsData.js";
 import { RESULTS_ANALYSIS_SLOT_COLORS } from "./resultsAnalysisColors.js";
+import { selectExecutionGenericAnalysis } from "./selectExecutionGenericAnalysis.js";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -101,6 +102,7 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     consensusMeasure: execution?.consensusMeasure ?? null,
     modelSpecificOutput: execution?.modelSpecificOutput ?? null,
     rawOutput: execution?.rawOutput ?? null,
+    genericAnalysis: selectExecutionGenericAnalysis(payload, option.key),
   };
 };
 

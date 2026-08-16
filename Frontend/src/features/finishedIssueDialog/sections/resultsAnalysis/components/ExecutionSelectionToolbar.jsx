@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Box, Button, Checkbox, Chip, ListItemText, Menu, MenuItem, Stack, Tooltip, Typography } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import CompareArrowsRoundedIcon from "@mui/icons-material/CompareArrowsRounded";
 
 import { executionSelectionToolbarSx } from "../resultsAnalysis.styles.js";
 
-const ExecutionSelectionToolbar = ({ data, selectedExecutionKeys, onToggleExecution, onRemoveExecution }) => {
+const ExecutionSelectionToolbar = ({ data, selectedExecutionKeys, onToggleExecution, onRemoveExecution, reload }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const selectedSet = new Set(selectedExecutionKeys);
 
@@ -17,6 +18,7 @@ const ExecutionSelectionToolbar = ({ data, selectedExecutionKeys, onToggleExecut
     <Stack direction ="row" spacing={0.7} useFlexGap flexWrap="wrap" sx={{ minWidth: 0, flex: 1 }}>
       {data.selected.map((execution) => <Chip key={execution.key} label={execution.displayLabel} title={execution.fullLabel} onDelete={data.selected.length > 1 ? () => onRemoveExecution(execution.key) : undefined} variant="outlined" sx={{ maxWidth: 260, borderColor: execution.color, color: "text.primary", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />)}
     </Stack>
+    <Button size="small" color="secondary" variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={reload?.loading} onClick={() => reload?.reload(selectedExecutionKeys)}>{reload?.loading ? "Reloading…" : "Reload analysis"}</Button>
     <Tooltip title={data.selection.canAddMore ? "Select executions" : "Maximum three executions"}>
       <span><Button size="small" color="secondary" variant="outlined" startIcon={<AddRoundedIcon />} disabled={!data.selection.canAddMore && !anchorEl} onClick={(event) => setAnchorEl(event.currentTarget)}>Executions</Button></span>
     </Tooltip>

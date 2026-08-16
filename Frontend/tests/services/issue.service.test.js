@@ -94,6 +94,17 @@ describe("issue.service", () => {
     );
   });
 
+  it("reloadFinishedIssueResultsAnalysis posts the selected execution keys", async () => {
+    authFetch.mockResolvedValue(new Response(JSON.stringify({ success: true, data: { executions: [] } }), { status: 200 }));
+
+    await issueService.reloadFinishedIssueResultsAnalysis({ id: "issue-9" }, ["scenario-1", "base"]);
+
+    expect(authFetch).toHaveBeenCalledWith(
+      "http://localhost:4010/issues/finished/issue-9/results-analysis/reload",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ executionKeys: ["scenario-1", "base"] }) })
+    );
+  });
+
   it("editExperts sends only expert additions and removals", async () => {
     authFetch.mockResolvedValue(
       new Response(JSON.stringify({ success: true }), { status: 200 })

@@ -74,8 +74,19 @@ const ComparisonVisualization = ({ comparison, scatterPlotRef, onResetZoom }) =>
   </Box>;
 };
 
-const VisualizationsPanel = ({ visualizations = {}, genericAnalysis = {}, scatterPlotRef, onResetZoom }) => {
-  const rankingEvolution = genericAnalysis.data?.visualizations?.find((entry) => entry.type === "rankingEvolution");
+const RankingEvolution = ({ executions }) => <Box sx={{ overflowX: executions.length > 1 ? "auto" : "visible", maxWidth: "100%" }}>
+  <Box sx={{ display: "grid", gridTemplateColumns: executions.length > 1 ? { xs: "1fr", md: `repeat(${executions.length}, minmax(360px, 1fr))` } : "1fr", gap: 1.4, minWidth: executions.length > 1 ? { md: executions.length * 360 } : 0 }}>
+    {executions.map((execution) => {
+      const visualization = execution.genericAnalysis?.visualizations?.find((entry) => entry?.type === "rankingEvolution");
+      return <Box key={execution.key} sx={cardSx}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 0.8 }}>{execution.displayLabel}</Typography>
+        {visualization ? <RankingMovementChart movement={buildGenericRankingMovement(visualization)} title="Ranking evolution" subtitle="Position changes across consensus phases." /> : <Alert severity="info">Ranking evolution is not available for this execution.</Alert>}
+      </Box>;
+    })}
+  </Box>
+</Box>;
+
+const VisualizationsPanel = ({ visualizations = {}, executions = [], scatterPlotRef, onResetZoom }) => {
   const modelVisualizations = visualizations.mode === "comparison"
     ? <ComparisonVisualization comparison={visualizations.expertCollectiveComparison} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} />
     : <SingleVisualization visualizations={visualizations} scatterPlotRef={scatterPlotRef} onResetZoom={onResetZoom} />;
@@ -83,7 +94,7 @@ const VisualizationsPanel = ({ visualizations = {}, genericAnalysis = {}, scatte
     <Box>
       <Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>General visualizations</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>General analytical views of the completed decision process.</Typography>
-      {genericAnalysis.loading ? <Alert severity="info">Loading general visualizations…</Alert> : genericAnalysis.error ? <Alert severity="error">General visualizations are unavailable.</Alert> : rankingEvolution ? <RankingMovementChart movement={buildGenericRankingMovement(rankingEvolution)} title="Ranking evolution" subtitle="Position changes across consensus phases." /> : <Alert severity="info">No ranking evolution is available for this issue.</Alert>}
+      <RankingEvolution executions={executions} />
       <Box sx={{ mt: 1.4, display: "grid", gridTemplateColumns: visualizations.consensus?.enabled ? { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(300px, 0.85fr)" } : "1fr", gap: 1.4 }}>
         {modelVisualizations}
         {visualizations.consensus?.enabled ? <ConsensusCard consensus={visualizations.consensus} /> : null}

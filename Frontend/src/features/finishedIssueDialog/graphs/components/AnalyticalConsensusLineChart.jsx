@@ -18,23 +18,23 @@ export const AnalyticalConsensusLineChart = ({
   const chartInstanceRef = useRef(null);
 
   useEffect(() => {
-    if (!data?.labels || !data?.data || !canvasRef.current) return;
+    if (!data?.labels || !canvasRef.current) return;
 
     if (chartInstanceRef.current) chartInstanceRef.current.destroy();
 
     const chartData = {
       labels: data.labels,
       datasets: [
-        {
-          label: "Consensus level",
-          data: data.data,
-          borderColor: alpha(theme.palette.secondary.main, 0.95),
-          backgroundColor: alpha(theme.palette.secondary.main, 0.18),
+        ...(Array.isArray(data.series) ? data.series : [{ key: "base", label: "Consensus level", color: theme.palette.secondary.main, data: data.data }]).map((series) => ({
+          label: series.label,
+          data: series.data,
+          borderColor: alpha(series.color || theme.palette.secondary.main, 0.95),
+          backgroundColor: alpha(series.color || theme.palette.secondary.main, 0.14),
           tension: 0.2,
           fill: true,
           pointRadius: compact ? 3 : 6,
           pointHoverRadius: compact ? 5 : 9,
-        },
+        })),
         ...(typeof data.threshold === "number" && Number.isFinite(data.threshold) ? [{ label: `Consensus threshold · ${(data.threshold * 100).toFixed(0)}%`, data: data.labels.map(() => data.threshold), borderColor: alpha(theme.palette.warning.main, 0.95), backgroundColor: "transparent", borderDash: [7, 5], pointRadius: 0, pointHoverRadius: 0, tension: 0 }] : []),
       ],
     };
@@ -43,7 +43,7 @@ export const AnalyticalConsensusLineChart = ({
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: typeof data.threshold === "number" && Number.isFinite(data.threshold) },
+        legend: { display: (Array.isArray(data.series) && data.series.length > 1) || (typeof data.threshold === "number" && Number.isFinite(data.threshold)) },
         tooltip: {
           callbacks: {
             label: (ctx) => `Level: ${(ctx.raw * 100).toFixed(1)}%`,
@@ -93,7 +93,7 @@ export const AnalyticalConsensusLineChart = ({
     }
 
     return () => newChart.destroy();
-  }, [compact, data, theme.palette.secondary.main, consensusLevelChartRef]);
+  }, [compact, data, theme.palette.secondary.main, theme.palette.warning.main, consensusLevelChartRef]);
 
   return <canvas ref={canvasRef} />;
 };

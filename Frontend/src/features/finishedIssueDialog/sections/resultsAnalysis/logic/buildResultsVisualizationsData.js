@@ -1,4 +1,3 @@
-import { buildConsensusEvolutionData } from "./buildConsensusEvolutionData.js";
 import { normalizePlotsGraphic } from "../../../shared/logic/buildFinishedIssueGraphs.js";
 
 export const ANALYTICAL_PROJECTION_TOLERANCE = 1e-4;
@@ -181,10 +180,15 @@ const visualGroup = (group, projection = group.representative) => ({
   tooltipLabel: formatEnglishList(group.executions.map((entry) => entry.fullLabel)),
 });
 
-const buildConsensusVisualization = (payload) => {
-  const consensus = buildConsensusEvolutionData(payload);
-  const data = consensus.graph.data.map((value) => finite(value) ? value : null);
-  return { enabled: consensus.enabled === true, available: consensus.enabled === true && data.some((value) => value !== null), graph: { labels: consensus.graph.labels, data, threshold: finite(consensus.threshold) ? consensus.threshold : null } };
+const buildConsensusVisualization = (payload, executions) => {
+  const threshold = payload?.configuration?.consensusThreshold ?? payload?.consensus?.threshold ?? null;
+  const phases = [...new Set(executions.flatMap((execution) => execution.genericAnalysis?.facts?.consensus?.points?.map((point) => point?.phase) || []).filter(Number.isInteger))].sort((left, right) => left - right);
+  const series = executions.map((execution) => {
+    const points = execution.genericAnalysis?.facts?.consensus?.points;
+    const values = new Map(Array.isArray(points) ? points.filter((point) => Number.isInteger(point?.phase) && finite(point?.value)).map((point) => [point.phase, point.value]) : []);
+    return { key: execution.key, label: execution.displayLabel, color: execution.color, data: phases.map((phase) => values.get(phase) ?? null) };
+  }).filter((entry) => entry.data.some((value) => value !== null));
+  return { enabled: Boolean(series.length), available: Boolean(series.length), graph: { labels: phases.map((phase) => `Phase ${phase}`), series, threshold: finite(threshold) ? threshold : null } };
 };
 
 const buildSingleScatter = (execution) => {
@@ -201,7 +205,7 @@ const buildSingleScatter = (execution) => {
 
 export const buildResultsVisualizationsData = ({ payload, executions }) => {
   const projections = executions.map((execution, slotIndex) => buildCanonicalAnalyticalProjection({ execution, slotIndex }));
-  const consensus = buildConsensusVisualization(payload);
+  const consensus = buildConsensusVisualization(payload, executions);
   if (projections.length <= 1) {
     const projection = projections[0] || null;
     return { mode: "single", expertCollective: projection, singleScatter: buildSingleScatter(executions[0]), consensus };
