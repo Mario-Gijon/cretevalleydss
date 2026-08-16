@@ -33,6 +33,16 @@ const fuzzyDomain = {
   },
 };
 
+const linguistic2TupleDomain = {
+  typeKey: "linguistic2Tuple",
+  definition: {
+    labels: [
+      { key: "low", label: "Low", index: 0 },
+      { key: "high", label: "Medium", index: 1 },
+    ],
+  },
+};
+
 const buildDecisionContext = (criteria = []) => ({
   alternatives: [
     { id: "alt-a", name: "Alternative A" },
@@ -151,6 +161,30 @@ describe("AlternativeCriteriaMatrixView", () => {
     );
 
     expect(screen.queryByText("7.2")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders a linguistic 2-tuple collective with its human label and alpha", () => {
+    renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        decisionContext={buildDecisionContext([
+          { id: "criterion-1", name: "Linguistic", expressionDomain: linguistic2TupleDomain },
+        ])}
+        evaluation={{
+          "alt-a": { "criterion-1": { labelKey: "low", alpha: 0 } },
+          "alt-b": { "criterion-1": { labelKey: "high", alpha: 0 } },
+        }}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
+          "alt-a": { "criterion-1": { labelKey: "high", alpha: -0.5 } },
+          "alt-b": { "criterion-1": { labelKey: "high", alpha: 0 } },
+        }}
+        readOnly={false}
+      />
+    );
+
+    expect(screen.getByText("Medium (α = -0.5)")).toBeInTheDocument();
+    expect(screen.getByText("Medium (α = 0)")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

@@ -354,14 +354,11 @@ const CriteriaPreferenceOrderView = ({
           </Stack>
         </Box>
 
-        <Divider />
+        {unrankedCriteria.length > 0 ? (
+          <>
+            <Divider />
 
-        <Box>
-          {unrankedCriteria.length === 0 ? (
-            <Alert severity="success">
-              All current criteria are ranked.
-            </Alert>
-          ) : (
+            <Box>
             <Stack spacing={0.75}>
               <Box>
                 <Typography variant="subtitle2">
@@ -429,8 +426,9 @@ const CriteriaPreferenceOrderView = ({
                 );
               })}
             </Stack>
-          )}
-        </Box>
+            </Box>
+          </>
+        ) : null}
       </Stack>
     </Box>
   );

@@ -1,4 +1,5 @@
 import { isPlainObject } from "../../../../../../utils/common/objects";
+import { validateExpressionDomainEvaluation } from "../../../../../expressionDomains/validateExpressionDomainEvaluation";
 
 const isCanonicalCollectiveValue = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -10,6 +11,27 @@ const isCanonicalCollectiveValue = (value) => {
     value.length > 0 &&
     value.every((item) => typeof item === "number" && Number.isFinite(item))
   );
+};
+
+const validateCollectiveCell = ({ value, criterion, cellId }) => {
+  if (criterion.expressionDomain?.typeKey === "linguistic2Tuple") {
+    try {
+      validateExpressionDomainEvaluation({
+        value,
+        expressionDomain: criterion.expressionDomain,
+      });
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Value is invalid.";
+      throw new Error(`Collective payload cell '${cellId}' is invalid: ${message}`);
+    }
+  }
+
+  if (!isCanonicalCollectiveValue(value)) {
+    throw new Error(
+      `Collective payload cell '${cellId}' must be a finite number or a non-empty array of finite numbers.`
+    );
+  }
 };
 
 export const resolveCollective = ({
@@ -59,11 +81,11 @@ export const resolveCollective = ({
         throw new Error("Collective alternative row is missing a criterion cell.");
       }
 
-      if (!isCanonicalCollectiveValue(row[criterion.id])) {
-        throw new Error(
-          `Collective payload cell '${alternative.id}.${criterion.id}' must be a finite number or a non-empty array of finite numbers.`
-        );
-      }
+      validateCollectiveCell({
+        value: row[criterion.id],
+        criterion,
+        cellId: `${alternative.id}.${criterion.id}`,
+      });
     }
   }
 

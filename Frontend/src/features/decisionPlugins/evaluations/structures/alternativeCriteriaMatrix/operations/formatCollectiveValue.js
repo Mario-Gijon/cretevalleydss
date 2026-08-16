@@ -29,6 +29,28 @@ export const formatCollectiveValue = ({
     };
   }
 
+  if (
+    expressionDomain?.typeKey === "linguistic2Tuple" &&
+    collectiveValue &&
+    typeof collectiveValue === "object" &&
+    !Array.isArray(collectiveValue)
+  ) {
+    const labelKey = collectiveValue.labelKey;
+    const domainLabel = expressionDomain.definition?.labels?.find(
+      (item) => item?.key === labelKey,
+    );
+    const label = domainLabel?.label || (typeof labelKey === "string" ? labelKey : "—");
+    const alpha = Number.isFinite(collectiveValue.alpha)
+      ? formatCollectiveDisplayValue(collectiveValue.alpha)
+      : "—";
+    const formattedValue = `${label} (α = ${alpha})`;
+
+    return {
+      label: formattedValue,
+      title: formattedValue,
+    };
+  }
+
   return {
     label: formattedVector,
     title: undefined,

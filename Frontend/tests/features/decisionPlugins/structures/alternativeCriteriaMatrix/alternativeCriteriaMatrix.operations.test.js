@@ -4,6 +4,7 @@ import { buildRows } from "../../../../../src/features/decisionPlugins/evaluatio
 import { resolveCollective } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/resolveCollective.js";
 import { updateValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/updateValue.js";
 import { validateValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/validateValue.js";
+import { formatCollectiveValue } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/operations/formatCollectiveValue.js";
 
 const alternatives = [
   { id: "alternative1", name: "Alternative 1" },
@@ -157,5 +158,52 @@ describe("alternativeCriteriaMatrix operations", () => {
         },
       })
     ).toThrow("Collective alternative row contains unknown criterion cells.");
+  });
+
+  it("accepts valid linguistic 2-tuple collectives through expression-domain validation", () => {
+    const linguisticCriteria = [{
+      id: "criterion1",
+      name: "Linguistic",
+      expressionDomain: {
+        typeKey: "linguistic2Tuple",
+        definition: {
+          labels: [
+            { key: "low", label: "Low", index: 0 },
+            { key: "high", label: "Medium", index: 1 },
+          ],
+        },
+      },
+    }];
+    const collectiveEvaluation = {
+      alternative1: { criterion1: { labelKey: "high", alpha: -0.5 } },
+      alternative2: { criterion1: { labelKey: "high", alpha: 0 } },
+    };
+
+    expect(resolveCollective({ alternatives, criteria: linguisticCriteria, collectiveEvaluation })).toBe(collectiveEvaluation);
+    expect(() => resolveCollective({
+      alternatives,
+      criteria: linguisticCriteria,
+      collectiveEvaluation: {
+        alternative1: { criterion1: { labelKey: "missing", alpha: 0 } },
+        alternative2: { criterion1: { labelKey: "high", alpha: 0 } },
+      },
+    })).toThrow("Collective payload cell 'alternative1.criterion1' is invalid: Select a valid domain label.");
+    expect(() => resolveCollective({
+      alternatives,
+      criteria: linguisticCriteria,
+      collectiveEvaluation: {
+        alternative1: { criterion1: { labelKey: "high", alpha: 0.5 } },
+        alternative2: { criterion1: { labelKey: "high", alpha: 0 } },
+      },
+    })).toThrow("Collective payload cell 'alternative1.criterion1' is invalid: value.alpha must be greater than or equal to -0.5 and less than 0.5.");
+  });
+
+  it("formats linguistic 2-tuple collectives with their domain label and alpha", () => {
+    const expressionDomain = {
+      typeKey: "linguistic2Tuple",
+      definition: { labels: [{ key: "high", label: "Medium", index: 2 }] },
+    };
+    expect(formatCollectiveValue({ collectiveValue: { labelKey: "high", alpha: -0.5 }, expressionDomain })).toEqual({ label: "Medium (α = -0.5)", title: "Medium (α = -0.5)" });
+    expect(formatCollectiveValue({ collectiveValue: { labelKey: "high", alpha: 0 }, expressionDomain })).toEqual({ label: "Medium (α = 0)", title: "Medium (α = 0)" });
   });
 });

@@ -169,7 +169,7 @@ describe("CriteriaPreferenceOrderView", () => {
       evaluation: { criterionOrder: ["quality", "delivery", "cost"] },
     });
 
-    expect(screen.getByText("All current criteria are ranked.")).toBeInTheDocument();
+    expect(screen.queryByText("All current criteria are ranked.")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Add .* to ranking/ })).not.toBeInTheDocument();
   });
 });
