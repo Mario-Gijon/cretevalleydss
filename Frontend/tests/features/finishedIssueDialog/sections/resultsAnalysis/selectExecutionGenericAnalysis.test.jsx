@@ -24,8 +24,8 @@ describe("selectExecutionGenericAnalysis", () => {
       { executionKey: "base", stageAnalyses: { alternativeEvaluation: { apiModelKey: "base-model", analysis: { interpretation: "Base model" } } } },
       { executionKey: "scenario-1", stageAnalyses: { alternativeEvaluation: { apiModelKey: "scenario-model", analysis: { interpretation: "Scenario model" } } } },
     ] } };
-    expect(selectExecutionAlternativeEvaluationAnalysis(payload, "base")).toMatchObject({ apiModelKey: "base-model" });
-    expect(selectExecutionAlternativeEvaluationAnalysis(payload, "scenario-1")).toMatchObject({ apiModelKey: "scenario-model" });
+    expect(selectExecutionAlternativeEvaluationAnalysis(payload, "base")).toEqual({ apiModelKey: "base-model", analysis: { interpretation: "Base model" } });
+    expect(selectExecutionAlternativeEvaluationAnalysis(payload, "scenario-1")).toEqual({ apiModelKey: "scenario-model", analysis: { interpretation: "Scenario model" } });
     expect(selectExecutionAlternativeEvaluationAnalysis(payload, "missing")).toBeNull();
   });
 });

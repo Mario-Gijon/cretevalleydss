@@ -43,6 +43,7 @@ describe("finished Issue execution analysis service", () => {
     expect(second).toEqual(first);
     expect(global).toEqual(first.genericAnalysis);
     expect(requestAnalysis).toHaveBeenCalledTimes(1);
+    expect(dependencies.requestModelAnalysis).toHaveBeenCalledWith(expect.objectContaining({ apiModelKey: "base-model" }));
     expect(dependencies.historyBuilder).toHaveBeenCalledTimes(1);
   });
 
@@ -64,6 +65,101 @@ describe("finished Issue execution analysis service", () => {
     expect(reloaded[0].executionType).toBe("scenario");
     expect(await IssueResultsAnalysis.countDocuments({ issue: issueId })).toBe(2);
     expect(requestAnalysis).toHaveBeenCalledTimes(4);
+  });
+
+  it("uses each projected Base and Scenario context with its own model key", async () => {
+    const { issueId, userId, dependencies } = fixture();
+    const scenarioId = new mongoose.Types.ObjectId();
+    await IssueScenario.create({ issue: issueId, createdBy: userId, name: "Scenario", targetModel: new mongoose.Types.ObjectId(), config: { parameterOverrides: {} }, phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }] });
+    const baseContext = { projectedFor: "base", rounds: [{ selectedExecution: { modelContext: { apiModelKey: "base-model" } } }] };
+    const scenarioContext = { projectedFor: String(scenarioId), rounds: [{ selectedExecution: { modelContext: { apiModelKey: "scenario-model" } } }] };
+    dependencies.executionProjector.mockImplementation(({ executionKey }) => ({ execution: { key: executionKey }, analysisContext: executionKey === "base" ? baseContext : scenarioContext }));
+    const requestAnalysis = vi.fn(async ({ analysisContext }) => ({ facts: {}, interpretation: `General ${analysisContext.projectedFor}`, visualizations: [] }));
+    const requestModelAnalysis = vi.fn(async ({ apiModelKey, analysisContext }) => ({ facts: {}, interpretation: `${apiModelKey}:${analysisContext.projectedFor}`, visualizations: [] }));
+    const common = { issueId, userId, ...dependencies, requestAnalysis, requestModelAnalysis };
+
+    const entries = await reloadFinishedIssueExecutionAnalyses({ executionKeys: ["base", String(scenarioId)], ...common });
+
+    expect(requestModelAnalysis).toHaveBeenCalledWith({ apiModelKey: "base-model", analysisContext: baseContext });
+    expect(requestModelAnalysis).toHaveBeenCalledWith({ apiModelKey: "scenario-model", analysisContext: scenarioContext });
+    expect(entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ executionKey: "base", stageAnalyses: { alternativeEvaluation: { apiModelKey: "base-model", analysis: expect.objectContaining({ interpretation: "base-model:base" }) } } }),
+      expect.objectContaining({ executionKey: String(scenarioId), stageAnalyses: { alternativeEvaluation: { apiModelKey: "scenario-model", analysis: expect.objectContaining({ interpretation: `scenario-model:${scenarioId}` }) } } }),
+    ]));
+  });
+
+  it("keeps model analyses isolated when reloading multiple executions", async () => {
+    const { issueId, userId, dependencies } = fixture();
+    const scenarioId = new mongoose.Types.ObjectId();
+    await IssueScenario.create({ issue: issueId, createdBy: userId, name: "Scenario", targetModel: new mongoose.Types.ObjectId(), config: { parameterOverrides: {} }, phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }] });
+    const requestAnalysis = vi.fn(async () => ({ facts: {}, interpretation: "General", visualizations: [] }));
+    const requestModelAnalysis = vi.fn(async ({ apiModelKey, analysisContext }) => ({ facts: { executionKey: analysisContext.projectedFor }, interpretation: apiModelKey, visualizations: [] }));
+    const common = { issueId, userId, ...dependencies, requestAnalysis, requestModelAnalysis };
+
+    const entries = await reloadFinishedIssueExecutionAnalyses({ executionKeys: ["base", String(scenarioId)], ...common });
+    const byKey = Object.fromEntries(entries.map((entry) => [entry.executionKey, entry]));
+
+    expect(byKey.base.stageAnalyses.alternativeEvaluation).toMatchObject({ apiModelKey: "base-model", analysis: { facts: { executionKey: "base" }, interpretation: "base-model" } });
+    expect(byKey[String(scenarioId)].stageAnalyses.alternativeEvaluation).toMatchObject({ apiModelKey: "scenario-model", analysis: { facts: { executionKey: String(scenarioId) }, interpretation: "scenario-model" } });
+    const persisted = await IssueResultsAnalysis.find({ issue: issueId }).lean();
+    expect(Object.fromEntries(persisted.map((entry) => [entry.executionKey, entry.stageAnalyses]))).toMatchObject({
+      base: { alternativeEvaluation: { apiModelKey: "base-model", analysis: { facts: { executionKey: "base" } } } },
+      [String(scenarioId)]: { alternativeEvaluation: { apiModelKey: "scenario-model", analysis: { facts: { executionKey: String(scenarioId) } } } },
+    });
+  });
+
+  it("rejects projected executions with conflicting successful model identities", async () => {
+    const { issueId, userId, dependencies } = fixture();
+    dependencies.executionProjector.mockReturnValue({ execution: { key: "base" }, analysisContext: { rounds: [
+      { executionAttempts: [{ status: "succeeded" }], selectedExecution: { modelContext: { apiModelKey: "first-model" } } },
+      { executionAttempts: [{ status: "succeeded" }], selectedExecution: { modelContext: { apiModelKey: "second-model" } } },
+    ] } });
+    const common = { issueId, userId, requestAnalysis: vi.fn(async () => ({ facts: {}, interpretation: "General", visualizations: [] })), ...dependencies };
+
+    await expect(getOrGenerateFinishedIssueExecutionAnalysis({ executionKey: "base", ...common })).rejects.toThrow(/exactly one apiModelKey/);
+    expect(dependencies.requestModelAnalysis).not.toHaveBeenCalled();
+    expect(await IssueResultsAnalysis.countDocuments({ issue: issueId })).toBe(0);
+  });
+
+  it("preserves a persisted analysis when forced model analysis reload fails", async () => {
+    const { issueId, userId, dependencies } = fixture();
+    const firstGeneratedAt = new Date("2026-01-01T00:00:00.000Z");
+    const initial = await getOrGenerateFinishedIssueExecutionAnalysis({
+      issueId,
+      userId,
+      executionKey: "base",
+      ...dependencies,
+      requestAnalysis: vi.fn(async () => ({ facts: {}, interpretation: "Initial general", visualizations: [] })),
+      requestModelAnalysis: vi.fn(async () => ({ facts: {}, interpretation: "Initial model", visualizations: [] })),
+      now: () => firstGeneratedAt,
+    });
+
+    await expect(getOrGenerateFinishedIssueExecutionAnalysis({
+      issueId,
+      userId,
+      executionKey: "base",
+      force: true,
+      ...dependencies,
+      requestAnalysis: vi.fn(async () => ({ facts: {}, interpretation: "Replacement general", visualizations: [] })),
+      requestModelAnalysis: vi.fn(async () => { throw new Error("model analysis failed"); }),
+      now: () => new Date("2026-01-02T00:00:00.000Z"),
+    })).rejects.toThrow("model analysis failed");
+
+    const persisted = await IssueResultsAnalysis.findOne({ issue: issueId, executionKey: "base" }).lean();
+    expect(persisted.genericAnalysis).toEqual(initial.genericAnalysis);
+    expect(persisted.stageAnalyses).toEqual(initial.stageAnalyses);
+    expect(persisted.generatedAt).toEqual(firstGeneratedAt);
+  });
+
+  it("serializes legacy records without inventing stage analyses", async () => {
+    const { issueId, userId, dependencies } = fixture();
+    const generatedAt = new Date("2026-01-01T00:00:00.000Z");
+    await IssueResultsAnalysis.create({ issue: issueId, executionKey: "base", executionType: "base", genericAnalysis: { facts: {}, interpretation: "Legacy", visualizations: [] }, generatedAt });
+
+    const result = await getOrGenerateFinishedIssueExecutionAnalysis({ issueId, userId, executionKey: "base", requestAnalysis: vi.fn(), ...dependencies });
+
+    expect(result).toEqual({ executionKey: "base", executionType: "base", scenarioId: null, genericAnalysis: { facts: {}, interpretation: "Legacy", visualizations: [] }, generatedAt: generatedAt.toISOString() });
+    expect(result).not.toHaveProperty("stageAnalyses");
   });
 
   it("rejects empty, oversized, and unavailable reload selections", async () => {

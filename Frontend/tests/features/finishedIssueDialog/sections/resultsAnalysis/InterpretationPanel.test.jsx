@@ -31,4 +31,14 @@ describe("InterpretationPanel", () => {
     expect(screen.getByText("Scenario model interpretation")).toBeInTheDocument();
     expect(screen.getByText("Scenario model")).toBeInTheDocument();
   });
+
+  it("keeps General analysis visible and omits the optional section when model analysis is absent", () => {
+    render(<InterpretationPanel executions={[
+      { key: "base", displayLabel: "Base", modelName: "Base model", genericAnalysis: { interpretation: "Base general" }, alternativeEvaluationAnalysis: null },
+    ]} />);
+
+    expect(screen.getByText("General analysis")).toBeInTheDocument();
+    expect(screen.getByText("Base general")).toBeInTheDocument();
+    expect(screen.queryByText("Alternative evaluation")).not.toBeInTheDocument();
+  });
 });
