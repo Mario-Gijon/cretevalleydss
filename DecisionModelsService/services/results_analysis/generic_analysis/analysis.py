@@ -1,5 +1,6 @@
 from services.results_analysis.contracts import normalize_analysis_result
 
+from .alternative_relationships import alternative_relationships
 from .common import attempt_summary, fmt, ranking
 from .consensus import issue_consensus, round_consensus
 from .interpretation import build_issue_interpretation
@@ -105,6 +106,7 @@ def _issue_attempt_summary(rounds):
 
 
 def _process_overview(rounds, leaders, agreement, consensus, participants):
+    """Keep compact derived facts for consumers without rendering an Overview section."""
     return {
         "phaseCount": len(rounds),
         "leaderChangeCount": len(leaders),
@@ -147,6 +149,30 @@ def _visualizations(facts):
             }
         )
 
+    relationships = facts.get("alternativeRelationships") or {}
+    relationship_phases = relationships.get("phases") or []
+    if relationship_phases:
+        result.append(
+            {
+                "type": "alternativeRelationships",
+                "phases": [
+                    {
+                        "phase": phase["phase"],
+                        "alternatives": phase["alternatives"],
+                        "pairs": [
+                            {
+                                "leftAlternativeId": pair["leftAlternativeId"],
+                                "rightAlternativeId": pair["rightAlternativeId"],
+                                "relativeSeparation": pair["relativeSeparation"],
+                            }
+                            for pair in phase["pairs"]
+                        ],
+                    }
+                    for phase in relationship_phases
+                ],
+            }
+        )
+
     stability = facts["rankingStability"]["alternatives"]
     if len(evolution["phases"]) >= 2 and len(stability) >= 2:
         result.append({"type": "rankingStability", "alternatives": stability})
@@ -178,6 +204,7 @@ def analyze_issue(context):
     consensus = issue_consensus(context, rounds)
     participants = participant_summary(context, rounds)
     highlights = phase_highlights(rankings, consensus["points"])
+    relationships = alternative_relationships(context, rounds)
 
     facts = {
         "issueId": issue.get("id"),
@@ -191,6 +218,7 @@ def analyze_issue(context):
         "rankingAgreement": agreement,
         "leaderChanges": leaders,
         "phaseHighlights": highlights,
+        "alternativeRelationships": relationships,
         "consensus": consensus,
         "participants": participants,
         "execution": _issue_attempt_summary(rounds),

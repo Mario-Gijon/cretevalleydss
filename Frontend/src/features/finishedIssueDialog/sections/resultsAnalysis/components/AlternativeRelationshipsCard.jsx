@@ -284,22 +284,32 @@ const Network = ({ relationship, focusId, onFocus, execution }) => {
 const AlternativeRelationshipsCard = ({ executions = [] }) => {
   const [representation, setRepresentation] = useState("heatmap");
   const [focusId, setFocusId] = useState(null);
-  const available = executions
-    .map((execution) => ({
+  const entries = executions.map((execution) => ({
+    execution,
+    relationship: alternativeRelationshipsForPhase(
       execution,
-      relationship: alternativeRelationshipsForPhase(
-        execution,
-        execution.sourcePhase,
-      ),
-    }))
-    .filter(
-      (entry) =>
-        relationshipAlternatives(entry.relationship).length > 1 &&
-        Array.isArray(entry.relationship?.pairs) &&
-        entry.relationship.pairs.length,
-    );
+      execution.sourcePhase,
+    ),
+  }));
+  const available = entries.filter(
+    (entry) =>
+      relationshipAlternatives(entry.relationship).length > 1 &&
+      Array.isArray(entry.relationship?.pairs) &&
+      entry.relationship.pairs.length,
+  );
   if (!available.length) return null;
-  const focusOptions = relationshipAlternatives(available[0].relationship);
+  const focusOptions = [
+    ...new Map(
+      entries
+        .flatMap((entry) => relationshipAlternatives(entry.relationship))
+        .map((alternative) => [alternative.alternativeId, alternative]),
+    ).values(),
+  ].sort(
+    (left, right) =>
+      (left.rank ?? Number.MAX_SAFE_INTEGER) -
+        (right.rank ?? Number.MAX_SAFE_INTEGER) ||
+      String(left.name || "").localeCompare(String(right.name || "")),
+  );
   return (
     <Box
       sx={{
@@ -362,15 +372,15 @@ const AlternativeRelationshipsCard = ({ executions = [] }) => {
           gridTemplateColumns: {
             xs: "minmax(0, 1fr)",
             md:
-              available.length > 1
-                ? `${"minmax(0, 1fr) 1px ".repeat(Math.min(available.length, 3) - 1)}minmax(0, 1fr)`
+              entries.length > 1
+                ? `${"minmax(0, 1fr) 1px ".repeat(Math.min(entries.length, 3) - 1)}minmax(0, 1fr)`
                 : "minmax(0, 1fr)",
           },
           gap: 1.4,
           alignItems: "start",
         }}
       >
-        {available.flatMap(({ execution, relationship }, index) => {
+        {entries.flatMap(({ execution, relationship }, index) => {
           const panel = (
             <Box
               key={execution.key}
@@ -383,20 +393,27 @@ const AlternativeRelationshipsCard = ({ executions = [] }) => {
               >
                 {execution.displayLabel}
               </Typography>
-              {representation === "heatmap" ? (
-                <Heatmap
-                  relationship={relationship}
-                  focusId={focusId}
-                  onFocus={setFocusId}
-                  execution={execution}
-                />
+              {relationship ? (
+                representation === "heatmap" ? (
+                  <Heatmap
+                    relationship={relationship}
+                    focusId={focusId}
+                    onFocus={setFocusId}
+                    execution={execution}
+                  />
+                ) : (
+                  <Network
+                    relationship={relationship}
+                    focusId={focusId}
+                    onFocus={setFocusId}
+                    execution={execution}
+                  />
+                )
               ) : (
-                <Network
-                  relationship={relationship}
-                  focusId={focusId}
-                  onFocus={setFocusId}
-                  execution={execution}
-                />
+                <Typography variant="body2" color="text.secondary">
+                  Alternative relationships are not available for this execution
+                  in the selected phase.
+                </Typography>
               )}
             </Box>
           );

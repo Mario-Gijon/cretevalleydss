@@ -1,59 +1,66 @@
-from .common import fmt, ordinal, phase_label
+from math import floor
+
+from .common import finite, fmt, ordinal, phase_label
 
 
-def _process_overview_markdown(facts):
-    overview = facts["processOverview"]
-    phase_count = overview["phaseCount"]
-    sentences = []
+_RELATIONSHIP_EPSILON = 1e-12
+_PAIRWISE_MATRIX_MAX_ALTERNATIVES = 6
 
-    if phase_count == 1:
-        sentences.append("The completed decision process contains **1 executed phase**.")
-    else:
-        sentences.append(
-            f"The completed decision process contains **{phase_count} executed phases**."
-        )
 
-    leader_changes = overview["leaderChangeCount"]
-    if phase_count >= 2:
-        if leader_changes == 0:
-            sentences.append(
-                "The leading alternative did not change between recorded phases."
-            )
-        elif leader_changes == 1:
-            sentences.append("The leading alternative changed **once**.")
-        else:
-            sentences.append(
-                f"The leading alternative changed **{leader_changes} times**."
-            )
+def _percentage(value):
+    if not finite(value):
+        return "—"
+    rounded = floor(max(0.0, min(1.0, value)) * 100 + 0.5)
+    return f"{rounded}%"
 
-        stabilization_phase = overview.get("stabilizationPhase")
-        if stabilization_phase is not None:
-            sentences.append(
-                f"The ranking remained unchanged from **{phase_label(stabilization_phase)}** "
-                "through completion."
-            )
 
-    consensus = overview["consensus"]
-    if consensus.get("enabled"):
-        if consensus.get("reached") is True:
-            sentences.append("The configured consensus threshold was reached.")
-        elif consensus.get("reached") is False:
-            gap = consensus.get("finalGapToThreshold")
-            if gap is not None:
-                sentences.append(
-                    f"The final consensus measure remained **{fmt(gap)}** below the "
-                    "configured threshold."
-                )
+def _percentage_points(value):
+    if not finite(value):
+        return "—"
+    rounded = floor(abs(value) * 100 + 0.5)
+    return f"{rounded} percentage point{'s' if rounded != 1 else ''}"
 
-    participation = overview["participation"]
-    if participation.get("totalCount"):
-        sentences.append(
-            f"At completion, **{participation['completedCount']} of "
-            f"{participation['totalCount']}** current participants had a completed "
-            "evaluation recorded."
-        )
 
-    return "### Process overview\n\n" + " ".join(sentences)
+def _escape_table(value):
+    return str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def _pair_names(pair):
+    return pair.get("leftAlternative"), pair.get("rightAlternative")
+
+
+def _pair_lookup(phase):
+    result = {}
+    for pair in phase.get("pairs") or []:
+        left_id = pair.get("leftAlternativeId")
+        right_id = pair.get("rightAlternativeId")
+        if left_id is None or right_id is None:
+            continue
+        result[frozenset((left_id, right_id))] = pair.get("relativeSeparation")
+    return result
+
+
+def _final_ranking_markdown(facts):
+    if facts.get("executedRounds") != 1:
+        return ""
+
+    ranking = facts.get("finalRanking") or []
+    if not ranking:
+        return ""
+
+    lines = ["### Final ranking", ""]
+    if len(ranking) == 1:
+        lines.append(f"**{ranking[0]['name']}** is the only ranked alternative.")
+        return "\n".join(lines)
+
+    lines.append(
+        f"**{ranking[0]['name']}** finished first in the recorded execution."
+    )
+    lines.append("")
+    for item in ranking:
+        name = f"**{item['name']}**" if item["rank"] == 1 else item["name"]
+        lines.append(f"{ordinal(item['rank'])}. {name}")
+    return "\n".join(lines)
 
 
 def _ranking_evolution_markdown(facts):
@@ -115,7 +122,7 @@ def _ranking_evolution_markdown(facts):
         change = item["positionChange"]
         change_label = f"{change:+g}" if change is not None else "—"
         rows.append(
-            f"| {item['name']} | {ordinal(item['initialRank'])} | "
+            f"| {_escape_table(item['name'])} | {ordinal(item['initialRank'])} | "
             f"{ordinal(item['finalRank'])} | {change_label} |"
         )
     if len(rows) > 3:
@@ -125,7 +132,7 @@ def _ranking_evolution_markdown(facts):
 
 
 def _ranking_stability_markdown(facts):
-    if facts["processOverview"]["phaseCount"] < 2:
+    if facts.get("executedRounds", 0) < 2:
         return ""
 
     alternatives = (facts.get("rankingStability") or {}).get("alternatives") or []
@@ -157,11 +164,9 @@ def _ranking_stability_markdown(facts):
         )
 
     if stable and maximum_movement != 0:
-        names = ", ".join(stable)
-        verb = "remained" if len(stable) == 1 else "remained"
         lines.append(
-            f"**{names}** {verb} in the same rank position throughout all recorded "
-            "transitions."
+            f"**{', '.join(stable)}** remained in the same rank position throughout "
+            "all recorded transitions."
         )
 
     lines.extend(
@@ -173,7 +178,7 @@ def _ranking_stability_markdown(facts):
     )
     for item in alternatives:
         lines.append(
-            f"| {item['name']} | {ordinal(item['bestRank'])} | "
+            f"| {_escape_table(item['name'])} | {ordinal(item['bestRank'])} | "
             f"{ordinal(item['worstRank'])} | {item['totalMovement']:g} | "
             f"{item['positionChangeCount']} |"
         )
@@ -229,6 +234,189 @@ def _ranking_agreement_markdown(facts):
     return "\n".join(lines)
 
 
+def _pairwise_matrix(phase):
+    alternatives = phase.get("alternatives") or []
+    if len(alternatives) < 2 or len(alternatives) > _PAIRWISE_MATRIX_MAX_ALTERNATIVES:
+        return []
+
+    pair_values = _pair_lookup(phase)
+    header = "| Alternative | " + " | ".join(
+        _escape_table(item["name"]) for item in alternatives
+    ) + " |"
+    alignment = "|:--|" + "--:|" * len(alternatives)
+    rows = ["", header, alignment]
+
+    for left in alternatives:
+        values = []
+        for right in alternatives:
+            if left["alternativeId"] == right["alternativeId"]:
+                values.append("—")
+                continue
+            value = pair_values.get(
+                frozenset((left["alternativeId"], right["alternativeId"]))
+            )
+            values.append(_percentage(value))
+        rows.append(
+            f"| {_escape_table(left['name'])} | " + " | ".join(values) + " |"
+        )
+    return rows
+
+
+def _relationship_phase_markdown(phase, *, degenerate):
+    lines = [f"**{phase_label(phase['phase'])}**", ""]
+    alternatives = phase.get("alternatives") or []
+    pairs = phase.get("pairs") or []
+
+    if degenerate:
+        lines.append(
+            "No relative separation is observable in the available standardized "
+            "results: every pair is **0%** apart on the execution-wide scale."
+        )
+    elif pairs:
+        closest = phase.get("closestPairs") or []
+        if len(closest) == 1:
+            left, right = _pair_names(closest[0])
+            lines.append(
+                f"The closest pair is **{left}** and **{right}**, with a relative "
+                f"separation of **{_percentage(closest[0]['relativeSeparation'])}**."
+            )
+        elif closest:
+            names = "; ".join(
+                f"{item['leftAlternative']} ↔ {item['rightAlternative']}"
+                for item in closest[:4]
+            )
+            suffix = "" if len(closest) <= 4 else f"; and {len(closest) - 4} more"
+            lines.append(
+                f"**{len(closest)} pairs** share the minimum relative separation of "
+                f"**{_percentage(closest[0]['relativeSeparation'])}**: {names}{suffix}."
+            )
+
+        winner_pair = phase.get("winnerToRunnerUp")
+        if winner_pair and len(alternatives) >= 2:
+            lines.append(
+                f"The winner **{alternatives[0]['name']}** and runner-up "
+                f"**{alternatives[1]['name']}** are separated by "
+                f"**{_percentage(winner_pair['relativeSeparation'])}**."
+            )
+
+        furthest = phase.get("furthestPairs") or []
+        if len(furthest) == 1 and (
+            not closest
+            or furthest[0]["relativeSeparation"]
+            - closest[0]["relativeSeparation"]
+            > _RELATIONSHIP_EPSILON
+        ):
+            left, right = _pair_names(furthest[0])
+            lines.append(
+                f"The widest separation in this phase is between **{left}** and "
+                f"**{right}** at **{_percentage(furthest[0]['relativeSeparation'])}**."
+            )
+
+        mean_separation = phase.get("meanSeparation")
+        if finite(mean_separation) and len(pairs) >= 3:
+            lines.append(
+                f"Across all alternative pairs, the mean relative separation is "
+                f"**{_percentage(mean_separation)}**."
+            )
+
+    matrix = _pairwise_matrix(phase)
+    if matrix:
+        lines.extend(matrix)
+    elif len(alternatives) > _PAIRWISE_MATRIX_MAX_ALTERNATIVES:
+        lines.extend(
+            [
+                "",
+                f"The full pairwise table is omitted because this phase contains "
+                f"**{len(alternatives)} alternatives**; the interactive Heatmap and "
+                "Network remain available in Visualizations.",
+            ]
+        )
+
+    return "\n".join(lines)
+
+
+def _alternative_relationships_markdown(facts):
+    relationships = facts.get("alternativeRelationships") or {}
+    phases = relationships.get("phases") or []
+    if not phases:
+        return ""
+
+    normalization = relationships.get("normalization") or {}
+    lines = ["### Alternative relationships", ""]
+    lines.append(
+        "Relative separation compares alternatives pairwise using the finite "
+        "standardized result range observed across this execution. **0%** means "
+        "no observed separation on that scale; the percentages are not "
+        "probabilities, confidence values, or percentages by which one alternative "
+        "is better than another."
+    )
+
+    for phase in phases:
+        lines.extend(
+            [
+                "",
+                _relationship_phase_markdown(
+                    phase,
+                    degenerate=normalization.get("degenerate") is True,
+                ),
+            ]
+        )
+
+    unavailable = relationships.get("unavailablePhases") or []
+    if unavailable and phases:
+        labels = ", ".join(phase_label(item.get("phase")) for item in unavailable)
+        lines.extend(
+            [
+                "",
+                f"Pairwise separation could not be calculated for **{labels}** "
+                "because complete finite standardized scores were not available.",
+            ]
+        )
+
+    return "\n".join(lines)
+
+
+def _relationship_transition_events(facts, from_phase, to_phase):
+    relationships = facts.get("alternativeRelationships") or {}
+    transition = next(
+        (
+            item
+            for item in relationships.get("transitions") or []
+            if item.get("fromPhase") == from_phase and item.get("toPhase") == to_phase
+        ),
+        None,
+    )
+    if not transition:
+        return []
+
+    events = []
+    decrease = transition.get("largestDecrease")
+    increase = transition.get("largestIncrease")
+
+    if decrease:
+        events.append(
+            f"the relative separation between **{decrease['leftAlternative']}** and "
+            f"**{decrease['rightAlternative']}** decreased from "
+            f"**{_percentage(decrease['fromSeparation'])}** to "
+            f"**{_percentage(decrease['toSeparation'])}** "
+            f"({_percentage_points(decrease['change'])})"
+        )
+    if increase:
+        events.append(
+            f"the relative separation between **{increase['leftAlternative']}** and "
+            f"**{increase['rightAlternative']}** increased from "
+            f"**{_percentage(increase['fromSeparation'])}** to "
+            f"**{_percentage(increase['toSeparation'])}** "
+            f"({_percentage_points(increase['change'])})"
+        )
+
+    pair_changes = transition.get("pairChanges") or []
+    if pair_changes and not decrease and not increase:
+        events.append("all comparable pairwise relative separations were unchanged")
+
+    return events
+
+
 def _phase_highlights_markdown(facts):
     highlights = facts.get("phaseHighlights") or []
     if not highlights:
@@ -257,6 +445,14 @@ def _phase_highlights_markdown(facts):
             events.append("; ".join(movement_parts))
         elif not highlight.get("rankingChanged"):
             events.append("the ranking order did not change")
+
+        events.extend(
+            _relationship_transition_events(
+                facts,
+                highlight["fromPhase"],
+                highlight["toPhase"],
+            )
+        )
 
         consensus_change = highlight.get("consensusChange")
         if consensus_change is not None:
@@ -357,41 +553,65 @@ def _consensus_markdown(consensus):
 
 
 def _participation_markdown(participants):
-    if not participants["currentCount"]:
+    current_count = participants.get("currentCount", 0)
+    if not current_count:
         return ""
 
-    sentences = [
-        f"At completion, **{participants['evaluationCompletedCurrentCount']} of "
-        f"{participants['currentCount']}** current participants are recorded with a "
-        "completed evaluation."
-    ]
-
+    completed = participants.get("evaluationCompletedCurrentCount", 0)
+    accepted = participants.get("acceptedCurrentCount", 0)
+    historical = participants.get("historicalCount", 0)
     phase_counts = participants.get("phaseCounts") or []
-    if len(phase_counts) >= 2:
-        if participants.get("participantCountStableAcrossPhases"):
-            sentences.append(
-                f"The recorded participant count remained stable at "
-                f"**{phase_counts[0]['participantCount']}** across the available "
-                "phase snapshots."
-            )
-        else:
-            change = participants.get("participantCountChange")
-            if change is not None:
-                direction = "increased" if change > 0 else "decreased"
-                sentences.append(
-                    f"The recorded participant count {direction} from "
-                    f"**{phase_counts[0]['participantCount']}** to "
-                    f"**{phase_counts[-1]['participantCount']}** across the available "
-                    "phase snapshots."
-                )
+    count_changed = (
+        len(phase_counts) >= 2
+        and not participants.get("participantCountStableAcrossPhases")
+    )
 
-    return "### Participation\n\n" + " ".join(sentences)
+    noteworthy = (
+        completed != current_count
+        or accepted != current_count
+        or historical > current_count
+        or count_changed
+    )
+    if not noteworthy:
+        return ""
+
+    sentences = []
+    if completed != current_count:
+        sentences.append(
+            f"At completion, **{completed} of {current_count}** current participants "
+            "are recorded with a completed alternative evaluation."
+        )
+
+    if accepted != current_count:
+        sentences.append(
+            f"**{accepted} of {current_count}** current participants are recorded as "
+            "having accepted the Issue invitation."
+        )
+
+    if historical > current_count:
+        sentences.append(
+            f"The stored history contains **{historical}** participant identities, "
+            f"while **{current_count}** remain in the current participant set."
+        )
+
+    if count_changed:
+        change = participants.get("participantCountChange")
+        if change is not None:
+            direction = "increased" if change > 0 else "decreased"
+            sentences.append(
+                f"Across available phase snapshots, the participant count {direction} "
+                f"from **{phase_counts[0]['participantCount']}** to "
+                f"**{phase_counts[-1]['participantCount']}**."
+            )
+
+    return "### Participation\n\n" + " ".join(sentences) if sentences else ""
 
 
 def build_issue_interpretation(facts):
     sections = [
-        _process_overview_markdown(facts),
+        _final_ranking_markdown(facts),
         _ranking_evolution_markdown(facts),
+        _alternative_relationships_markdown(facts),
         _ranking_stability_markdown(facts),
         _ranking_agreement_markdown(facts),
         _phase_highlights_markdown(facts),
