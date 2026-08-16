@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { HeatmapChart, GraphChart } from "echarts/charts";
+import { HeatmapChart } from "echarts/charts";
 import { GridComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { Box } from "@mui/material";
 
-echarts.use([HeatmapChart, GraphChart, GridComponent, TooltipComponent, VisualMapComponent, CanvasRenderer]);
+echarts.use([HeatmapChart, GridComponent, TooltipComponent, VisualMapComponent, CanvasRenderer]);
 
 const useEChart = (option, onClick) => {
   const ref = useRef(null);
@@ -24,5 +24,4 @@ const useEChart = (option, onClick) => {
   return ref;
 };
 
-export const RelationshipHeatmap = ({ option, onClick }) => <Box ref={useEChart(option, onClick)} sx={{ width: "100%", height: 240, minWidth: 0 }} />;
-export const RelationshipNetwork = ({ option, onClick }) => <Box ref={useEChart(option, onClick)} sx={{ width: "100%", height: 240, minWidth: 0 }} />;
+export const RelationshipHeatmap = ({ option, onClick }) => <Box ref={useEChart(option, onClick)} sx={{ width: "100%", height: 225, minWidth: 0 }} />;

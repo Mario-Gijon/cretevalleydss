@@ -66,9 +66,7 @@ const Header = ({ title, subtitle, resettable, onResetZoom }) => (
         <Typography variant="h6" component="h2">
           {title}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {subtitle}
-        </Typography>
+        {subtitle ? <Typography variant="body2" color="text.secondary">{subtitle}</Typography> : null}
       </Box>
     </Stack>
     {resettable ? (
@@ -140,8 +138,8 @@ const SingleVisualization = ({
       <Box>
         <Box sx={embedded ? {} : cardSx}>
           <Header
-            title={embedded ? "Stored projection" : "Expert–collective map"}
-            subtitle="Dispersion of expert points and the collective position."
+            title={embedded ? "Dispersion chart" : "Expert–collective map"}
+            subtitle={embedded ? null : "Dispersion of expert points and the collective position."}
             resettable={scatter?.available}
             onResetZoom={onResetZoom}
           />
@@ -233,8 +231,8 @@ const ComparisonVisualization = ({
           {comparison.separateExecutions.map((group) => (
             <Box key={group.id} sx={embedded ? { minWidth: 0 } : cardSx}>
               <Header
-                title="Expert–collective map"
-                subtitle="Stored projection shown separately."
+                title="Dispersion chart"
+                subtitle={null}
               />{" "}
               <GroupChips
                 group={{
@@ -266,8 +264,8 @@ const ComparisonVisualization = ({
   return (
     <Box sx={embedded ? {} : cardSx}>
       <Header
-        title={embedded ? "Stored projection" : "Expert–collective map"}
-        subtitle="Dispersion of expert points and the collective position."
+        title={embedded ? "Dispersion chart" : "Expert–collective map"}
+        subtitle={embedded ? null : "Dispersion of expert points and the collective position."}
         resettable
         onResetZoom={onResetZoom}
       />
