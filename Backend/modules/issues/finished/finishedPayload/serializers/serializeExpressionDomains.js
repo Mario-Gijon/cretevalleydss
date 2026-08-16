@@ -10,6 +10,7 @@ export const serializeExpressionDomains = ({ expressionDomains }) =>
     .map((domain) => ({
       id: toRequiredId(domain, "expression domain"),
       sourceDomainId: toNullableId(domain.sourceDomain),
+      scope: domain.sourceDomain?.owner ? "owner" : "global",
       name: domain.name,
       typeKey: domain.typeKey,
       definition: cloneSerializable(domain.definition, {}),

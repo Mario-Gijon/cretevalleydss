@@ -163,31 +163,57 @@ export const evaluationParticipationGridSx = {
   display: "grid",
   gridTemplateColumns: {
     xs: "minmax(0, 1fr)",
-    md: "220px minmax(0, 1fr)",
+    md: "minmax(190px, 0.27fr) minmax(0, 0.73fr)",
   },
   gap: 1.1,
   alignItems: "stretch",
 };
 
-export const evaluationParticipantRowSx = {
-  display: "grid",
-  gridTemplateColumns: {
-    xs: "34px minmax(0, 1fr) auto",
-    sm: "34px minmax(120px, 1fr) minmax(130px, 0.85fr) auto",
+export const evaluationParticipationTableSx = {
+  minWidth: 700,
+  "& th": {
+    color: "text.secondary",
+    fontSize: 11,
+    fontWeight: 850,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
   },
-  gridTemplateAreas: {
-    xs: '"avatar identity status" "coverage coverage coverage"',
-    sm: '"avatar identity coverage status"',
+  "& td, & th": {
+    borderColor: "rgba(255,255,255,0.08)",
+    px: 0.9,
+    py: 0.8,
+    verticalAlign: "middle",
   },
-  gap: 0.75,
-  alignItems: "center",
+  "& tbody tr:last-child td": { borderBottom: 0 },
+};
+
+export const evaluationParticipationTableContainerSx = {
   minWidth: 0,
-  maxWidth: "100%",
-  px: 0.85,
-  py: 0.72,
-  borderRadius: 1.4,
+  overflowX: "auto",
+  overflowY: "hidden",
+  ...localScrollbarSx,
   border: "1px solid rgba(255,255,255,0.075)",
-  bgcolor: "rgba(255,255,255,0.02)",
+  borderRadius: 1.6,
+  bgcolor: "rgba(255,255,255,0.015)",
+};
+
+export const evaluationParticipantDetailSx = {
+  px: 1.2,
+  py: 1,
+  bgcolor: "rgba(255,255,255,0.018)",
+  borderTop: "1px solid rgba(255,255,255,0.05)",
+};
+
+export const evaluationParticipantIdentitySx = {
+  display: "flex",
+  alignItems: "center",
+  gap: 0.7,
+  minWidth: 150,
+};
+
+export const evaluationParticipantCellSx = {
+  minWidth: 120,
 };
 
 export const evaluationsEvidenceFooterSx = {

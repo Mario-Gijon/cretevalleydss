@@ -20,7 +20,6 @@ import { buildEvaluationsWorkspaceData } from "../../../../../src/features/finis
 import {
   evaluationPluginPanelSx,
   evaluationPluginRendererViewportSx,
-  evaluationParticipantRowSx,
   evaluationsExpertControlSx,
   evaluationsActionGroupSx,
   evaluationsSelectorGroupSx,
@@ -228,13 +227,13 @@ describe("EvaluationsView", () => {
     renderView(data);
 
     expect(screen.getByRole("heading", { name: "Expression domains by criterion" })).toBeInTheDocument();
-    expect(screen.getAllByText("Cost")).toHaveLength(2);
+    expect(screen.getByText("Cost")).toBeInTheDocument();
     expect(screen.getByText("Quality")).toBeInTheDocument();
-    expect(screen.getByText("Benefit")).toBeInTheDocument();
+    expect(screen.getAllByText("Global")).toHaveLength(2);
+    expect(screen.queryByText("Benefit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cost")).toBeInTheDocument();
     expect(evaluationPluginRendererViewportSx).not.toHaveProperty("minHeight");
     expect(evaluationPluginRendererViewportSx).toMatchObject({ width: "100%", maxWidth: "100%", maxHeight: { xs: 520, xl: 620 }, overflow: "auto" });
-    expect(evaluationParticipantRowSx).not.toHaveProperty("minWidth", 620);
-    expect(evaluationParticipantRowSx.gridTemplateAreas.xs).toContain("coverage coverage coverage");
     expect(evaluationsExpertControlSx).toMatchObject({ width: { xs: "100%", sm: 230 } });
     expect(evaluationsHeaderSx).toMatchObject({
       justifyContent: "space-between",

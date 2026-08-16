@@ -70,6 +70,7 @@ const EvaluationsView = ({ data, state, actions }) => {
         <EvaluationParticipationPanel
           participation={data.participation}
           hasCriteriaWeighting={data.criteriaWeighting.available}
+          hasAlternativeEvaluation={data.alternativeEvaluation.available}
         />
         <ExpressionDomainsPanel domains={data.domains} />
       </Box>

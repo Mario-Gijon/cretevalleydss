@@ -1,3 +1,5 @@
+import { getExpressionDomainDisplayMeta } from "../../../../../utils/expressionDomains";
+
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
 const unique = (values) => [...new Set(values)];
@@ -161,6 +163,8 @@ const criterionDomainRows = (payload) => {
         domainName: domain?.name || "—",
         domainTypeLabel: formatTechnicalLabel(domain?.typeKey),
         domainDefinition: domain?.definition ?? null,
+        domainScope: domain?.scope || null,
+        domainDisplayMeta: getExpressionDomainDisplayMeta(domain),
         domain,
       };
     });

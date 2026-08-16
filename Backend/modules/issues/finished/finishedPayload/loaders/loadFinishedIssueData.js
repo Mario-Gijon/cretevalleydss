@@ -29,7 +29,9 @@ export const loadFinishedIssueData = async ({ issue }) => {
   ] = await Promise.all([
     Alternative.find({ issue: issueId }).sort({ position: 1, _id: 1 }).lean(),
     Criterion.find({ issue: issueId }).lean(),
-    IssueExpressionDomain.find({ issue: issueId }).lean(),
+    IssueExpressionDomain.find({ issue: issueId })
+      .populate("sourceDomain", "owner")
+      .lean(),
     Participation.find({ issue: issueId }).populate("expert", USER_SELECT).lean(),
     IssueEvaluation.find({ issue: issueId })
       .populate("expert", USER_SELECT)
