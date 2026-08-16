@@ -1,4 +1,5 @@
 import { getExpressionDomainDisplayMeta } from "../../../../../utils/expressionDomains";
+import { formatParticipationLabel } from "./formatParticipationLabel";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -178,9 +179,7 @@ const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
       const criteriaWeighting = coverage(expert.criteriaWeighting?.submissions, audit.stagePhases?.criteriaWeighting || []);
       const alternativeEvaluation = coverage(expert.alternativeEvaluation?.submissions, audit.stagePhases?.alternativeEvaluation || []);
       const events = asArray(expert.participationEvents);
-      const irregular = events.filter((event) => ["entered", "left", "removed"].includes(event?.type));
-      const lifecycle = irregular.length ? irregular.at(-1)?.type === "left" ? `Left after ${irregular.at(-1)?.phase === 0 ? "Initial" : `Round ${irregular.at(-1)?.phase}`}` : irregular.length > 1 ? "Re-entered" : `Joined · ${irregular[0]?.phase === 0 ? "Initial" : `Round ${irregular[0]?.phase}`}` : criteriaWeighting.completed && alternativeEvaluation.completed ? "Full process" : criteriaWeighting.completed ? "Criteria only" : alternativeEvaluation.completed ? "Alternatives only" : "No submissions";
-      return { ...expert, criteriaWeighting, alternativeEvaluation, participationLabel: lifecycle, events };
+      return { ...expert, criteriaWeighting, alternativeEvaluation, participationLabel: formatParticipationLabel({ criteriaCompleted: criteriaWeighting.completed, alternativeCompleted: alternativeEvaluation.completed, hasCriteriaWeighting: audit.stagePhases?.criteriaWeighting?.length > 0, events }), events, criteriaPhases: audit.stagePhases?.criteriaWeighting || [], alternativePhases: audit.stagePhases?.alternativeEvaluation || [] };
     });
   }
   const criteriaByExpert = new Map(
@@ -216,6 +215,9 @@ const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
         expertId,
         name: participant?.expert?.name || "Unknown participant",
         email: participant?.expert?.email || null,
+        invitation: participant
+          ? { status: participant.invitationStatus || "pending" }
+          : null,
         currentlyRemoved,
         criteriaWeighting: criteria
           ? { submittedAt: criteria.submittedAt || null, completed: criteria.completed === true }
@@ -224,6 +226,11 @@ const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
           ? { submittedAt: alternative.submittedAt || null, completed: alternative.completed === true }
           : null,
         submittedBoth: Boolean(criteria && alternative),
+        participationLabel: formatParticipationLabel({
+          criteriaCompleted: criteria?.completed === true ? 1 : 0,
+          alternativeCompleted: alternative?.completed === true ? 1 : 0,
+          hasCriteriaWeighting: criteriaStage.available,
+        }),
       };
     }
   );

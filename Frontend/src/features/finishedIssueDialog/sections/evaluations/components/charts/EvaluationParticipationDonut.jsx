@@ -71,7 +71,7 @@ const EvaluationParticipationDonut = ({
   );
 
   return (
-    <Box sx={{ position: "relative", width: 158, height: 158 }}>
+    <Box sx={{ position: "relative", width: { xs: 120, sm: 128, md: 132 }, height: { xs: 120, sm: 128, md: 132 }, maxWidth: "100%" }}>
       <Doughnut data={data} options={options} />
       <Box
         sx={{

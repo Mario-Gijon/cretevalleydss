@@ -11,13 +11,10 @@ import ConfigurationDomainsPanel from "./ConfigurationDomainsPanel";
 import CriteriaStructurePanel from "./CriteriaStructurePanel";
 import IssueInformationPanel from "./IssueInformationPanel";
 import OverviewExecutionFooter from "./OverviewExecutionFooter";
-import OverviewSummaryStrip from "./OverviewSummaryStrip";
 import ParticipationPanel from "./ParticipationPanel";
 
 const OverviewView = ({ data }) => (
   <Box sx={overviewRootSx}>
-    <OverviewSummaryStrip summary={data.summary} />
-
     <Box sx={overviewTopGridSx}>
       <IssueInformationPanel data={data} />
       <AlternativesPanel alternatives={data.alternatives} />

@@ -177,7 +177,7 @@ describe("EvaluationsView", () => {
     }));
     expect(screen.getByRole("heading", { name: "Criteria weighting" })).toBeInTheDocument();
     expect(screen.getByText("Alternative only")).toBeInTheDocument();
-    expect(screen.getByText("Criteria only")).toBeInTheDocument();
+    expect(screen.getAllByText("Criteria only")).not.toHaveLength(0);
   });
 
   it("keeps collective payloads stage-specific and only supplies them when selected", () => {

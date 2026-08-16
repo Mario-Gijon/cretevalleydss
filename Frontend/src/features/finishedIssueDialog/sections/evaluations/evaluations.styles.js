@@ -163,16 +163,18 @@ export const evaluationParticipationGridSx = {
   display: "grid",
   gridTemplateColumns: {
     xs: "minmax(0, 1fr)",
-    md: "minmax(190px, 0.27fr) minmax(0, 0.73fr)",
+    md: "minmax(115px, 0.13fr) minmax(0, 0.87fr)",
   },
-  gap: 1.1,
-  alignItems: "stretch",
+  gap: 0.8,
+  alignItems: "start",
 };
 
 export const evaluationParticipationTableSx = {
   minWidth: 700,
+  "& tbody tr": { cursor: "default" },
   "& th": {
-    color: "text.secondary",
+    color: "rgba(190, 239, 246, 0.95)",
+    backgroundColor: "rgba(28, 126, 157, 0.18)",
     fontSize: 11,
     fontWeight: 850,
     letterSpacing: "0.04em",
@@ -180,7 +182,7 @@ export const evaluationParticipationTableSx = {
     whiteSpace: "nowrap",
   },
   "& td, & th": {
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(83, 198, 214, 0.18)",
     px: 0.9,
     py: 0.8,
     verticalAlign: "middle",
@@ -196,6 +198,8 @@ export const evaluationParticipationTableContainerSx = {
   border: "1px solid rgba(255,255,255,0.075)",
   borderRadius: 1.6,
   bgcolor: "rgba(255,255,255,0.015)",
+  alignSelf: "start",
+  height: "max-content",
 };
 
 export const evaluationParticipantDetailSx = {

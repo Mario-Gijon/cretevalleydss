@@ -339,15 +339,6 @@ export const buildOverviewData = (payload) => {
       creationDate: lifecycle.creationDate ?? lifecycle.createdAt ?? null,
       closureDate: lifecycle.closureDate ?? lifecycle.finishedAt ?? null,
     },
-    summary: {
-      owner: issue.owner.name || issue.owner.email || "—",
-      model: safeText(baseModel?.name),
-      createdAt:
-        lifecycle.creationDate ?? lifecycle.createdAt ?? null,
-      execution: "Base",
-      acceptedParticipants: participation.participated,
-      consensusEnabled: consensus.enabled === true,
-    },
     description: issue.description,
     configuration: detailedConfiguration,
     alternatives: asArray(payload?.alternatives).map((alternative) => ({

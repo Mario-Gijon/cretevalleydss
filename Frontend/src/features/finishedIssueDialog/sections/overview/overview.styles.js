@@ -3,58 +3,6 @@ export const overviewRootSx = {
   minWidth: 0,
 };
 
-export const overviewSummaryStripSx = {
-  display: "grid",
-  gridTemplateColumns: {
-    xs: "repeat(2, minmax(0, 1fr))",
-    sm: "repeat(3, minmax(0, 1fr))",
-    xl: "repeat(6, minmax(0, 1fr))",
-  },
-  mb: { xs: 1.5, md: 2 },
-  border: "1px solid rgba(91, 207, 219, 0.18)",
-  borderRadius: 3,
-  overflow: "hidden",
-  bgcolor: "rgba(8, 19, 30, 0.90)",
-  background:
-    "linear-gradient(112deg, rgba(22, 91, 123, 0.19), rgba(8, 20, 32, 0.94) 48%, rgba(22, 98, 80, 0.13))",
-  boxShadow: "0 14px 34px rgba(0,0,0,0.16)",
-};
-
-export const overviewSummaryItemSx = (index) => ({
-  minWidth: 0,
-  minHeight: { xs: 76, xl: 82 },
-  px: { xs: 1.15, md: 1.4 },
-  py: 1.1,
-  display: "flex",
-  alignItems: "center",
-  gap: 1,
-  borderRight: {
-    xs: index % 2 === 0 ? "1px solid rgba(255,255,255,0.075)" : 0,
-    sm: index % 3 !== 2 ? "1px solid rgba(255,255,255,0.075)" : 0,
-    xl: index < 5 ? "1px solid rgba(255,255,255,0.075)" : 0,
-  },
-  borderBottom: {
-    xs: index < 4 ? "1px solid rgba(255,255,255,0.075)" : 0,
-    sm: index < 3 ? "1px solid rgba(255,255,255,0.075)" : 0,
-    xl: 0,
-  },
-});
-
-export const overviewSummaryIconSx = (tone = "cyan") => ({
-  width: 38,
-  height: 38,
-  display: "grid",
-  placeItems: "center",
-  flexShrink: 0,
-  borderRadius: "50%",
-  color: tone === "green" ? "success.light" : "secondary.light",
-  bgcolor:
-    tone === "green"
-      ? "rgba(64, 192, 137, 0.12)"
-      : "rgba(47, 157, 199, 0.12)",
-  border: "1px solid rgba(255,255,255,0.065)",
-});
-
 export const overviewTopGridSx = {
   display: "grid",
   gridTemplateColumns: {
