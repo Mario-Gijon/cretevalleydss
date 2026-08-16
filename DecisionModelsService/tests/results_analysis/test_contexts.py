@@ -79,7 +79,7 @@ def test_generic_contexts_exclude_model_semantics_and_are_detached():
             "attemptId": "attempt-1",
             "startedAt": "2026-01-01T00:00:01.000Z",
             "completedAt": "2026-01-01T00:00:02.000Z",
-            "ranking": [{"alternativeId": "alternative-1", "rank": 1}, {"alternativeId": "alternative-2", "rank": 2}],
+            "ranking": [{"alternativeId": "alternative-1", "rank": 1, "score": 0.9}, {"alternativeId": "alternative-2", "rank": 2}],
             "consensusMeasure": 0.85,
         },
     }

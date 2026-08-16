@@ -7,15 +7,15 @@ const context = () => ({
   participants: { current: [] },
   semanticDirectory: { alternativesById: {} },
   rounds: [
-    { phase: 0, start: { participants: [{ id: "expert-1" }] }, revisions: [{ id: "real-phase-0" }], executionAttempts: [{ id: "base-0", status: "succeeded", applicationStatus: "applied" }], selectedExecution: { attemptId: "base-0", result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 2 }], consensusMeasure: 0.4 } } } },
+    { phase: 0, start: { participants: [{ id: "expert-1" }] }, revisions: [{ id: "real-phase-0" }], executionAttempts: [{ id: "base-0", status: "succeeded", applicationStatus: "applied" }], selectedExecution: { attemptId: "base-0", result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 2, score: 0.4 }], consensusMeasure: 0.4 } } } },
     { phase: 5, start: { participants: [{ id: "expert-2" }] }, revisions: [{ id: "real-phase-5" }], executionAttempts: [{ id: "base-5", status: "succeeded", applicationStatus: "applied" }], selectedExecution: { attemptId: "base-5", result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 1 }], consensusMeasure: 0.95 } } } },
   ],
   scenarios: {
     current: [{
       id: "scenario-1",
       phaseResults: [
-        { phase: 5, source: { stageResultId: "stage-5", domainType: "scenario" }, attemptId: "scenario-5", correlationId: "corr-5", startedAt: "2026-01-01T00:00:05.000Z", completedAt: "2026-01-01T00:00:06.000Z", execution: { modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 2 }], consensusMeasure: 0.8 }, modelExecution: { provider: "test" } }, application: { entityType: "scenario" } } },
-        { phase: 0, source: { stageResultId: "stage-0", domainType: "scenario" }, attemptId: "scenario-0", correlationId: "corr-0", startedAt: "2026-01-01T00:00:01.000Z", completedAt: "2026-01-01T00:00:02.000Z", execution: { modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 1 }], consensusMeasure: 0.5 }, modelExecution: {} }, application: { entityType: "scenario" } } },
+        { phase: 5, source: { stageResultId: "stage-5", domainType: "scenario" }, attemptId: "scenario-5", correlationId: "corr-5", startedAt: "2026-01-01T00:00:05.000Z", completedAt: "2026-01-01T00:00:06.000Z", execution: { modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 2, score: 0.8 }], consensusMeasure: 0.8 }, modelExecution: { provider: "test" } }, application: { entityType: "scenario" } } },
+        { phase: 0, source: { stageResultId: "stage-0", domainType: "scenario" }, attemptId: "scenario-0", correlationId: "corr-0", startedAt: "2026-01-01T00:00:01.000Z", completedAt: "2026-01-01T00:00:02.000Z", execution: { modelContext: { apiModelKey: "scenario" }, input: { evaluations: [] }, result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 1, score: 0.5 }], consensusMeasure: 0.5 }, modelExecution: {} }, application: { entityType: "scenario" } } },
       ],
     }],
   },
@@ -28,6 +28,7 @@ describe("projectExecutionAnalysisContext", () => {
 
     expect(projected.execution).toEqual({ key: "base", type: "base", scenarioId: null });
     expect(projected.analysisContext.rounds).toEqual(input.rounds);
+    expect(projected.analysisContext.rounds[0].selectedExecution.result.standardResult.rankedAlternatives[0].score).toBe(0.4);
   });
 
   it("projects every Scenario phase in ascending order with real phase history", () => {
@@ -55,6 +56,7 @@ describe("projectExecutionAnalysisContext", () => {
       completedAt: "2026-01-01T00:00:02.000Z",
     });
     expect(projected.analysisContext.rounds.map((entry) => entry.selectedExecution.result.standardResult.rankedAlternatives[0].rank)).toEqual([1, 2]);
+    expect(projected.analysisContext.rounds.map((entry) => entry.selectedExecution.result.standardResult.rankedAlternatives[0].score)).toEqual([0.5, 0.8]);
     expect(projected.analysisContext.rounds[1].start.participants).toEqual([{ id: "expert-2" }]);
     expect(projected.analysisContext.rounds[1].revisions).toEqual([{ id: "real-phase-5" }]);
   });

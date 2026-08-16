@@ -17,8 +17,8 @@ const markdownComponents = {
 const InterpretationPanel = ({ executions = [] }) => {
   const multiple = executions.length > 1;
   return <Box sx={{ overflowX: multiple ? "auto" : "visible", maxWidth: "100%" }}>
-    <Box sx={{ display: "grid", gridTemplateColumns: multiple ? { xs: "1fr", md: `repeat(${executions.length}, minmax(360px, 1fr))` } : "minmax(0, 1fr)", gap: 1.4, minWidth: multiple ? { md: executions.length * 360 } : 0 }}>
-      {executions.map((execution) => <Box key={execution.key} sx={{ ...comparisonDetailPanelSx, minHeight: { md: 640 }, maxHeight: { md: "min(700px, 72vh)" }, overflowY: "auto", overflowX: "hidden" }}>
+    <Box sx={{ display: "grid", gridTemplateColumns: multiple ? { xs: "1fr", md: `repeat(${executions.length}, minmax(360px, 1fr))` } : "minmax(0, 1fr)", gap: 1.4, minWidth: multiple ? { md: executions.length * 360 } : 0, alignItems: "start" }}>
+      {executions.map((execution) => <Box key={execution.key} sx={{ ...comparisonDetailPanelSx, height: "auto", overflowX: "hidden" }}>
         <Typography component="h2" sx={{ fontSize: 20, fontWeight: 950 }}>{execution.displayLabel}</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>{execution.modelName}</Typography>
         <Typography component="h3" sx={{ mb: 1.25, fontSize: 17, fontWeight: 900 }}>General analysis</Typography>

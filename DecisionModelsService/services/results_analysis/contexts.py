@@ -13,7 +13,11 @@ def build_generic_round_context(analysis_context: dict, round_entry: dict) -> di
     execution = _selected_execution(round_entry)
     standard_result = execution["result"]["standardResult"]
     ranking = [
-        {"alternativeId": entry["alternativeId"], "rank": entry["rank"]}
+        {
+            "alternativeId": entry["alternativeId"],
+            "rank": entry["rank"],
+            **({"score": entry["score"]} if "score" in entry else {}),
+        }
         for entry in standard_result.get("rankedAlternatives", [])
     ]
     start = round_entry.get("start")
