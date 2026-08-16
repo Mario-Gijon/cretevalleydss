@@ -7,6 +7,7 @@ const time = (second) => `2026-01-01T00:00:0${second}.000Z`;
 const identity = (id, name, email, university) => ({ id, name, email, university });
 const request = (expertId, payload) => ({ body: { modelParameters: { weights: { "criterion-cost": 0.65, "criterion-speed": 0.35 } }, evaluations: [{ expert: { id: expertId, name: "Expert One", email: "expert@example.com" }, payload }], context: { issue: { id: "issue-1" }, criteria: [{ id: "criterion-cost" }, { id: "criterion-speed" }] } } });
 const applied = (entityId, standardResult, modelExecution = {}) => ({ status: "applied", entityType: "stageResult", entityId, completedAt: time(9), resultSnapshot: { result: { standardResult, modelExecution } } });
+const appliedScenario = (entityId, phase, attemptId, standardResult, modelExecution = {}) => ({ status: "applied", entityType: "scenario", entityId, completedAt: time(9), resultSnapshot: { phaseResults: [{ phase, execution: { attemptId }, result: { standardResult, modelExecution } }] } });
 
 const history = () => ({
   schemaVersion: 1,
@@ -25,16 +26,46 @@ const history = () => ({
     executionAttempts: [
       { id: "attempt-0", scope: "issueStage", evaluationStage: "alternativeEvaluation", consensusPhase: 0, status: "succeeded", failureStage: null, correlationId: "round-0", startedAt: time(3), completedAt: time(4), modelContext: { apiModelKey: "frozen" }, request: request("expert-1", { "alternative-a": { "criterion-cost": 8, "criterion-speed": 3 }, "alternative-b": { "criterion-cost": 3, "criterion-speed": 8 } }), application: applied("stage-result-0", { consensusMeasure: 0.4 }, { consensusLifecycle: { finalizationReason: null } }) },
       { id: "attempt-1", scope: "issueStage", evaluationStage: "alternativeEvaluation", consensusPhase: 1, status: "succeeded", failureStage: null, correlationId: "round-1", startedAt: time(6), completedAt: time(7), modelContext: { apiModelKey: "frozen" }, request: request("expert-1", { "alternative-a": { "criterion-cost": 7, "criterion-speed": 4 }, "alternative-b": { "criterion-cost": 4, "criterion-speed": 7 } }), application: applied("stage-result-1", { consensusMeasure: 0.95 }, { consensusLifecycle: { finalizationReason: "consensusReached" } }) },
-      { id: "scenario-success", scope: "scenario", evaluationStage: "alternativeEvaluation", consensusPhase: 1, status: "succeeded", failureStage: null, correlationId: "scenario", startedAt: time(8), completedAt: time(9), modelContext: { apiModelKey: "scenario-model" }, request: request("expert-1", { "alternative-a": { "criterion-cost": 7 } }), application: { ...applied("scenario-1", { rankedAlternatives: [] }), entityType: "scenario" } },
+      { id: "scenario-success", scope: "scenario", evaluationStage: "alternativeEvaluation", consensusPhase: 1, status: "succeeded", failureStage: null, correlationId: "scenario", startedAt: time(8), completedAt: time(9), modelContext: { apiModelKey: "scenario-model" }, request: request("expert-1", { "alternative-a": { "criterion-cost": 7 } }), application: appliedScenario("scenario-1", 1, "scenario-success", { rankedAlternatives: [] }) },
       { id: "scenario-failed", scope: "scenario", evaluationStage: "alternativeEvaluation", consensusPhase: 1, status: "failed", failureStage: "transport", correlationId: "failed-scenario", startedAt: time(7), completedAt: time(8), modelContext: {}, request: request("expert-1", {}), error: { message: "failed" }, application: { status: "notApplicable" } },
     ],
     stageResults: [{ id: "stage-result-0", stage: "alternativeEvaluation", consensusPhase: 0, executionAttemptId: "attempt-0" }, { id: "stage-result-1", stage: "alternativeEvaluation", consensusPhase: 1, executionAttemptId: "attempt-1" }],
     events: [{ id: "event-0", stage: "alternativeEvaluation", phase: 0 }, { id: "event-1", stage: "alternativeEvaluation", phase: 1 }],
   },
-  scenarios: { current: [{ id: "scenario-1", name: "Kept scenario", description: "Current", source: { consensusPhase: 1, stageResultId: "stage-result-1", domainType: "numeric" }, targetModelId: "model-1", config: { parameterOverrides: { weights: { "criterion-cost": 0.65, "criterion-speed": 0.35 } } }, execution: { attemptId: "scenario-success" }, createdAt: time(8) }] },
+  scenarios: { current: [{ id: "scenario-1", name: "Kept scenario", description: "Current", targetModelId: "model-1", config: { parameterOverrides: { weights: { "criterion-cost": 0.65, "criterion-speed": 0.35 } } }, phaseResults: [{ phase: 1, source: { stageResultId: "stage-result-1", domainType: "numeric" }, execution: { attemptId: "scenario-success" } }], createdAt: time(8) }] },
 });
 
 describe("buildAnalysisContext", () => {
+  it("builds ordered canonical scenario phase contexts from aggregate applied evidence", () => {
+    const input = history();
+    input.evidence.executionAttempts.push({
+      ...structuredClone(input.evidence.executionAttempts[2]),
+      id: "scenario-success-0",
+      consensusPhase: 0,
+      application: appliedScenario("scenario-1", 0, "scenario-success-0", { rankedAlternatives: [{ phase: 0 }] }, { phase: 0 }),
+    });
+    input.scenarios.current[0].phaseResults.unshift({ phase: 0, source: { stageResultId: "stage-result-0", domainType: "numeric" }, execution: { attemptId: "scenario-success-0" } });
+
+    const scenario = buildAnalysisContext(input).scenarios.current[0];
+    expect(scenario.phaseResults.map((entry) => entry.phase)).toEqual([0, 1]);
+    expect(scenario.phaseResults[0]).toMatchObject({ attemptId: "scenario-success-0", execution: { result: { standardResult: { rankedAlternatives: [{ phase: 0 }] } } } });
+    expect(scenario.phaseResults[1]).toMatchObject({ attemptId: "scenario-success", execution: { result: { standardResult: { rankedAlternatives: [] } } } });
+  });
+
+  it("rejects missing, mismatched, or unapplied canonical scenario phase evidence", () => {
+    const missing = history();
+    missing.scenarios.current[0].phaseResults[0].execution.attemptId = "missing";
+    expect(() => buildAnalysisContext(missing)).toThrow(/matching applied scenario execution evidence/);
+
+    const wrongPhase = history();
+    wrongPhase.scenarios.current[0].phaseResults[0].phase = 0;
+    expect(() => buildAnalysisContext(wrongPhase)).toThrow(/matching applied scenario execution evidence/);
+
+    const unapplied = history();
+    unapplied.evidence.executionAttempts[2].application.status = "pending";
+    expect(() => buildAnalysisContext(unapplied)).toThrow(/matching applied scenario execution evidence/);
+  });
+
   it("builds a deterministic detached semantic context from frozen history evidence", () => {
     const input = history();
     const first = buildAnalysisContext(input);
@@ -47,7 +78,7 @@ describe("buildAnalysisContext", () => {
     expect(first.rounds.map((round) => round.phase)).toEqual([0, 1]);
     expect(first.rounds[0].selectedExecution.input.evaluations[0].payload["alternative-a"]["criterion-cost"]).toBe(8);
     expect(first.rounds[1].selectedExecution.result.standardResult.consensusMeasure).toBe(0.95);
-    expect(first.scenarios.current[0]).toMatchObject({ id: "scenario-1", attemptId: "scenario-success", execution: { modelContext: { apiModelKey: "scenario-model" } } });
+    expect(first.scenarios.current[0]).toMatchObject({ id: "scenario-1", phaseResults: [{ phase: 1, attemptId: "scenario-success", execution: { modelContext: { apiModelKey: "scenario-model" } } }] });
     expect(first.scenarios.failedAttempts).toEqual([expect.objectContaining({ attemptId: "scenario-failed", failureStage: "transport" })]);
     first.issue.owner.name = "Changed";
     first.semanticDirectory.criteriaById["criterion-cost"].name = "Changed";
@@ -65,14 +96,14 @@ describe("buildAnalysisContext", () => {
     const input = history();
     input.evidence.executionAttempts[1].application.resultSnapshot.result.standardResult = { consensusMeasure: 0.95, rawOutput: { internal: true } };
     input.evidence.executionAttempts[1].request.body.context.rawOutput = { requestEvidence: true };
-    input.evidence.executionAttempts[2].application.resultSnapshot.result.standardResult = { rankedAlternatives: [], rawOutput: { internal: true } };
+    input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.standardResult = { rankedAlternatives: [], rawOutput: { internal: true } };
 
     const context = buildAnalysisContext(input);
     expect(context.rounds[1].selectedExecution.result.standardResult).toEqual({ consensusMeasure: 0.95 });
     expect(context.rounds[1].selectedExecution.input.context.rawOutput).toEqual({ requestEvidence: true });
-    expect(context.scenarios.current[0].execution.result.standardResult).toEqual({ rankedAlternatives: [] });
+    expect(context.scenarios.current[0].phaseResults[0].execution.result.standardResult).toEqual({ rankedAlternatives: [] });
     expect(input.evidence.executionAttempts[1].application.resultSnapshot.result.standardResult.rawOutput).toEqual({ internal: true });
-    expect(input.evidence.executionAttempts[2].application.resultSnapshot.result.standardResult.rawOutput).toEqual({ internal: true });
+    expect(input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.standardResult.rawOutput).toEqual({ internal: true });
   });
 
   it("selects the final recomputation by application completion, start time, and id while retaining all attempts", () => {

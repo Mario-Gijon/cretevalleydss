@@ -38,14 +38,6 @@ export const finishedIssueHeaderTitleSx = {
   letterSpacing: "-0.035em",
 };
 
-export const finishedIssueHeaderChipSx = (failed) => ({
-  maxWidth: { xs: "100%", sm: 300 },
-  minHeight: 34,
-  borderRadius: 1.45,
-  borderColor: failed ? "rgba(243, 104, 104, 0.55)" : undefined,
-  "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
-});
-
 export const finishedIssueHeaderTabsSx = {
   minHeight: 38,
   "& .MuiTab-root": {

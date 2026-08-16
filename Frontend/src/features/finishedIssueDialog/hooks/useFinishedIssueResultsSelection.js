@@ -9,7 +9,6 @@ const sameKeys = (left, right) => left.length === right.length && left.every((ke
 export const useFinishedIssueResultsSelection = ({
   issueId,
   executionOptions,
-  selectGlobalExecution,
 }) => {
   const [selectedExecutionKeys, setSelectedExecutionKeys] = useState(["base"]);
   const optionsByKey = useMemo(
@@ -38,10 +37,6 @@ export const useFinishedIssueResultsSelection = ({
       return sameKeys(current, next) ? current : next;
     });
   }, [fallbackKey, optionsByKey]);
-
-  useEffect(() => {
-    if (selectedExecutionKeys[0]) selectGlobalExecution?.(selectedExecutionKeys[0]);
-  }, [selectedExecutionKeys, selectGlobalExecution]);
 
   const normalizeSelection = (keys) => uniqueKeys(keys)
       .filter((key) => optionsByKey.has(key))

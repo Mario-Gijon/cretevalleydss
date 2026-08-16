@@ -20,15 +20,4 @@ describe("serializeScenarios", () => {
     expect(scenario).not.toHaveProperty("source");
   });
 
-  it("adapts a legacy single-phase document into one phase result", () => {
-    const [scenario] = serializeScenarios({ scenarios: [{
-      _id: "legacy-1", name: "Legacy", targetModel, createdBy,
-      source: { consensusPhase: 3, stageResult: "stage-3", domainType: "numeric" },
-      requestSnapshot: { modelParameters: { beta: 1 } },
-      result: { standardResult: { consensusMeasure: 0.7 }, modelExecution: { legacy: true }, rawOutput: { legacy: true } },
-      execution: { startedAt: new Date("2026-01-01T00:00:00Z"), completedAt: new Date("2026-01-01T00:01:00Z") },
-    }] });
-
-    expect(scenario.phaseResults).toMatchObject([{ phase: 3, source: { stageResult: "stage-3" }, requestSnapshot: { modelParameters: { beta: 1 } } }]);
-  });
 });

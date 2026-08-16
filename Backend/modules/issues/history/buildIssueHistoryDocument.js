@@ -106,20 +106,10 @@ const serializeScenarioPhaseResult = (phaseResult) => {
 };
 
 const serializeScenario = (entry) => {
-  const storedPhaseResults = Array.isArray(entry.phaseResults)
-    ? entry.phaseResults.filter((phaseResult) => Number.isInteger(phaseResult?.phase) && phaseResult.phase >= 0)
-    : [];
-  const phaseResults = storedPhaseResults.length
-    ? storedPhaseResults.map((phaseResult) => serializeScenarioPhaseResult(phaseResult))
-    : [serializeScenarioPhaseResult({
-        phase: Number.isInteger(entry.source?.consensusPhase) && entry.source.consensusPhase >= 0 ? entry.source.consensusPhase : 0,
-        source: entry.source,
-        requestSnapshot: entry.requestSnapshot,
-        result: entry.result,
-        execution: entry.execution,
-      })];
-
-  phaseResults.sort((left, right) => left.phase - right.phase);
+  const phaseResults = entry.phaseResults
+    .slice()
+    .sort((left, right) => left.phase - right.phase)
+    .map(serializeScenarioPhaseResult);
   return omitUndefined({
     id: id(entry._id),
     createdById: id(entry.createdBy),

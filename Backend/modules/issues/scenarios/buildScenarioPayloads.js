@@ -19,15 +19,7 @@ const mapScenarioListItem = (scenario) => ({
         name: scenario.targetModel.name ?? null,
       }
     : null,
-  source: {
-    domainType: scenario?.source?.domainType ?? null,
-  },
-  execution: scenario?.execution
-    ? {
-        startedAt: scenario.execution.startedAt ?? null,
-        completedAt: scenario.execution.completedAt ?? null,
-      }
-    : null,
+  phaseResults: scenario?.phaseResults ?? [],
   createdAt: scenario?.createdAt || null,
   createdBy: scenario?.createdBy
     ? {
@@ -48,16 +40,8 @@ const mapScenarioDetail = (scenarioDoc) => ({
         name: scenarioDoc.targetModel.name ?? null,
       }
     : null,
-  source: scenarioDoc?.source || {},
   config: scenarioDoc?.config || {},
-  requestSnapshot: scenarioDoc?.requestSnapshot || {},
-  result: scenarioDoc?.result || {},
-  execution: scenarioDoc?.execution
-    ? {
-        startedAt: scenarioDoc.execution.startedAt ?? null,
-        completedAt: scenarioDoc.execution.completedAt ?? null,
-      }
-    : null,
+  phaseResults: scenarioDoc?.phaseResults || [],
   createdAt: scenarioDoc?.createdAt || null,
   updatedAt: scenarioDoc?.updatedAt || null,
   createdBy: scenarioDoc?.createdBy
@@ -84,7 +68,7 @@ export const getIssueScenariosPayload = async ({ issueId, userId }) => {
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
     .select(
-      "_id name targetModel source.domainType execution.startedAt execution.completedAt createdAt createdBy"
+      "_id name targetModel phaseResults createdAt createdBy"
     )
     .populate("targetModel", "name")
     .populate("createdBy", "email name")

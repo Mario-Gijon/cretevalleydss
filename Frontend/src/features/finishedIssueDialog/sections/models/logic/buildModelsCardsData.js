@@ -39,7 +39,7 @@ const resolveScenarioComputedAt = (scenario) => {
   const phaseResults = asArray(scenario?.phaseResults)
     .filter((entry) => Number.isInteger(entry?.phase))
     .sort((left, right) => left.phase - right.phase);
-  return phaseResults.at(-1)?.execution?.completedAt ?? scenario?.execution?.completedAt ?? scenario?.createdAt ?? null;
+  return phaseResults.at(-1)?.execution?.completedAt ?? scenario?.createdAt ?? null;
 };
 
 export const buildModelsCardsData = ({ payload, selectedExecution, executionOptions }) => {

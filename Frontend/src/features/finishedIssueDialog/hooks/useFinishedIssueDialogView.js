@@ -28,7 +28,6 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
   const resultsSelection = useFinishedIssueResultsSelection({
     issueId: data.issueId,
     executionOptions: resultsExecutionOptions,
-    selectGlobalExecution: runs.selectExecution,
   });
   const scatterPlotRef = useRef(null);
 
@@ -36,19 +35,10 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
     selectedIssue,
     dialog: { payload: data.payload, loading: data.loading, error: data.error },
     header: {
-      selectedExecutionKey: runs.selectedExecutionKey,
-      selectedModelName: runs.selectedExecution.model?.name || "—",
-      executionOptions: runs.executionOptions,
-      showRounds:
-        runs.selectedExecution.type === "base" && navigation.basePhases.length > 1,
+      showRounds: navigation.basePhases.length > 1,
       selectedPhase: navigation.selectedPhase,
       basePhases: navigation.basePhases,
-      selectExecution: runs.selectExecution,
       changePhase: navigation.handleChangePhase,
-      openAddScenario: () => {
-        navigation.handleSelectTab("models");
-        runs.addDialog.open();
-      },
     },
     navigation: {
       activeView: navigation.activeView,

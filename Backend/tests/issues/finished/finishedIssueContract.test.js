@@ -260,27 +260,16 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
     name: "Compatible scenario",
     description: "Stored scenario description",
     targetModel: baseModel._id,
-    source: {
-      consensusPhase: consensus ? 2 : 0,
-      stageResult: finalResult._id,
-      domainType: null,
-    },
     config: { parameterOverrides: { alpha: 0.8 } },
-    requestSnapshot: {
-      modelParameters: { alpha: 0.8 },
-      evaluations: [{ expert: { id: String(accepted._id) }, payload: alternativePayload }],
-      context: { source: "scenario" },
-    },
-    result: { standardResult: { rankedAlternatives: [] }, modelExecution: { kind: "scenario", executedAt: new Date("2026-01-12T11:00:00.000Z") }, rawOutput: { raw: true } },
-    execution: { startedAt: new Date("2026-01-12T10:59:00.000Z"), completedAt: new Date("2026-01-12T11:00:00.000Z") },
+    phaseResults: [{ phase: consensus ? 2 : 0, source: { stageResult: finalResult._id, domainType: null }, requestSnapshot: { modelParameters: { alpha: 0.8 }, evaluations: [{ expert: { id: String(accepted._id) }, payload: alternativePayload }], context: { source: "scenario" } }, result: { standardResult: { rankedAlternatives: [] }, modelExecution: { kind: "scenario", executedAt: new Date("2026-01-12T11:00:00.000Z") }, rawOutput: { raw: true } }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date("2026-01-12T10:59:00.000Z"), completedAt: new Date("2026-01-12T11:00:00.000Z") } }],
   });
   const failedScenario = await IssueScenario.create({
     issue: issue._id,
     createdBy: owner._id,
     name: "Additional scenario",
     targetModel: baseModel._id,
-    source: { consensusPhase: consensus ? 2 : 0, stageResult: finalResult._id, domainType: null },
-    execution: { startedAt: new Date("2026-01-12T11:01:00.000Z"), completedAt: new Date("2026-01-12T11:01:00.000Z") },
+    config: { parameterOverrides: {} },
+    phaseResults: [{ phase: consensus ? 2 : 0, source: { stageResult: finalResult._id, domainType: null }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date("2026-01-12T11:01:00.000Z"), completedAt: new Date("2026-01-12T11:01:00.000Z") } }],
   });
 
   return {

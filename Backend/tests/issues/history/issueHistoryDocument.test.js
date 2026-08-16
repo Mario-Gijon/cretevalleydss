@@ -48,7 +48,7 @@ const createHistoryFixture = async ({ finished = false, multiPhase = false } = {
   const revision = await IssueEvaluationRevision.create({ issue: issue._id, evaluation: evaluation._id, expert: expert._id, actorType: "user", actorUser: expert._id, stage: "alternativeEvaluation", consensusPhase: 0, action: "submitted", structureKey: "alternativeCriteriaMatrix", rawPayload: { raw: true }, normalizedPayload: { normalized: true }, decisionContext: { nestedDate: at(17) }, previousRevision: null, submittedAt: at(18), occurredAt: at(18), correlationId: "history-revision", sourceExecutionAttempt: failedAttempt._id });
   await Notification.create({ issue: issue._id, expert: expert._id, type: "invitation", message: "Current notification", requiresAction: true, actionTaken: false, read: false, createdAt: at(19) });
   await ExitUserIssue.create({ issue: issue._id, user: expert._id, hidden: false, timestamp: at(22), phase: 0, stage: "alternativeEvaluation", reason: "Current", history: [{ timestamp: at(21), phase: 0, stage: "alternativeEvaluation", action: "exited", reason: "Later inserted first" }, { timestamp: at(20), phase: 0, stage: "alternativeEvaluation", action: "entered", reason: "Earlier inserted second" }] });
-  await IssueScenario.create({ issue: issue._id, createdBy: owner._id, name: "Current scenario", description: "Scenario evidence", targetModel: model._id, source: { consensusPhase: 0, stageResult: stageResult._id, domainType: "numeric" }, config: { parameterOverrides: { alpha: 2 } }, requestSnapshot: { modelParameters: { alpha: 1 }, evaluations: [{ id: String(evaluation._id) }], context: { issue: String(issue._id) } }, result: { standardResult: { rank: 1 }, modelExecution: { scope: "scenario" }, rawOutput: { raw: true } }, execution: { attemptId: scenarioAttempt._id, startedAt: at(14), completedAt: at(15) } });
+  await IssueScenario.create({ issue: issue._id, createdBy: owner._id, name: "Current scenario", description: "Scenario evidence", targetModel: model._id, config: { parameterOverrides: { alpha: 2 } }, phaseResults: [{ phase: 0, source: { stageResult: stageResult._id, domainType: "numeric" }, requestSnapshot: { modelParameters: { alpha: 1 }, evaluations: [{ id: String(evaluation._id) }], context: { issue: String(issue._id) } }, result: { standardResult: { rank: 1 }, modelExecution: { scope: "scenario" }, rawOutput: { raw: true } }, execution: { attemptId: scenarioAttempt._id, startedAt: at(14), completedAt: at(15) } }] });
   const creation = await writeIssueStateSnapshot({ issue, snapshotType: "creation", occurredAt: at(23), correlationId: "history-creation" });
   await writeIssueStateSnapshot({ issue, snapshotType: "consensusPhaseStart", consensusPhase: 0, occurredAt: at(24), correlationId: "history-phase-0" });
   if (multiPhase) {
@@ -140,25 +140,6 @@ describe("buildIssueHistoryDocument", () => {
     expect(scenario.phaseResults[1]).toMatchObject({ source: { stageResultId: String(laterStageResult._id) }, requestSnapshot: { context: { phase: 1 } }, result: { standardResult: { consensusMeasure: 0.9 } } });
     expect(history.timeline.find((entry) => entry.kind === "scenario" && entry.refId === scenario.id)).toMatchObject({ stage: null, phase: null });
     expect(() => JSON.stringify(history)).not.toThrow();
-  });
-
-  it("does not emit an undefined legacy source phase", async () => {
-    const fixture = await createHistoryFixture();
-    await IssueScenario.create({
-      issue: fixture.issue._id,
-      createdBy: fixture.owner._id,
-      name: "Legacy without phase",
-      targetModel: fixture.model._id,
-      source: { stageResult: null, domainType: "numeric" },
-      config: { parameterOverrides: {} },
-      requestSnapshot: {},
-      result: { standardResult: {}, modelExecution: {}, rawOutput: {} },
-      execution: { startedAt: at(14), completedAt: at(15) },
-    });
-    const history = await buildIssueHistoryDocument({ issueId: fixture.issue._id });
-    const scenario = history.scenarios.current.find((entry) => entry.name === "Legacy without phase");
-    expect(scenario.phaseResults).toMatchObject([{ phase: 0 }]);
-    expect(scenario).not.toHaveProperty("source");
   });
 
   it("rejects invalid persisted Mixed evidence instead of silently altering it", async () => {

@@ -441,13 +441,18 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
               name: scenario.targetModel.name ?? null,
             }
           : null,
-        source: { domainType: scenario.source?.domainType ?? null },
-        execution: scenario.execution
-          ? {
-              startedAt: scenario.execution.startedAt ?? null,
-              completedAt: scenario.execution.completedAt ?? null,
-            }
-          : null,
+        phaseResults: (scenario.phaseResults || []).map((phaseResult) => ({
+          phase: phaseResult.phase,
+          source: {
+            stageResult: toIdString(phaseResult.source?.stageResult),
+            domainType: phaseResult.source?.domainType ?? null,
+          },
+          execution: {
+            attemptId: toIdString(phaseResult.execution?.attemptId),
+            startedAt: phaseResult.execution?.startedAt ?? null,
+            completedAt: phaseResult.execution?.completedAt ?? null,
+          },
+        })),
         createdAt: scenario.createdAt,
         createdBy: scenario.createdBy
           ? {

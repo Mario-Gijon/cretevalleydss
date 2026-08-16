@@ -78,14 +78,8 @@ const createScenarioFixture = async ({
     createdBy,
     name,
     targetModel: targetModelId ?? targetModel._id,
-    source: { consensusPhase: 0, stageResult: null, domainType },
     config: { parameterOverrides },
-    requestSnapshot,
-    result,
-    execution: {
-      startedAt: new Date("2026-01-01T10:00:00.000Z"),
-      completedAt: new Date("2026-01-01T10:01:00.000Z"),
-    },
+    phaseResults: [{ phase: 0, source: { stageResult: null, domainType }, requestSnapshot, result, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date("2026-01-01T10:00:00.000Z"), completedAt: new Date("2026-01-01T10:01:00.000Z") } }],
   });
 };
 
@@ -123,19 +117,14 @@ describe("issue scenarios access and payloads", () => {
       id: expect.any(String),
       name: "Owner scenario",
       targetModel: { id: expect.any(String), name: "Scenario Model" },
-      source: { domainType: "numeric" },
-      execution: {
-        startedAt: expect.any(Date),
-        completedAt: expect.any(Date),
-      },
+      phaseResults: expect.any(Array),
       createdAt: expect.any(Date),
       createdBy: {
         email: "owner@example.com",
         name: "Owner User",
       },
     });
-    expect(result.scenarios[0].execution).not.toHaveProperty("status");
-    expect(result.scenarios[0].execution).not.toHaveProperty("error");
+    expect(result.scenarios[0].phaseResults[0]).toMatchObject({ phase: 0, source: { domainType: "numeric" }, execution: { startedAt: expect.any(Date), completedAt: expect.any(Date) } });
   });
 
   it("accepted participant can list scenarios for their issue", async () => {
@@ -243,21 +232,14 @@ describe("issue scenarios access and payloads", () => {
       issueId: String(issue._id),
       name: "Detailed scenario",
       targetModel: { id: expect.any(String), name: "Scenario Model" },
-      source: { consensusPhase: 0, domainType: "numeric" },
-      execution: {
-        startedAt: expect.any(Date),
-        completedAt: expect.any(Date),
-      },
       config: expect.any(Object),
-      requestSnapshot: expect.any(Object),
-      result: expect.any(Object),
+      phaseResults: expect.any(Array),
       createdBy: {
         email: "owner@example.com",
         name: "Owner User",
       },
     });
-    expect(result.scenario.execution).not.toHaveProperty("status");
-    expect(result.scenario.execution).not.toHaveProperty("error");
+    expect(result.scenario.phaseResults[0]).toMatchObject({ phase: 0, source: { domainType: "numeric" }, execution: { startedAt: expect.any(Date), completedAt: expect.any(Date) } });
   });
 
   it("accepted participant can read scenario detail", async () => {

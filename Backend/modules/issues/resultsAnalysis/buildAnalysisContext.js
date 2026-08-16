@@ -75,6 +75,17 @@ const appliedResult = (attempt, field) => {
   required(application.entityId, `${field}.application.entityId`);
   return { application, result };
 };
+const appliedScenarioPhaseResult = (attempt, scenarioPhaseResult, field) => {
+  const application = object(attempt.application, `${field}.application`);
+  const snapshot = object(application.resultSnapshot, `${field}.application.resultSnapshot`);
+  const phaseResults = array(snapshot.phaseResults, `${field}.application.resultSnapshot.phaseResults`);
+  const phase = required(scenarioPhaseResult.phase, `${field}.phase`);
+  const matching = phaseResults.find((entry) => entry?.phase === phase && String(entry?.execution?.attemptId) === String(attempt.id));
+  if (!matching) fail("Applied scenario execution evidence does not contain the matching phase result", `${field}.application.resultSnapshot.phaseResults`, { phase, attemptId: attempt.id });
+  const result = object(matching.result, `${field}.application.resultSnapshot.phaseResults.result`);
+  object(result.standardResult, `${field}.application.resultSnapshot.phaseResults.result.standardResult`);
+  return { application, result };
+};
 const compactAttempt = (attempt) => ({ id: attempt.id, status: attempt.status, failureStage: attempt.failureStage, startedAt: attempt.startedAt, completedAt: attempt.completedAt, applicationStatus: attempt.application?.status ?? null });
 
 const buildRound = ({ phase, phaseSnapshot, revisions, attempts, stageResults, events }) => {
@@ -103,10 +114,36 @@ const buildRound = ({ phase, phaseSnapshot, revisions, attempts, stageResults, e
 };
 
 const buildCurrentScenario = (scenario, attemptsById) => {
-  const attempt = attemptsById.get(scenario.execution?.attemptId);
-  if (!attempt || attempt.scope !== "scenario" || attempt.status !== "succeeded" || attempt.application?.status !== "applied" || attempt.application.entityId !== scenario.id) fail("Current scenario does not have matching applied scenario execution evidence", "history.scenarios.current", { scenarioId: scenario.id, attemptId: scenario.execution?.attemptId ?? null });
-  const { result } = appliedResult(attempt, `history.evidence.executionAttempts.${attempt.id}`);
-  return { id: scenario.id, name: scenario.name, description: scenario.description, source: clone(scenario.source), targetModelId: scenario.targetModelId, parameterOverrides: clone(scenario.config.parameterOverrides), attemptId: attempt.id, execution: { modelContext: clone(attempt.modelContext), input: clone(attemptInput(attempt, `history.evidence.executionAttempts.${attempt.id}`)), result: { standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${attempt.id}.application.resultSnapshot.result.standardResult`), modelExecution: clone(result.modelExecution) } }, createdAt: scenario.createdAt };
+  const phaseResults = array(scenario.phaseResults, `history.scenarios.current.${scenario.id}.phaseResults`)
+    .slice()
+    .sort((left, right) => left.phase - right.phase)
+    .map((scenarioPhaseResult, index) => {
+      const phase = required(scenarioPhaseResult.phase, `history.scenarios.current.${scenario.id}.phaseResults.${index}.phase`);
+      const attemptId = required(scenarioPhaseResult.execution?.attemptId, `history.scenarios.current.${scenario.id}.phaseResults.${index}.execution.attemptId`);
+      const attempt = attemptsById.get(String(attemptId));
+      if (!attempt || attempt.scope !== "scenario" || attempt.status !== "succeeded" || attempt.application?.status !== "applied" || attempt.application.entityType !== "scenario" || String(attempt.application.entityId) !== String(scenario.id) || attempt.consensusPhase !== phase) {
+        fail("Current scenario does not have matching applied scenario execution evidence", "history.scenarios.current", { scenarioId: scenario.id, phase, attemptId });
+      }
+      const { application, result } = appliedScenarioPhaseResult(attempt, scenarioPhaseResult, `history.evidence.executionAttempts.${attempt.id}`);
+      return {
+        phase,
+        source: clone(scenarioPhaseResult.source),
+        attemptId: attempt.id,
+        correlationId: attempt.correlationId,
+        startedAt: attempt.startedAt,
+        completedAt: attempt.completedAt,
+        execution: {
+          modelContext: clone(attempt.modelContext),
+          input: clone(attemptInput(attempt, `history.evidence.executionAttempts.${attempt.id}`)),
+          result: {
+            standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${attempt.id}.application.resultSnapshot.phaseResults.result.standardResult`),
+            modelExecution: clone(result.modelExecution),
+          },
+          application: { completedAt: application.completedAt, entityType: application.entityType, entityId: application.entityId },
+        },
+      };
+    });
+  return { id: scenario.id, name: scenario.name, description: scenario.description, targetModelId: scenario.targetModelId, parameterOverrides: clone(scenario.config.parameterOverrides), phaseResults, createdAt: scenario.createdAt };
 };
 
 export const buildAnalysisContext = (history) => {

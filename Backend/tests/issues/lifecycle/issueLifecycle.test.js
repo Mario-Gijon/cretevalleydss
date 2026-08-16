@@ -146,8 +146,7 @@ const createCascadeFixture = async () => {
     createdBy: owner._id,
     name: "Scenario A",
     targetModel: targetModelId,
-    source: { consensusPhase: 0, stageResult: null, domainType: "numeric" },
-    execution: { startedAt: new Date(), completedAt: new Date() },
+    phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }],
   });
 
   return {

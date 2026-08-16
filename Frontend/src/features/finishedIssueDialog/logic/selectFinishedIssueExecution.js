@@ -6,21 +6,9 @@ export const selectAlternativePhaseResults = (payload) => asArray(payload?.phase
   .slice().sort((left, right) => left.phase - right.phase);
 
 const selectScenarioPhaseResults = (scenario) => {
-  const phaseResults = asArray(scenario?.phaseResults)
+  return asArray(scenario?.phaseResults)
     .filter((result) => Number.isInteger(result?.phase) && result.phase >= 0)
     .slice().sort((left, right) => left.phase - right.phase);
-  if (phaseResults.length) return phaseResults;
-
-  // Legacy finished-issue payloads had one root-level scenario execution.
-  return [{
-    phase: Number.isInteger(scenario?.source?.consensusPhase) ? scenario.source.consensusPhase : 0,
-    requestSnapshot: scenario?.requestSnapshot ?? {},
-    standardizedOutput: scenario?.result?.standardResult ?? {},
-    consensusMeasure: scenario?.result?.standardResult?.consensusMeasure ?? null,
-    modelSpecificOutput: scenario?.result?.modelExecution ?? {},
-    rawOutput: scenario?.result?.rawOutput ?? {},
-    execution: scenario?.execution ?? {},
-  }];
 };
 
 const selectPhase = (phaseResults, selectedPhase) =>

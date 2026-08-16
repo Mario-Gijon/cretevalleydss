@@ -32,17 +32,6 @@ describe("Finished Issue canonical contract", () => {
     expect(buildFinishedIssueExecutionOptions(payload).map((option) => option.key)).toEqual(["base", "scenario-ok", "scenario-secondary"]);
   });
 
-  it("keeps a legacy single-phase scenario readable at the payload boundary", () => {
-    const payload = buildFinishedIssuePayloadFixture();
-    const legacy = payload.scenarios[0];
-    legacy.source = { consensusPhase: 5 };
-    legacy.requestSnapshot = legacy.phaseResults[1].requestSnapshot;
-    legacy.result = { standardResult: legacy.phaseResults[1].standardizedOutput, modelExecution: legacy.phaseResults[1].modelSpecificOutput, rawOutput: legacy.phaseResults[1].rawOutput };
-    legacy.execution = legacy.phaseResults[1].execution;
-    delete legacy.phaseResults;
-    expect(selectFinishedIssueExecution(payload, legacy.id).phaseResults.map((result) => result.phase)).toEqual([5]);
-  });
-
   it("keeps overview, evaluations and consensus canonical while results follow execution", () => {
     const payload = buildFinishedIssuePayloadFixture();
     const base = selectFinishedIssueExecution(payload, "base");
@@ -68,10 +57,12 @@ describe("Finished Issue canonical contract", () => {
     expect(getFinishedIssueInfo).toHaveBeenCalledTimes(1);
     expect(result.current.header.selectedPhase).toBe(5);
     expect(result.current.navigation.availableTabs).toEqual(["dashboard", "overview", "results-analysis", "evaluations", "models"]);
-    act(() => result.current.header.selectExecution("scenario-ok"));
+    expect(result.current.header.showRounds).toBe(true);
+    act(() => result.current.runs.selectExecution("scenario-ok"));
     expect(result.current.runs.selectedExecution.type).toBe("scenario");
-    expect(result.current.header.showRounds).toBe(false);
-    act(() => result.current.header.selectExecution("base"));
+    expect(result.current.header.showRounds).toBe(true);
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base"]);
+    act(() => result.current.runs.selectExecution("base"));
     act(() => result.current.models.addDialog.setScenarioName("Sensitivity"));
     act(() => result.current.models.addDialog.setScenarioDescription("A valid scenario description."));
     expect(result.current.header.selectedPhase).toBe(5);
@@ -79,10 +70,29 @@ describe("Finished Issue canonical contract", () => {
     await act(async () => { await result.current.models.addDialog.submit(); });
     expect(createIssueScenario).toHaveBeenCalledWith(expect.objectContaining({ issueId: "issue-1", targetModelId: "model-scenario" }));
     expect(getFinishedIssueInfo).toHaveBeenCalledTimes(2);
-    act(() => result.current.header.selectExecution("scenario-ok"));
+    act(() => result.current.runs.selectExecution("scenario-ok"));
     await act(async () => { await result.current.models.removeScenario("scenario-ok"); });
     expect(removeIssueScenario).toHaveBeenCalledWith("scenario-ok");
     expect(getFinishedIssueInfo).toHaveBeenCalledTimes(3);
-    expect(result.current.header.selectedExecutionKey).toBe("base");
+    expect(result.current.runs.selectedExecutionKey).toBe("base");
+  });
+
+  it("keeps Results Analysis selection independent and stable across analysis subviews", async () => {
+    getFinishedIssueInfo.mockResolvedValue({ data: buildFinishedIssuePayloadFixture() });
+    const { result } = renderHook(() => useFinishedIssueDialogView({ selectedIssue: { id: "issue-1" }, openFinishedIssueDialog: true }));
+
+    await waitFor(() => expect(result.current.dialog.loading).toBe(false));
+    act(() => result.current.resultsAnalysis.selection.addExecution("scenario-ok"));
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base", "scenario-ok"]);
+
+    act(() => result.current.resultsAnalysisNavigation.setActiveView("visualizations"));
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base", "scenario-ok"]);
+    act(() => result.current.resultsAnalysisNavigation.setActiveView("interpretation"));
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base", "scenario-ok"]);
+    act(() => result.current.resultsAnalysis.selection.removeExecution("base"));
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["scenario-ok"]);
+    act(() => result.current.resultsAnalysisNavigation.setActiveView("outcome"));
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["scenario-ok"]);
+    expect(result.current.runs.selectedExecutionKey).toBe("base");
   });
 });

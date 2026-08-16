@@ -32,69 +32,10 @@ const issueScenarioSchema = new Schema(
       required: true,
     },
 
-    // Legacy single-phase fields. New scenarios persist their executions in
-    // phaseResults; these remain optional so existing documents stay readable.
-    source: {
-      consensusPhase: {
-        type: Number,
-        min: 0,
-      },
-      stageResult: {
-        type: Schema.Types.ObjectId,
-        ref: "IssueStageResult",
-        default: null,
-      },
-      domainType: {
-        type: String,
-        enum: ["numeric", "linguistic"],
-        default: null,
-      },
-    },
-
     config: {
       parameterOverrides: {
         type: Schema.Types.Mixed,
         default: {},
-      },
-    },
-
-    requestSnapshot: {
-      modelParameters: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
-      evaluations: {
-        type: Schema.Types.Mixed,
-        default: [],
-      },
-      context: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
-    },
-
-    result: {
-      standardResult: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
-      modelExecution: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
-      rawOutput: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
-    },
-
-    execution: {
-      attemptId: { type: Schema.Types.ObjectId, ref: "IssueExecutionAttempt", default: null },
-      startedAt: {
-        type: Date,
-      },
-      completedAt: {
-        type: Date,
       },
     },
 
@@ -134,7 +75,11 @@ const issueScenarioSchema = new Schema(
           },
         },
       ],
-      default: [],
+      required: true,
+      validate: {
+        validator: (value) => Array.isArray(value) && value.length > 0,
+        message: "phaseResults must contain at least one phase result",
+      },
     },
   },
   {

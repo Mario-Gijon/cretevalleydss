@@ -8,13 +8,6 @@ const contextValue = vi.hoisted(() => ({
   setOpenRemoveConfirmDialog: vi.fn(),
   handleCloseFinishedIssueDialog: vi.fn(),
   header: {
-    executionOptions: [
-      { key: "base", type: "base", label: "Base", modelName: "Base model" },
-      { key: "scenario", type: "scenario", label: "Scenario", modelName: "TOPSIS" },
-    ],
-    selectedExecutionKey: "base",
-    selectExecution: vi.fn(),
-    openAddScenario: vi.fn(),
     showRounds: false,
     selectedPhase: 0,
     changePhase: vi.fn(),
@@ -39,6 +32,9 @@ const renderHeader = () => render(<ThemeProvider theme={createTheme()}><Finished
 
 beforeEach(() => {
   vi.clearAllMocks();
+  contextValue.header.showRounds = false;
+  contextValue.header.basePhases = [];
+  contextValue.header.selectedPhase = 0;
   window.matchMedia = vi.fn().mockImplementation(() => ({
     matches: mobile,
     addEventListener: vi.fn(),
@@ -54,17 +50,17 @@ afterEach(() => {
 });
 
 describe("FinishedIssueDialogHeader", () => {
-  it("keeps execution and action controls on desktop", () => {
+  it("keeps only issue actions on desktop", () => {
     renderHeader();
 
-    expect(screen.getByLabelText("Select execution")).toBeInTheDocument();
-    expect(screen.getByLabelText("Add model")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Select execution")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Add model")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Remove issue")).toBeInTheDocument();
     expect(screen.getByLabelText("Close Finished Issue")).toBeInTheDocument();
     expect(screen.queryByLabelText("Open issue actions")).not.toBeInTheDocument();
   });
 
-  it("provides compact mobile actions and closes the menu after each action", () => {
+  it("provides only issue actions on mobile and closes the menu after each action", () => {
     mobile = true;
     renderHeader();
     const actionsButton = screen.getByLabelText("Open issue actions");
@@ -72,27 +68,28 @@ describe("FinishedIssueDialogHeader", () => {
 
     fireEvent.click(actionsButton);
     expect(screen.getByRole("menu")).toBeInTheDocument();
-    expect(screen.getByText("Base")).toBeInTheDocument();
-    expect(screen.getByText("Scenario")).toBeInTheDocument();
-    expect(screen.getByText("Add model")).toBeInTheDocument();
+    expect(screen.queryByText("Base")).not.toBeInTheDocument();
+    expect(screen.queryByText("Scenario")).not.toBeInTheDocument();
+    expect(screen.queryByText("Add model")).not.toBeInTheDocument();
     expect(screen.getByText("Remove issue")).toBeInTheDocument();
     expect(screen.getByText("Close dialog")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Scenario"));
-    expect(contextValue.header.selectExecution).toHaveBeenCalledWith("scenario");
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-
-    fireEvent.click(actionsButton);
-    fireEvent.click(screen.getByText("Add model"));
-    expect(contextValue.header.openAddScenario).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-
-    fireEvent.click(actionsButton);
     fireEvent.click(screen.getByText("Remove issue"));
     expect(contextValue.setOpenRemoveConfirmDialog).toHaveBeenCalledWith(true);
 
     fireEvent.click(actionsButton);
     fireEvent.click(screen.getByText("Close dialog"));
     expect(contextValue.handleCloseFinishedIssueDialog).toHaveBeenCalledOnce();
+  });
+
+  it("shows real consensus phase tabs independently of model selection", () => {
+    contextValue.header.showRounds = true;
+    contextValue.header.basePhases = [0, 1, 5];
+    contextValue.header.selectedPhase = 5;
+    renderHeader();
+
+    expect(screen.getByRole("tab", { name: "Initial" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Round 1" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Final/ })).toBeInTheDocument();
   });
 });

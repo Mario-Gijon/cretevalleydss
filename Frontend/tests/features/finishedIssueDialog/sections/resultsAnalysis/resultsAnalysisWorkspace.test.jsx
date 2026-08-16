@@ -25,14 +25,15 @@ const completeScenario = (id, ranks) => ({
   id,
   name: id,
   targetModel: { id: `model-${id}`, name: `Model ${id}` },
-  source: { consensusPhase: 5, stageResult: null, domainType: "numeric" },
-  execution: { startedAt: "2026-01-02T10:00:00.000Z", completedAt: "2026-01-02T10:00:00.000Z" },
-  result: {
-    standardResult: {
-      rankedAlternatives: ranks.map(([alternativeId, rank, score]) => ({ alternativeId, rank, score })),
-      plotsGraphic: {},
-    },
-  },
+  phaseResults: [{
+    phase: 5,
+    source: { stageResult: null, domainType: "numeric" },
+    requestSnapshot: { modelParameters: {} },
+    standardizedOutput: { rankedAlternatives: ranks.map(([alternativeId, rank, score]) => ({ alternativeId, rank, score })), plotsGraphic: {} },
+    modelSpecificOutput: {},
+    rawOutput: {},
+    execution: { attemptId: `attempt-${id}`, startedAt: "2026-01-02T10:00:00.000Z", completedAt: "2026-01-02T10:00:00.000Z" },
+  }],
 });
 
 describe("Results analysis workspace", () => {
@@ -208,15 +209,14 @@ describe("Results analysis workspace", () => {
     expect(cells.get("base:base")).toBe(1);
   });
 
-  it("keeps an ordered 1–3 selection and promotes the new primary", async () => {
-    const selectGlobalExecution = vi.fn();
+  it("keeps an ordered 1–3 selection without changing the Models selection", async () => {
     const options = [
       { key: "base", selectable: true },
       { key: "scenario-a", selectable: true },
       { key: "scenario-b", selectable: true },
       { key: "scenario-c", selectable: true },
     ];
-    const { result } = renderHook(() => useFinishedIssueResultsSelection({ issueId: "issue-1", executionOptions: options, selectGlobalExecution }));
+    const { result } = renderHook(() => useFinishedIssueResultsSelection({ issueId: "issue-1", executionOptions: options }));
 
     await waitFor(() => expect(result.current.selectedExecutionKeys).toEqual(["base"]));
     act(() => result.current.addExecution("scenario-a"));
@@ -225,7 +225,6 @@ describe("Results analysis workspace", () => {
     expect(result.current.selectedExecutionKeys).toEqual(["base", "scenario-a", "scenario-b"]);
     act(() => result.current.removeExecution("base"));
     await waitFor(() => expect(result.current.selectedExecutionKeys).toEqual(["scenario-a", "scenario-b"]));
-    expect(selectGlobalExecution).toHaveBeenLastCalledWith("scenario-a");
   });
 
   it("uses functional selection updates for rapid changes and never leaves the workspace empty", async () => {
@@ -437,12 +436,12 @@ describe("Results analysis workspace", () => {
     };
     payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].classification = "high";
     const scenario = completeScenario("scenario-profiles", [["a", 1, 0.9], ["b", 2, 0.1]]);
-    scenario.requestSnapshot = {
+    scenario.phaseResults[0].requestSnapshot = {
       modelParameters: {
         profiles: [{ id: "high", label: "Scenario high" }],
       },
     };
-    scenario.result.standardResult.rankedAlternatives[0].classification = "high";
+    scenario.phaseResults[0].standardizedOutput.rankedAlternatives[0].classification = "high";
     payload.scenarios = [scenario];
 
     const data = buildResultsAnalysisWorkspaceData({
