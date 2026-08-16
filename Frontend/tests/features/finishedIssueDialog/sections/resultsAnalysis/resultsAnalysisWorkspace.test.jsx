@@ -150,15 +150,15 @@ describe("Results analysis workspace", () => {
     expect(nullFallback.primary.sourcePhase).toBe(5);
   });
 
-  it("keeps scenarios static while changing only the selected Base comparison", () => {
+  it("resolves the same selected phase for Base and scenario comparisons", () => {
     const payload = buildFinishedIssuePayloadFixture();
     const initial = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base", "scenario-ok"], selectedPhase: 0 });
     const final = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base", "scenario-ok"], selectedPhase: 5 });
 
     expect(initial.selected[0].ranking.map((entry) => entry.name)).toEqual(["Alpha", "Beta"]);
     expect(final.selected[0].ranking.map((entry) => entry.name)).toEqual(["Beta", "Alpha"]);
-    expect(initial.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].result.standardResult });
-    expect(final.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].result.standardResult });
+    expect(initial.selected[1]).toMatchObject({ sourcePhase: 0, standardizedOutput: payload.scenarios[0].phaseResults[0].standardizedOutput });
+    expect(final.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].phaseResults[1].standardizedOutput });
     expect(initial.comparison.movement).not.toEqual(final.comparison.movement);
   });
 

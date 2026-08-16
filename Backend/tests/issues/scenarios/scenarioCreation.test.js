@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const scenarioExecutionState = vi.hoisted(() => ({
   buildScenarioExecutionContext: vi.fn(),
+  discoverScenarioReplayPhasesOrThrow: vi.fn(),
   executeScenarioModel: vi.fn(),
   markExecutionApplied: vi.fn(),
   markExecutionApplicationFailed: vi.fn(),
@@ -11,6 +12,11 @@ const scenarioExecutionState = vi.hoisted(() => ({
 vi.mock("../../../modules/issues/scenarios/buildScenarioExecutionContext.js", () => ({
   buildScenarioExecutionContext:
     scenarioExecutionState.buildScenarioExecutionContext,
+}));
+
+vi.mock("../../../modules/issues/scenarios/loadScenarioEvaluationData.js", () => ({
+  discoverScenarioReplayPhasesOrThrow:
+    scenarioExecutionState.discoverScenarioReplayPhasesOrThrow,
 }));
 
 vi.mock("../../../modules/issues/modelExecution/index.js", () => ({
@@ -81,6 +87,8 @@ const buildIntervalScenarioModel = (parameter = buildIntervalParameter()) => ({
 describe("createIssueScenario input normalization", () => {
   beforeEach(() => {
     scenarioExecutionState.buildScenarioExecutionContext.mockReset();
+    scenarioExecutionState.discoverScenarioReplayPhasesOrThrow.mockReset();
+    scenarioExecutionState.discoverScenarioReplayPhasesOrThrow.mockResolvedValue([0]);
     scenarioExecutionState.executeScenarioModel.mockReset();
     scenarioExecutionState.markExecutionApplied.mockReset();
     scenarioExecutionState.markExecutionApplicationFailed.mockReset();
@@ -239,10 +247,11 @@ describe("createIssueScenario input normalization", () => {
     await expect(createIssueScenario({ ...input, scenarioDescription: "x".repeat(321) })).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription must not exceed 320 characters" });
   });
 
-  it("passes an explicit source phase into the scenario execution context", async () => {
+  it("replays every discovered phase and persists one aggregate scenario", async () => {
     const userId = new mongoose.Types.ObjectId();
     const context = buildMockExecutionContext();
-    scenarioExecutionState.buildScenarioExecutionContext.mockResolvedValue(context);
+    scenarioExecutionState.discoverScenarioReplayPhasesOrThrow.mockResolvedValue([0, 2]);
+    scenarioExecutionState.buildScenarioExecutionContext.mockImplementation(async ({ phase }) => ({ ...context, evaluationPhase: phase }));
     scenarioExecutionState.executeScenarioModel.mockResolvedValue({
       standardResult: { ranking: ["Alternative A"] },
       modelExecution: { ok: true },
@@ -256,43 +265,36 @@ describe("createIssueScenario input normalization", () => {
       targetModelId: "  target-model-id  ",
       scenarioName: "Historical run",
       scenarioDescription: "  Replays the stored phase.  ",
-      sourcePhase: 3,
       paramOverrides: { alpha: 0.4 },
     });
 
-    expect(scenarioExecutionState.buildScenarioExecutionContext).toHaveBeenCalledWith({
+    expect(scenarioExecutionState.buildScenarioExecutionContext).toHaveBeenNthCalledWith(1, {
       issueId: String(context.issue._id),
       userId,
       targetModelId: "target-model-id",
-      sourcePhase: 3,
+      phase: 0,
       paramOverrides: { alpha: 0.4 },
     });
+    expect(scenarioExecutionState.buildScenarioExecutionContext).toHaveBeenNthCalledWith(2, expect.objectContaining({ phase: 2 }));
     const { IssueScenario } = await import("../../../models/IssueScenarios.js");
     const scenario = await IssueScenario.findOne().lean();
     const executionRequest =
       scenarioExecutionState.executeScenarioModel.mock.calls[0][0].requestPayload;
 
-    expect(executionRequest).toEqual(scenario.requestSnapshot);
+    expect(executionRequest).toEqual(scenario.phaseResults[0].requestSnapshot);
     expect(executionRequest).not.toBe(context.requestPayload);
     expect(scenario).toMatchObject({
       description: "Replays the stored phase.",
-      source: { consensusPhase: 0, domainType: "numeric" },
       config: { parameterOverrides: { alpha: 0.4 } },
-      requestSnapshot: context.requestPayload,
-      result: {
-        standardResult: { ranking: ["Alternative A"] },
-        modelExecution: { ok: true },
-        rawOutput: { raw: true },
-      },
-      execution: expect.objectContaining({
-        startedAt: expect.any(Date),
-        completedAt: expect.any(Date),
-      }),
     });
-    expect(scenario.execution.startedAt).toBeInstanceOf(Date);
-    expect(scenario.execution.completedAt).toBeInstanceOf(Date);
-    expect(scenario.execution).not.toHaveProperty("status");
-    expect(scenario.execution).not.toHaveProperty("error");
+    expect(scenario.phaseResults).toHaveLength(2);
+    expect(scenario.phaseResults.map((entry) => entry.phase)).toEqual([0, 2]);
+    expect(scenario.phaseResults[0]).toMatchObject({
+      source: { domainType: "numeric" }, requestSnapshot: context.requestPayload,
+      result: { standardResult: { ranking: ["Alternative A"] }, modelExecution: { ok: true }, rawOutput: { raw: true } },
+    });
+    expect(scenario.phaseResults[0].execution.startedAt).toBeInstanceOf(Date);
+    expect(scenario.phaseResults[0].execution.completedAt).toBeInstanceOf(Date);
     expect(scenario).not.toHaveProperty("inputs");
     expect(scenario).not.toHaveProperty("outputs");
     expect(scenario).not.toHaveProperty("targetModelName");
@@ -319,20 +321,17 @@ describe("createIssueScenario input normalization", () => {
     expect(await IssueScenario.countDocuments()).toBe(0);
   });
 
-  it("rejects an invalid source phase", async () => {
-    await expect(
-      createIssueScenario({
-        userId: new mongoose.Types.ObjectId(),
-        issueId: new mongoose.Types.ObjectId(),
-        targetModelId: "target-model-id",
-        scenarioName: "Invalid phase",
-        scenarioDescription: "A valid description",
-        sourcePhase: -1,
-      })
-    ).rejects.toMatchObject({
-      statusCode: 400,
-      field: "sourcePhase",
-      message: "sourcePhase must be a non-negative integer",
-    });
+  it("does not persist a partial scenario when a later phase fails", async () => {
+    const context = buildMockExecutionContext();
+    scenarioExecutionState.discoverScenarioReplayPhasesOrThrow.mockResolvedValue([0, 1]);
+    scenarioExecutionState.buildScenarioExecutionContext.mockImplementation(async ({ phase }) => ({ ...context, evaluationPhase: phase }));
+    scenarioExecutionState.executeScenarioModel
+      .mockResolvedValueOnce({ standardResult: {}, modelExecution: {}, rawOutput: {}, executionAttempt: { _id: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } })
+      .mockRejectedValueOnce(new Error("phase one failed"));
+
+    await expect(createIssueScenario({ userId: new mongoose.Types.ObjectId(), issueId: String(context.issue._id), targetModelId: "target-model-id", scenarioName: "Atomic scenario" })).rejects.toThrow("phase one failed");
+    const { IssueScenario } = await import("../../../models/IssueScenarios.js");
+    expect(await IssueScenario.countDocuments()).toBe(0);
+    expect(scenarioExecutionState.markExecutionApplicationFailed).toHaveBeenCalledTimes(1);
   });
 });

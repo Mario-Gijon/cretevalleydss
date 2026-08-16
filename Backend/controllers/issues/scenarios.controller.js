@@ -13,7 +13,6 @@ export const createIssueScenario = async (req, res) => {
     targetModelId: req.body.targetModelId,
     scenarioName: req.body.scenarioName,
     scenarioDescription: req.body.scenarioDescription,
-    sourcePhase: req.body.sourcePhase,
     paramOverrides: req.body.paramOverrides,
   });
 

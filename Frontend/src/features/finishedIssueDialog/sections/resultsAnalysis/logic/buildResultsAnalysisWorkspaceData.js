@@ -26,7 +26,7 @@ const resolveClassificationLabel = ({ classificationId, modelParameters }) => {
   return nonEmptyString(profile?.label);
 };
 
-const resolveExecution = (payload, key, selectedPhase) => selectFinishedIssueExecution(payload, key, key === "base" ? selectedPhase : null);
+const resolveExecution = (payload, key, selectedPhase) => selectFinishedIssueExecution(payload, key, selectedPhase);
 
 const normalizeRanking = ({ payload, execution }) => {
   const alternatives = new Map(asArray(payload?.alternatives).map((alternative) => [alternative?.id, alternative]));
@@ -94,7 +94,7 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     available: !unavailableReason,
     unavailableReason,
     sourcePhase: execution?.sourcePhase ?? null,
-    phaseLabel: type === "base" ? formatFinishedIssuePhaseLabel({ phase: execution?.sourcePhase, orderedPhases: execution?.phaseResults?.map((result) => result.phase) }) : null,
+    phaseLabel: formatFinishedIssuePhaseLabel({ phase: execution?.sourcePhase, orderedPhases: execution?.phaseResults?.map((result) => result.phase) }),
     // Keep the controlled source on this local execution shape. The
     // visualization builder reads only standardizedOutput.plotsGraphic.
     standardizedOutput: execution?.standardizedOutput ?? null,

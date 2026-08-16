@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const stageResults = vi.hoisted(() => ({
   findOne: vi.fn(),
+  find: vi.fn(),
 }));
 
 vi.mock("../../../models/IssueStageResults.js", () => ({
   IssueStageResult: stageResults,
 }));
 
-import { resolveAlternativeResultOrThrow } from "../../../modules/issues/scenarios/loadScenarioEvaluationData.js";
+import { discoverScenarioReplayPhasesOrThrow, resolveAlternativeResultOrThrow } from "../../../modules/issues/scenarios/loadScenarioEvaluationData.js";
 
 const queryFor = (result) => {
   const query = {
@@ -19,7 +20,7 @@ const queryFor = (result) => {
 };
 
 describe("resolveAlternativeResultOrThrow", () => {
-  beforeEach(() => stageResults.findOne.mockReset());
+  beforeEach(() => { stageResults.findOne.mockReset(); stageResults.find.mockReset(); });
 
   it("loads the exact requested consensus phase", async () => {
     const query = queryFor({ consensusPhase: 2 });
@@ -27,7 +28,7 @@ describe("resolveAlternativeResultOrThrow", () => {
 
     const result = await resolveAlternativeResultOrThrow({
       issue: { _id: "issue-1", isConsensus: true },
-      sourcePhase: 2,
+      phase: 2,
     });
 
     expect(stageResults.findOne).toHaveBeenCalledWith({
@@ -39,7 +40,7 @@ describe("resolveAlternativeResultOrThrow", () => {
     expect(result.phase).toBe(2);
   });
 
-  it("uses the latest phase only when no source phase was supplied", async () => {
+  it("uses the latest phase only when no phase was supplied", async () => {
     const query = queryFor({ consensusPhase: 5 });
     stageResults.findOne.mockReturnValue(query);
 
@@ -51,16 +52,12 @@ describe("resolveAlternativeResultOrThrow", () => {
     expect(result.phase).toBe(5);
   });
 
-  it("rejects an explicit source phase for a non-consensus issue", async () => {
-    await expect(
-      resolveAlternativeResultOrThrow({
-        issue: { _id: "issue-1", isConsensus: false },
-        sourcePhase: 1,
-      })
-    ).rejects.toMatchObject({
-      statusCode: 400,
-      field: "sourcePhase",
-    });
-    expect(stageResults.findOne).not.toHaveBeenCalled();
+  it("discovers every persisted alternative-evaluation phase in order", async () => {
+    const query = queryFor([{ consensusPhase: 0 }, { consensusPhase: 2 }, { consensusPhase: 5 }]);
+    stageResults.find.mockReturnValue(query);
+
+    await expect(discoverScenarioReplayPhasesOrThrow({ issue: { _id: "issue-1" } })).resolves.toEqual([0, 2, 5]);
+    expect(stageResults.find).toHaveBeenCalledWith({ issue: "issue-1", stage: "alternativeEvaluation" });
+    expect(query.sort).toHaveBeenCalledWith({ consensusPhase: 1, _id: 1 });
   });
 });

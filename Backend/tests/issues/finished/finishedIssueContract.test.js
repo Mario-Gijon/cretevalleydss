@@ -444,10 +444,13 @@ describe("definitive Finished Issue contract", () => {
     });
     expect(payload.models.criteriaWeighting).toMatchObject({ name: "Weight model" });
     expect(payload.models.compatible.some((model) => model.id === payload.models.base.id)).toBe(true);
-    expect(payload.scenarios).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: String(fixture.scenarios.scenario._id), description: "Stored scenario description", targetModel: expect.objectContaining({ paperUrl: "https://papers.example.test/base" }), source: { consensusPhase: 2, stageResult: String(fixture.results.finalResult._id), domainType: null }, execution: { startedAt: iso("2026-01-12T10:59:00.000Z"), completedAt: iso("2026-01-12T11:00:00.000Z") } }),
-      expect.objectContaining({ id: String(fixture.scenarios.failedScenario._id), description: null, execution: { startedAt: iso("2026-01-12T11:01:00.000Z"), completedAt: iso("2026-01-12T11:01:00.000Z") } }),
-    ]));
+    const serializedScenario = payload.scenarios.find((entry) => entry.id === String(fixture.scenarios.scenario._id));
+    const serializedFailedScenario = payload.scenarios.find((entry) => entry.id === String(fixture.scenarios.failedScenario._id));
+    expect(serializedScenario).toMatchObject({ description: "Stored scenario description", targetModel: { paperUrl: "https://papers.example.test/base" } });
+    expect(serializedScenario.phaseResults).toHaveLength(1);
+    expect(serializedScenario.phaseResults[0]).toMatchObject({ phase: 2, source: { stageResult: String(fixture.results.finalResult._id), domainType: null }, execution: { startedAt: iso("2026-01-12T10:59:00.000Z"), completedAt: iso("2026-01-12T11:00:00.000Z") } });
+    expect(serializedFailedScenario).toMatchObject({ description: null });
+    expect(serializedFailedScenario.phaseResults[0].execution).toMatchObject({ startedAt: iso("2026-01-12T11:01:00.000Z"), completedAt: iso("2026-01-12T11:01:00.000Z") });
     expect(payload.executionMetadata).toMatchObject({
       contractVersion: 1,
       generatedAt: expect.any(String),

@@ -32,10 +32,11 @@ const issueScenarioSchema = new Schema(
       required: true,
     },
 
+    // Legacy single-phase fields. New scenarios persist their executions in
+    // phaseResults; these remain optional so existing documents stay readable.
     source: {
       consensusPhase: {
         type: Number,
-        required: true,
         min: 0,
       },
       stageResult: {
@@ -91,12 +92,49 @@ const issueScenarioSchema = new Schema(
       attemptId: { type: Schema.Types.ObjectId, ref: "IssueExecutionAttempt", default: null },
       startedAt: {
         type: Date,
-        required: true,
       },
       completedAt: {
         type: Date,
-        required: true,
       },
+    },
+
+    phaseResults: {
+      type: [
+        {
+          phase: { type: Number, required: true, min: 0 },
+          source: {
+            stageResult: {
+              type: Schema.Types.ObjectId,
+              ref: "IssueStageResult",
+              default: null,
+            },
+            domainType: {
+              type: String,
+              enum: ["numeric", "linguistic"],
+              default: null,
+            },
+          },
+          requestSnapshot: {
+            type: Schema.Types.Mixed,
+            required: true,
+          },
+          result: {
+            standardResult: { type: Schema.Types.Mixed, required: true },
+            modelExecution: { type: Schema.Types.Mixed, required: true },
+            rawOutput: { type: Schema.Types.Mixed, required: true },
+          },
+          execution: {
+            attemptId: {
+              type: Schema.Types.ObjectId,
+              ref: "IssueExecutionAttempt",
+              required: true,
+            },
+            startedAt: { type: Date, required: true },
+            completedAt: { type: Date, required: true },
+          },
+        },
+      ],
+      default: [],
     },
   },
   {

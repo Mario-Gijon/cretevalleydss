@@ -4791,11 +4791,6 @@
                     "type": "string",
                     "description": "Authoritative IssueModel identity."
                   },
-                  "sourcePhase": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "nullable": true
-                  },
                   "paramOverrides": {
                     "type": "object",
                     "additionalProperties": true

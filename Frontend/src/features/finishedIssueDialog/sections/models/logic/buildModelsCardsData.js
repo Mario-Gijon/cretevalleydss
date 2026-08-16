@@ -35,6 +35,13 @@ const resolveBaseComputedAt = (payload) => {
   );
 };
 
+const resolveScenarioComputedAt = (scenario) => {
+  const phaseResults = asArray(scenario?.phaseResults)
+    .filter((entry) => Number.isInteger(entry?.phase))
+    .sort((left, right) => left.phase - right.phase);
+  return phaseResults.at(-1)?.execution?.completedAt ?? scenario?.execution?.completedAt ?? scenario?.createdAt ?? null;
+};
+
 export const buildModelsCardsData = ({ payload, selectedExecution, executionOptions }) => {
   const scenariosById = new Map(
     asArray(payload?.scenarios)
@@ -62,8 +69,7 @@ export const buildModelsCardsData = ({ payload, selectedExecution, executionOpti
         : nonEmpty(scenario?.description, "No description added."),
       computedAt: option.type === "base"
         ? resolveBaseComputedAt(payload)
-        : scenario?.execution?.completedAt ?? scenario?.createdAt ??
-          null,
+        : resolveScenarioComputedAt(scenario),
       paperUrl: resolvePaperUrl(model),
     };
   });

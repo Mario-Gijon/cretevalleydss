@@ -1,6 +1,5 @@
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
-import { Participation } from "../../../models/Participations.js";
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
@@ -176,22 +175,10 @@ export const buildScenarioCriteriaWithExpressionDomainsOrThrow = ({
 });
 
 const resolveScenarioParticipations = ({
-  sourcePhase,
   latestAlternativeResult,
-  currentParticipations,
   completedEvaluations,
   issueId,
 }) => {
-  if (sourcePhase === undefined) {
-    return currentParticipations;
-  }
-
-  const currentParticipationByExpertId = new Map(
-    currentParticipations.map((participation) => [
-      toIdString(participation.expert?._id || participation.expert),
-      participation,
-    ])
-  );
   const savedWeightByExpertId = new Map(
     getStageExpertWeights(latestAlternativeResult).map((entry) => [
       toIdString(entry?.expert),
@@ -201,10 +188,8 @@ const resolveScenarioParticipations = ({
 
   return completedEvaluations.map((evaluation) => {
     const { expertId } = requireEvaluationExpertOrThrow({ issueId, evaluation });
-    const currentParticipation = currentParticipationByExpertId.get(expertId);
 
     return {
-      ...(currentParticipation || {}),
       expert: evaluation.expert,
       ...(savedWeightByExpertId.has(expertId)
         ? { weight: savedWeightByExpertId.get(expertId) }
@@ -217,7 +202,7 @@ export const buildScenarioExecutionContext = async ({
   issueId,
   userId,
   targetModelId,
-  sourcePhase,
+  phase,
   paramOverrides,
 }) => {
   const issue = await getIssueByIdOrThrow(issueId, {
@@ -231,21 +216,15 @@ export const buildScenarioExecutionContext = async ({
 
   const targetModel = await getTargetScenarioModelOrThrow({ targetModelId });
   const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(targetModel);
-  const { latestAlternativeResult, phase } =
-    await resolveAlternativeResultOrThrow({ issue, sourcePhase });
+  const { latestAlternativeResult, phase: evaluationPhase } =
+    await resolveAlternativeResultOrThrow({ issue, phase });
 
-  const [participations, completedEvaluations, alternatives, criteria] =
+  const [completedEvaluations, alternatives, criteria] =
     await Promise.all([
-      Participation.find({
-        issue: issue._id,
-        invitationStatus: "accepted",
-      })
-        .populate("expert", "email name")
-        .lean(),
       IssueEvaluation.find({
         issue: issue._id,
         stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-        consensusPhase: phase,
+        consensusPhase: evaluationPhase,
         completed: true,
       })
         .populate("expert", "email name")
@@ -347,16 +326,14 @@ export const buildScenarioExecutionContext = async ({
   });
 
   const scenarioParticipations = resolveScenarioParticipations({
-    sourcePhase,
     latestAlternativeResult,
-    currentParticipations: participations,
     completedEvaluations,
     issueId: toIdString(issue._id),
   });
 
   validateEvaluationCoverageOrThrow({
     issue,
-    phase,
+    phase: evaluationPhase,
     acceptedParticipations: scenarioParticipations,
     completedEvaluations,
   });
@@ -464,7 +441,7 @@ export const buildScenarioExecutionContext = async ({
     })),
     criteria: scenarioCriteria,
     weights: weightsUsed,
-    consensusPhase: phase,
+    consensusPhase: evaluationPhase,
     previousStageResult: serializePreviousStageResultForExecution(
       latestAlternativeResult
     ),
@@ -495,7 +472,7 @@ export const buildScenarioExecutionContext = async ({
     latestAlternativeResult,
     stageResultId: latestAlternativeResult._id,
     domainType,
-    evaluationPhase: phase,
+    evaluationPhase,
     requestPayload,
   };
 };

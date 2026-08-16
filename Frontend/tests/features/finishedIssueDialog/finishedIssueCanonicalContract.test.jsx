@@ -21,14 +21,26 @@ describe("Finished Issue canonical contract", () => {
     const payload = buildFinishedIssuePayloadFixture();
     const snapshot = JSON.stringify(payload);
     const base = selectFinishedIssueExecution(payload, "base");
-    const scenario = selectFinishedIssueExecution(payload, "scenario-ok");
+    const scenario = selectFinishedIssueExecution(payload, "scenario-ok", 0);
     expect(base.phaseResults.map((result) => result.phase)).toEqual([0, 5]);
     expect(base.sourcePhase).toBe(5);
     expect(scenario.type).toBe("scenario");
-    expect(scenario.phaseResults).toEqual([]);
+    expect(scenario.phaseResults.map((result) => result.phase)).toEqual([0, 5]);
+    expect(scenario.sourcePhase).toBe(0);
     expect(scenario.standardizedOutput.rankedAlternatives[0].alternativeId).toBe("a");
     expect(JSON.stringify(payload)).toBe(snapshot);
     expect(buildFinishedIssueExecutionOptions(payload).map((option) => option.key)).toEqual(["base", "scenario-ok", "scenario-secondary"]);
+  });
+
+  it("keeps a legacy single-phase scenario readable at the payload boundary", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const legacy = payload.scenarios[0];
+    legacy.source = { consensusPhase: 5 };
+    legacy.requestSnapshot = legacy.phaseResults[1].requestSnapshot;
+    legacy.result = { standardResult: legacy.phaseResults[1].standardizedOutput, modelExecution: legacy.phaseResults[1].modelSpecificOutput, rawOutput: legacy.phaseResults[1].rawOutput };
+    legacy.execution = legacy.phaseResults[1].execution;
+    delete legacy.phaseResults;
+    expect(selectFinishedIssueExecution(payload, legacy.id).phaseResults.map((result) => result.phase)).toEqual([5]);
   });
 
   it("keeps overview, evaluations and consensus canonical while results follow execution", () => {

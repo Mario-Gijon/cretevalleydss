@@ -339,29 +339,19 @@ export const buildFinishedIssuePayloadFixture = (overrides = {}) => {
           name: "Scenario model",
           paperUrl: "https://example.com",
         },
-        source: {
-          consensusPhase: 5,
-          stageResult: "stage-result-5",
-          domainType: "numeric",
-        },
         config: { parameterOverrides: { alpha: 0.9 } },
-        requestSnapshot: {
-          modelParameters: { alpha: 0.9 },
-          evaluations: [],
-          context: {},
-        },
-        result: {
-          standardResult: {
+        phaseResults: [0, 5].map((phase) => ({
+          phase,
+          source: { stageResult: `stage-result-${phase}`, domainType: "numeric" },
+          requestSnapshot: { modelParameters: { alpha: 0.9 }, evaluations: [], context: {} },
+          standardizedOutput: {
             rankedAlternatives: [{ alternativeId: "a", rank: 1, score: 0.99 }],
             plotsGraphic: {},
           },
-          modelExecution: { token: "scenario" },
-          rawOutput: { token: "scenario-raw" },
-        },
-        execution: {
-          startedAt: "2026-01-02T10:59:00.000Z",
-          completedAt: "2026-01-02T11:00:00.000Z",
-        },
+          modelSpecificOutput: { token: `scenario-${phase}` },
+          rawOutput: { token: `scenario-raw-${phase}` },
+          execution: { startedAt: "2026-01-02T10:59:00.000Z", completedAt: "2026-01-02T11:00:00.000Z" },
+        })),
       },
       {
         id: "scenario-secondary",
@@ -372,21 +362,19 @@ export const buildFinishedIssuePayloadFixture = (overrides = {}) => {
           name: "Secondary model",
           paperUrl: "https://example.com",
         },
-        source: { consensusPhase: 0, stageResult: null, domainType: "numeric" },
         config: { parameterOverrides: {} },
-        requestSnapshot: { modelParameters: {}, evaluations: [], context: {} },
-        result: {
-          standardResult: {
+        phaseResults: [{
+          phase: 0,
+          source: { stageResult: null, domainType: "numeric" },
+          requestSnapshot: { modelParameters: {}, evaluations: [], context: {} },
+          standardizedOutput: {
             rankedAlternatives: [{ alternativeId: "b", rank: 1, score: 0.8 }],
             plotsGraphic: {},
           },
-          modelExecution: {},
+          modelSpecificOutput: {},
           rawOutput: {},
-        },
-        execution: {
-          startedAt: "2026-01-02T12:00:00.000Z",
-          completedAt: "2026-01-02T12:00:00.000Z",
-        },
+          execution: { startedAt: "2026-01-02T12:00:00.000Z", completedAt: "2026-01-02T12:00:00.000Z" },
+        }],
       },
     ],
     executionMetadata: { completeness: { missingEvidence: [] } },

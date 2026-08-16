@@ -44,7 +44,6 @@ const ModelsSection = () => {
         setScenarioName: models.addDialog.setScenarioName,
         setScenarioDescription: models.addDialog.setScenarioDescription,
         setSelectedModelId: models.addDialog.setSelectedModelId,
-        setSelectedSourcePhase: models.addDialog.setSelectedSourcePhase,
         updateScenarioParameter: models.addDialog.updateScenarioParameter,
         submitAdd: models.addDialog.submit,
       }}

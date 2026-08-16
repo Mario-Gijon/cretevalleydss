@@ -13,13 +13,13 @@ import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/fin
 const actions = {
   selectExecution: vi.fn(), removeScenario: vi.fn(), openAdd: vi.fn(), closeAdd: vi.fn(),
   setScenarioName: vi.fn(), setScenarioDescription: vi.fn(), setSelectedModelId: vi.fn(),
-  setSelectedSourcePhase: vi.fn(), updateScenarioParameter: vi.fn(), submitAdd: vi.fn(),
+  updateScenarioParameter: vi.fn(), submitAdd: vi.fn(),
 };
 
 const buildState = (payload, overrides = {}) => ({
   addOpen: false, addLoading: false, scenarioName: "Historical sensitivity", scenarioDescription: "A saved scenario description.",
   selectedModelId: "model-scenario", selectedModel: payload.models.compatible[0], selectedModelCompatible: true,
-  sourcePhases: [0, 5], selectedSourcePhase: 5, scenarioParamValues: {}, availableModels: payload.models.compatible, ...overrides,
+  scenarioParamValues: {}, availableModels: payload.models.compatible, ...overrides,
 });
 
 const viewFor = (payload, selectedKey = "base", state = buildState(payload)) => {
@@ -57,7 +57,7 @@ describe("ModelsView", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios = [payload.scenarios[0]];
     payload.scenarios[0].description = "Test description";
-    payload.scenarios[0].execution.completedAt = "2026-01-02T10:00:00.000Z";
+    payload.scenarios[0].phaseResults[1].execution.completedAt = "2026-01-02T10:00:00.000Z";
     renderView(payload, "scenario-ok");
     expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
     expect(screen.getByTitle("Scenario")).toBeInTheDocument();
@@ -179,7 +179,7 @@ describe("ModelsView", () => {
     expect(scenarioDescriptionField.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
     expect(screen.getByText(/\/320$/)).toBeInTheDocument();
     expect(screen.getByLabelText("Model")).toBeInTheDocument();
-    expect(screen.getByLabelText("Source phase")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Source phase")).not.toBeInTheDocument();
     const dialog = screen.getByRole("dialog");
     const dialogContent = dialog.querySelector(".MuiDialogContent-root");
     expect(dialogContent).toBeInTheDocument();
@@ -190,7 +190,6 @@ describe("ModelsView", () => {
     expect(window.getComputedStyle(dialog).backgroundImage).toContain("linear-gradient");
     expect(document.querySelector(".MuiBackdrop-root")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Model" }).closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
-    expect(screen.getByRole("combobox", { name: "Source phase" }).closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
   });
 
   it("keeps responsive scenario capacities and meaningful card dimensions", () => {

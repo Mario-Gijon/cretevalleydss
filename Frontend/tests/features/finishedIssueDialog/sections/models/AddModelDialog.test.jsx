@@ -50,7 +50,6 @@ const actions = {
   setScenarioName: vi.fn(),
   setScenarioDescription: vi.fn(),
   setSelectedModelId: vi.fn(),
-  setSelectedSourcePhase: vi.fn(),
   updateScenarioParameter: vi.fn(),
   submit: vi.fn(),
 };
@@ -62,18 +61,15 @@ const buildState = (overrides = {}) => ({
   selectedModelId: enabledModel.id,
   selectedModel: enabledModel,
   selectedModelCompatible: true,
-  selectedSourcePhase: 5,
-  sourcePhases: [0, 5],
   scenarioParamValues: { alpha: 0.5 },
   availableModels: [enabledModel, disabledModel],
   ...overrides,
 });
 
-const dialog = (state, consensusEnabled = true) => (
+const dialog = (state) => (
   <ThemeProvider theme={createTheme()}>
     <AddModelDialog
       open
-      consensusEnabled={consensusEnabled}
       state={state}
       parameterContext={{ marker: "parameter-context" }}
       actions={actions}
@@ -137,12 +133,9 @@ describe("AddModelDialog", () => {
     expect(screen.getByRole("button", { name: "Add model" })).toHaveClass("MuiButton-colorSecondary");
   });
 
-  it("shows source phase only for consensus-enabled issues", () => {
-    const { rerender } = render(dialog(buildState(), false));
+  it("does not render a source-phase selector", () => {
+    render(dialog(buildState()));
     expect(screen.queryByLabelText("Source phase")).not.toBeInTheDocument();
-
-    rerender(dialog(buildState(), true));
-    expect(screen.getByLabelText("Source phase")).toBeInTheDocument();
   });
 
   it("keeps parameter rendering in ParameterFieldHost and emits a named update", () => {

@@ -16,7 +16,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   const [scenarioName, setScenarioName] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
   const [selectedModelId, setSelectedModelId] = useState("");
-  const [selectedSourcePhase, setSelectedSourcePhase] = useState(null);
   const [scenarioParamValues, setScenarioParamValues] = useState({});
   const selectedExecution = useMemo(
     () => selectFinishedIssueExecution(payload, selectedExecutionKey),
@@ -35,15 +34,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   }, [payload?.criteria?.nodes, payload?.expressionDomains]);
   const selectedModel = availableModels.find((model) => model?.id === selectedModelId) || null;
   const selectedModelCompatible = selectedModel ? isModelCompatible(selectedModel) : false;
-  const sourcePhases = useMemo(
-    () => [...new Set(
-      asArray(payload?.phaseResults)
-        .filter((result) => result?.stage === "alternativeEvaluation" && Number.isInteger(result?.phase))
-        .map((result) => result.phase)
-    )].sort((left, right) => left - right),
-    [payload?.phaseResults]
-  );
-  const consensusEnabled = payload?.consensus?.enabled === true;
 
   useEffect(() => {
     if (selectedExecutionKey !== "base" && !asArray(payload?.scenarios).some((scenario) => scenario?.id === selectedExecutionKey)) {
@@ -59,19 +49,11 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       baseIssueWeights: payload?.criteria?.finalWeights?.byCriterionId || {},
     }));
   }, [addOpen, payload?.criteria?.finalWeights?.byCriterionId, selectedModel, leafCriteria]);
-  useEffect(() => {
-    if (!addOpen) return;
-    setSelectedSourcePhase(
-      consensusEnabled ? sourcePhases.at(-1) ?? null : null
-    );
-  }, [addOpen, consensusEnabled, sourcePhases]);
-
   const closeAddDialog = () => {
     setAddOpen(false);
     setScenarioName("");
     setScenarioDescription("");
     setSelectedModelId("");
-    setSelectedSourcePhase(null);
     setScenarioParamValues({});
   };
   const updateScenarioParameter = (key, value) => {
@@ -116,9 +98,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
         scenarioName: scenarioName.trim() || undefined,
         scenarioDescription: trimmedScenarioDescription,
         targetModelId: selectedModel.id,
-        ...(consensusEnabled && Number.isInteger(selectedSourcePhase)
-          ? { sourcePhase: selectedSourcePhase }
-          : {}),
         paramOverrides: cleanParamsForSend({ model: selectedModel, values, leafCount: leafCriteria.length, leafCriteria }),
       });
       if (!response?.success) {
@@ -170,14 +149,10 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       availableModels,
       selectedModel,
       selectedModelCompatible,
-      selectedSourcePhase,
-      sourcePhases,
-      consensusEnabled,
       scenarioParamValues,
       setScenarioName,
       setScenarioDescription,
       setSelectedModelId,
-      setSelectedSourcePhase,
       updateScenarioParameter,
       open: () => setAddOpen(true),
       close: closeAddDialog,

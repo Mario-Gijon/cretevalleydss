@@ -28,7 +28,6 @@ const ModelsView = ({ data, parameterContext, addParameterContext, state, action
     <RawOutputPanel rawOutput={data.selectedExecution.rawOutput} />
     <AddModelDialog
       open={state.add.addOpen}
-      consensusEnabled={data.consensusEnabled}
       state={state.add}
       parameterContext={addParameterContext}
       actions={{
@@ -36,7 +35,6 @@ const ModelsView = ({ data, parameterContext, addParameterContext, state, action
         setScenarioName: actions.setScenarioName,
         setScenarioDescription: actions.setScenarioDescription,
         setSelectedModelId: actions.setSelectedModelId,
-        setSelectedSourcePhase: actions.setSelectedSourcePhase,
         updateScenarioParameter: actions.updateScenarioParameter,
         submit: actions.submitAdd,
       }}

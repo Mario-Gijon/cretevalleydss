@@ -15,9 +15,8 @@ import AddModelDialogActions from "./addModelDialog/AddModelDialogActions.jsx";
 import ModelParametersFields from "./addModelDialog/ModelParametersFields.jsx";
 import ModelSelectionField from "./addModelDialog/ModelSelectionField.jsx";
 import ScenarioDetailsFields from "./addModelDialog/ScenarioDetailsFields.jsx";
-import SourcePhaseField from "./addModelDialog/SourcePhaseField.jsx";
 
-const AddModelDialog = ({ open, consensusEnabled, state, parameterContext, actions }) => {
+const AddModelDialog = ({ open, state, parameterContext, actions }) => {
   const parameters = getScenarioParameterDefinitions(state.selectedModel);
   const modelOptions = buildAddModelOptions(state.availableModels);
   const selectedModelOption = modelOptions.find(
@@ -51,13 +50,6 @@ const AddModelDialog = ({ open, consensusEnabled, state, parameterContext, actio
             selectedModelReason={selectedModelOption?.reason}
             onChange={actions.setSelectedModelId}
           />
-          {consensusEnabled ? (
-            <SourcePhaseField
-              sourcePhases={state.sourcePhases}
-              selectedSourcePhase={state.selectedSourcePhase}
-              onChange={actions.setSelectedSourcePhase}
-            />
-          ) : null}
           <ModelParametersFields
             parameterContext={parameterContext}
             parameters={parameters}
