@@ -1,9 +1,11 @@
+import { displayedProjectedDistance } from "../../../graphs/logic/buildExpertCollectiveConnectors.js";
+
 const finite = (value) => typeof value === "number" && Number.isFinite(value);
 
 export const buildProjectedExpertDistances = (projection) => {
   if (!projection?.available || !projection.collectivePoint) return [];
   const { collectivePoint } = projection;
-  return projection.expertPoints
+  const rows = projection.expertPoints
     .map((expert, index) => ({
       ...expert,
       originalIndex: index,
@@ -19,11 +21,15 @@ export const buildProjectedExpertDistances = (projection) => {
         String(left.identity).localeCompare(String(right.identity)) ||
         left.originalIndex - right.originalIndex,
     )
-    .map((entry, index, rows) => ({
+    .map((entry) => ({
       ...entry,
-      closest:
-        index === 0 || Math.abs(entry.distance - rows[0].distance) <= 1e-12,
+      displayedDistance: displayedProjectedDistance(entry.distance),
     }));
+  const minimum = Math.min(...rows.map((entry) => entry.displayedDistance));
+  return rows.map((entry) => ({
+    ...entry,
+    closest: entry.displayedDistance === minimum,
+  }));
 };
 
 export default buildProjectedExpertDistances;

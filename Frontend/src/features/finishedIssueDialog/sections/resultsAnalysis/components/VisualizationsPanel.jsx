@@ -132,14 +132,15 @@ const SingleVisualization = ({
   visualizations,
   scatterPlotRef,
   onResetZoom,
+  embedded = false,
 }) => {
   const scatter = visualizations.singleScatter;
   return (
     <Stack spacing={1.4}>
       <Box>
-        <Box sx={cardSx}>
+        <Box sx={embedded ? {} : cardSx}>
           <Header
-            title="Expert–collective map"
+            title={embedded ? "Stored projection" : "Expert–collective map"}
             subtitle="Dispersion of expert points and the collective position."
             resettable={scatter?.available}
             onResetZoom={onResetZoom}
@@ -176,10 +177,11 @@ const ComparisonVisualization = ({
   comparison,
   scatterPlotRef,
   onResetZoom,
+  embedded = false,
 }) => {
   if (comparison.presentation === "unavailable")
     return (
-      <Box sx={cardSx}>
+      <Box sx={embedded ? { minWidth: 0 } : cardSx}>
         <Header
           title="Comparative visualizations"
           subtitle="Stored analytical projections."
@@ -229,7 +231,7 @@ const ComparisonVisualization = ({
           }}
         >
           {comparison.separateExecutions.map((group) => (
-            <Box key={group.id} sx={cardSx}>
+            <Box key={group.id} sx={embedded ? { minWidth: 0 } : cardSx}>
               <Header
                 title="Expert–collective map"
                 subtitle="Stored projection shown separately."
@@ -262,9 +264,9 @@ const ComparisonVisualization = ({
       ? [comparison.sharedProjection]
       : comparison.alignedExecutions;
   return (
-    <Box sx={cardSx}>
+    <Box sx={embedded ? {} : cardSx}>
       <Header
-        title="Expert–collective map"
+        title={embedded ? "Stored projection" : "Expert–collective map"}
         subtitle="Dispersion of expert points and the collective position."
         resettable
         onResetZoom={onResetZoom}
@@ -648,21 +650,35 @@ const ExpertCollectiveRelationship = ({
         comparison={visualizations.expertCollectiveComparison}
         scatterPlotRef={scatterPlotRef}
         onResetZoom={onResetZoom}
+        embedded
       />
     ) : (
       <SingleVisualization
         visualizations={visualizations}
         scatterPlotRef={scatterPlotRef}
         onResetZoom={onResetZoom}
+        embedded
       />
     );
   return (
-    <Stack spacing={1}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h6" component="h2">
-          Expert–collective relationship
-        </Typography>
+    <Box sx={cardSx}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="flex-start"
+        spacing={1}
+        sx={{ mb: 1.25 }}
+      >
+        <Box>
+          <Typography variant="h6" component="h2">
+            Expert–collective relationship
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Compare expert positions with the collective result.
+          </Typography>
+        </Box>
         <ToggleButtonGroup
+          color="secondary"
           exclusive
           size="small"
           value={representation}
@@ -683,10 +699,11 @@ const ExpertCollectiveRelationship = ({
           />
           <ProjectedExpertDistances
             projections={visualizations.canonicalProjections || []}
+            phase={visualizations.phase}
           />
         </Box>
       )}
-    </Stack>
+    </Box>
   );
 };
 

@@ -76,9 +76,14 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = 
           label: (ctx) => {
             const { datasetIndex, raw } = ctx;
             if (datasetIndex === 0) {
-              return `${raw.email} (${raw.x.toFixed(2)}, ${raw.y.toFixed(2)})`;
+              const name = raw.email || raw.label || raw.identity || "Expert";
+              const x = Number.isFinite(raw.x) ? raw.x.toFixed(2) : "—";
+              const y = Number.isFinite(raw.y) ? raw.y.toFixed(2) : "—";
+              return `${name} (${x}, ${y})`;
             }
-            return `Collective (${raw.x.toFixed(2)}, ${raw.y.toFixed(2)})`;
+            const x = Number.isFinite(raw.x) ? raw.x.toFixed(2) : "—";
+            const y = Number.isFinite(raw.y) ? raw.y.toFixed(2) : "—";
+            return `Collective (${x}, ${y})`;
           },
         },
       },

@@ -4,7 +4,10 @@ const isFinitePoint = (point) =>
   Number.isFinite(Number(point[0])) &&
   Number.isFinite(Number(point[1]));
 
-const normalizePoint = (point) => ({ x: Number(point[0]), y: Number(point[1]) });
+const normalizePoint = (point) => ({
+  x: Number(point[0]),
+  y: Number(point[1]),
+});
 
 const normalizedIdentity = (value) =>
   typeof value === "string" && value.trim() ? value.trim() : null;
@@ -61,7 +64,12 @@ export const normalizePlotsGraphic = (plotsGraphic) => {
         continue;
       }
       const identity = normalizedIdentity(label);
-      expertPoints.push({ label: identity || "Expert", identity, identitySource, ...normalizePoint(point) });
+      expertPoints.push({
+        label: identity || "Expert",
+        identity,
+        identitySource,
+        ...normalizePoint(point),
+      });
     }
   } else if (Array.isArray(expertPointsRaw)) {
     expertPointsRaw.forEach((point, index) => {
@@ -76,11 +84,18 @@ export const normalizePlotsGraphic = (plotsGraphic) => {
       const fallbackLabel = `Expert ${index + 1}`;
       expertPoints.push({
         label: controlledLabel || email || id || fallbackLabel,
+        email: email || null,
         // Older controlled plotsGraphic payloads carry only an ordered expert
         // sequence. normalizePlotsGraphic gives that sequence deterministic
         // canonical labels so equal stored projections can still be grouped.
         identity: id || email || controlledLabel || fallbackLabel,
-        identitySource: id ? "id" : email ? "email" : controlledLabel ? "label" : "normalized-label",
+        identitySource: id
+          ? "id"
+          : email
+            ? "email"
+            : controlledLabel
+              ? "label"
+              : "normalized-label",
         ...normalizePoint(point),
       });
     });
@@ -97,6 +112,9 @@ export const normalizePlotsGraphic = (plotsGraphic) => {
     reason,
     raw: plotsGraphic,
     hasInvalidCoordinates,
-    isValid: expertPoints.length > 0 && !hasInvalidCoordinates && isFinitePoint([collectivePoint?.x, collectivePoint?.y]),
+    isValid:
+      expertPoints.length > 0 &&
+      !hasInvalidCoordinates &&
+      isFinitePoint([collectivePoint?.x, collectivePoint?.y]),
   };
 };

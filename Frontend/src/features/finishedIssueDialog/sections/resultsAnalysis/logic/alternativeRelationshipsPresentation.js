@@ -42,6 +42,19 @@ export const relationshipAlternatives = (relationship) =>
         String(left.name || "").localeCompare(String(right.name || "")),
     );
 
+export const buildAlternativeRelationshipsHeatmap = (relationship) => {
+  const alternatives = relationshipAlternatives(relationship);
+  const indexById = new Map(alternatives.map((item, index) => [item.alternativeId, index]));
+  const data = [];
+  (relationship?.pairs || []).forEach((pair) => {
+    const x = indexById.get(pair.leftAlternativeId);
+    const y = indexById.get(pair.rightAlternativeId);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x === y || !finite(pair.relativeSeparation)) return;
+    data.push([x, y, pair.relativeSeparation], [y, x, pair.relativeSeparation]);
+  });
+  return { alternatives, data };
+};
+
 export const buildRelationshipNetworkNodes = (alternatives) => {
   const count = alternatives.length;
   return alternatives.map((alternative, index) => {

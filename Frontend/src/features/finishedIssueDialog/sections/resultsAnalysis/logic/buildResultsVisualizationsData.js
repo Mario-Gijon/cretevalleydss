@@ -53,6 +53,8 @@ export const buildCanonicalAnalyticalProjection = ({
   const expertPoints = normalized.expertPoints.map((point) => ({
     identity: point.identity || null,
     label: point.label,
+    email:
+      point.email || (point.identitySource === "email" ? point.identity : null),
     x: point.x + collectivePoint.x,
     y: point.y + collectivePoint.y,
   }));
