@@ -70,7 +70,7 @@ describe("finished Issue execution analysis service", () => {
   it("uses each projected Base and Scenario context with its own model key", async () => {
     const { issueId, userId, dependencies } = fixture();
     const scenarioId = new mongoose.Types.ObjectId();
-    await IssueScenario.create({ issue: issueId, createdBy: userId, name: "Scenario", targetModel: new mongoose.Types.ObjectId(), config: { parameterOverrides: {} }, phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }] });
+    await IssueScenario.create({ _id: scenarioId, issue: issueId, createdBy: userId, name: "Scenario", targetModel: new mongoose.Types.ObjectId(), config: { parameterOverrides: {} }, phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }] });
     const baseContext = { projectedFor: "base", rounds: [{ selectedExecution: { modelContext: { apiModelKey: "base-model" } } }] };
     const scenarioContext = { projectedFor: String(scenarioId), rounds: [{ selectedExecution: { modelContext: { apiModelKey: "scenario-model" } } }] };
     dependencies.executionProjector.mockImplementation(({ executionKey }) => ({ execution: { key: executionKey }, analysisContext: executionKey === "base" ? baseContext : scenarioContext }));
@@ -91,7 +91,7 @@ describe("finished Issue execution analysis service", () => {
   it("keeps model analyses isolated when reloading multiple executions", async () => {
     const { issueId, userId, dependencies } = fixture();
     const scenarioId = new mongoose.Types.ObjectId();
-    await IssueScenario.create({ issue: issueId, createdBy: userId, name: "Scenario", targetModel: new mongoose.Types.ObjectId(), config: { parameterOverrides: {} }, phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }] });
+    await IssueScenario.create({ _id: scenarioId, issue: issueId, createdBy: userId, name: "Scenario", targetModel: new mongoose.Types.ObjectId(), config: { parameterOverrides: {} }, phaseResults: [{ phase: 0, source: { stageResult: null, domainType: "numeric" }, requestSnapshot: {}, result: { standardResult: {}, modelExecution: {}, rawOutput: {} }, execution: { attemptId: new mongoose.Types.ObjectId(), startedAt: new Date(), completedAt: new Date() } }] });
     const requestAnalysis = vi.fn(async () => ({ facts: {}, interpretation: "General", visualizations: [] }));
     const requestModelAnalysis = vi.fn(async ({ apiModelKey, analysisContext }) => ({ facts: { executionKey: analysisContext.projectedFor }, interpretation: apiModelKey, visualizations: [] }));
     const common = { issueId, userId, ...dependencies, requestAnalysis, requestModelAnalysis };

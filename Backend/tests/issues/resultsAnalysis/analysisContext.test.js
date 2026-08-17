@@ -6,8 +6,8 @@ import { AppError } from "../../../utils/common/errors.js";
 const time = (second) => `2026-01-01T00:00:0${second}.000Z`;
 const identity = (id, name, email, university) => ({ id, name, email, university });
 const request = (expertId, payload) => ({ body: { modelParameters: { weights: { "criterion-cost": 0.65, "criterion-speed": 0.35 } }, evaluations: [{ expert: { id: expertId, name: "Expert One", email: "expert@example.com" }, payload }], context: { issue: { id: "issue-1" }, criteria: [{ id: "criterion-cost" }, { id: "criterion-speed" }] } } });
-const applied = (entityId, standardResult, modelExecution = {}) => ({ status: "applied", entityType: "stageResult", entityId, completedAt: time(9), resultSnapshot: { result: { standardResult, modelExecution } } });
-const appliedScenario = (entityId, phase, attemptId, standardResult, modelExecution = {}) => ({ status: "applied", entityType: "scenario", entityId, completedAt: time(9), resultSnapshot: { phaseResults: [{ phase, execution: { attemptId }, result: { standardResult, modelExecution } }] } });
+const applied = (entityId, standardResult, modelExecution = {}, rawOutput = undefined) => ({ status: "applied", entityType: "stageResult", entityId, completedAt: time(9), resultSnapshot: { result: { standardResult, modelExecution, rawOutput } } });
+const appliedScenario = (entityId, phase, attemptId, standardResult, modelExecution = {}, rawOutput = undefined) => ({ status: "applied", entityType: "scenario", entityId, completedAt: time(9), resultSnapshot: { phaseResults: [{ phase, execution: { attemptId }, result: { standardResult, modelExecution, rawOutput } }] } });
 
 const history = () => ({
   schemaVersion: 1,
@@ -92,16 +92,27 @@ describe("buildAnalysisContext", () => {
     expect(() => buildAnalysisContext(input)).toThrow(/owner identity does not match ownerId/);
   });
 
-  it("excludes only top-level raw output from semantic results while preserving exact execution input", () => {
+  it("keeps persisted raw output separate from semantic results while preserving exact execution input and metadata", () => {
     const input = history();
     input.evidence.executionAttempts[1].application.resultSnapshot.result.standardResult = { consensusMeasure: 0.95, rawOutput: { internal: true } };
+    input.evidence.executionAttempts[1].application.resultSnapshot.result.rawOutput = { model: "base", matrix: [[0.95]] };
+    input.evidence.executionAttempts[1].application.resultSnapshot.result.modelExecution = { consensusLifecycle: { finalizationReason: "consensusReached" }, timing: { milliseconds: 17 } };
     input.evidence.executionAttempts[1].request.body.context.rawOutput = { requestEvidence: true };
     input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.standardResult = { rankedAlternatives: [], rawOutput: { internal: true } };
+    input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.rawOutput = { model: "scenario", tupleScores: [["s7", 0.25]] };
+    input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.modelExecution = { provider: "scenario-provider", timing: { milliseconds: 23 } };
 
     const context = buildAnalysisContext(input);
     expect(context.rounds[1].selectedExecution.result.standardResult).toEqual({ consensusMeasure: 0.95 });
+    expect(context.rounds[1].selectedExecution.result.standardResult).not.toHaveProperty("rawOutput");
+    expect(context.rounds[1].selectedExecution.result.rawOutput).toEqual({ model: "base", matrix: [[0.95]] });
+    expect(context.rounds[1].selectedExecution.result.modelExecution).toEqual({ consensusLifecycle: { finalizationReason: "consensusReached" }, timing: { milliseconds: 17 } });
     expect(context.rounds[1].selectedExecution.input.context.rawOutput).toEqual({ requestEvidence: true });
     expect(context.scenarios.current[0].phaseResults[0].execution.result.standardResult).toEqual({ rankedAlternatives: [] });
+    expect(context.scenarios.current[0].phaseResults[0].execution.result.standardResult).not.toHaveProperty("rawOutput");
+    expect(context.scenarios.current[0].phaseResults[0].execution.result.rawOutput).toEqual({ model: "scenario", tupleScores: [["s7", 0.25]] });
+    expect(context.scenarios.current[0].phaseResults[0].execution.result.rawOutput).not.toEqual(context.rounds[1].selectedExecution.result.rawOutput);
+    expect(context.scenarios.current[0].phaseResults[0].execution.result.modelExecution).toEqual({ provider: "scenario-provider", timing: { milliseconds: 23 } });
     expect(input.evidence.executionAttempts[1].application.resultSnapshot.result.standardResult.rawOutput).toEqual({ internal: true });
     expect(input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.standardResult.rawOutput).toEqual({ internal: true });
   });

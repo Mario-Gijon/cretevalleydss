@@ -56,7 +56,8 @@ def test_generic_issue_endpoint_projects_context_and_returns_standard_success():
     assert "### Ranking evolution" not in response["data"]["interpretation"]
     assert "### Consensus" in response["data"]["interpretation"]
     assert "### Participation" in response["data"]["interpretation"]
-    assert "### Final ranking" not in response["data"]["interpretation"]
+    assert "### Final ranking" in response["data"]["interpretation"]
+    assert "**Alpha** is the only ranked alternative." in response["data"]["interpretation"]
     assert "### Execution" not in response["data"]["interpretation"]
 
 

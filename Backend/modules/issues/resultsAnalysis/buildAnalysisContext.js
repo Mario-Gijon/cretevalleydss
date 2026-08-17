@@ -101,7 +101,7 @@ const buildRound = ({ phase, phaseSnapshot, revisions, attempts, stageResults, e
   let selectedExecution = null;
   if (selected) {
     const { application, result } = appliedResult(selected, `history.evidence.executionAttempts.${selected.id}`);
-    selectedExecution = { attemptId: selected.id, correlationId: selected.correlationId, startedAt: selected.startedAt, completedAt: selected.completedAt, modelContext: clone(selected.modelContext), input: clone(attemptInput(selected, `history.evidence.executionAttempts.${selected.id}`)), result: { standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${selected.id}.application.resultSnapshot.result.standardResult`), modelExecution: clone(result.modelExecution) }, application: { completedAt: application.completedAt, stageResultId: application.entityId } };
+    selectedExecution = { attemptId: selected.id, correlationId: selected.correlationId, startedAt: selected.startedAt, completedAt: selected.completedAt, modelContext: clone(selected.modelContext), input: clone(attemptInput(selected, `history.evidence.executionAttempts.${selected.id}`)), result: { standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${selected.id}.application.resultSnapshot.result.standardResult`), modelExecution: clone(result.modelExecution), rawOutput: clone(result.rawOutput) }, application: { completedAt: application.completedAt, stageResultId: application.entityId } };
   }
   return {
     phase,
@@ -138,6 +138,7 @@ const buildCurrentScenario = (scenario, attemptsById) => {
           result: {
             standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${attempt.id}.application.resultSnapshot.phaseResults.result.standardResult`),
             modelExecution: clone(result.modelExecution),
+            rawOutput: clone(result.rawOutput),
           },
           application: { completedAt: application.completedAt, entityType: application.entityType, entityId: application.entityId },
         },
