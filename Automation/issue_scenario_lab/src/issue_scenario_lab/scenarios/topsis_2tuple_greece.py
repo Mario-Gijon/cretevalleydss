@@ -20,6 +20,7 @@ ALTERNATIVE_STAGE = "alternativeEvaluation"
 MAIN_MODEL_KEY = "topsis_2tuple"
 WEIGHTING_MODEL_KEY = "preference_order_criteria_weights"
 FIXTURE_PATH = Path(__file__).parents[3] / "data" / "topsis_2tuple_greece.json"
+EXPECTED_LINGUISTIC_LABELS = ("Very low", "Low", "Medium", "High", "Very high")
 
 
 @dataclass(frozen=True)
@@ -75,8 +76,8 @@ def validate_fixture(data: dict[str, Any]) -> None:
         if not isinstance(row, dict) or set(row) != set(criterion_keys):
             raise ScenarioLabError(f"fixture alternative evaluation row {alternative} must contain every criterion exactly once")
         for value in row.values():
-            if not isinstance(value, dict) or not isinstance(value.get("labelKey"), str) or not isinstance(value.get("alpha"), (int, float)) or not math.isfinite(float(value["alpha"])):
-                raise ScenarioLabError("fixture linguistic values require labelKey and numeric alpha")
+            if not isinstance(value, dict) or set(value) != {"label", "alpha"} or value.get("label") not in EXPECTED_LINGUISTIC_LABELS or not isinstance(value.get("alpha"), (int, float)) or not math.isfinite(float(value["alpha"])):
+                raise ScenarioLabError("fixture linguistic values require a supported human-readable label and numeric alpha")
     domain = data.get("expressionDomain")
     if not isinstance(domain, dict) or domain.get("typeKey") != "linguistic2Tuple" or domain.get("labelCount") != 5:
         raise ScenarioLabError("fixture requires a five-label linguistic2Tuple expression domain")
@@ -86,6 +87,47 @@ def validate_fixture(data: dict[str, Any]) -> None:
 
 def removal_aliases(data: dict[str, Any]) -> list[str]:
     return [alias for alias in data["participants"]["criteriaWeightingExperts"] if alias != data["participants"]["remainingExpert"]]
+
+
+def resolve_linguistic_label_keys(context: dict[str, Any]) -> dict[str, str]:
+    """Map stable fixture labels to the actual configured domain keys."""
+    leaf_criteria = _items(context, "leafCriteria")
+    domains = [criterion.get("expressionDomain") for criterion in leaf_criteria if isinstance(criterion.get("expressionDomain"), dict)]
+    if not domains:
+        raise ScenarioLabError("alternative-evaluation context is missing linguistic expression domains")
+    resolved: dict[str, str] | None = None
+    expected = {label.casefold(): label for label in EXPECTED_LINGUISTIC_LABELS}
+    for domain in domains:
+        labels = (domain.get("definition") or {}).get("labels")
+        if not isinstance(labels, list) or len(labels) != len(EXPECTED_LINGUISTIC_LABELS):
+            raise ScenarioLabError("configured Greece linguistic domain must contain exactly five labels")
+        mapping: dict[str, str] = {}
+        for item in labels:
+            label = item.get("label") if isinstance(item, dict) else None
+            key = item.get("key") if isinstance(item, dict) else None
+            normalized = label.strip().casefold() if isinstance(label, str) else ""
+            if normalized not in expected or not isinstance(key, str) or not key.strip() or normalized in mapping:
+                raise ScenarioLabError("configured Greece linguistic domain has missing or duplicate semantic labels")
+            mapping[normalized] = key.strip()
+        if set(mapping) != set(expected):
+            raise ScenarioLabError("configured Greece linguistic domain does not contain the expected five labels")
+        if resolved is not None and resolved != mapping:
+            raise ScenarioLabError("criteria use incompatible configured linguistic domains")
+        resolved = mapping
+    assert resolved is not None
+    return {label: resolved[label.casefold()] for label in EXPECTED_LINGUISTIC_LABELS}
+
+
+def build_linguistic_matrix(data: dict[str, Any], *, criteria: dict[str, str], alternatives: dict[str, str], context: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
+    label_keys = resolve_linguistic_label_keys(context)
+    return {
+        alternatives[item["name"]]: {
+            criteria[criterion["name"]]: {"labelKey": label_keys[value["label"]], "alpha": value["alpha"]}
+            for criterion in data["criteria"]
+            for value in [data["alternativeEvaluation"]["evaluations"][item["key"]][criterion["key"]]]
+        }
+        for item in data["alternatives"]
+    }
 
 
 def _model(models: Any, key: str, kind: str, structure: str) -> dict[str, Any]:
@@ -111,7 +153,7 @@ def _issue_payload(data: dict[str, Any], *, name: str, model_id: str, domain_id:
     return {"issueName": name, "issueDescription": data["issue"]["description"], "selectedModelId": model_id,
             "alternatives": [{"name": item["name"], "description": item.get("description", "")} for item in data["alternatives"]],
             "criteria": [{"id": "criteria-root", "name": "Greece decision criteria", "type": "group", "children": leaves}],
-            "addedExperts": expert_emails, "expressionDomainConfig": {"mode": "global", "globalDomainId": domain_id}, "closureDate": None,
+            "addedExperts": [{"email": email, "weight": 1 / len(expert_emails)} for email in expert_emails], "expressionDomainConfig": {"mode": "global", "globalDomainId": domain_id}, "closureDate": None,
             "isConsensus": False, "simulateConsensus": False, "paramValues": {}, "criteriaWeightingParameters": {},
             "criteriaWeightingConfig": {"mode": "expertApiModel", "source": "experts", "method": "apiModel", "criteriaWeightingModelKey": WEIGHTING_MODEL_KEY, "payload": {}}}
 
@@ -138,12 +180,12 @@ def _active_issue(api: IssuesApi, issue_id: str) -> dict[str, Any]:
     return issue
 
 
-def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = "admin", fixture_path: Path = FIXTURE_PATH) -> GenerationResult:
+def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = "owner", fixture_path: Path = FIXTURE_PATH) -> GenerationResult:
     data = load_fixture(fixture_path)
     participants = data["participants"]
     aliases = (owner_alias, *participants["criteriaWeightingExperts"])
     if owner_alias != participants["creator"] or any(alias not in sessions.users for alias in aliases) or len({sessions.users[alias].email.casefold() for alias in aliases}) != len(aliases):
-        raise ScenarioLabError("topsis-2tuple-greece requires configured distinct aliases: admin, expert1, expert2, expert3, expert4, expert5")
+        raise ScenarioLabError("topsis-2tuple-greece requires configured distinct aliases: owner, expert_a, expert_b, expert_c, expert_d, expert_e")
     generation_id, issue_id = secrets.token_hex(5), None
     issue_name = f"[AUTO:{generation_id}] {data['issue']['name']}"
     try:
@@ -177,7 +219,13 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         removed_aliases = removal_aliases(data)
         alternative_api = IssuesApi(sessions.client_for(remaining))
         for position, removed_alias in enumerate(removed_aliases, start=1):
-            owner.edit_experts(issue_id, experts_to_add=[], experts_to_remove=[sessions.users[removed_alias].email])
+            remaining_aliases = [alias for alias in participants["criteriaWeightingExperts"] if alias not in removed_aliases[:position]]
+            owner.edit_experts(
+                issue_id,
+                experts_to_add=[],
+                experts_to_remove=[sessions.users[removed_alias].email],
+                expert_weights_by_email={sessions.users[alias].email: 1 / len(remaining_aliases) for alias in remaining_aliases},
+            )
             _active_issue(owner, issue_id)
             post_removal = alternative_api.evaluation(issue_id, ALTERNATIVE_STAGE)
             _, _, post_removal_context = _context_maps(post_removal, issue_id, stage=ALTERNATIVE_STAGE, structure="alternativeCriteriaMatrix", model_key=MAIN_MODEL_KEY)
@@ -192,7 +240,7 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         current_weights = (context.get("modelParameters") or {}).get("weights")
         if current_weights != finalized_weights:
             raise ScenarioLabError("participant removal changed finalized collective criterion weights")
-        matrix = {alternatives[item["name"]]: {criteria[criterion["name"]]: data["alternativeEvaluation"]["evaluations"][item["key"]][criterion["key"]] for criterion in data["criteria"]} for item in data["alternatives"]}
+        matrix = build_linguistic_matrix(data, criteria=criteria, alternatives=alternatives, context=context)
         alternative_api.submit_evaluation(issue_id, ALTERNATIVE_STAGE, matrix)
         finished = owner.compute_evaluation(issue_id, ALTERNATIVE_STAGE)
         if finished.get("currentStage") != "finished":

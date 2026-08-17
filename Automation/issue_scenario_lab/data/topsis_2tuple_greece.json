@@ -1,41 +1,42 @@
 {
-  "issue": {
-    "name": "TOPSIS 2-tuple - Greece simulation",
-    "description": "Example Greece-oriented linguistic TOPSIS scenario. The preference orders and evaluations are synthetic examples and must be replaced with supplied Greece data when available."
+  "issue": {"name": "TOPSIS 2-tuple - Greece simulation", "description": "Greece questionnaire scenario: seven real criteria and five real Q9 rankings (Questionnaires 1, 2, 4, 5 and 6). Questionnaire 3 is excluded because its ranking is invalid. The four questionnaire site names are provisional, while the linguistic TOPSIS evaluations remain synthetic until the alternative-evaluation spreadsheet is available."},
+  "sourceNotes": {
+    "criteriaAndRankings": "REAL questionnaire data. expert_a..expert_e are development aliases mapped only to questionnaire numbers for reproducibility, not respondent identities.",
+    "questionnaire3": "Excluded: it does not contain a valid unique complete 1 through 7 criterion ordering.",
+    "alternatives": "Saint George, Plati, Kaminaki and Tzermiado are real candidate locations co-occurring in Questionnaire 5, but are a provisional scenario set rather than the missing final alternative-evaluation spreadsheet.",
+    "alternativeEvaluations": "SYNTHETIC. Replace when the authoritative alternative-evaluation spreadsheet is available.",
+    "c1c2ExcelWarning": "Keep questionnaire c1 and c2 as declared here. Before importing the separate alternative-evaluation Excel, explicitly normalize its reported C1/C2 swap.",
+    "expressionDomain": "SYNTHETIC simulation configuration. Q9 ranks 1 through 7 are ordinal importance ranks, not linguistic TOPSIS labels.",
+    "criterionDirections": "SYNTHETIC simulation assumptions required by the TOPSIS API; questionnaire data does not establish authoritative benefit/cost directions."
   },
-  "participants": {
-    "creator": "admin",
-    "criteriaWeightingExperts": ["expert1", "expert2", "expert3", "expert4", "expert5"],
-    "remainingExpert": "expert1"
-  },
+  "participants": {"creator": "owner", "criteriaWeightingExperts": ["expert_a", "expert_b", "expert_c", "expert_d", "expert_e"], "remainingExpert": "expert_a", "questionnaireByAlias": {"expert_a": 1, "expert_b": 2, "expert_c": 4, "expert_d": 5, "expert_e": 6}},
   "expressionDomain": {"typeKey": "linguistic2Tuple", "labelCount": 5},
   "criteria": [
-    {"key": "accessibility", "name": "Accessibility", "type": "benefit"},
-    {"key": "environment", "name": "Environmental fit", "type": "benefit"},
-    {"key": "cost", "name": "Implementation cost", "type": "cost"},
-    {"key": "resilience", "name": "Climate resilience", "type": "benefit"}
+    {"key": "c1", "name": "Site Accessibility and Infrastructure Security", "type": "benefit", "typeSource": "simulationAssumption"},
+    {"key": "c2", "name": "Wind Resource and Technical Suitability", "type": "benefit", "typeSource": "simulationAssumption"},
+    {"key": "c3", "name": "Windmill Clustering & Hybrid PV–Wind Suitability", "type": "benefit", "typeSource": "simulationAssumption"},
+    {"key": "c4", "name": "Visibility and Demonstration Value", "type": "benefit", "typeSource": "simulationAssumption"},
+    {"key": "c5", "name": "Local Socio-Economic Benefits", "type": "benefit", "typeSource": "simulationAssumption"},
+    {"key": "c6", "name": "Cost and Maintainability", "type": "cost", "typeSource": "simulationAssumption"},
+    {"key": "c7", "name": "Community Acceptance and Implementation Risk", "type": "cost", "typeSource": "simulationAssumption"}
   ],
   "alternatives": [
-    {"key": "crete", "name": "Crete pilot", "description": "Distributed island pilot."},
-    {"key": "athens", "name": "Athens corridor", "description": "Urban corridor deployment."},
-    {"key": "peloponnese", "name": "Peloponnese network", "description": "Regional network deployment."}
+    {"key": "saint_george", "name": "Saint George", "description": "Provisional Questionnaire 5 candidate site."},
+    {"key": "plati", "name": "Plati", "description": "Provisional Questionnaire 5 candidate site."},
+    {"key": "kaminaki", "name": "Kaminaki", "description": "Provisional Questionnaire 5 candidate site."},
+    {"key": "tzermiado", "name": "Tzermiado", "description": "Provisional Questionnaire 5 candidate site."}
   ],
-  "criteriaWeighting": {
-    "model": "preference_order_criteria_weights",
-    "rankings": {
-      "expert1": ["resilience", "environment", "accessibility", "cost"],
-      "expert2": ["environment", "resilience", "accessibility", "cost"],
-      "expert3": ["accessibility", "resilience", "environment", "cost"],
-      "expert4": ["resilience", "accessibility", "cost", "environment"],
-      "expert5": ["cost", "environment", "resilience", "accessibility"]
-    }
-  },
-  "alternativeEvaluation": {
-    "model": "topsis_2tuple",
-    "evaluations": {
-      "crete": {"accessibility": {"labelKey": "s3", "alpha": 0.2}, "environment": {"labelKey": "s4", "alpha": -0.1}, "cost": {"labelKey": "s2", "alpha": -0.2}, "resilience": {"labelKey": "s4", "alpha": 0.1}},
-      "athens": {"accessibility": {"labelKey": "s4", "alpha": -0.2}, "environment": {"labelKey": "s2", "alpha": 0.3}, "cost": {"labelKey": "s4", "alpha": 0.0}, "resilience": {"labelKey": "s2", "alpha": -0.1}},
-      "peloponnese": {"accessibility": {"labelKey": "s2", "alpha": 0.1}, "environment": {"labelKey": "s3", "alpha": 0.0}, "cost": {"labelKey": "s1", "alpha": 0.2}, "resilience": {"labelKey": "s3", "alpha": -0.2}}
-    }
-  }
+  "criteriaWeighting": {"model": "preference_order_criteria_weights", "rankings": {
+    "expert_a": ["c5", "c6", "c4", "c7", "c1", "c2", "c3"],
+    "expert_b": ["c5", "c4", "c2", "c7", "c1", "c3", "c6"],
+    "expert_c": ["c2", "c1", "c5", "c4", "c6", "c7", "c3"],
+    "expert_d": ["c1", "c5", "c4", "c7", "c6", "c3", "c2"],
+    "expert_e": ["c6", "c5", "c3", "c7", "c4", "c2", "c1"]
+  }},
+  "alternativeEvaluation": {"model": "topsis_2tuple", "evaluations": {
+    "saint_george": {"c1": {"label": "Medium", "alpha": 0.1}, "c2": {"label": "High", "alpha": -0.2}, "c3": {"label": "Medium", "alpha": 0.3}, "c4": {"label": "High", "alpha": 0.0}, "c5": {"label": "Medium", "alpha": -0.1}, "c6": {"label": "Low", "alpha": 0.2}, "c7": {"label": "Low", "alpha": -0.2}},
+    "plati": {"c1": {"label": "High", "alpha": -0.1}, "c2": {"label": "Medium", "alpha": 0.2}, "c3": {"label": "High", "alpha": -0.2}, "c4": {"label": "Low", "alpha": 0.2}, "c5": {"label": "High", "alpha": 0.1}, "c6": {"label": "Medium", "alpha": -0.2}, "c7": {"label": "Medium", "alpha": 0.1}},
+    "kaminaki": {"c1": {"label": "Low", "alpha": 0.2}, "c2": {"label": "Medium", "alpha": -0.1}, "c3": {"label": "Low", "alpha": 0.3}, "c4": {"label": "Medium", "alpha": 0.0}, "c5": {"label": "Low", "alpha": -0.2}, "c6": {"label": "Very low", "alpha": 0.1}, "c7": {"label": "Very low", "alpha": -0.1}},
+    "tzermiado": {"c1": {"label": "Medium", "alpha": -0.2}, "c2": {"label": "Low", "alpha": 0.1}, "c3": {"label": "Medium", "alpha": -0.1}, "c4": {"label": "High", "alpha": -0.2}, "c5": {"label": "Medium", "alpha": 0.2}, "c6": {"label": "Low", "alpha": -0.1}, "c7": {"label": "Low", "alpha": 0.2}}
+  }}
 }

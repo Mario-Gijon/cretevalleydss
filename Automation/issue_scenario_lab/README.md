@@ -119,19 +119,29 @@ MongoDB directly.
 
 `topsis-2tuple-greece` is a data-driven non-consensus lifecycle scenario using
 `data/topsis_2tuple_greece.json`. It requires configured existing local aliases
-`admin`, `expert1`, `expert2`, `expert3`, `expert4`, and `expert5`, plus a
+`owner`, `expert_a`, `expert_b`, `expert_c`, `expert_d`, and `expert_e`, plus a
 compatible five-label `linguistic2Tuple` expression domain. All five experts
 submit complete `criteriaPreferenceOrder` rankings to the real
 `preference_order_criteria_weights` model. The Backend finalizes the collective
-weights; only then does `admin` use the same owner participant-edit route as
-the Frontend (`PATCH /issues/:id/experts`) to remove experts 2–5. `expert1`
+weights; only then does `owner` use the same owner participant-edit route as
+the Frontend (`PATCH /issues/:id/experts`) to remove experts B–E. `expert_a`
 then alone submits the linguistic TOPSIS 2-tuple matrix and the normal issue
 lifecycle finishes it.
 
-The checked-in rankings and linguistic evaluations are clearly synthetic
-examples, not asserted Greece data. Replace the fixture's human-readable keys,
-rankings, and evaluation matrix when real Greece data is supplied; the scenario
-resolves all generated Backend ids from the evaluation contexts at runtime.
+The fixture now contains real questionnaire criteria and Q9 preference orders
+from Questionnaires 1, 2, 4, 5 and 6; Questionnaire 3 is deliberately
+excluded because its ranking is invalid. The four candidate-site names are real
+Questionnaire 5 locations but are a provisional set. The linguistic
+alternative-evaluation matrix, five-label expression-domain choice, and
+benefit/cost directions remain documented simulation assumptions until the
+authoritative alternative-evaluation spreadsheet is available. That spreadsheet
+has a reported C1/C2 mapping swap, which must be normalized explicitly during a
+future import; the questionnaire C1/C2 keys are not swapped here.
+
+The synthetic matrix stores human-readable labels (`Very low`, `Low`, `Medium`,
+`High`, `Very high`) rather than domain keys. At generation time Scenario Lab
+reads the actual alternative-evaluation context and resolves those labels to
+the configured domain's persisted `labelKey` values before submission.
 
 ## Development checks
 

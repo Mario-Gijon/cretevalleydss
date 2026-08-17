@@ -139,16 +139,6 @@ export const getAdminUsersListPayload = async ({
       });
     }
 
-    if (!participation.issue || !issueId) {
-      throw createInternalError("Participation issue must be populated", {
-        field: "participations.issue",
-        details: {
-          participationId: toIdString(participation._id) || null,
-          userId: key,
-        },
-      });
-    }
-
     if (!stats) {
       throw createInternalError(
         "Participation expert was not found in admin users list aggregation",
@@ -161,6 +151,14 @@ export const getAdminUsersListPayload = async ({
           },
         }
       );
+    }
+
+    // A deleted Issue can leave historical/dangling Participation evidence in
+    // older data. Population deliberately resolves that reference to null;
+    // it must not make the whole Admin directory unavailable. A missing issue
+    // has no active/finished state, so it contributes to neither counter.
+    if (!participation.issue || !issueId) {
+      continue;
     }
 
     if (typeof participation.issue.active !== "boolean") {

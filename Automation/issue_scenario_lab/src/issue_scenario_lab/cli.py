@@ -295,7 +295,7 @@ def generate(
     try:
         settings = _settings()
         with SessionPool.from_settings(settings) as sessions:
-            kwargs = ({"owner_alias": "admin"} if scenario_id == TOPSIS_2TUPLE_GREECE_SCENARIO_ID else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias})
+            kwargs = ({"owner_alias": "owner"} if scenario_id == TOPSIS_2TUPLE_GREECE_SCENARIO_ID else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias})
             result = selected[0](sessions, ManifestStore(settings.manifest_file), **kwargs)
     except ScenarioLabError as error:
         _raise_cli_error(error)

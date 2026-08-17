@@ -26,12 +26,12 @@ class IssuesApi:
     def active_issues(self) -> Any:
         return self.client.request("GET", "/issues/active")
 
-    def edit_experts(self, issue_id: str, *, experts_to_add: list[str], experts_to_remove: list[str]) -> Any:
+    def edit_experts(self, issue_id: str, *, experts_to_add: list[str], experts_to_remove: list[str], expert_weights_by_email: dict[str, float] | None = None) -> Any:
         """Use the same owner participant-edition route as the Frontend."""
         return self.client.request(
             "PATCH",
             f"/issues/{issue_id}/experts",
-            json={"expertsToAdd": experts_to_add, "expertsToRemove": experts_to_remove},
+            json={"expertsToAdd": experts_to_add, "expertsToRemove": experts_to_remove, **({"expertWeightsByEmail": expert_weights_by_email} if expert_weights_by_email is not None else {})},
         )
 
     def respond_to_invitation(self, issue_id: str, action: str) -> Any:
