@@ -1,16 +1,18 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@mui/x-charts", () => {
-  const chart = (name) => ({ series, xAxis, yAxis, layout, radar }) => <div data-testid={`${name}-chart`} data-layout={layout} data-series={series?.length} data-x-axis={xAxis?.[0]?.label} data-y-axis={yAxis?.[0]?.label} data-metrics={radar?.metrics?.join(",")} />;
-  return {
-    BarChart: ({ series, xAxis, yAxis, layout }) => <div data-testid="bar-chart" data-layout={layout} data-series={series?.length} data-stack={series?.[0]?.stack} data-x-axis={xAxis?.[0]?.label} data-y-axis={yAxis?.[0]?.label} />,
-    LineChart: chart("line"),
-    ScatterChart: ({ series, xAxis, yAxis }) => <div data-testid="scatter-chart" data-series={series?.length} data-x-axis={xAxis?.[0]?.label} data-y-axis={yAxis?.[0]?.label}>{series?.[0]?.valueFormatter(series?.[0]?.data?.[0])}</div>,
-    PieChart: ({ series }) => <div data-testid="pie-chart" data-inner-radius={series?.[0]?.innerRadius} data-items={series?.[0]?.data?.length} />,
-    Unstable_RadarChart: chart("radar"),
-  };
-});
+vi.mock("chart.js", () => ({
+  Chart: { register: vi.fn() },
+  ArcElement: {}, BarElement: {}, CategoryScale: {}, Filler: {}, Legend: {}, LineElement: {}, LinearScale: {}, PointElement: {}, RadialLinearScale: {}, ScatterController: {}, Tooltip: {},
+}));
+vi.mock("react-chartjs-2", () => ({
+  Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
+  Line: ({ data, options }) => <div data-testid="line-chart" data-series={data.datasets.length} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
+  Scatter: ({ data, options }) => <div data-testid="scatter-chart" data-series={data.datasets.length} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text}>{options.plugins.tooltip.callbacks.label({ raw: data.datasets[0].data[0] })}</div>,
+  Pie: ({ data }) => <div data-testid="pie-chart" data-kind="pie" data-items={data.datasets[0].data.length} />,
+  Doughnut: ({ data }) => <div data-testid="pie-chart" data-kind="doughnut" data-items={data.datasets[0].data.length} />,
+  Radar: ({ data }) => <div data-testid="radar-chart" data-metrics={data.labels.join(",")} data-series={data.datasets.length} />,
+}));
 
 import { AnalyticalGraph, analyticalGraphRegistry } from "../../../src/components/analyticalGraphs/index.js";
 
@@ -42,10 +44,11 @@ describe("AnalyticalGraph", () => {
   });
 
   it("passes bar categories, stacked, and horizontal options to the renderer", () => {
-    render(<AnalyticalGraph visualization={{ ...descriptors.bar, orientation: "horizontal", stacked: true }} />);
-    expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-layout", "horizontal");
+    render(<AnalyticalGraph visualization={{ ...descriptors.bar, orientation: "horizontal", stacked: true, xAxis: { label: "Score" }, yAxis: { label: "Alternative" } }} />);
+    expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-index-axis", "y");
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-series", "1");
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-stack", "total");
+    expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-axis", "Score");
   });
 
   it("passes line axes and multiple series", () => {
@@ -63,7 +66,7 @@ describe("AnalyticalGraph", () => {
 
   it("passes pie donut and radar metrics", () => {
     const { rerender } = render(<AnalyticalGraph visualization={descriptors.pie} />);
-    expect(screen.getByTestId("pie-chart")).toHaveAttribute("data-inner-radius", "65");
+    expect(screen.getByTestId("pie-chart")).toHaveAttribute("data-kind", "doughnut");
     rerender(<AnalyticalGraph visualization={descriptors.radar} />);
     expect(screen.getByTestId("radar-chart")).toHaveAttribute("data-metrics", "C1,C2");
   });

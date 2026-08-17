@@ -1,6 +1,10 @@
-import { BarChart } from "@mui/x-charts";
+import { Bar } from "react-chartjs-2";
+import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Tooltip } from "chart.js";
 
 import GraphUnavailable from "./GraphUnavailable.jsx";
+import { buildCartesianChartOptions, chartColor } from "../chartTheme.js";
+
+ChartJS.register(BarElement, CategoryScale, LinearScale, Legend, Tooltip);
 
 const validSeries = (series) => Array.isArray(series) && series.filter((item) => Array.isArray(item?.values));
 
@@ -10,15 +14,22 @@ const BarAnalyticalGraph = ({ visualization }) => {
   const series = validSeries(data?.series);
   if (!categories?.length || !series.length) return <GraphUnavailable />;
   const horizontal = visualization.orientation === "horizontal";
-  const axis = { scaleType: "band", data: categories };
-  return <BarChart
+  return <Bar
     data-testid="bar-analytical-graph"
-    height={340}
-    layout={horizontal ? "horizontal" : "vertical"}
-    series={series.map((item) => ({ id: item.key, label: item.label || item.key, data: item.values, stack: visualization.stacked ? "total" : undefined }))}
-    xAxis={horizontal ? [{ ...visualization.xAxis }] : [{ ...visualization.xAxis, ...axis }]}
-    yAxis={horizontal ? [{ ...visualization.yAxis, ...axis }] : [{ ...visualization.yAxis }]}
-    grid={{ horizontal: !horizontal, vertical: horizontal }}
+    data={{
+      labels: categories,
+      datasets: series.map((item, index) => ({
+        label: item.label || item.key,
+        data: item.values,
+        backgroundColor: `${chartColor(index)}b8`,
+        borderColor: chartColor(index),
+        borderWidth: 1,
+        borderRadius: 5,
+        borderSkipped: false,
+        ...(visualization.stacked ? { stack: "total" } : {}),
+      })),
+    }}
+    options={buildCartesianChartOptions({ xAxis: visualization.xAxis, yAxis: visualization.yAxis, horizontal, stacked: Boolean(visualization.stacked) })}
   />;
 };
 

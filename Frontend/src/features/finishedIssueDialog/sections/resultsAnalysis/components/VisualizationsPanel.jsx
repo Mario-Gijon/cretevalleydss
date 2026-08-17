@@ -631,7 +631,7 @@ const AlternativeEvaluationVisualizations = ({ executions }) => {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(auto-fit, minmax(360px, 1fr))" },
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
           gap: 1.4,
         }}
       >
@@ -649,7 +649,7 @@ const AlternativeEvaluationVisualizations = ({ executions }) => {
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+                    gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
                     gap: 1.4,
                     minWidth: 0,
                   }}
