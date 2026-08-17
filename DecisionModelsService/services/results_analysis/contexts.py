@@ -33,6 +33,7 @@ def build_generic_round_context(analysis_context: dict, round_entry: dict) -> di
                 "completedAt": execution["completedAt"],
                 "ranking": ranking,
                 "consensusMeasure": standard_result.get("consensusMeasure"),
+                "expertCollectiveProjection": standard_result.get("plotsGraphic"),
             },
         }
     )

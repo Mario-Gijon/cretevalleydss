@@ -30,6 +30,32 @@ describe("Results Analysis analytical projection comparison", () => {
     expect(result).toMatchObject({ available: true, expertPoints: [{ identity: "a@example.test", x: 3, y: 3 }, { identity: "b@example.test", x: 5, y: 4 }], collectivePoint: { x: 3, y: 4 } });
   });
 
+  it("uses the persisted Generic Analysis projection for one execution when its standardized result has none", () => {
+    const result = buildResultsVisualizationsData({
+      payload,
+      executions: [{
+        ...execution({ key: "base", points: [] }),
+        standardizedOutput: { plotsGraphic: {} },
+        genericAnalysis: {
+          facts: {
+            expertCollectiveRelationship: {
+              projection: {
+                expert_points: [[0, -1], [2, 0]],
+                collective_point: [3, 4],
+                expert_labels: ["a@example.test", "b@example.test"],
+              },
+            },
+          },
+        },
+      }],
+    });
+
+    expect(result.singleScatter).toMatchObject({
+      available: true,
+      data: { 0: { collectivePoint: { x: 3, y: 4 } } },
+    });
+  });
+
   it("prefers stored expert ids over emails and labels for stable matching", () => {
     const result = buildCanonicalAnalyticalProjection({ execution: {
       key: "base", name: "base", displayLabel: "base", color: colors[0],

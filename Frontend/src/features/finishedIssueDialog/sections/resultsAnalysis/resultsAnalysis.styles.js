@@ -1,4 +1,4 @@
-const localScrollbarSx = {
+export const finishedIssueScrollbarSx = {
   scrollbarWidth: "thin",
   scrollbarColor: "rgba(72,189,205,0.48) rgba(5,13,21,0.15)",
   "&::-webkit-scrollbar": { width: 7, height: 7 },
@@ -42,7 +42,7 @@ export const singleOutcomeGridSx = {
 };
 
 export const rankingListViewportSx = (compact) => ({
-  ...localScrollbarSx,
+  ...finishedIssueScrollbarSx,
   maxHeight: compact ? 430 : { xs: 520, xl: 380 },
   overflowY: "auto",
   overflowX: "hidden",
@@ -73,7 +73,7 @@ export const rankingScoreTrackSx = (compact) => ({
 });
 
 export const scoreChartViewportSx = {
-  ...localScrollbarSx,
+  ...finishedIssueScrollbarSx,
   mt: 1,
   width: "100%",
   maxWidth: "100%",
@@ -116,8 +116,8 @@ export const executionRankingCardSx = (color) => ({
 });
 
 export const comparisonDetailPanelSx = { ...resultsPanelSx, height: "100%", display: "flex", flexDirection: "column" };
-export const movementChartViewportSx = { ...localScrollbarSx, mt: 1, width: "100%", minWidth: 0, maxHeight: 610, overflow: "auto" };
-export const correlationMatrixViewportSx = { ...localScrollbarSx, mt: 1, minWidth: 0, overflowX: "auto", overflowY: "hidden" };
+export const movementChartViewportSx = { ...finishedIssueScrollbarSx, mt: 1, width: "100%", minWidth: 0, maxHeight: 610, overflow: "auto" };
+export const correlationMatrixViewportSx = { ...finishedIssueScrollbarSx, mt: 1, minWidth: 0, overflowX: "auto", overflowY: "hidden" };
 export const correlationMatrixSx = (executionCount) => ({
   minWidth: Math.max(440, 150 + executionCount * 110),
   width: "100%",

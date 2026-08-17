@@ -17,6 +17,14 @@ const unavailableReason = (normalized) => {
   return null;
 };
 
+const storedExpertCollectiveProjection = (execution) => {
+  const standardized = execution?.standardizedOutput?.plotsGraphic;
+  if (standardized && typeof standardized === "object" && Object.keys(standardized).length) {
+    return standardized;
+  }
+  return execution?.genericAnalysis?.facts?.expertCollectiveRelationship?.projection;
+};
+
 /**
  * Builds the only projection shape used by comparison. The current controlled
  * service format stores experts relative to its collective MDS point while the
@@ -29,7 +37,7 @@ export const buildCanonicalAnalyticalProjection = ({
   slotIndex = 0,
 }) => {
   const normalized = normalizePlotsGraphic(
-    execution?.standardizedOutput?.plotsGraphic,
+    storedExpertCollectiveProjection(execution),
   );
   const base = {
     key: execution?.key || "",
@@ -402,7 +410,7 @@ const buildConsensusVisualization = (payload, executions) => {
 
 const buildSingleScatter = (execution) => {
   const normalized = normalizePlotsGraphic(
-    execution?.standardizedOutput?.plotsGraphic,
+    storedExpertCollectiveProjection(execution),
   );
   return {
     available: Boolean(normalized?.isValid),

@@ -7,6 +7,13 @@ export const ANALYTICAL_CHART_COLORS = [
   "#6faee8",
 ];
 
+export const ANALYTICAL_LINE_STYLE = {
+  borderWidth: 2.5,
+  pointRadius: 0,
+  pointHoverRadius: 5,
+  tension: 0.25,
+};
+
 const axis = ({ label, stacked = false, category = false }) => ({
   stacked,
   grid: {

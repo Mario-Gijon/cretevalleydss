@@ -205,6 +205,12 @@ def analyze_issue(context):
     participants = participant_summary(context, rounds)
     highlights = phase_highlights(rankings, consensus["points"])
     relationships = alternative_relationships(context, rounds)
+    projections = [
+        round_entry.get("execution", {}).get("expertCollectiveProjection")
+        for round_entry in rounds
+        if isinstance(round_entry.get("execution", {}).get("expertCollectiveProjection"), dict)
+        and round_entry["execution"]["expertCollectiveProjection"]
+    ]
 
     facts = {
         "issueId": issue.get("id"),
@@ -222,6 +228,10 @@ def analyze_issue(context):
         "consensus": consensus,
         "participants": participants,
         "execution": _issue_attempt_summary(rounds),
+        "expertCollectiveRelationship": {
+            "projection": projections[-1] if projections else None,
+            "unavailableReason": None if projections else "missing_analytical_projection",
+        },
     }
     facts["processOverview"] = _process_overview(
         rounds,

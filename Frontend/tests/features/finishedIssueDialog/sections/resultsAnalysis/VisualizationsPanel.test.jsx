@@ -12,7 +12,7 @@ vi.mock("@mui/x-charts/BarChart", () => ({
   BarChart: ({ height, xAxis }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} />,
 }));
 vi.mock("../../../../../src/components/analyticalGraphs", () => ({
-  AnalyticalGraph: ({ visualization }) => <div data-testid="analytical-graph" data-key={visualization?.key}>{visualization?.key}</div>,
+  AnalyticalGraph: ({ visualization, titleVariant }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant}>{visualization?.key}</div>,
 }));
 
 import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
@@ -46,11 +46,11 @@ describe("VisualizationsPanel", () => {
 
     expect(screen.getByText("General visualizations")).toBeInTheDocument();
     expect(screen.getByText("Alternative evaluation visualizations")).toBeInTheDocument();
-    expect(screen.getByText("TOPSIS 2-tuple")).toBeInTheDocument();
+    expect(screen.queryByText("TOPSIS 2-tuple")).not.toBeInTheDocument();
     expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["model-bar", "model-heatmap"]);
   });
 
-  it("keeps model-specific visualization groups isolated for multiple executions", () => {
+  it("renders each model-specific visualization as an isolated dashboard card", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[
         { key: "base", displayLabel: "Base", modelName: "Base model", alternativeEvaluationAnalysis: { analysis: { visualizations: [{ key: "base-chart", type: "bar" }] } } },
@@ -59,17 +59,63 @@ describe("VisualizationsPanel", () => {
       visualizations={{ mode: "single", consensus: { enabled: false } }}
     /></ThemeProvider>);
 
-    const groups = screen.getAllByTestId("alternative-evaluation-visualization-group");
-    expect(groups).toHaveLength(2);
-    expect(groups[0]).toHaveTextContent("Base");
-    expect(groups[0]).toHaveTextContent("Base model");
-    expect(groups[0]).toHaveTextContent("base-chart");
-    expect(groups[0]).not.toHaveTextContent("scenario-chart-1");
-    expect(groups[1]).toHaveTextContent("Scenario A");
-    expect(groups[1]).toHaveTextContent("Scenario model");
-    expect(groups[1]).toHaveTextContent("scenario-chart-1");
-    expect(groups[1]).toHaveTextContent("scenario-chart-2");
-    expect(groups[1]).not.toHaveTextContent("base-chart");
+    expect(screen.getAllByTestId("model-analysis-semantic-section")).toHaveLength(1);
+    expect(screen.getAllByTestId("semantic-section-scenario")).toHaveLength(2);
+    expect(screen.getAllByTestId("semantic-section-scenario-divider")).toHaveLength(1);
+    expect(screen.getByText("Base")).toBeInTheDocument();
+    expect(screen.getByText("Scenario A")).toBeInTheDocument();
+    expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["base-chart", "scenario-chart-1", "scenario-chart-2"]);
+  });
+
+  it("uses a stronger semantic heading for multi-graph sections and no redundant heading for a singleton", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", alternativeEvaluationAnalysis: { analysis: { sections: [
+        { id: "multi", title: "Distance geometry", order: 0, visualizations: [{ key: "d-plus", type: "pie" }, { key: "d-minus", type: "pie" }] },
+        { id: "single", title: "Standalone diagnostic", order: 1, visualizations: [{ key: "diagnostic", type: "bar" }] },
+      ] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByRole("heading", { name: "Distance geometry" })).toHaveClass("MuiTypography-h6");
+    expect(screen.getAllByTestId("analytical-graph").slice(0, 2)).toSatisfy((graphs) => graphs.every((graph) => graph.dataset.titleVariant === "subtitle1"));
+    expect(screen.queryByText("Standalone diagnostic")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("analytical-graph")[2]).toHaveAttribute("data-title-variant", "h6");
+  });
+
+  it("stacks every direct child when generic section presentation requests it", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", alternativeEvaluationAnalysis: { analysis: { sections: [{
+        id: "stacked", title: "Sensitivity", order: 0, presentation: { layout: "stacked" },
+        visualizations: [{ key: "one", type: "pie" }, { key: "two", type: "pie" }, { key: "three", type: "pie" }],
+      }] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(3);
+    expect(screen.queryByTestId("semantic-section-pane-divider")).not.toBeInTheDocument();
+  });
+
+  it("renders one unavailable expert–collective state for one execution", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      visualizations={{ mode: "single", singleScatter: { available: false, unavailableReason: "missing_analytical_projection" }, consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByText("No stored expert–collective analytical projection is available for this execution.")).toHaveLength(1);
+    expect(screen.queryByTestId("semantic-section-pane-divider")).not.toBeInTheDocument();
+  });
+
+  it("applies packed compact and full-width spans to individual visualization cards", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", modelName: "Base model", alternativeEvaluationAnalysis: { analysis: { visualizations: [
+        { key: "compact", type: "pie", data: { items: [] } },
+        { key: "normal", type: "radar", data: { axes: [] } },
+        { key: "heavy", type: "line", data: { x: Array.from({ length: 8 }, (_, index) => index), series: [] } },
+      ] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("alternative-evaluation-visualization-pane")).toHaveLength(3);
+    expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
   });
 
   it("shows unavailable execution model visualizations without fabricating graphs", () => {

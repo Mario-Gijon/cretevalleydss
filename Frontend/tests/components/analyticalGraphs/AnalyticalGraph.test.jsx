@@ -7,8 +7,8 @@ vi.mock("chart.js", () => ({
 }));
 vi.mock("react-chartjs-2", () => ({
   Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
-  Line: ({ data, options }) => <div data-testid="line-chart" data-series={data.datasets.length} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
-  Scatter: ({ data, options }) => <div data-testid="scatter-chart" data-series={data.datasets.length} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text}>{options.plugins.tooltip.callbacks.label({ raw: data.datasets[0].data[0] })}</div>,
+  Line: ({ data, options }) => <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
+  Scatter: ({ data, options }) => <div data-testid="scatter-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text}>{options.plugins.tooltip.callbacks.label({ raw: data.datasets[0].data[0] })}</div>,
   Pie: ({ data }) => <div data-testid="pie-chart" data-kind="pie" data-items={data.datasets[0].data.length} />,
   Doughnut: ({ data }) => <div data-testid="pie-chart" data-kind="doughnut" data-items={data.datasets[0].data.length} />,
   Radar: ({ data }) => <div data-testid="radar-chart" data-metrics={data.labels.join(",")} data-series={data.datasets.length} />,
@@ -55,11 +55,14 @@ describe("AnalyticalGraph", () => {
     render(<AnalyticalGraph visualization={{ ...descriptors.line, data: { ...descriptors.line.data, series: [...descriptors.line.data.series, { key: "alt2", label: "Alt 2", values: [0.3, 0.7] }] } }} />);
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-x-axis", "Weight");
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-series", "2");
+    expect(screen.getByTestId("line-chart")).toHaveAttribute("data-point-radius", "0");
+    expect(screen.getByTestId("line-chart")).toHaveAttribute("data-point-hover-radius", "5");
   });
 
   it("passes scatter series with points and semantic axes", () => {
     render(<AnalyticalGraph visualization={{ ...descriptors.scatter, xAxis: { label: "D+" }, yAxis: { label: "D-" } }} />);
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-series", "1");
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-point-radius", "5");
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-axis", "D+");
     expect(screen.getByText(/Rank: 2/)).toBeInTheDocument();
   });

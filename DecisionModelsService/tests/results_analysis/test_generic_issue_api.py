@@ -61,6 +61,27 @@ def test_generic_issue_endpoint_projects_context_and_returns_standard_success():
     assert "### Execution" not in response["data"]["interpretation"]
 
 
+def test_generic_issue_analysis_keeps_a_stored_projection_but_marks_an_empty_one_unavailable():
+    context = analysis_context()
+    context["rounds"][0]["selectedExecution"]["result"]["standardResult"]["plotsGraphic"] = {}
+
+    unavailable = asyncio.run(analyze_generic_issue(context))["data"]["facts"]
+    assert unavailable["expertCollectiveRelationship"] == {
+        "projection": None,
+        "unavailableReason": "missing_analytical_projection",
+    }
+
+    context["rounds"][0]["selectedExecution"]["result"]["standardResult"]["plotsGraphic"] = {
+        "expert_points": [[0, 1]],
+        "collective_point": [0, 0],
+    }
+    available = asyncio.run(analyze_generic_issue(context))["data"]["facts"]
+    assert available["expertCollectiveRelationship"] == {
+        "projection": {"expert_points": [[0, 1]], "collective_point": [0, 0]},
+        "unavailableReason": None,
+    }
+
+
 def test_issue_analysis_keeps_ranking_evolution_but_not_consensus_visualization():
     context = analysis_context()
     second_round = deepcopy(context["rounds"][0])

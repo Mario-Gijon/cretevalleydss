@@ -604,6 +604,12 @@ def _sensitivity_lines(
                     "The grid is sampled; changes identify observed intervals, not exact breakpoints."
                 ),
                 "insight": nearest_text,
+                "scope": {
+                    "dimension": "expert" if evaluator else "criterion",
+                    "id": item["expertKey"] if evaluator else item["criterionId"],
+                    "label": item["name"],
+                    "order": len(descriptors),
+                },
                 "xAxis": {"label": "Varied weight"},
                 "yAxis": {"label": "TOPSIS closeness", "min": 0, "max": 1},
                 "data": {
@@ -638,3 +644,79 @@ def build_visualizations(facts: dict[str, Any]) -> list[dict[str, Any]]:
     visualizations.extend(_sensitivity_lines(facts, evaluator=False))
     visualizations.extend(_sensitivity_lines(facts, evaluator=True))
     return visualizations
+
+
+def build_visualization_sections(facts: dict[str, Any]) -> list[dict[str, Any]]:
+    """Group existing descriptors by model-owned analytical meaning."""
+    descriptors = {item["key"]: item for item in build_visualizations(facts)}
+    sections = (
+        (
+            "ideal-distances",
+            "TOPSIS geometry and ideal distances",
+            "Alternative positions and criterion contributions in the executed TOPSIS distance space.",
+            ("topsis-ideal-distances", "positive-distance-contributions", "negative-distance-contributions"),
+        ),
+        (
+            "collective-evaluation-structure",
+            "Collective evaluation structure",
+            "Observed collective 2-tuple positions in the executed collective matrix.",
+            ("collective-beta-heatmap",),
+        ),
+        (
+            "symbolic-translation",
+            "Symbolic translation diagnostics",
+            "Symbolic translation around the selected linguistic labels.",
+            ("alpha-heatmap",),
+        ),
+        (
+            "criterion-discrimination",
+            "Observed criterion discriminating power",
+            "Configured criterion weight multiplied by observed collective β range.",
+            ("criterion-weighted-discrimination",),
+        ),
+        (
+            "evaluator-disagreement",
+            "Evaluator alignment and disagreement",
+            "Aggregate evaluator distance to the collective profile and cell-level disagreement.",
+            ("evaluator-alignment", "evaluator-disagreement-heatmap"),
+        ),
+        (
+            "evaluator-influence",
+            "LOEO evaluator influence",
+            "Technical-rank impact of removing one evaluator and recomputing TOPSIS.",
+            ("loeo-rank-impact",),
+        ),
+        (
+            "criterion-influence",
+            "Criterion influence",
+            "Leave-one-criterion-out technical-rank impact under the existing TOPSIS recomputation evidence.",
+            ("loco-rank-impact",),
+        ),
+        (
+            "criterion-weight-sensitivity",
+            "Criterion weight sensitivity",
+            "TOPSIS closeness under sampled criterion-weight changes.",
+            tuple(key for key in descriptors if key.startswith("criterion-weight-sensitivity-")),
+            {"layout": "stacked"},
+        ),
+        (
+            "evaluator-weight-sensitivity",
+            "Evaluator weight sensitivity",
+            "TOPSIS closeness under sampled evaluator-weight changes.",
+            tuple(key for key in descriptors if key.startswith("evaluator-weight-sensitivity-")),
+            {},
+        ),
+    )
+    return [
+        {
+            "id": section_id,
+            "title": title,
+            "description": description,
+            "order": order,
+            **({"presentation": presentation} if presentation else {}),
+            "visualizations": [descriptors[key] for key in keys if key in descriptors],
+        }
+        for order, section in enumerate(sections)
+        for section_id, title, description, keys, presentation in [section if len(section) == 5 else (*section, {})]
+        if any(key in descriptors for key in keys)
+    ]

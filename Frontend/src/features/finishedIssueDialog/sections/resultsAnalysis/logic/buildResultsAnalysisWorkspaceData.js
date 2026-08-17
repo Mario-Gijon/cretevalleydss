@@ -97,8 +97,9 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     unavailableReason,
     sourcePhase: execution?.sourcePhase ?? null,
     phaseLabel: formatFinishedIssuePhaseLabel({ phase: execution?.sourcePhase, orderedPhases: execution?.phaseResults?.map((result) => result.phase) }),
-    // Keep the controlled source on this local execution shape. The
-    // visualization builder reads only standardizedOutput.plotsGraphic.
+    // Keep the controlled stored result and its persisted Generic Analysis
+    // together. The visualization builder may use Generic Analysis only when
+    // the stored standardized projection is absent.
     standardizedOutput: execution?.standardizedOutput ?? null,
     consensusMeasure: execution?.consensusMeasure ?? null,
     modelSpecificOutput: execution?.modelSpecificOutput ?? null,

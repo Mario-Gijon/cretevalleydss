@@ -16,7 +16,7 @@ const ExecutionSelectionToolbar = ({ data, selectedExecutionKeys, onToggleExecut
       <Typography variant="body2" sx={{ fontWeight: "fontWeightBold" }}>{data.selection.label}</Typography>
     </Stack>
     <Stack direction ="row" spacing={0.7} useFlexGap flexWrap="wrap" sx={{ minWidth: 0, flex: 1 }}>
-      {data.selected.map((execution) => <Chip key={execution.key} label={execution.displayLabel} title={execution.fullLabel} onDelete={data.selected.length > 1 ? () => onRemoveExecution(execution.key) : undefined} variant="outlined" sx={{ maxWidth: 260, borderColor: execution.color, color: "text.primary", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />)}
+      {data.selected.length > 1 ? data.selected.map((execution) => <Chip key={execution.key} label={execution.displayLabel} title={execution.fullLabel} onDelete={() => onRemoveExecution(execution.key)} variant="outlined" sx={{ maxWidth: 260, borderColor: execution.color, color: "text.primary", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />) : null}
     </Stack>
     <Button size="small" color="secondary" variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={reload?.loading} onClick={() => reload?.reload(selectedExecutionKeys)}>{reload?.loading ? "Reloading…" : "Reload analysis"}</Button>
     <Tooltip title={data.selection.canAddMore ? "Select executions" : "Maximum three executions"}>

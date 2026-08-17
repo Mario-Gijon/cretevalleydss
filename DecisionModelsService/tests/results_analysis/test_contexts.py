@@ -81,6 +81,7 @@ def test_generic_contexts_exclude_model_semantics_and_are_detached():
             "completedAt": "2026-01-01T00:00:02.000Z",
             "ranking": [{"alternativeId": "alternative-1", "rank": 1, "score": 0.9}, {"alternativeId": "alternative-2", "rank": 2}],
             "consensusMeasure": 0.85,
+            "expertCollectiveProjection": {"opaque": True},
         },
     }
     assert issue_context["issue"] == {"id": "issue-1", "name": "Frozen issue", "description": "Frozen description", "lifecycle": {"active": False, "currentStage": "finished"}, "consensus": {"enabled": True, "threshold": 0.8}}

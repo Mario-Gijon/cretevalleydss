@@ -9,7 +9,7 @@ def normalize_analysis_result(value):
     if not isinstance(value, dict):
         raise TypeError("Analysis result must be a dict or None")
 
-    allowed_fields = {"facts", "interpretation", "visualizations"}
+    allowed_fields = {"facts", "interpretation", "visualizations", "sections"}
     unexpected_fields = set(value) - allowed_fields
     if unexpected_fields:
         raise ValueError(
@@ -23,5 +23,7 @@ def normalize_analysis_result(value):
         raise TypeError("Analysis result interpretation must be a string")
     if "visualizations" in value and not isinstance(value["visualizations"], list):
         raise TypeError("Analysis result visualizations must be a list")
+    if "sections" in value and not isinstance(value["sections"], list):
+        raise TypeError("Analysis result sections must be a list")
 
     return deepcopy(value)

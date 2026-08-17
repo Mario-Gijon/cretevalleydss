@@ -3,6 +3,10 @@ import {
   Box,
   Button,
   Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
@@ -20,6 +24,9 @@ import { RESULTS_ANALYSIS_SLOT_COLORS } from "../logic/resultsAnalysisColors.js"
 import RankingMovementChart from "./RankingMovementChart.jsx";
 import { buildGenericRankingMovement } from "../logic/buildGenericRankingMovement.js";
 import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js";
+import { buildVisualizationLayout } from "../logic/modelVisualizationLayout.js";
+import { buildModelAnalysisSections, scopedEntities, visualizationsForScope } from "../logic/modelAnalysisSections.js";
+import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 
 const cardSx = {
@@ -599,7 +606,7 @@ const ExpertCollectiveRelationship = ({
         onResetZoom={onResetZoom}
         extraAction={toggleMode ? <ToggleButtonGroup color="secondary" exclusive size="small" value={representation} onChange={(_, value) => value && setRepresentation(value)} aria-label="Expert collective representation"><ToggleButton value="map">Map</ToggleButton><ToggleButton value="distances">Distances</ToggleButton></ToggleButtonGroup> : null}
       />
-      {toggleMode ? (
+      {!scatterAvailable && visualizations.mode !== "comparison" ? map : toggleMode ? (
         showMap ? map : <Box sx={expertChartFrameSx}><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
       ) : (
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: { xs: 1.2, md: 0 }, alignItems: "start" }}>
@@ -613,64 +620,60 @@ const ExpertCollectiveRelationship = ({
   );
 };
 
-const modelVisualizationsFor = (execution) => {
-  const visualizations = execution.alternativeEvaluationAnalysis?.analysis?.visualizations;
-  return Array.isArray(visualizations) ? visualizations : [];
+const VisualizationPane = ({ descriptor, execution, index, compactTitle }) => {
+  const { chartHeight, chartMinWidth } = buildVisualizationLayout([descriptor])[0];
+  return <Box key={typeof descriptor?.key === "string" && descriptor.key ? descriptor.key : `${execution.key}-visualization-${index}`} data-testid="alternative-evaluation-visualization-pane" sx={{ minWidth: 0, width: "100%" }}>
+    <AnalyticalGraph visualization={descriptor} chartHeight={chartHeight} chartMinWidth={chartMinWidth} titleVariant={compactTitle ? "subtitle1" : "h6"} />
+  </Box>;
+};
+
+const SectionPanes = ({ visualizations, execution, stacked = false, compactTitles = false }) => {
+  const layouts = buildVisualizationLayout(visualizations);
+  const rows = [];
+  for (let index = 0; index < layouts.length; index += 1) {
+    const current = layouts[index];
+    const next = layouts[index + 1];
+    if (!stacked && current.span === 1 && next?.span === 1) {
+      rows.push([current, next]);
+      index += 1;
+    } else rows.push([current]);
+  }
+  return <Stack spacing={1.4}>{rows.map((row, rowIndex) => row.length === 2 ? <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.2, minWidth: 0 }}>
+    <VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex * 2} compactTitle={compactTitles} />
+    <Box data-testid="semantic-section-pane-divider" aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
+    <VisualizationPane descriptor={row[1].visualization} execution={execution} index={rowIndex * 2 + 1} compactTitle={compactTitles} />
+  </Box> : <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ minWidth: 0, width: "100%" }}><VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex} compactTitle={compactTitles} /></Box>)}</Stack>;
+};
+
+const SemanticSection = ({ section }) => {
+  const entities = scopedEntities(section);
+  const selectable = entities.length > 3;
+  const [selectedScopeKey, setSelectedScopeKey] = useState(selectable ? `${entities[0].dimension}:${entities[0].id}` : null);
+  const selectedEntity = entities.find((entity) => `${entity.dimension}:${entity.id}` === selectedScopeKey) || null;
+  const visibleEntries = section.executions.map((entry) => ({ ...entry, visualizations: visualizationsForScope(entry.visualizations, selectedEntity) }));
+  const isSingleton = visibleEntries.length === 1 && visibleEntries[0].visualizations.length === 1;
+  const stacked = section.presentation?.layout === "stacked";
+  const scenarioColumns = visibleEntries.map(() => "minmax(360px, 1fr)").join(" 1px ");
+  return <Box data-testid="model-analysis-semantic-section" sx={cardSx}>
+    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} sx={{ mb: isSingleton ? 0 : 1.4 }}>
+      {!isSingleton ? <Box><Typography variant="h6" component="h3" sx={{ fontWeight: 900 }}>{section.title}</Typography>{section.description ? <Typography variant="body2" color="text.secondary">{section.description}</Typography> : null}</Box> : null}
+      {selectable ? <FormControl size="small" color="secondary" sx={{ minWidth: 190 }}><InputLabel id={`${section.id}-scope-label`}>{selectedEntity?.dimension || "Entity"}</InputLabel><Select labelId={`${section.id}-scope-label`} label={selectedEntity?.dimension || "Entity"} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>{entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}</Select></FormControl> : null}
+    </Stack>
+    <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: visibleEntries.length > 1 ? scenarioColumns : "minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.4, minWidth: visibleEntries.length > 2 ? `${visibleEntries.length * 360}px` : 0 }}>
+        {visibleEntries.flatMap((entry, index) => [
+          <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>{visibleEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}{entry.visualizations.length ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} compactTitles={!isSingleton} /> : <Alert severity="info">Alternative-evaluation visualizations are not available for this execution.</Alert>}</Box>,
+          ...(index < visibleEntries.length - 1 ? [<Box key={`${entry.execution.key}-divider`} data-testid="semantic-section-scenario-divider" aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, bgcolor: "rgba(83,198,214,0.22)" }} />] : []),
+        ])}
+      </Box>
+    </Box>
+  </Box>;
 };
 
 const AlternativeEvaluationVisualizations = ({ executions }) => {
-  if (!executions.some((execution) => modelVisualizationsFor(execution).length)) return null;
-  return (
-    <Box>
-      <Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>
-        Alternative evaluation visualizations
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>
-        Model-specific analytical views of the alternative-evaluation result.
-      </Typography>
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
-          gap: 1.4,
-        }}
-      >
-        {executions.map((execution) => {
-          const visualizations = modelVisualizationsFor(execution);
-          return (
-            <Box key={execution.key} data-testid="alternative-evaluation-visualization-group" sx={cardSx}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 900, color: execution.color || "text.primary" }}>
-                {execution.displayLabel}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>
-                {execution.modelName || "Model unavailable"}
-              </Typography>
-              {visualizations.length ? (
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
-                    gap: 1.4,
-                    minWidth: 0,
-                  }}
-                >
-                  {visualizations.map((descriptor, index) => (
-                    <Box key={typeof descriptor?.key === "string" && descriptor.key ? descriptor.key : `${execution.key}-visualization-${index}`} sx={{ minWidth: 0 }}>
-                      <AnalyticalGraph visualization={descriptor} />
-                    </Box>
-                  ))}
-                </Box>
-              ) : (
-                <Alert severity="info">
-                  Alternative-evaluation visualizations are not available for this execution.
-                </Alert>
-              )}
-            </Box>
-          );
-        })}
-      </Box>
-    </Box>
-  );
+  const sections = buildModelAnalysisSections(executions);
+  if (!sections.length) return null;
+  return <Box><Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>Alternative evaluation visualizations</Typography><Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>Model-specific analytical views of the alternative-evaluation result.</Typography><Stack spacing={1.4}>{sections.map((section) => <SemanticSection key={section.id} section={section} />)}</Stack></Box>;
 };
 
 const VisualizationsPanel = ({

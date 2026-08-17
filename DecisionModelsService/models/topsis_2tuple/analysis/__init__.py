@@ -9,7 +9,7 @@ from .interpretation import build_interpretation
 from .linguistic import build_linguistic_facts
 from .robustness import build_robustness_facts
 from .sensitivity import build_sensitivity_facts
-from .visualizations import build_visualizations
+from .visualizations import build_visualization_sections, build_visualizations
 
 
 def analyze_issue(context: dict[str, Any]) -> dict[str, Any]:
@@ -24,6 +24,7 @@ def analyze_issue(context: dict[str, Any]) -> dict[str, Any]:
         "facts": facts,
         "interpretation": build_interpretation(facts),
         "visualizations": build_visualizations(facts),
+        "sections": build_visualization_sections(facts),
     }
 
 
