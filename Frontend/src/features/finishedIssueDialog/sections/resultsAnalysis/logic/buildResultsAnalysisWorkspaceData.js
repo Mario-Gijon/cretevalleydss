@@ -5,6 +5,7 @@ import { buildResultsVisualizationsData } from "./buildResultsVisualizationsData
 import { RESULTS_ANALYSIS_SLOT_COLORS } from "./resultsAnalysisColors.js";
 import { selectExecutionGenericAnalysis } from "./selectExecutionGenericAnalysis.js";
 import { selectExecutionAlternativeEvaluationAnalysis } from "./selectExecutionAlternativeEvaluationAnalysis.js";
+import { selectExecutionStageAnalyses } from "./selectExecutionStageAnalyses.js";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -83,6 +84,7 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
   const type = execution?.type || option.type;
   const shortLabel = type === "base" ? baseLabel(modelName) : name;
   const fullLabel = type === "base" ? shortLabel : `${name} · ${modelName}`;
+  const stageAnalyses = selectExecutionStageAnalyses(payload, option.key);
   return {
     key: option.key,
     type,
@@ -105,7 +107,10 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     modelSpecificOutput: execution?.modelSpecificOutput ?? null,
     rawOutput: execution?.rawOutput ?? null,
     genericAnalysis: selectExecutionGenericAnalysis(payload, option.key),
-    alternativeEvaluationAnalysis: selectExecutionAlternativeEvaluationAnalysis(payload, option.key),
+    stageAnalyses,
+    // Retained as a compatibility alias while consumers migrate to the generic
+    // stageAnalyses workspace contract.
+    alternativeEvaluationAnalysis: stageAnalyses.alternativeEvaluation ?? selectExecutionAlternativeEvaluationAnalysis(payload, option.key),
   };
 };
 

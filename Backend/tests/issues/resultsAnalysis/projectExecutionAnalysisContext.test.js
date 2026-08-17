@@ -10,6 +10,14 @@ const context = () => ({
     { phase: 0, start: { participants: [{ id: "expert-1" }] }, revisions: [{ id: "real-phase-0" }], executionAttempts: [{ id: "base-0", status: "succeeded", applicationStatus: "applied" }], selectedExecution: { attemptId: "base-0", result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 2, score: 0.4 }], consensusMeasure: 0.4 } } } },
     { phase: 5, start: { participants: [{ id: "expert-2" }] }, revisions: [{ id: "real-phase-5" }], executionAttempts: [{ id: "base-5", status: "succeeded", applicationStatus: "applied" }], selectedExecution: { attemptId: "base-5", result: { standardResult: { rankedAlternatives: [{ alternativeId: "a", rank: 1 }], consensusMeasure: 0.95 } } } },
   ],
+  stageExecutions: {
+    criteriaWeighting: {
+      phase: null,
+      selectedExecution: { attemptId: "criteria-1", modelContext: { apiModelKey: "criteria-model" }, result: { standardResult: { weights: { a: 0.6 } }, modelExecution: {}, rawOutput: { weights: [0.6, 0.4] } } },
+      executionAttempts: [{ id: "criteria-1", status: "succeeded" }],
+      evidenceRefs: { executionAttemptIds: ["criteria-1"], stageResultId: "criteria-result", eventIds: [] },
+    },
+  },
   scenarios: {
     current: [{
       id: "scenario-1",
@@ -59,6 +67,7 @@ describe("projectExecutionAnalysisContext", () => {
     expect(projected.analysisContext.rounds.map((entry) => entry.selectedExecution.result.standardResult.rankedAlternatives[0].score)).toEqual([0.5, 0.8]);
     expect(projected.analysisContext.rounds[1].start.participants).toEqual([{ id: "expert-2" }]);
     expect(projected.analysisContext.rounds[1].revisions).toEqual([{ id: "real-phase-5" }]);
+    expect(projected.analysisContext.stageExecutions.criteriaWeighting).toEqual(context().stageExecutions.criteriaWeighting);
   });
 
   it("rejects an unavailable Scenario execution key", () => {

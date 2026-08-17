@@ -63,6 +63,39 @@ describe("Results Analysis analytical projection comparison", () => {
     } });
     expect(result.expertPoints.map((point) => point.identity)).toEqual(["expert-1", "expert-2"]);
     expect(result.expertPoints.map((point) => point.email)).toEqual(["first@example.test", "second@example.test"]);
+    expect(result.expertPoints.map((point) => point.label)).toEqual(["First", "Second"]);
+  });
+
+  it("keeps a coincident one-expert projection available for the normal charts", () => {
+    const result = buildResultsVisualizationsData({
+      payload,
+      executions: [execution({
+        key: "base",
+        points: [[0, 0]],
+        collective: [0, 0],
+        labels: ["Ada Lovelace"],
+      })],
+    });
+
+    expect(result.expertCollective).toMatchObject({ available: true, unavailableReason: null });
+    expect(result.expertCollective.expertPoints).toEqual([
+      expect.objectContaining({ label: "Ada Lovelace", x: 0, y: 0 }),
+    ]);
+    expect(result.expertCollective.collectivePoint).toMatchObject({ x: 0, y: 0 });
+    expect(result.singleScatter).toMatchObject({
+      available: true,
+      data: { 0: { expertPoints: [expect.objectContaining({ label: "Ada Lovelace", x: 0, y: 0 })], collectivePoint: { x: 0, y: 0 } } },
+    });
+  });
+
+  it("keeps multi-expert projections on the normal visualization path", () => {
+    const result = buildResultsVisualizationsData({
+      payload,
+      executions: [execution({ key: "base", points: [[0, 0], [1, 0]] })],
+    });
+
+    expect(result.expertCollective).toMatchObject({ available: true });
+    expect(result.singleScatter).toMatchObject({ available: true });
   });
 
   it("detects equivalent projections independently of expert order and includes the collective point", () => {

@@ -992,14 +992,6 @@ def run_topsis_2tuple(
         method="MDS",
     )
 
-    if "expert_points" in plots_graphic:
-        expert_keys = list(matrices.keys())
-        # The shared projection contract keeps points in matrix order.  Carry
-        # that same stable input identity alongside them so generic consumers
-        # never need model-specific expert metadata to label the points.
-        plots_graphic["expert_ids"] = expert_keys
-        plots_graphic["expert_labels"] = expert_keys
-
     return {
         "collective_matrix": collective_matrix,
         "collective_beta_matrix": collective_beta_matrix,

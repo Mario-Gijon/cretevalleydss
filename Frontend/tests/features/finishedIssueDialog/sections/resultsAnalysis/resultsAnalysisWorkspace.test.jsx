@@ -117,6 +117,20 @@ describe("Results analysis workspace", () => {
     const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["scenario-forward", "base", "scenario-reverse"] });
     expect(data.selected.map((entry) => entry.color)).toEqual(["#27d5e4", "#6fdc68", "#a960e8"]);
   });
+
+  it("keeps persisted model analyses in the generic stageAnalyses workspace field", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.resultsAnalysis = { executions: [{
+      executionKey: "base",
+      stageAnalyses: {
+        criteriaWeighting: { apiModelKey: "criteria-model", analysis: { interpretation: "Criteria" } },
+        alternativeEvaluation: { apiModelKey: "alternative-model", analysis: { interpretation: "Alternatives" } },
+      },
+    }] };
+    const workspace = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+    expect(workspace.primary.stageAnalyses).toMatchObject({ criteriaWeighting: { apiModelKey: "criteria-model" }, alternativeEvaluation: { apiModelKey: "alternative-model" } });
+    expect(workspace.primary.alternativeEvaluationAnalysis).toEqual(workspace.primary.stageAnalyses.alternativeEvaluation);
+  });
   it("resolves the latest base evaluation and keeps every ranking entry", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios = [

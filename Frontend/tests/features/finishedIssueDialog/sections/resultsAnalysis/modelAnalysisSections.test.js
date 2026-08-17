@@ -14,6 +14,18 @@ describe("model analysis semantic sections", () => {
     expect(sections.find((section) => section.id === "first").visualizations.map((entry) => entry.key)).toEqual(["a"]);
   });
 
+  it("selects sections from the requested model-analysis stage without changing the legacy alternative stage", () => {
+    const executions = [{
+      key: "base",
+      stageAnalyses: {
+        criteriaWeighting: { analysis: { sections: [{ id: "weights", title: "Weights", visualizations: [{ key: "weight-chart" }] }] } },
+        alternativeEvaluation: { analysis: { sections: [{ id: "ranking", title: "Ranking", visualizations: [{ key: "ranking-chart" }] }] } },
+      },
+    }];
+    expect(buildModelAnalysisSections(executions, "criteriaWeighting").map((section) => section.id)).toEqual(["weights"]);
+    expect(buildModelAnalysisSections(executions).map((section) => section.id)).toEqual(["ranking"]);
+  });
+
   it("groups repeated scoped views by entity and filters all graphs for the selected entity", () => {
     const section = {
       executions: [{ visualizations: [

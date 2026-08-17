@@ -9,7 +9,7 @@ vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/Analy
   AnalyticalConsensusLineChart: () => <div>Consensus chart</div>,
 }));
 vi.mock("@mui/x-charts/BarChart", () => ({
-  BarChart: ({ height, xAxis }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} />,
+  BarChart: ({ height, xAxis, series }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} data-values={series[0].data.join("|")} />,
 }));
 vi.mock("../../../../../src/components/analyticalGraphs", () => ({
   AnalyticalGraph: ({ visualization, titleVariant }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant}>{visualization?.key}</div>,
@@ -38,6 +38,27 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("analytical-scatter")).toHaveAttribute("data-phase", "5");
   });
 
+  it("renders only the full-width projection for one coincident expert", () => {
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <VisualizationsPanel
+          scatterPlotRef={{ current: null }}
+          onResetZoom={vi.fn()}
+          visualizations={{
+            mode: "single",
+            singleScatter: { available: true, sourcePhase: 0, data: { 0: { expertPoints: [{ label: "Ada Lovelace", x: 0, y: 0 }], collectivePoint: { x: 0, y: 0 } } } },
+            canonicalProjections: [{ key: "base", available: true, collectivePoint: { x: 0, y: 0 }, expertPoints: [{ label: "Ada Lovelace", identity: "expert-1", x: 0, y: 0 }] }],
+            consensus: { enabled: false },
+          }}
+        />
+      </ThemeProvider>
+    );
+
+    expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
+    expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
+    expect(screen.getByTestId("single-expert-projection")).toHaveStyle({ width: "100%", minWidth: "0" });
+  });
+
   it("renders one execution's model-specific descriptors in stored order after General visualizations", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{ key: "base", displayLabel: "Base", modelName: "TOPSIS 2-tuple", alternativeEvaluationAnalysis: { analysis: { visualizations: [{ key: "model-bar", type: "bar" }, { key: "model-heatmap", type: "heatmap" }] } } }]}
@@ -48,6 +69,19 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByText("Alternative evaluation visualizations")).toBeInTheDocument();
     expect(screen.queryByText("TOPSIS 2-tuple")).not.toBeInTheDocument();
     expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["model-bar", "model-heatmap"]);
+  });
+
+  it("renders criteria-weighting model visualizations before alternative-evaluation visualizations", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", stageAnalyses: {
+        criteriaWeighting: { analysis: { visualizations: [{ key: "criteria-chart", type: "bar" }] } },
+        alternativeEvaluation: { analysis: { visualizations: [{ key: "alternative-chart", type: "line" }] } },
+      } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByText("Criterion weighting visualizations").compareDocumentPosition(screen.getByText("Alternative evaluation visualizations")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["criteria-chart", "alternative-chart"]);
   });
 
   it("renders each model-specific visualization as an isolated dashboard card", () => {
@@ -186,7 +220,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("analytical-graph")).not.toBeInTheDocument();
   });
 
-  it("shows scatter and stored distances together while harmlessly ignoring alternative relationships", () => {
+  it("shows scatter and stored distances for multiple experts while harmlessly ignoring alternative relationships", () => {
     const onResetZoom = vi.fn();
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       scatterPlotRef={{ current: null }}
@@ -201,13 +235,13 @@ describe("VisualizationsPanel", () => {
       visualizations={{
         mode: "single",
         singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
-        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", label: "Expert 1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }] }],
+        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", label: "Expert 1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }, { identity: "expert-2", label: "Expert 2", email: "expert02@cretevalley.test", x: -0.2, y: -0.1 }] }],
         consensus: { enabled: false },
       }}
     /></ThemeProvider>);
 
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
-    expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "expert01@creteval…");
+    expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Expert 1|Expert 2");
     expect(screen.getByRole("button", { name: "Reset zoom" })).toBeInTheDocument();
     expect(screen.queryByText("Alternative relationships")).not.toBeInTheDocument();
     expect(screen.queryByText("Pairwise separation")).not.toBeInTheDocument();
@@ -227,7 +261,7 @@ describe("VisualizationsPanel", () => {
       visualizations={{
         mode: "single",
         singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
-        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }] }],
+        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }, { identity: "expert-2", email: "expert02@cretevalley.test", x: -0.2, y: -0.1 }] }],
         consensus: { enabled: true, available: true, graph: { labels: ["Phase 0", "Round 1"], series: [] } },
       }}
     /></ThemeProvider>);

@@ -117,6 +117,43 @@ describe("buildAnalysisContext", () => {
     expect(input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.standardResult.rawOutput).toEqual({ internal: true });
   });
 
+  it("keeps applied criteria-weighting execution evidence separate from alternative rounds and unchanged for scenarios", () => {
+    const input = history();
+    input.evidence.executionAttempts.unshift({
+      id: "criteria-attempt",
+      scope: "issueStage",
+      evaluationStage: "criteriaWeighting",
+      consensusPhase: null,
+      status: "succeeded",
+      failureStage: null,
+      correlationId: "criteria",
+      startedAt: time(1),
+      completedAt: time(2),
+      modelContext: { apiModelKey: "criteria-model", provider: "frozen" },
+      request: request("expert-1", { preferences: ["criterion-cost", "criterion-speed"] }),
+      application: applied("criteria-stage-result", { weights: { "criterion-cost": 0.7 }, rawOutput: { excluded: true } }, { timing: 12 }, { matrix: [[0.7, 0.3]] }),
+    });
+    input.evidence.stageResults.unshift({ id: "criteria-stage-result", stage: "criteriaWeighting", consensusPhase: null, executionAttemptId: "criteria-attempt" });
+
+    const context = buildAnalysisContext(input);
+    const criteria = context.stageExecutions.criteriaWeighting;
+    expect(context.rounds.map((round) => round.phase)).toEqual([0, 1]);
+    expect(criteria).toMatchObject({
+      phase: null,
+      selectedExecution: {
+        attemptId: "criteria-attempt",
+        correlationId: "criteria",
+        modelContext: { apiModelKey: "criteria-model" },
+        input: { evaluations: [{ payload: { preferences: ["criterion-cost", "criterion-speed"] } }] },
+        result: { standardResult: { weights: { "criterion-cost": 0.7 } }, modelExecution: { timing: 12 }, rawOutput: { matrix: [[0.7, 0.3]] } },
+        application: { stageResultId: "criteria-stage-result" },
+      },
+    });
+    expect(criteria.selectedExecution.result.standardResult).not.toHaveProperty("rawOutput");
+    expect(context.scenarios.current[0].phaseResults).toHaveLength(1);
+    expect(context.stageExecutions.criteriaWeighting).toEqual(criteria);
+  });
+
   it("selects the final recomputation by application completion, start time, and id while retaining all attempts", () => {
     const input = history();
     const base = input.evidence.executionAttempts[1];

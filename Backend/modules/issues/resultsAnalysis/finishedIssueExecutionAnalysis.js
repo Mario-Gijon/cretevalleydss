@@ -58,6 +58,28 @@ const resolveAlternativeEvaluationApiModelKeyOrThrow = (analysisContext) => {
   return keys[0];
 };
 
+const criteriaWeightingAnalysisContext = (analysisContext) => {
+  const execution = analysisContext?.stageExecutions?.criteriaWeighting;
+  if (!execution?.selectedExecution) return null;
+  return {
+    ...clone(analysisContext),
+    rounds: [{
+      phase: execution.phase,
+      selectedExecution: clone(execution.selectedExecution),
+      executionAttempts: clone(execution.executionAttempts),
+      evidenceRefs: clone(execution.evidenceRefs),
+    }],
+  };
+};
+
+const resolveCriteriaWeightingApiModelKeyOrThrow = (analysisContext) => {
+  const apiModelKey = analysisContext?.stageExecutions?.criteriaWeighting?.selectedExecution?.modelContext?.apiModelKey;
+  if (typeof apiModelKey !== "string" || !apiModelKey.trim()) {
+    throw createBadRequestError("Projected criteriaWeighting execution evidence must contain an apiModelKey", { field: "analysisContext.stageExecutions.criteriaWeighting.selectedExecution.modelContext.apiModelKey" });
+  }
+  return apiModelKey.trim();
+};
+
 const generateAndReplace = async ({
   issue,
   descriptor,
@@ -73,9 +95,15 @@ const generateAndReplace = async ({
   const context = analysisContextBuilder(history);
   const projected = executionProjector({ analysisContext: context, executionKey: descriptor.key });
   const genericAnalysis = await requestAnalysis({ analysisContext: projected.analysisContext });
+  const criteriaContext = criteriaWeightingAnalysisContext(projected.analysisContext);
+  const criteriaApiModelKey = criteriaContext ? resolveCriteriaWeightingApiModelKeyOrThrow(projected.analysisContext) : null;
+  const criteriaAnalysis = criteriaContext ? await requestModelAnalysis({ apiModelKey: criteriaApiModelKey, analysisContext: criteriaContext }) : null;
   const apiModelKey = resolveAlternativeEvaluationApiModelKeyOrThrow(projected.analysisContext);
   const modelAnalysis = await requestModelAnalysis({ apiModelKey, analysisContext: projected.analysisContext });
-  const stageAnalyses = { alternativeEvaluation: { apiModelKey, analysis: clone(modelAnalysis) } };
+  const stageAnalyses = {
+    ...(criteriaContext ? { criteriaWeighting: { apiModelKey: criteriaApiModelKey, analysis: clone(criteriaAnalysis) } } : {}),
+    alternativeEvaluation: { apiModelKey, analysis: clone(modelAnalysis) },
+  };
   const generatedAt = now();
   const entry = await analysisModel.findOneAndUpdate(
     { issue: issue._id, executionKey: descriptor.key },

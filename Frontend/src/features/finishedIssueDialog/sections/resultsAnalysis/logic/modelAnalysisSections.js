@@ -1,8 +1,10 @@
 const asArray = (value) => Array.isArray(value) ? value : [];
 const text = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
 
-export const sectionsForExecution = (execution) => {
-  const analysis = execution?.alternativeEvaluationAnalysis?.analysis;
+const stageAnalysisFor = (execution, stage) => execution?.stageAnalyses?.[stage] ?? (stage === "alternativeEvaluation" ? execution?.alternativeEvaluationAnalysis : null);
+
+export const sectionsForExecution = (execution, stage = "alternativeEvaluation") => {
+  const analysis = stageAnalysisFor(execution, stage)?.analysis;
   const sections = asArray(analysis?.sections)
     .filter((section) => text(section?.id) && Array.isArray(section.visualizations))
     .map((section, index) => ({ id: text(section.id), title: text(section.title) || "Model analysis", description: text(section.description), order: Number.isFinite(section.order) ? section.order : index, presentation: section.presentation && typeof section.presentation === "object" ? section.presentation : {}, visualizations: section.visualizations }));
@@ -11,10 +13,10 @@ export const sectionsForExecution = (execution) => {
   return visualizations.length ? [{ id: "legacy-model-analysis", title: "Model analysis", description: null, order: 0, visualizations }] : [];
 };
 
-export const buildModelAnalysisSections = (executions) => {
+export const buildModelAnalysisSections = (executions, stage = "alternativeEvaluation") => {
   const sections = new Map();
   asArray(executions).forEach((execution, executionOrder) => {
-    sectionsForExecution(execution).forEach((section) => {
+    sectionsForExecution(execution, stage).forEach((section) => {
       const existing = sections.get(section.id) || { ...section, executionOrder, executions: [] };
       existing.executions.push({ execution, visualizations: section.visualizations });
       sections.set(section.id, existing);

@@ -415,8 +415,8 @@ def test_topsis_2tuple_public_executor_runs_end_to_end() -> None:
         "expert-2",
     ]
     assert data["plotsGraphic"]["expert_labels"] == [
-        "expert-1",
-        "expert-2",
+        "Expert 1",
+        "Expert 2",
     ]
     assert len(data["plotsGraphic"]["expert_points"]) == 2
     assert len(data["plotsGraphic"]["collective_point"]) == 2
@@ -479,7 +479,7 @@ def test_topsis_2tuple_single_expert_projection_is_available_without_disagreemen
     projection = data["plotsGraphic"]
 
     assert projection["expert_ids"] == ["expert-1"]
-    assert projection["expert_labels"] == ["expert-1"]
+    assert projection["expert_labels"] == ["Expert 1"]
     assert projection["expert_points"] == [[0.0, 0.0]]
     assert len(projection["collective_point"]) == 2
 
@@ -514,6 +514,22 @@ def test_topsis_2tuple_single_expert_projection_is_available_without_disagreemen
         "projection": projection,
         "unavailableReason": None,
     }
+
+
+def test_topsis_2tuple_projection_uses_human_expert_labels() -> None:
+    payload = _base_payload()
+    payload["evaluations"][0]["expert"]["name"] = "Ada Lovelace"
+    payload["evaluations"][1]["expert"]["email"] = "grace@example.test"
+
+    projection = _payload_result(
+        execute_topsis_2tuple(_request(payload))
+    )["data"]["plotsGraphic"]
+
+    assert projection["expert_ids"] == ["expert-1", "expert-2"]
+    assert projection["expert_labels"] == [
+        "Ada Lovelace",
+        "grace@example.test",
+    ]
 
 
 def test_topsis_2tuple_public_executor_preserves_raw_model_evidence() -> None:

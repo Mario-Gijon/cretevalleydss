@@ -32,6 +32,20 @@ describe("InterpretationPanel", () => {
     expect(screen.getAllByText("Scenario model")).toHaveLength(2);
   });
 
+  it("renders available stage interpretations in criteria-weighting then alternative-evaluation order", () => {
+    render(<InterpretationPanel executions={[{
+      key: "base", displayLabel: "Base", modelName: "Alternative model", genericAnalysis: { interpretation: "General" },
+      stageAnalyses: {
+        criteriaWeighting: { apiModelKey: "criteria-model", analysis: { interpretation: "Criteria interpretation" } },
+        alternativeEvaluation: { apiModelKey: "alternative-model", analysis: { interpretation: "Alternative interpretation" } },
+      },
+    }]} />);
+    expect(screen.getByText("Criteria weighting").compareDocumentPosition(screen.getByText("Alternative evaluation")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("criteria-model")).toBeInTheDocument();
+    expect(screen.getByText("Criteria interpretation")).toBeInTheDocument();
+    expect(screen.getByText("Alternative interpretation")).toBeInTheDocument();
+  });
+
   it("keeps General analysis visible and omits the optional section when model analysis is absent", () => {
     render(<InterpretationPanel executions={[
       { key: "base", displayLabel: "Base", modelName: "Base model", genericAnalysis: { interpretation: "Base general" }, alternativeEvaluationAnalysis: null },

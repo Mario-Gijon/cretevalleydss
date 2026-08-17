@@ -47,6 +47,21 @@ def _expert_key(expert: dict[str, Any], index: int) -> str:
     return f"expert_{index + 1}"
 
 
+def _expert_label(expert: dict[str, Any], index: int) -> str:
+    for field in ("name", "email"):
+        value = expert.get(field)
+
+        if value is None:
+            continue
+
+        normalized = str(value).strip()
+
+        if normalized:
+            return normalized
+
+    return f"Expert {index + 1}"
+
+
 def _evaluation_value(
     value: Any,
     criterion: dict[str, Any],
@@ -219,6 +234,10 @@ def _input(
     return {
         **extracted,
         "expert_keys": list(matrices.keys()),
+        "expert_labels": [
+            _expert_label(evaluation.get("expert") or {}, index)
+            for index, evaluation in enumerate(payload.evaluations or [])
+        ],
         "weights": _weights(
             payload,
             len(criterion_items),
@@ -320,6 +339,19 @@ def _output(
         )
     )
 
+    plots_graphic = dict(run_result.get("plots_graphic") or {})
+
+    if "expert_points" in plots_graphic:
+        # The shared projection contract keeps expert points in evaluation
+        # order. Keep stable IDs and human-readable display labels alongside
+        # the points without changing the mathematical projection.
+        plots_graphic["expert_ids"] = list(
+            execution_input["expert_keys"]
+        )
+        plots_graphic["expert_labels"] = list(
+            execution_input["expert_labels"]
+        )
+
     raw_output = {
         **run_result,
         "alternative_ids": list(
@@ -345,9 +377,7 @@ def _output(
     return {
         "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": collective_evaluations,
-        "plotsGraphic": run_result.get(
-            "plots_graphic"
-        ) or {},
+        "plotsGraphic": plots_graphic,
         "consensusMeasure": None,
         "rawOutput": raw_output,
     }

@@ -14,6 +14,13 @@ const markdownComponents = {
   table: ({ children }) => <Box sx={{ overflowX: "auto", width: "100%" }}><Box component="table" sx={{ borderCollapse: "collapse", minWidth: 480, width: "100%", "& th, & td": { border: "1px solid rgba(83,198,214,0.2)", px: 1.2, py: 0.85, textAlign: "left", fontSize: 14 }, "& th": { color: "text.primary", bgcolor: "rgba(83,198,214,0.08)", fontWeight: 800 }, "& td": { color: "text.secondary" } }}>{children}</Box></Box>,
 };
 
+const MODEL_ANALYSIS_STAGES = [
+  { key: "criteriaWeighting", title: "Criteria weighting" },
+  { key: "alternativeEvaluation", title: "Alternative evaluation" },
+];
+const stageAnalysisFor = (execution, stage) => execution?.stageAnalyses?.[stage] ?? (stage === "alternativeEvaluation" ? execution?.alternativeEvaluationAnalysis : null);
+const stageCaption = (execution, stage, entry) => stage === "alternativeEvaluation" && execution.modelName && execution.modelName !== "—" ? execution.modelName : entry?.apiModelKey || null;
+
 const InterpretationPanel = ({ executions = [] }) => {
   const multiple = executions.length > 1;
   return <Box sx={{ overflowX: multiple ? "auto" : "visible", maxWidth: "100%" }}>
@@ -23,11 +30,16 @@ const InterpretationPanel = ({ executions = [] }) => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>{execution.modelName}</Typography>
         <Typography component="h3" sx={{ mb: 1.25, fontSize: 17, fontWeight: 900 }}>General analysis</Typography>
         {execution.genericAnalysis?.interpretation ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{execution.genericAnalysis.interpretation}</ReactMarkdown> : <Alert severity="info">General analysis is not available for this execution. Reload Analysis to generate it.</Alert>}
-        {execution.alternativeEvaluationAnalysis?.analysis?.interpretation ? <Box sx={{ mt: 2 }}>
-          <Typography component="h3" sx={{ mb: 0.35, fontSize: 17, fontWeight: 900 }}>Alternative evaluation</Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.8 }}>{execution.modelName}</Typography>
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{execution.alternativeEvaluationAnalysis.analysis.interpretation}</ReactMarkdown>
-        </Box> : null}
+        {MODEL_ANALYSIS_STAGES.map((stage) => {
+          const entry = stageAnalysisFor(execution, stage.key);
+          const interpretation = entry?.analysis?.interpretation;
+          if (!interpretation) return null;
+          return <Box key={stage.key} sx={{ mt: 2 }}>
+            <Typography component="h3" sx={{ mb: 0.35, fontSize: 17, fontWeight: 900 }}>{stage.title}</Typography>
+            {stageCaption(execution, stage.key, entry) ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.8 }}>{stageCaption(execution, stage.key, entry)}</Typography> : null}
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{interpretation}</ReactMarkdown>
+          </Box>;
+        })}
       </Box>)}
     </Box>
   </Box>;

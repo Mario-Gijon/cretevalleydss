@@ -90,6 +90,24 @@ const appliedScenarioPhaseResult = (attempt, scenarioPhaseResult, field) => {
 };
 const compactAttempt = (attempt) => ({ id: attempt.id, status: attempt.status, failureStage: attempt.failureStage, startedAt: attempt.startedAt, completedAt: attempt.completedAt, applicationStatus: attempt.application?.status ?? null });
 
+const selectedExecutionFromAttempt = (selected, field) => {
+  const { application, result } = appliedResult(selected, field);
+  return {
+    attemptId: selected.id,
+    correlationId: selected.correlationId,
+    startedAt: selected.startedAt,
+    completedAt: selected.completedAt,
+    modelContext: clone(selected.modelContext),
+    input: clone(attemptInput(selected, field)),
+    result: {
+      standardResult: semanticStandardResult(result.standardResult, `${field}.application.resultSnapshot.result.standardResult`),
+      modelExecution: clone(result.modelExecution),
+      rawOutput: clone(result.rawOutput),
+    },
+    application: { completedAt: application.completedAt, stageResultId: application.entityId },
+  };
+};
+
 const buildRound = ({ phase, phaseSnapshot, revisions, attempts, stageResults, events }) => {
   const roundRevisions = revisions.filter((entry) => entry.stage === "alternativeEvaluation" && entry.consensusPhase === phase).sort((left, right) => String(left.occurredAt).localeCompare(String(right.occurredAt)) || left.id.localeCompare(right.id)).map((entry) => ({ id: entry.id, evaluationId: entry.evaluationId, expertId: entry.expertId, action: entry.action, occurredAt: entry.occurredAt, submittedAt: entry.submittedAt, previousRevisionId: entry.previousRevisionId, sourceExecutionAttemptId: entry.sourceExecutionAttemptId }));
   const roundAttempts = attempts.filter((entry) => entry.scope === "issueStage" && entry.evaluationStage === "alternativeEvaluation" && entry.consensusPhase === phase).sort((left, right) => String(left.startedAt).localeCompare(String(right.startedAt)) || left.id.localeCompare(right.id));
@@ -102,8 +120,7 @@ const buildRound = ({ phase, phaseSnapshot, revisions, attempts, stageResults, e
   if (stageResult?.executionAttemptId && stageResult.executionAttemptId !== selected.id) fail("Current stage result execution attempt does not match selected applied execution", "history.evidence.stageResults", { phase, stageResultId: stageResult.id });
   let selectedExecution = null;
   if (selected) {
-    const { application, result } = appliedResult(selected, `history.evidence.executionAttempts.${selected.id}`);
-    selectedExecution = { attemptId: selected.id, correlationId: selected.correlationId, startedAt: selected.startedAt, completedAt: selected.completedAt, modelContext: clone(selected.modelContext), input: clone(attemptInput(selected, `history.evidence.executionAttempts.${selected.id}`)), result: { standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${selected.id}.application.resultSnapshot.result.standardResult`), modelExecution: clone(result.modelExecution), rawOutput: clone(result.rawOutput) }, application: { completedAt: application.completedAt, stageResultId: application.entityId } };
+    selectedExecution = selectedExecutionFromAttempt(selected, `history.evidence.executionAttempts.${selected.id}`);
   }
   return {
     phase,
@@ -112,6 +129,25 @@ const buildRound = ({ phase, phaseSnapshot, revisions, attempts, stageResults, e
     executionAttempts: roundAttempts.map(compactAttempt),
     selectedExecution,
     evidenceRefs: { snapshotId: phaseSnapshot?.id ?? null, revisionIds: roundRevisions.map((entry) => entry.id), executionAttemptIds: roundAttempts.map((entry) => entry.id), stageResultId: stageResult?.id ?? null, eventIds: events.filter((entry) => entry.stage === "alternativeEvaluation" && entry.phase === phase).map((entry) => entry.id) },
+  };
+};
+
+const buildCriteriaWeightingExecution = ({ attempts, stageResults, events }) => {
+  const stage = "criteriaWeighting";
+  const stageAttempts = attempts.filter((entry) => entry.scope === "issueStage" && entry.evaluationStage === stage).sort((left, right) => String(left.startedAt).localeCompare(String(right.startedAt)) || left.id.localeCompare(right.id));
+  const candidates = stageAttempts.filter((entry) => entry.status === "succeeded" && entry.application?.status === "applied" && entry.application?.entityType === "stageResult").sort((left, right) => String(left.application.completedAt).localeCompare(String(right.application.completedAt)) || String(left.startedAt).localeCompare(String(right.startedAt)) || left.id.localeCompare(right.id));
+  const selected = candidates.at(-1) ?? null;
+  const currentResults = stageResults.filter((entry) => entry.stage === stage);
+  if (currentResults.length > 1) fail("More than one current criteria-weighting stage result exists", "history.evidence.stageResults");
+  const stageResult = currentResults[0] ?? null;
+  if (stageResult?.executionAttemptId && !selected) fail("Current criteria-weighting stage result references an execution attempt without applied execution evidence", "history.evidence.stageResults", { stageResultId: stageResult.id });
+  if (stageResult?.executionAttemptId && stageResult.executionAttemptId !== selected.id) fail("Current criteria-weighting stage result execution attempt does not match selected applied execution", "history.evidence.stageResults", { stageResultId: stageResult.id });
+  if (!selected) return null;
+  return {
+    phase: selected.consensusPhase ?? null,
+    selectedExecution: selectedExecutionFromAttempt(selected, `history.evidence.executionAttempts.${selected.id}`),
+    executionAttempts: stageAttempts.map(compactAttempt),
+    evidenceRefs: { executionAttemptIds: stageAttempts.map((entry) => entry.id), stageResultId: stageResult?.id ?? null, eventIds: events.filter((entry) => entry.stage === stage).map((entry) => entry.id) },
   };
 };
 
@@ -171,6 +207,7 @@ export const buildAnalysisContext = (history) => {
   const rounds = [...phases].filter((phase) => Number.isInteger(phase)).sort((left, right) => left - right).map((phase) => buildRound({ phase, phaseSnapshot: phaseSnapshotByPhase.get(phase) ?? null, revisions, attempts, stageResults, events }));
   const attemptsById = new Map(attempts.map((entry) => [entry.id, entry]));
   const scenarios = array(history.scenarios.current ?? [], "history.scenarios.current").map((entry) => buildCurrentScenario(entry, attemptsById));
+  const criteriaWeightingExecution = buildCriteriaWeightingExecution({ attempts, stageResults, events });
   const context = {
     schemaVersion: 1,
     source: { issueHistorySchemaVersion: 1, issueId: history.issueId, completeness: clone(history.completeness) },
@@ -179,6 +216,7 @@ export const buildAnalysisContext = (history) => {
     participants: { historicalIdentities: clone(historicalIdentities), current: clone(history.currentState.participants) },
     semanticDirectory: { owner: clone(owner), creator: clone(creator), expertsById: byId(historicalIdentities, (entry) => [entry.id, clone(entry)]), alternativesById: byId(alternatives, (entry) => [entry.id, { id: entry.id, name: entry.name, description: entry.description }]), criteriaById: byId(criteria, (entry) => [entry.id, { id: entry.id, name: entry.name, description: entry.description, type: entry.type, isLeaf: entry.isLeaf, parentCriterionId: entry.parentCriterionId, expressionDomainId: entry.expressionDomainId }]), expressionDomainsById: byId(domains, (entry) => [entry.id, { id: entry.id, name: entry.name, typeKey: entry.typeKey }]) },
     rounds,
+    stageExecutions: criteriaWeightingExecution ? { criteriaWeighting: criteriaWeightingExecution } : {},
     scenarios: { current: scenarios, failedAttempts: attempts.filter((entry) => entry.scope === "scenario" && entry.status === "failed").sort((left, right) => String(left.startedAt).localeCompare(String(right.startedAt)) || left.id.localeCompare(right.id)).map((entry) => ({ attemptId: entry.id, consensusPhase: entry.consensusPhase, failureStage: entry.failureStage, startedAt: entry.startedAt, completedAt: entry.completedAt, error: clone(entry.error) })) },
   };
   return clone(context);

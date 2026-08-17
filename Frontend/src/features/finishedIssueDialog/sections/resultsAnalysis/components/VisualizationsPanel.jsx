@@ -580,7 +580,12 @@ const ExpertCollectiveRelationship = ({
   onResetZoom,
 }) => {
   const [representation, setRepresentation] = useState("map");
-  const toggleMode = Boolean(visualizations.consensus?.available);
+  const singleProjection = visualizations.mode === "single"
+    ? visualizations.canonicalProjections?.[0]
+    : null;
+  const hasSingleExpert = singleProjection?.available === true &&
+    singleProjection.expertPoints?.length === 1;
+  const toggleMode = Boolean(visualizations.consensus?.available) && !hasSingleExpert;
   const showMap = !toggleMode || representation === "map";
   const scatterAvailable = visualizations.mode === "comparison"
     ? visualizations.expertCollectiveComparison?.presentation !== "unavailable"
@@ -597,6 +602,21 @@ const ExpertCollectiveRelationship = ({
         scatterPlotRef={scatterPlotRef}
       />
     );
+  if (hasSingleExpert) {
+    return (
+      <Box sx={cardSx}>
+        <Header
+          title="Expert–collective relationship"
+          subtitle="Compare expert positions with the collective result."
+          resettable={scatterAvailable}
+          onResetZoom={onResetZoom}
+        />
+        <Box data-testid="single-expert-projection" sx={{ width: "100%", minWidth: 0 }}>
+          {map}
+        </Box>
+      </Box>
+    );
+  }
   return (
     <Box sx={cardSx}>
       <Header
@@ -670,10 +690,15 @@ const SemanticSection = ({ section }) => {
   </Box>;
 };
 
-const AlternativeEvaluationVisualizations = ({ executions }) => {
-  const sections = buildModelAnalysisSections(executions);
+const MODEL_ANALYSIS_STAGES = [
+  { key: "criteriaWeighting", title: "Criterion weighting visualizations", description: "Model-specific analytical views of the criterion-weighting result." },
+  { key: "alternativeEvaluation", title: "Alternative evaluation visualizations", description: "Model-specific analytical views of the alternative-evaluation result." },
+];
+
+const StageVisualizations = ({ executions, stage }) => {
+  const sections = buildModelAnalysisSections(executions, stage.key);
   if (!sections.length) return null;
-  return <Box><Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>Alternative evaluation visualizations</Typography><Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>Model-specific analytical views of the alternative-evaluation result.</Typography><Stack spacing={1.4}>{sections.map((section) => <SemanticSection key={section.id} section={section} />)}</Stack></Box>;
+  return <Box><Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>{stage.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>{stage.description}</Typography><Stack spacing={1.4}>{sections.map((section) => <SemanticSection key={section.id} section={section} />)}</Stack></Box>;
 };
 
 const VisualizationsPanel = ({
@@ -727,7 +752,7 @@ const VisualizationsPanel = ({
           <RankingTemporalSection executions={executions} />
         </Box>
       </Box>
-      <AlternativeEvaluationVisualizations executions={executions} />
+      {MODEL_ANALYSIS_STAGES.map((stage) => <StageVisualizations key={stage.key} executions={executions} stage={stage} />)}
     </Stack>
   );
 };

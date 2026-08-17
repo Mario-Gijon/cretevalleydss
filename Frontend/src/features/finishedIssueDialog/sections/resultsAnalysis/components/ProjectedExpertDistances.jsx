@@ -5,7 +5,7 @@ import { PERFORMANCE_BAR_TOKENS } from "../../../shared/logic/chartVisualTokens.
 import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
 
 const barOnlyProps = new Set(["ownerState", "skipAnimation", "id", "dataIndex", "xOrigin", "yOrigin", "color", "layout"]);
-const axisLabel = (row) => row.email || row.label || row.identity || "Expert";
+const axisLabel = (row) => row.label || row.email || row.identity || "Expert";
 const truncate = (value, length = 18) => value.length > length ? `${value.slice(0, length - 1)}…` : value;
 
 const DistanceBar = ({ rows, ...props }) => {

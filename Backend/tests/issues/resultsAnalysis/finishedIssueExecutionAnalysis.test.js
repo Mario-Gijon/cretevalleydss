@@ -88,6 +88,36 @@ describe("finished Issue execution analysis service", () => {
     ]));
   });
 
+  it("generates criteria-weighting analysis from its frozen stage execution without changing projected alternative rounds", async () => {
+    const { issueId, userId, dependencies } = fixture();
+    const criteriaExecution = {
+      phase: null,
+      selectedExecution: {
+        attemptId: "criteria-attempt",
+        modelContext: { apiModelKey: "criteria-model" },
+        input: { modelParameters: {}, evaluations: [{ payload: { order: ["a", "b"] } }], context: {} },
+        result: { standardResult: { weights: { a: 0.6 } }, modelExecution: { duration: 1 }, rawOutput: { weights: [0.6, 0.4] } },
+        application: { stageResultId: "criteria-result" },
+      },
+      executionAttempts: [{ id: "criteria-attempt", status: "succeeded" }],
+      evidenceRefs: { executionAttemptIds: ["criteria-attempt"], stageResultId: "criteria-result", eventIds: [] },
+    };
+    const projected = {
+      projectedFor: "base",
+      rounds: [{ phase: 0, selectedExecution: { modelContext: { apiModelKey: "alternative-model" } } }],
+      stageExecutions: { criteriaWeighting: criteriaExecution },
+    };
+    dependencies.executionProjector.mockReturnValue({ execution: { key: "base" }, analysisContext: projected });
+    const requestAnalysis = vi.fn(async () => ({ facts: {}, interpretation: "General", visualizations: [] }));
+    const requestModelAnalysis = vi.fn(async ({ apiModelKey, analysisContext }) => ({ interpretation: `${apiModelKey}:${analysisContext.rounds.length}`, visualizations: [] }));
+
+    const result = await getOrGenerateFinishedIssueExecutionAnalysis({ issueId, userId, executionKey: "base", ...dependencies, requestAnalysis, requestModelAnalysis });
+
+    expect(requestModelAnalysis).toHaveBeenNthCalledWith(1, { apiModelKey: "criteria-model", analysisContext: expect.objectContaining({ projectedFor: "base", rounds: [expect.objectContaining({ phase: null, selectedExecution: criteriaExecution.selectedExecution })] }) });
+    expect(requestModelAnalysis).toHaveBeenNthCalledWith(2, { apiModelKey: "alternative-model", analysisContext: projected });
+    expect(result.stageAnalyses).toMatchObject({ criteriaWeighting: { apiModelKey: "criteria-model", analysis: { interpretation: "criteria-model:1" } }, alternativeEvaluation: { apiModelKey: "alternative-model", analysis: { interpretation: "alternative-model:1" } } });
+  });
+
   it("keeps model analyses isolated when reloading multiple executions", async () => {
     const { issueId, userId, dependencies } = fixture();
     const scenarioId = new mongoose.Types.ObjectId();
