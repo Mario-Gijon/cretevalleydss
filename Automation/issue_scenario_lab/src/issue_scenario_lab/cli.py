@@ -26,6 +26,8 @@ from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import SCENARI
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import generate as generate_no_consensus_criteria_weighting
 from issue_scenario_lab.scenarios.no_consensus_expert_weights import SCENARIO_ID as EXPERT_WEIGHTS_SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_expert_weights import generate as generate_no_consensus_expert_weights
+from issue_scenario_lab.scenarios.topsis_2tuple_greece import SCENARIO_ID as TOPSIS_2TUPLE_GREECE_SCENARIO_ID
+from issue_scenario_lab.scenarios.topsis_2tuple_greece import generate as generate_topsis_2tuple_greece
 
 app = typer.Typer(add_completion=False, help="Local HTTP foundation for CreteValleyDSS issue variants.")
 console = Console()
@@ -281,6 +283,10 @@ def generate(
                 "finalizationReason": "maxPhasesReached",
             },
         ),
+        TOPSIS_2TUPLE_GREECE_SCENARIO_ID: (
+            generate_topsis_2tuple_greece,
+            {"model": "2-TUPLE TOPSIS", "criteriaWeightingModel": "Preference Order Criteria Weights"},
+        ),
     }
     selected = generators.get(scenario_id)
     if selected is None:
@@ -289,13 +295,8 @@ def generate(
     try:
         settings = _settings()
         with SessionPool.from_settings(settings) as sessions:
-            result = selected[0](
-                sessions,
-                ManifestStore(settings.manifest_file),
-                owner_alias=owner_alias,
-                expert_a_alias=expert_a_alias,
-                expert_b_alias=expert_b_alias,
-            )
+            kwargs = ({"owner_alias": "admin"} if scenario_id == TOPSIS_2TUPLE_GREECE_SCENARIO_ID else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias})
+            result = selected[0](sessions, ManifestStore(settings.manifest_file), **kwargs)
     except ScenarioLabError as error:
         _raise_cli_error(error)
     console.print(

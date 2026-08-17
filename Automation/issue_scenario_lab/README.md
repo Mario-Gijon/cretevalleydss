@@ -48,6 +48,7 @@ python -m issue_scenario_lab generate no-consensus-expert-weights
 python -m issue_scenario_lab generate consensus-first-round
 python -m issue_scenario_lab generate consensus-later-round
 python -m issue_scenario_lab generate consensus-max-rounds
+python -m issue_scenario_lab generate topsis-2tuple-greece
 python -m issue_scenario_lab delete GENERATION_ID
 python -m issue_scenario_lab delete-all
 python -m issue_scenario_lab delete-active ISSUE_ID
@@ -115,6 +116,22 @@ references; phase three finalizes through `maxPhasesReached` and no phase four
 is created. It requires the normal local Backend and DecisionModelsService,
 remains compatible with `list-generated` and `delete`, and never accesses
 MongoDB directly.
+
+`topsis-2tuple-greece` is a data-driven non-consensus lifecycle scenario using
+`data/topsis_2tuple_greece.json`. It requires configured existing local aliases
+`admin`, `expert1`, `expert2`, `expert3`, `expert4`, and `expert5`, plus a
+compatible five-label `linguistic2Tuple` expression domain. All five experts
+submit complete `criteriaPreferenceOrder` rankings to the real
+`preference_order_criteria_weights` model. The Backend finalizes the collective
+weights; only then does `admin` use the same owner participant-edit route as
+the Frontend (`PATCH /issues/:id/experts`) to remove experts 2–5. `expert1`
+then alone submits the linguistic TOPSIS 2-tuple matrix and the normal issue
+lifecycle finishes it.
+
+The checked-in rankings and linguistic evaluations are clearly synthetic
+examples, not asserted Greece data. Replace the fixture's human-readable keys,
+rankings, and evaluation matrix when real Greece data is supplied; the scenario
+resolves all generated Backend ids from the evaluation contexts at runtime.
 
 ## Development checks
 

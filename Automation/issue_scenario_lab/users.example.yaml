@@ -13,3 +13,23 @@ expert_b:
 expert_c:
   email: scenario.expert.c@example.test
   password: replace-me
+
+admin:
+  email: scenario.admin@example.test
+  password: replace-me
+
+expert1:
+  email: scenario.expert1@example.test
+  password: replace-me
+expert2:
+  email: scenario.expert2@example.test
+  password: replace-me
+expert3:
+  email: scenario.expert3@example.test
+  password: replace-me
+expert4:
+  email: scenario.expert4@example.test
+  password: replace-me
+expert5:
+  email: scenario.expert5@example.test
+  password: replace-me

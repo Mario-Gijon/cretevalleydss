@@ -1,0 +1,41 @@
+{
+  "issue": {
+    "name": "TOPSIS 2-tuple - Greece simulation",
+    "description": "Example Greece-oriented linguistic TOPSIS scenario. The preference orders and evaluations are synthetic examples and must be replaced with supplied Greece data when available."
+  },
+  "participants": {
+    "creator": "admin",
+    "criteriaWeightingExperts": ["expert1", "expert2", "expert3", "expert4", "expert5"],
+    "remainingExpert": "expert1"
+  },
+  "expressionDomain": {"typeKey": "linguistic2Tuple", "labelCount": 5},
+  "criteria": [
+    {"key": "accessibility", "name": "Accessibility", "type": "benefit"},
+    {"key": "environment", "name": "Environmental fit", "type": "benefit"},
+    {"key": "cost", "name": "Implementation cost", "type": "cost"},
+    {"key": "resilience", "name": "Climate resilience", "type": "benefit"}
+  ],
+  "alternatives": [
+    {"key": "crete", "name": "Crete pilot", "description": "Distributed island pilot."},
+    {"key": "athens", "name": "Athens corridor", "description": "Urban corridor deployment."},
+    {"key": "peloponnese", "name": "Peloponnese network", "description": "Regional network deployment."}
+  ],
+  "criteriaWeighting": {
+    "model": "preference_order_criteria_weights",
+    "rankings": {
+      "expert1": ["resilience", "environment", "accessibility", "cost"],
+      "expert2": ["environment", "resilience", "accessibility", "cost"],
+      "expert3": ["accessibility", "resilience", "environment", "cost"],
+      "expert4": ["resilience", "accessibility", "cost", "environment"],
+      "expert5": ["cost", "environment", "resilience", "accessibility"]
+    }
+  },
+  "alternativeEvaluation": {
+    "model": "topsis_2tuple",
+    "evaluations": {
+      "crete": {"accessibility": {"labelKey": "s3", "alpha": 0.2}, "environment": {"labelKey": "s4", "alpha": -0.1}, "cost": {"labelKey": "s2", "alpha": -0.2}, "resilience": {"labelKey": "s4", "alpha": 0.1}},
+      "athens": {"accessibility": {"labelKey": "s4", "alpha": -0.2}, "environment": {"labelKey": "s2", "alpha": 0.3}, "cost": {"labelKey": "s4", "alpha": 0.0}, "resilience": {"labelKey": "s2", "alpha": -0.1}},
+      "peloponnese": {"accessibility": {"labelKey": "s2", "alpha": 0.1}, "environment": {"labelKey": "s3", "alpha": 0.0}, "cost": {"labelKey": "s1", "alpha": 0.2}, "resilience": {"labelKey": "s3", "alpha": -0.2}}
+    }
+  }
+}
