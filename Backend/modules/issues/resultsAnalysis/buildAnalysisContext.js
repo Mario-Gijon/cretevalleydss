@@ -72,6 +72,7 @@ const appliedResult = (attempt, field) => {
   const snapshot = object(application.resultSnapshot, `${field}.application.resultSnapshot`);
   const result = object(snapshot.result, `${field}.application.resultSnapshot.result`);
   object(result.standardResult, `${field}.application.resultSnapshot.result.standardResult`);
+  required(result.rawOutput, `${field}.application.resultSnapshot.result.rawOutput`);
   required(application.entityId, `${field}.application.entityId`);
   return { application, result };
 };
@@ -84,6 +85,7 @@ const appliedScenarioPhaseResult = (attempt, scenarioPhaseResult, field) => {
   if (!matching) fail("Applied scenario execution evidence does not contain the matching phase result", `${field}.application.resultSnapshot.phaseResults`, { phase, attemptId: attempt.id });
   const result = object(matching.result, `${field}.application.resultSnapshot.phaseResults.result`);
   object(result.standardResult, `${field}.application.resultSnapshot.phaseResults.result.standardResult`);
+  required(result.rawOutput, `${field}.application.resultSnapshot.phaseResults.result.rawOutput`);
   return { application, result };
 };
 const compactAttempt = (attempt) => ({ id: attempt.id, status: attempt.status, failureStage: attempt.failureStage, startedAt: attempt.startedAt, completedAt: attempt.completedAt, applicationStatus: attempt.application?.status ?? null });

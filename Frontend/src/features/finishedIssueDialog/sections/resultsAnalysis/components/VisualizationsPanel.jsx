@@ -12,6 +12,7 @@ import { useState } from "react";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import CenterFocusStrongRoundedIcon from "@mui/icons-material/CenterFocusStrongRounded";
 
+import { AnalyticalGraph } from "../../../../../components/analyticalGraphs";
 import { AnalyticalScatterChart } from "../../../graphs/components/AnalyticalScatterChart";
 import { ComparativeAnalyticalScatterChart } from "../../../graphs/components/ComparativeAnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../../../graphs/components/AnalyticalConsensusLineChart";
@@ -612,6 +613,66 @@ const ExpertCollectiveRelationship = ({
   );
 };
 
+const modelVisualizationsFor = (execution) => {
+  const visualizations = execution.alternativeEvaluationAnalysis?.analysis?.visualizations;
+  return Array.isArray(visualizations) ? visualizations : [];
+};
+
+const AlternativeEvaluationVisualizations = ({ executions }) => {
+  if (!executions.some((execution) => modelVisualizationsFor(execution).length)) return null;
+  return (
+    <Box>
+      <Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>
+        Alternative evaluation visualizations
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>
+        Model-specific analytical views of the alternative-evaluation result.
+      </Typography>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(auto-fit, minmax(360px, 1fr))" },
+          gap: 1.4,
+        }}
+      >
+        {executions.map((execution) => {
+          const visualizations = modelVisualizationsFor(execution);
+          return (
+            <Box key={execution.key} data-testid="alternative-evaluation-visualization-group" sx={cardSx}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 900, color: execution.color || "text.primary" }}>
+                {execution.displayLabel}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>
+                {execution.modelName || "Model unavailable"}
+              </Typography>
+              {visualizations.length ? (
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+                    gap: 1.4,
+                    minWidth: 0,
+                  }}
+                >
+                  {visualizations.map((descriptor, index) => (
+                    <Box key={typeof descriptor?.key === "string" && descriptor.key ? descriptor.key : `${execution.key}-visualization-${index}`} sx={{ minWidth: 0 }}>
+                      <AnalyticalGraph visualization={descriptor} />
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Alert severity="info">
+                  Alternative-evaluation visualizations are not available for this execution.
+                </Alert>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+};
+
 const VisualizationsPanel = ({
   visualizations = {},
   executions = [],
@@ -663,6 +724,7 @@ const VisualizationsPanel = ({
           <RankingTemporalSection executions={executions} />
         </Box>
       </Box>
+      <AlternativeEvaluationVisualizations executions={executions} />
     </Stack>
   );
 };

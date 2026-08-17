@@ -11,6 +11,9 @@ vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/Analy
 vi.mock("@mui/x-charts/BarChart", () => ({
   BarChart: ({ height, xAxis }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} />,
 }));
+vi.mock("../../../../../src/components/analyticalGraphs", () => ({
+  AnalyticalGraph: ({ visualization }) => <div data-testid="analytical-graph" data-key={visualization?.key}>{visualization?.key}</div>,
+}));
 
 import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
 
@@ -33,6 +36,63 @@ describe("VisualizationsPanel", () => {
     );
 
     expect(screen.getByTestId("analytical-scatter")).toHaveAttribute("data-phase", "5");
+  });
+
+  it("renders one execution's model-specific descriptors in stored order after General visualizations", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", modelName: "TOPSIS 2-tuple", alternativeEvaluationAnalysis: { analysis: { visualizations: [{ key: "model-bar", type: "bar" }, { key: "model-heatmap", type: "heatmap" }] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByText("General visualizations")).toBeInTheDocument();
+    expect(screen.getByText("Alternative evaluation visualizations")).toBeInTheDocument();
+    expect(screen.getByText("TOPSIS 2-tuple")).toBeInTheDocument();
+    expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["model-bar", "model-heatmap"]);
+  });
+
+  it("keeps model-specific visualization groups isolated for multiple executions", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[
+        { key: "base", displayLabel: "Base", modelName: "Base model", alternativeEvaluationAnalysis: { analysis: { visualizations: [{ key: "base-chart", type: "bar" }] } } },
+        { key: "scenario", displayLabel: "Scenario A", modelName: "Scenario model", alternativeEvaluationAnalysis: { analysis: { visualizations: [{ key: "scenario-chart-1", type: "line" }, { key: "scenario-chart-2", type: "radar" }] } } },
+      ]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const groups = screen.getAllByTestId("alternative-evaluation-visualization-group");
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toHaveTextContent("Base");
+    expect(groups[0]).toHaveTextContent("Base model");
+    expect(groups[0]).toHaveTextContent("base-chart");
+    expect(groups[0]).not.toHaveTextContent("scenario-chart-1");
+    expect(groups[1]).toHaveTextContent("Scenario A");
+    expect(groups[1]).toHaveTextContent("Scenario model");
+    expect(groups[1]).toHaveTextContent("scenario-chart-1");
+    expect(groups[1]).toHaveTextContent("scenario-chart-2");
+    expect(groups[1]).not.toHaveTextContent("base-chart");
+  });
+
+  it("shows unavailable execution model visualizations without fabricating graphs", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[
+        { key: "base", displayLabel: "Base", modelName: "Base model", alternativeEvaluationAnalysis: { analysis: { visualizations: [{ key: "base-chart", type: "bar" }] } } },
+        { key: "scenario", displayLabel: "Scenario A", modelName: "Scenario model", alternativeEvaluationAnalysis: { analysis: { visualizations: [] } } },
+      ]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
+    expect(screen.getByText("Alternative-evaluation visualizations are not available for this execution.")).toBeInTheDocument();
+  });
+
+  it("omits model-specific visualizations when no selected execution provides descriptors", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", modelName: "Base model", alternativeEvaluationAnalysis: { analysis: { visualizations: [] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.queryByText("Alternative evaluation visualizations")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("analytical-graph")).not.toBeInTheDocument();
   });
 
   it("shows scatter and stored distances together while harmlessly ignoring alternative relationships", () => {

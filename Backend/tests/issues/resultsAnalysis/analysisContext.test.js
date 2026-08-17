@@ -6,8 +6,8 @@ import { AppError } from "../../../utils/common/errors.js";
 const time = (second) => `2026-01-01T00:00:0${second}.000Z`;
 const identity = (id, name, email, university) => ({ id, name, email, university });
 const request = (expertId, payload) => ({ body: { modelParameters: { weights: { "criterion-cost": 0.65, "criterion-speed": 0.35 } }, evaluations: [{ expert: { id: expertId, name: "Expert One", email: "expert@example.com" }, payload }], context: { issue: { id: "issue-1" }, criteria: [{ id: "criterion-cost" }, { id: "criterion-speed" }] } } });
-const applied = (entityId, standardResult, modelExecution = {}, rawOutput = undefined) => ({ status: "applied", entityType: "stageResult", entityId, completedAt: time(9), resultSnapshot: { result: { standardResult, modelExecution, rawOutput } } });
-const appliedScenario = (entityId, phase, attemptId, standardResult, modelExecution = {}, rawOutput = undefined) => ({ status: "applied", entityType: "scenario", entityId, completedAt: time(9), resultSnapshot: { phaseResults: [{ phase, execution: { attemptId }, result: { standardResult, modelExecution, rawOutput } }] } });
+const applied = (entityId, standardResult, modelExecution = {}, rawOutput = {}) => ({ status: "applied", entityType: "stageResult", entityId, completedAt: time(9), resultSnapshot: { result: { standardResult, modelExecution, rawOutput } } });
+const appliedScenario = (entityId, phase, attemptId, standardResult, modelExecution = {}, rawOutput = {}) => ({ status: "applied", entityType: "scenario", entityId, completedAt: time(9), resultSnapshot: { phaseResults: [{ phase, execution: { attemptId }, result: { standardResult, modelExecution, rawOutput } }] } });
 
 const history = () => ({
   schemaVersion: 1,
