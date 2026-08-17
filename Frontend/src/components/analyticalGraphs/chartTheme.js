@@ -14,16 +14,30 @@ export const ANALYTICAL_LINE_STYLE = {
   tension: 0.25,
 };
 
-const axis = ({ label, stacked = false, category = false }) => ({
+const categoryTickLabels = (categories) => {
+  if (!Array.isArray(categories)) return null;
+  const labels = new Map(categories.filter((entry) => Number.isFinite(entry?.value) && typeof entry?.label === "string" && entry.label.trim()).map((entry) => [entry.value, entry.label.trim()]));
+  return labels.size ? labels : null;
+};
+
+const axis = ({ label, stacked = false, category = false, categories }) => {
+  const labels = categoryTickLabels(categories);
+  return {
   stacked,
   grid: {
     display: !category,
     color: "rgba(255,255,255,0.10)",
   },
   border: { color: "rgba(255,255,255,0.16)" },
-  ticks: { color: "rgba(255,255,255,0.72)", maxRotation: 35, minRotation: 0 },
+  ticks: {
+    color: "rgba(255,255,255,0.72)",
+    maxRotation: 35,
+    minRotation: 0,
+    ...(labels ? { callback: (value) => labels.get(Number(value)) ?? value } : {}),
+  },
   title: label ? { display: true, text: label, color: "rgba(255,255,255,0.82)", font: { weight: "600" } } : { display: false },
-});
+  };
+};
 
 const commonPlugins = (tooltipLabel) => ({
   legend: {
@@ -48,12 +62,12 @@ export const buildCartesianChartOptions = ({ xAxis = {}, yAxis = {}, horizontal 
   plugins: commonPlugins(tooltipLabel),
   scales: horizontal
     ? {
-        x: axis({ label: xAxis.label, stacked }),
-        y: axis({ label: yAxis.label, stacked, category: true }),
+        x: axis({ label: xAxis.label, stacked, categories: xAxis.categories }),
+        y: axis({ label: yAxis.label, stacked, category: true, categories: yAxis.categories }),
       }
     : {
-        x: axis({ label: xAxis.label, stacked, category: true }),
-        y: axis({ label: yAxis.label, stacked }),
+        x: axis({ label: xAxis.label, stacked, category: true, categories: xAxis.categories }),
+        y: axis({ label: yAxis.label, stacked, categories: yAxis.categories }),
       },
 });
 

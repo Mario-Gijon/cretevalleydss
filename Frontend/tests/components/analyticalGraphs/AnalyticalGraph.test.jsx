@@ -8,7 +8,7 @@ vi.mock("chart.js", () => ({
 vi.mock("react-chartjs-2", () => ({
   Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
   Line: ({ data, options }) => <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
-  Scatter: ({ data, options }) => <div data-testid="scatter-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text}>{options.plugins.tooltip.callbacks.label({ raw: data.datasets[0].data[0] })}</div>,
+  Scatter: ({ data, options }) => <div data-testid="scatter-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-tick={options.scales.x.ticks.callback?.(1) || ""} data-y-tick={options.scales.y.ticks.callback?.(1) || ""}>{options.plugins.tooltip.callbacks.label({ raw: data.datasets[0].data[0] })}</div>,
   Pie: ({ data }) => <div data-testid="pie-chart" data-kind="pie" data-items={data.datasets[0].data.length} />,
   Doughnut: ({ data }) => <div data-testid="pie-chart" data-kind="doughnut" data-items={data.datasets[0].data.length} />,
   Radar: ({ data }) => <div data-testid="radar-chart" data-metrics={data.labels.join(",")} data-series={data.datasets.length} />,
@@ -67,6 +67,14 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText(/Rank: 2/)).toBeInTheDocument();
   });
 
+  it("maps valid scatter category metadata to semantic numeric-axis ticks and ignores malformed entries", () => {
+    const { rerender } = render(<AnalyticalGraph visualization={{ ...descriptors.scatter, yAxis: { label: "Criterion", categories: [{ value: 1, label: "Cost" }, { value: "bad", label: "Ignored" }] } }} />);
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-y-tick", "Cost");
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-tick", "");
+    rerender(<AnalyticalGraph visualization={{ ...descriptors.scatter, yAxis: { label: "Criterion", categories: [{}] } }} />);
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-y-tick", "");
+  });
+
   it("passes pie donut and radar metrics", () => {
     const { rerender } = render(<AnalyticalGraph visualization={descriptors.pie} />);
     expect(screen.getByTestId("pie-chart")).toHaveAttribute("data-kind", "doughnut");
@@ -79,10 +87,24 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText("Alt 1")).toBeInTheDocument();
     expect(screen.getByText("C1")).toBeInTheDocument();
     expect(screen.getByText("0.5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Alt 1, C1: 0.5")).toBeInTheDocument();
     rerender(<AnalyticalGraph visualization={descriptors.image} />);
     const image = screen.getByTestId("image-analytical-graph");
     expect(image).toHaveAttribute("src", expect.stringContaining("data:image/svg+xml,"));
     expect(image).toHaveAttribute("alt", "Image");
+  });
+
+  it("keeps sequential heatmaps and supports safe diverging colors with optional cell details", () => {
+    const { rerender } = render(<AnalyticalGraph visualization={{ ...descriptors.heatmap, data: { ...descriptors.heatmap.data, values: [[0.5]], details: [[{ originalWeight: 0.4, adjustedWeight: 0.5, nested: { ignored: true } }]] } }} />);
+    const sequential = screen.getByLabelText(/Alt 1, C1: 0.5/);
+    expect(sequential).toHaveAttribute("data-color-scale", "sequential");
+    expect(sequential).toHaveAttribute("aria-label", expect.stringContaining("Original Weight: 0.4"));
+    expect(sequential).toHaveAttribute("aria-label", expect.stringContaining("Adjusted Weight: 0.5"));
+    rerender(<AnalyticalGraph visualization={{ ...descriptors.heatmap, scale: { kind: "diverging", center: 0 }, data: { ...descriptors.heatmap.data, columns: [{ key: "negative", label: "Negative" }, { key: "center", label: "Center" }, { key: "positive", label: "Positive" }], values: [[-1, 0, 1]] } }} />);
+    const cells = screen.getAllByTestId("heatmap-analytical-graph")[0].querySelectorAll("[data-color-scale]");
+    expect([...cells].map((cell) => cell.dataset.cellColor)).toEqual(["rgba(232, 137, 181, 0.85)", "rgba(255, 255, 255, 0.12)", "rgba(83, 198, 214, 0.85)"]);
+    rerender(<AnalyticalGraph visualization={{ ...descriptors.heatmap, scale: { kind: "diverging" }, data: { ...descriptors.heatmap.data, values: [[0]] } }} />);
+    expect(screen.getByLabelText(/Alt 1, C1: 0/)).toHaveAttribute("data-cell-color", "rgba(255, 255, 255, 0.12)");
   });
 
   it("handles unsupported and malformed descriptors without crashing", () => {

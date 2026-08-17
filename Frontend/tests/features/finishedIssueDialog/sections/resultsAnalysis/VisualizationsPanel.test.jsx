@@ -129,6 +129,21 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("semantic-section-pane-divider")).not.toBeInTheDocument();
   });
 
+  it("uses the generic lead-full-width section layout before pairing remaining visualizations", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", stageAnalyses: { criteriaWeighting: { analysis: { sections: [{
+        id: "adjustment", title: "Adjustment", order: 0, presentation: { layout: "lead-full-width" },
+        visualizations: [{ key: "map", type: "heatmap" }, { key: "expert-effort", type: "bar" }, { key: "criterion-effort", type: "bar" }],
+      }] } } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(2);
+    expect(screen.getAllByTestId("semantic-section-pane-row")[0].querySelectorAll("[data-testid='alternative-evaluation-visualization-pane']")).toHaveLength(1);
+    expect(screen.getAllByTestId("semantic-section-pane-row")[1].querySelectorAll("[data-testid='alternative-evaluation-visualization-pane']")).toHaveLength(2);
+    expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
+  });
+
   it("renders one unavailable expert–collective state for one execution", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       visualizations={{ mode: "single", singleScatter: { available: false, unavailableReason: "missing_analytical_projection" }, consensus: { enabled: false } }}
