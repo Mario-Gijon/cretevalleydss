@@ -118,6 +118,51 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
   });
 
+  it("keeps related visualizations paired for one execution while preserving stacked metadata", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "only", displayLabel: "Only", alternativeEvaluationAnalysis: { analysis: { sections: [
+        { id: "generic-grid", title: "Generic grid", order: 0, visualizations: [{ key: "left", type: "pie" }, { key: "right", type: "pie" }] },
+        { id: "generic-stacked", title: "Generic stacked", order: 1, presentation: { layout: "stacked" }, visualizations: [{ key: "top", type: "pie" }, { key: "bottom", type: "pie" }] },
+      ] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
+    expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(3);
+  });
+
+  it("uses one full-width visualization row per execution column for two generic executions", () => {
+    const sections = [{ id: "generic-comparison", title: "Generic comparison", order: 0, visualizations: [{ key: "first", type: "pie" }, { key: "second", type: "pie" }] }];
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[
+        { key: "left", displayLabel: "Left", alternativeEvaluationAnalysis: { analysis: { sections } } },
+        { key: "right", displayLabel: "Right", alternativeEvaluationAnalysis: { analysis: { sections } } },
+      ]}
+      visualizations={{ mode: "comparison", expertCollectiveComparison: { presentation: "unavailable", footerMessage: "Unavailable" }, consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("semantic-section-scenario")).toHaveLength(2);
+    expect(screen.getAllByTestId("semantic-section-scenario-divider")).toHaveLength(1);
+    expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(4);
+    expect(screen.queryByTestId("semantic-section-pane-divider")).not.toBeInTheDocument();
+    screen.getAllByTestId("alternative-evaluation-visualization-pane").forEach((pane) => {
+      expect(pane).toHaveStyle({ width: "100%", minWidth: "0" });
+    });
+  });
+
+  it("keeps three outer execution columns while stacking generic visualizations within each one", () => {
+    const sectionFor = (key) => ({ key, displayLabel: key, alternativeEvaluationAnalysis: { analysis: { sections: [{ id: "not-model-specific", title: "Shared concept", order: 0, visualizations: [{ key: "one", type: "pie" }, { key: "two", type: "pie" }] }] } } });
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[sectionFor("First"), sectionFor("Second"), sectionFor("Third")]}
+      visualizations={{ mode: "comparison", expertCollectiveComparison: { presentation: "unavailable", footerMessage: "Unavailable" }, consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("semantic-section-scenario")).toHaveLength(3);
+    expect(screen.getAllByTestId("semantic-section-scenario-divider")).toHaveLength(2);
+    expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(6);
+    expect(screen.queryByTestId("semantic-section-pane-divider")).not.toBeInTheDocument();
+  });
+
   it("shows unavailable execution model visualizations without fabricating graphs", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[

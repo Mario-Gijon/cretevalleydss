@@ -627,13 +627,13 @@ const VisualizationPane = ({ descriptor, execution, index, compactTitle }) => {
   </Box>;
 };
 
-const SectionPanes = ({ visualizations, execution, stacked = false, compactTitles = false }) => {
+const SectionPanes = ({ visualizations, execution, stacked = false, compactTitles = false, forceFullWidth = false }) => {
   const layouts = buildVisualizationLayout(visualizations);
   const rows = [];
   for (let index = 0; index < layouts.length; index += 1) {
     const current = layouts[index];
     const next = layouts[index + 1];
-    if (!stacked && current.span === 1 && next?.span === 1) {
+    if (!forceFullWidth && !stacked && current.span === 1 && next?.span === 1) {
       rows.push([current, next]);
       index += 1;
     } else rows.push([current]);
@@ -662,7 +662,7 @@ const SemanticSection = ({ section }) => {
     <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: visibleEntries.length > 1 ? scenarioColumns : "minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.4, minWidth: visibleEntries.length > 2 ? `${visibleEntries.length * 360}px` : 0 }}>
         {visibleEntries.flatMap((entry, index) => [
-          <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>{visibleEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}{entry.visualizations.length ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} compactTitles={!isSingleton} /> : <Alert severity="info">Alternative-evaluation visualizations are not available for this execution.</Alert>}</Box>,
+          <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>{visibleEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}{entry.visualizations.length ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} /> : <Alert severity="info">Alternative-evaluation visualizations are not available for this execution.</Alert>}</Box>,
           ...(index < visibleEntries.length - 1 ? [<Box key={`${entry.execution.key}-divider`} data-testid="semantic-section-scenario-divider" aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, bgcolor: "rgba(83,198,214,0.22)" }} />] : []),
         ])}
       </Box>
