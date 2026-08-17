@@ -38,6 +38,7 @@ def test_greece_fixture_preserves_real_questionnaire_criteria_rankings_and_sites
     assert [alternative["key"] for alternative in data["alternatives"]] == ["saint_george", "plati", "kaminaki", "tzermiado"]
     assert all(set(row) == {"c1", "c2", "c3", "c4", "c5", "c6", "c7"} for row in data["alternativeEvaluation"]["evaluations"].values())
     assert all("labelKey" not in value and value["label"] in {"Very low", "Low", "Medium", "High", "Very high"} for row in data["alternativeEvaluation"]["evaluations"].values() for value in row.values())
+    assert all(value["alpha"] == 0 for row in data["alternativeEvaluation"]["evaluations"].values() for value in row.values())
 
 
 def test_real_domain_labels_resolve_to_the_exact_backend_label_key_payload():
@@ -46,9 +47,9 @@ def test_real_domain_labels_resolve_to_the_exact_backend_label_key_payload():
     criteria = {criterion["name"]: criterion["key"] for criterion in data["criteria"]}
     alternatives = {alternative["name"]: alternative["key"] for alternative in data["alternatives"]}
     matrix = build_linguistic_matrix(data, criteria=criteria, alternatives=alternatives, context=context())
-    assert matrix["saint_george"]["c1"] == {"labelKey": "high", "alpha": 0.1}
+    assert matrix["saint_george"]["c1"] == {"labelKey": "high", "alpha": 0}
     assert len(matrix) == 4 and all(len(row) == 7 for row in matrix.values())
-    assert matrix["tzermiado"]["c7"]["alpha"] == data["alternativeEvaluation"]["evaluations"]["tzermiado"]["c7"]["alpha"]
+    assert matrix["tzermiado"]["c7"]["alpha"] == 0
 
 
 def test_unknown_or_missing_configured_semantic_labels_fail_clearly():

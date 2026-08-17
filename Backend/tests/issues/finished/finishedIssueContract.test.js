@@ -6,6 +6,7 @@ import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { Participation } from "../../../models/Participations.js";
 import { getFinishedIssueInfoPayload } from "../../../modules/issues/finished/getFinishedIssueInfoPayload.js";
 import {
   createConfirmedUser,
@@ -287,6 +288,86 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
 };
 
 describe("definitive Finished Issue contract", () => {
+  it("retains removed experts as historical contributors without restoring current participation", async () => {
+    const fixture = await createCompleteIssue({ consensus: false });
+    const historicalExperts = await Promise.all(
+      Array.from({ length: 4 }, (_, index) =>
+        createConfirmedUser({ email: `historical-${index}@example.test` })
+      )
+    );
+    const weightsPayload = {
+      weightsByCriterion: {
+        [String(fixture.criteria[1]._id)]: 0.4,
+        [String(fixture.criteria[2]._id)]: 0.6,
+      },
+    };
+
+    await Promise.all(historicalExperts.map((expert) =>
+      IssueEvaluation.create({
+        issue: fixture.issue._id,
+        expert: expert._id,
+        stage: "criteriaWeighting",
+        consensusPhase: 0,
+        payload: weightsPayload,
+        completed: true,
+      })
+    ));
+    const historicalExpertIds = [fixture.users.accepted, ...historicalExperts]
+      .map((expert) => expert._id);
+    await IssueStageResult.updateOne(
+      { _id: fixture.results.criteriaResult._id },
+      {
+        $set: {
+          "inputSnapshot.expertWeights": historicalExpertIds.map((expert) => ({
+            expert,
+            weight: 0.2,
+          })),
+        },
+      }
+    );
+    await Participation.deleteMany({
+      issue: fixture.issue._id,
+      expert: { $ne: fixture.users.accepted._id },
+    });
+
+    const payload = await getFinishedIssueInfoPayload({
+      issueId: fixture.issue._id,
+      userId: fixture.owner._id,
+    });
+
+    expect(payload.participants).toEqual([
+      expect.objectContaining({ expert: expect.objectContaining({ id: String(fixture.users.accepted._id) }) }),
+    ]);
+    expect(payload.phaseResults.find((result) => result.id === String(fixture.results.criteriaResult._id))
+      .expertWeightSnapshot.map((entry) => entry.expertId))
+      .toEqual(historicalExpertIds.map(String));
+    expect(payload.participantHistory.records.filter((record) => record.participated))
+      .toHaveLength(5);
+  });
+
+  it("rejects a phase-result expert with no current or historical contribution", async () => {
+    const fixture = await createCompleteIssue({ consensus: false });
+    await IssueStageResult.updateOne(
+      { _id: fixture.results.criteriaResult._id },
+      {
+        $set: {
+          "inputSnapshot.expertWeights": [{
+            expert: new mongoose.Types.ObjectId(),
+            weight: 1,
+          }],
+        },
+      }
+    );
+
+    await expect(getFinishedIssueInfoPayload({
+      issueId: fixture.issue._id,
+      userId: fixture.owner._id,
+    })).rejects.toMatchObject({
+      message: "Finished phase result references an unknown participant expert",
+      field: "phaseResults.inputSnapshot.expertWeights",
+    });
+  });
+
   it("serializes a complete consensus issue as a single canonical factual contract", async () => {
     const fixture = await createCompleteIssue({ consensus: true });
     const orphanScenarioId = new mongoose.Types.ObjectId();

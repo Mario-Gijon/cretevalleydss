@@ -30,6 +30,19 @@ export const validateFinishedEvidenceOrThrow = ({
   const participantExpertIds = new Set(
     participations.map((participation) => String(participation.expert?._id || participation.expert))
   );
+  const completedEvaluationExpertIdsByPhase = new Map();
+
+  for (const evaluation of evaluations) {
+    if (evaluation.completed !== true) continue;
+
+    const expertId = String(evaluation.expert?._id || evaluation.expert || "");
+    if (!expertId) continue;
+
+    const phaseKey = `${evaluation.stage}:${evaluation.consensusPhase}`;
+    const expertIds = completedEvaluationExpertIdsByPhase.get(phaseKey) || new Set();
+    expertIds.add(expertId);
+    completedEvaluationExpertIdsByPhase.set(phaseKey, expertIds);
+  }
 
   for (const criterion of criteria) {
     if (criterion.expressionDomain && !domainIds.has(String(criterion.expressionDomain))) {
@@ -78,7 +91,11 @@ export const validateFinishedEvidenceOrThrow = ({
     }
     for (const snapshot of result.inputSnapshot?.expertWeights || []) {
       const expertId = String(snapshot.expert?._id || snapshot.expert || "");
-      if (!expertId || !participantExpertIds.has(expertId)) {
+      const historicalExpertIds = completedEvaluationExpertIdsByPhase.get(
+        `${result.stage}:${result.consensusPhase}`
+      );
+      const isHistoricalContributor = historicalExpertIds?.has(expertId) === true;
+      if (!expertId || (!participantExpertIds.has(expertId) && !isHistoricalContributor)) {
         throw createInternalError("Finished phase result references an unknown participant expert", {
           field: "phaseResults.inputSnapshot.expertWeights",
           details: { phaseResultId: String(result._id), expertId: expertId || null },

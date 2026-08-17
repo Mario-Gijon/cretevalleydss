@@ -34,9 +34,9 @@
     "expert_e": ["c6", "c5", "c3", "c7", "c4", "c2", "c1"]
   }},
   "alternativeEvaluation": {"model": "topsis_2tuple", "evaluations": {
-    "saint_george": {"c1": {"label": "Medium", "alpha": 0.1}, "c2": {"label": "High", "alpha": -0.2}, "c3": {"label": "Medium", "alpha": 0.3}, "c4": {"label": "High", "alpha": 0.0}, "c5": {"label": "Medium", "alpha": -0.1}, "c6": {"label": "Low", "alpha": 0.2}, "c7": {"label": "Low", "alpha": -0.2}},
-    "plati": {"c1": {"label": "High", "alpha": -0.1}, "c2": {"label": "Medium", "alpha": 0.2}, "c3": {"label": "High", "alpha": -0.2}, "c4": {"label": "Low", "alpha": 0.2}, "c5": {"label": "High", "alpha": 0.1}, "c6": {"label": "Medium", "alpha": -0.2}, "c7": {"label": "Medium", "alpha": 0.1}},
-    "kaminaki": {"c1": {"label": "Low", "alpha": 0.2}, "c2": {"label": "Medium", "alpha": -0.1}, "c3": {"label": "Low", "alpha": 0.3}, "c4": {"label": "Medium", "alpha": 0.0}, "c5": {"label": "Low", "alpha": -0.2}, "c6": {"label": "Very low", "alpha": 0.1}, "c7": {"label": "Very low", "alpha": -0.1}},
-    "tzermiado": {"c1": {"label": "Medium", "alpha": -0.2}, "c2": {"label": "Low", "alpha": 0.1}, "c3": {"label": "Medium", "alpha": -0.1}, "c4": {"label": "High", "alpha": -0.2}, "c5": {"label": "Medium", "alpha": 0.2}, "c6": {"label": "Low", "alpha": -0.1}, "c7": {"label": "Low", "alpha": 0.2}}
+    "saint_george": {"c1": {"label": "Medium", "alpha": 0}, "c2": {"label": "High", "alpha": 0}, "c3": {"label": "Medium", "alpha": 0}, "c4": {"label": "High", "alpha": 0}, "c5": {"label": "Medium", "alpha": 0}, "c6": {"label": "Low", "alpha": 0}, "c7": {"label": "Low", "alpha": 0}},
+    "plati": {"c1": {"label": "High", "alpha": 0}, "c2": {"label": "Medium", "alpha": 0}, "c3": {"label": "High", "alpha": 0}, "c4": {"label": "Low", "alpha": 0}, "c5": {"label": "High", "alpha": 0}, "c6": {"label": "Medium", "alpha": 0}, "c7": {"label": "Medium", "alpha": 0}},
+    "kaminaki": {"c1": {"label": "Low", "alpha": 0}, "c2": {"label": "Medium", "alpha": 0}, "c3": {"label": "Low", "alpha": 0}, "c4": {"label": "Medium", "alpha": 0}, "c5": {"label": "Low", "alpha": 0}, "c6": {"label": "Very low", "alpha": 0}, "c7": {"label": "Very low", "alpha": 0}},
+    "tzermiado": {"c1": {"label": "Medium", "alpha": 0}, "c2": {"label": "Low", "alpha": 0}, "c3": {"label": "Medium", "alpha": 0}, "c4": {"label": "High", "alpha": 0}, "c5": {"label": "Medium", "alpha": 0}, "c6": {"label": "Low", "alpha": 0}, "c7": {"label": "Low", "alpha": 0}}
   }}
 }
