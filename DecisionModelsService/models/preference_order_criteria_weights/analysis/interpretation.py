@@ -3,228 +3,383 @@ from __future__ import annotations
 from typing import Any
 
 
-def _names(
-    items: list[dict[str, Any]],
-) -> str:
+def _names(items: list[dict[str, Any]]) -> str:
     names = [
-        str(
-            item.get("name")
-            or ""
-        ).strip()
+        str(item.get("name") or "").strip()
         for item in items
     ]
-
-    names = [
-        name
-        for name in names
-        if name
-    ]
+    names = [name for name in names if name]
 
     if not names:
         return ""
-
     if len(names) == 1:
         return names[0]
-
     if len(names) == 2:
-        return (
-            f"{names[0]} "
-            f"and {names[1]}"
+        return f"{names[0]} and {names[1]}"
+    return ", ".join(names[:-1]) + f", and {names[-1]}"
+
+
+def _bold_names(items: list[dict[str, Any]]) -> str:
+    names = [
+        f"**{str(item.get('name') or '').strip()}**"
+        for item in items
+        if str(item.get("name") or "").strip()
+    ]
+    if not names:
+        return ""
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return f"{names[0]} and {names[1]}"
+    return ", ".join(names[:-1]) + f", and {names[-1]}"
+
+
+def _percent(value: float) -> str:
+    return f"{float(value) * 100:.2f}%"
+
+
+def _number(value: float) -> str:
+    return f"{float(value):.6f}".rstrip("0").rstrip(".")
+
+
+def _plural(
+    count: int | float,
+    singular: str,
+    plural: str | None = None,
+) -> str:
+    return singular if count == 1 else (plural or f"{singular}s")
+
+
+def _criterion_by_id(
+    facts: dict[str, Any],
+    criterion_id: str,
+) -> dict[str, Any] | None:
+    return next(
+        (
+            item
+            for item in facts["criteria"]["items"]
+            if item["criterionId"] == criterion_id
+        ),
+        None,
+    )
+
+
+def _effort_for_expert(
+    mcc: dict[str, Any],
+    expert_key: str,
+) -> float | None:
+    item = next(
+        (
+            entry
+            for entry in mcc["effortByExpert"]
+            if entry["expertKey"] == expert_key
+        ),
+        None,
+    )
+    return None if item is None else float(item["effort"])
+
+
+def _effort_for_criterion(
+    mcc: dict[str, Any],
+    criterion_id: str,
+) -> float | None:
+    item = next(
+        (
+            entry
+            for entry in mcc["effortByCriterion"]
+            if entry["criterionId"] == criterion_id
+        ),
+        None,
+    )
+    return None if item is None else float(item["effort"])
+
+
+
+def _weighting_result_interpretation(
+    facts: dict[str, Any],
+) -> list[str]:
+    """Summarize the weighting-stage result without duplicating the evidence sections."""
+    source = facts["source"]
+    criteria = facts["criteria"]["items"]
+    leaders = facts["criteria"]["collectiveLeaders"]
+    n_experts = int(source["nExperts"])
+    n_criteria = int(source["nCriteria"])
+    mcc = facts["mcc"]
+
+    paragraphs: list[str] = [
+        "### Weighting result interpretation",
+        "#### Key takeaways",
+    ]
+
+    takeaways: list[str] = []
+
+    # Main collective priority.
+    if len(leaders) == 1:
+        leader = _criterion_by_id(facts, leaders[0]["criterionId"])
+        if leader is not None:
+            sentence = (
+                f"- **{leader['name']}** receives the highest final collective "
+                f"weight (**{_percent(leader['collectiveWeight'])}**)."
+            )
+            if n_experts > 1:
+                support = [
+                    f"ranked first by **{leader['firstPlaceCount']} of {n_experts}** "
+                    "evaluators",
+                ]
+                if n_criteria >= 3:
+                    support.append(
+                        f"placed in the top three by **{leader['topThreeCount']} of "
+                        f"{n_experts}**"
+                    )
+                sentence += " It was " + " and ".join(support) + "."
+            takeaways.append(sentence)
+    else:
+        leader_items = [
+            item
+            for item in criteria
+            if any(
+                candidate["criterionId"] == item["criterionId"]
+                for candidate in leaders
+            )
+        ]
+        weight = leader_items[0]["collectiveWeight"] if leader_items else 0.0
+        takeaways.append(
+            f"- {_bold_names(leaders)} share the highest final collective weight "
+            f"(**{_percent(weight)} each**), so the weighting result has no unique "
+            "top criterion."
         )
 
-    return (
-        ", ".join(names[:-1])
-        + f", and {names[-1]}"
+    # Agreement/disagreement signal.
+    if n_experts > 1:
+        unanimous_top_three = facts["criteria"]["topThreeForEveryExpert"]
+        if unanimous_top_three and n_criteria >= 3:
+            verb = "appears" if len(unanimous_top_three) == 1 else "appear"
+            takeaways.append(
+                f"- Strongest shared-priority signal: {_bold_names(unanimous_top_three)} "
+                f"{verb} in every evaluator's top three."
+            )
+
+        widest = facts["criteria"]["widestPreferenceSpread"]
+        widest_items = [
+            item
+            for item in criteria
+            if any(
+                candidate["criterionId"] == item["criterionId"]
+                for candidate in widest
+            )
+        ]
+        maximum_range = max(
+            (int(item["rankRange"]) for item in widest_items),
+            default=0,
+        )
+        if maximum_range > 0:
+            takeaways.append(
+                f"- Greatest disagreement in priority position: "
+                f"{_bold_names(widest)} (rank range **{maximum_range}**)."
+            )
+
+    # MCC reconciliation signal. Keep this intentionally compact; the detailed MCC
+    # section below carries the full evidence.
+    if mcc.get("available"):
+        total = float(mcc["totalAbsoluteAdjustment"])
+        if abs(total) <= 1e-12:
+            takeaways.append(
+                "- The original evaluator utility vectors already satisfied the "
+                "executed MCC bound, so **no consensus adjustment was required**."
+            )
+        else:
+            largest_criteria = mcc.get("largestEffortCriteria") or []
+            largest_experts = mcc.get("largestEffortExperts") or []
+            detail_parts = [
+                f"total absolute adjustment **{_number(total)}**",
+            ]
+            if largest_experts:
+                effort = _effort_for_expert(mcc, largest_experts[0]["expertKey"])
+                if effort is not None:
+                    detail_parts.append(
+                        f"largest evaluator movement {_bold_names(largest_experts)} "
+                        f"(**Σ|Δ| = {_number(effort)}**)"
+                    )
+            if largest_criteria:
+                effort = _effort_for_criterion(
+                    mcc,
+                    largest_criteria[0]["criterionId"],
+                )
+                if effort is not None:
+                    detail_parts.append(
+                        f"largest criterion-level movement "
+                        f"{_bold_names(largest_criteria)} "
+                        f"(**Σ|Δ| = {_number(effort)}**)"
+                    )
+            takeaways.append(
+                "- MCC reconciliation was required: " + "; ".join(detail_parts) + "."
+            )
+
+        takeaways.append(
+            f"- The adjusted profiles satisfy the executed bound "
+            f"(**max deviation {_number(mcc['maxConsensusDeviation'])}; "
+            f"ε = {_number(mcc['epsilon'])}**)."
+        )
+    else:
+        takeaways.append(
+            "- This weighting execution contains one evaluator, so MCC reconciliation "
+            "is not applicable."
+        )
+
+    paragraphs.append("\n".join(takeaways))
+
+    paragraphs.extend(
+        [
+            "#### How to read the summary",
+            "\n".join(
+                [
+                    "- Collective importance, agreement in ordinal positions, and MCC "
+                    "adjustment effort are **different signals**.",
+                    "- A criterion can be collectively important even when evaluators "
+                    "disagree about its exact rank.",
+                    "- A large MCC adjustment means more reconciliation was needed; it "
+                    "does not mean an evaluator was wrong or a criterion was poorly "
+                    "chosen.",
+                ]
+            ),
+        ]
     )
 
-
-def _percent(
-    value: float,
-) -> str:
-    return (
-        f"{float(value) * 100:.2f}%"
-    )
-
-
-def _number(
-    value: float,
-) -> str:
-    return (
-        f"{float(value):.6f}"
-        .rstrip("0")
-        .rstrip(".")
-    )
+    return paragraphs
 
 
 def _preference_interpretation(
     facts: dict[str, Any],
 ) -> list[str]:
-    criteria = facts[
-        "criteria"
-    ]["items"]
-
-    leaders = facts[
-        "criteria"
-    ][
-        "collectiveLeaders"
-    ]
-
-    n_experts = facts[
-        "source"
-    ]["nExperts"]
+    criteria = facts["criteria"]["items"]
+    leaders = facts["criteria"]["collectiveLeaders"]
+    n_experts = facts["source"]["nExperts"]
+    n_criteria = facts["source"]["nCriteria"]
 
     paragraphs: list[str] = [
-        (
-            "### Criterion preferences "
-            "& importance"
-        )
+        "### Criterion preferences & importance",
+        "#### Collective result",
     ]
 
     if len(leaders) == 1:
         leader = next(
             item
             for item in criteria
-            if (
-                item["criterionId"]
-                == leaders[
-                    0
-                ]["criterionId"]
+            if item["criterionId"] == leaders[0]["criterionId"]
+        )
+        collective_lines = [
+            f"- Highest final criterion weight: **{leader['name']}** "
+            f"(**{_percent(leader['collectiveWeight'])}**).",
+            f"- First-place rankings: **{leader['firstPlaceCount']} of "
+            f"{n_experts}** evaluator{'' if n_experts == 1 else 's'}.",
+        ]
+        if n_criteria >= 3:
+            collective_lines.append(
+                f"- Top-three appearances: **{leader['topThreeCount']} of "
+                f"{n_experts}**."
             )
-        )
-
-        paragraphs.append(
-            f"**{leader['name']}** has "
-            "the highest final criterion "
-            f"weight ({_percent(leader['collectiveWeight'])}). "
-            "It was ranked first by "
-            f"{leader['firstPlaceCount']} "
-            f"of {n_experts} evaluator"
-            f"{'' if n_experts == 1 else 's'} "
-            "and appeared in the top three "
-            f"for {leader['topThreeCount']} "
-            f"of {n_experts}."
-        )
-
+        paragraphs.append("\n".join(collective_lines))
     else:
         leader_items = [
             item
             for item in criteria
             if any(
-                candidate[
-                    "criterionId"
-                ]
-                == item[
-                    "criterionId"
-                ]
-                for candidate
-                in leaders
+                candidate["criterionId"] == item["criterionId"]
+                for candidate in leaders
             )
         ]
-
-        weight = leader_items[
-            0
-        ]["collectiveWeight"]
-
+        weight = leader_items[0]["collectiveWeight"]
         paragraphs.append(
-            f"**{_names(leaders)}** "
-            "share the highest final "
-            "criterion weight "
-            f"({_percent(weight)} each), "
-            "so the executed result does "
-            "not identify a unique most "
-            "important criterion."
+            "\n".join(
+                [
+                    f"- {_bold_names(leaders)} share the highest final weight "
+                    f"(**{_percent(weight)} each**).",
+                    "- No unique most important criterion is identified in the "
+                    "collective result.",
+                ]
+            )
         )
 
-    widest = facts[
-        "criteria"
-    ][
-        "widestPreferenceSpread"
-    ]
+    paragraphs.append("#### Agreement and dispersion")
 
+    evidence_lines: list[str] = []
+
+    widest = facts["criteria"]["widestPreferenceSpread"]
     widest_items = [
         item
         for item in criteria
         if any(
-            candidate[
-                "criterionId"
-            ]
-            == item[
-                "criterionId"
-            ]
-            for candidate
-            in widest
+            candidate["criterionId"] == item["criterionId"]
+            for candidate in widest
         )
     ]
-
     maximum_range = max(
-        (
-            item[
-                "rankRange"
-            ]
-            for item
-            in widest_items
-        ),
+        (item["rankRange"] for item in widest_items),
         default=0,
     )
 
-    if maximum_range == 0:
-        paragraphs.append(
-            "The evaluators used the "
-            "same ordinal position for "
-            "every criterion, so there "
-            "is no observed dispersion "
-            "in their preference orders."
-        )
-
-    elif len(widest) == 1:
-        item = widest_items[0]
-
-        paragraphs.append(
-            f"**{item['name']}** shows "
-            "the widest individual "
-            "priority spread, ranging "
-            f"from rank {item['minimumRank']} "
-            f"to {item['maximumRank']}."
-        )
-
-    else:
-        paragraphs.append(
-            f"**{_names(widest)}** "
-            "share the widest individual "
-            "priority spread, with a "
-            f"rank range of {maximum_range} "
-            "positions."
-        )
-
-    unanimous_top_three = facts[
-        "criteria"
-    ][
-        "topThreeForEveryExpert"
-    ]
-
-    if unanimous_top_three:
-        if (
-            len(
-                unanimous_top_three
+    if n_experts > 1:
+        if maximum_range == 0:
+            evidence_lines.append(
+                "- The evaluators used the same ordinal positions, so there is no "
+                "observed dispersion in their preference orders."
             )
-            == 1
-        ):
-            paragraphs.append(
-                "All evaluators placed "
-                f"**{unanimous_top_three[0]['name']}** "
-                "within their top three "
-                "criteria."
-            )
-
         else:
-            paragraphs.append(
-                "All evaluators placed "
-                f"**{_names(unanimous_top_three)}** "
-                "within their top three "
-                "criteria."
+            evidence_lines.append(
+                f"- Widest priority spread: {_bold_names(widest)} "
+                f"(rank range **{maximum_range}**)."
             )
+
+        unanimous_top_three = facts["criteria"]["topThreeForEveryExpert"]
+        if unanimous_top_three and n_criteria >= 3:
+            evidence_lines.append(
+                f"- Unanimous top-three priority: "
+                f"{_bold_names(unanimous_top_three)}."
+            )
+
+        stable = facts["criteria"].get("mostStablePreference") or []
+        stable_items = [
+            item
+            for item in criteria
+            if any(
+                candidate["criterionId"] == item["criterionId"]
+                for candidate in stable
+            )
+        ]
+        if stable_items:
+            stable_range = min(item["rankRange"] for item in stable_items)
+            if stable_range < maximum_range:
+                evidence_lines.append(
+                    f"- Most stable placement: {_bold_names(stable)} "
+                    f"(rank range **{stable_range}**)."
+                )
+    else:
+        evidence_lines.append(
+            "- Agreement and dispersion across evaluators are not applicable with a "
+            "single evaluator."
+        )
+
+    paragraphs.append("\n".join(evidence_lines))
+
+    paragraphs.append("#### Interpretation")
+    interpretation_lines = [
+        "- The collective weight reflects the full set of executed priority "
+        "positions, not only the number of first-place rankings.",
+    ]
+    if n_experts > 1 and maximum_range > 0:
+        interpretation_lines.append(
+            "- A wider rank range indicates more disagreement about where a criterion "
+            "belongs in the priority order."
+        )
+    if n_experts > 1 and facts["criteria"]["topThreeForEveryExpert"]:
+        interpretation_lines.append(
+            "- A criterion appearing in every evaluator's top three provides evidence "
+            "of a shared high-priority judgement even when exact positions differ."
+        )
+    paragraphs.append("\n".join(interpretation_lines))
 
     return paragraphs
+
 
 
 def _mcc_interpretation(
@@ -232,147 +387,93 @@ def _mcc_interpretation(
 ) -> list[str]:
     mcc = facts["mcc"]
 
-    if not mcc.get(
-        "available"
-    ):
+    if not mcc.get("available"):
         return []
 
     paragraphs: list[str] = [
-        (
-            "### MCC consensus "
-            "adjustment"
-        )
+        "### MCC consensus adjustment",
+        "#### Adjustment required",
     ]
 
-    total = float(
-        mcc[
-            "totalAbsoluteAdjustment"
-        ]
-    )
+    total = float(mcc["totalAbsoluteAdjustment"])
+    adjustment_lines: list[str] = []
 
     if abs(total) <= 1e-12:
-        paragraphs.append(
-            "MCC found the original "
-            "individual utility vectors "
-            "already compatible with the "
-            "executed consensus constraints, "
-            "so no weights needed to "
-            "be changed."
+        adjustment_lines.extend(
+            [
+                "- No evaluator-derived criterion weight needed to be changed.",
+                "- The original utility vectors already satisfied the executed MCC "
+                "consensus constraints.",
+            ]
         )
-
     else:
-        paragraphs.append(
-            "MCC applied a total absolute "
-            "adjustment of "
-            f"**{_number(total)}** "
-            "across all evaluator–criterion "
-            "cells. This is adjustment "
-            "effort, not a consensus score."
+        adjustment_lines.extend(
+            [
+                f"- Total absolute adjustment: **{_number(total)}**.",
+                "- The value aggregates absolute movement across all "
+                "evaluator–criterion cells.",
+                "- It measures reconciliation effort, not a consensus score.",
+            ]
         )
 
-        largest_experts = mcc[
-            "largestEffortExperts"
-        ]
+    paragraphs.append("\n".join(adjustment_lines))
+    paragraphs.append("#### Where the adjustment was concentrated")
 
-        expert_effort_by_key = {
-            item["expertKey"]: (
-                item["effort"]
-            )
-            for item
-            in mcc[
-                "effortByExpert"
-            ]
-        }
+    concentration_lines: list[str] = []
 
+    if abs(total) <= 1e-12:
+        concentration_lines.append(
+            "- No adjustment concentration exists because no movement was required."
+        )
+    else:
+        largest_experts = mcc["largestEffortExperts"]
         if largest_experts:
-            largest_value = (
-                expert_effort_by_key[
-                    largest_experts[
-                        0
-                    ]["expertKey"]
-                ]
+            largest_value = _effort_for_expert(
+                mcc,
+                largest_experts[0]["expertKey"],
             )
-
-            if (
-                len(
-                    largest_experts
-                )
-                == 1
-            ):
-                paragraphs.append(
-                    f"**{largest_experts[0]['name']}** "
-                    "required the largest "
-                    "overall modification "
-                    "(Σ|Δ| = "
-                    f"{_number(largest_value)})."
+            if largest_value is not None:
+                concentration_lines.append(
+                    f"- Largest evaluator-level movement: "
+                    f"{_bold_names(largest_experts)} "
+                    f"(**Σ|Δ| = {_number(largest_value)}**)."
                 )
 
-            else:
-                paragraphs.append(
-                    f"**{_names(largest_experts)}** "
-                    "share the largest "
-                    "overall modification "
-                    "(Σ|Δ| = "
-                    f"{_number(largest_value)} "
-                    "each)."
-                )
-
-        largest_criteria = mcc[
-            "largestEffortCriteria"
-        ]
-
-        criterion_effort_by_id = {
-            item["criterionId"]: (
-                item["effort"]
-            )
-            for item
-            in mcc[
-                "effortByCriterion"
-            ]
-        }
-
+        largest_criteria = mcc["largestEffortCriteria"]
         if largest_criteria:
-            largest_value = (
-                criterion_effort_by_id[
-                    largest_criteria[
-                        0
-                    ]["criterionId"]
-                ]
+            largest_value = _effort_for_criterion(
+                mcc,
+                largest_criteria[0]["criterionId"],
             )
-
-            if (
-                len(
-                    largest_criteria
-                )
-                == 1
-            ):
-                paragraphs.append(
-                    "The adjustments are "
-                    "most concentrated on "
-                    f"**{largest_criteria[0]['name']}** "
-                    "(Σ|Δ| = "
-                    f"{_number(largest_value)})."
+            if largest_value is not None:
+                concentration_lines.append(
+                    f"- Largest accumulated criterion-level adjustment: "
+                    f"{_bold_names(largest_criteria)} "
+                    f"(**Σ|Δ| = {_number(largest_value)}**)."
                 )
 
-            else:
-                paragraphs.append(
-                    "The largest "
-                    "criterion-level "
-                    "adjustment is shared by "
-                    f"**{_names(largest_criteria)}** "
-                    "(Σ|Δ| = "
-                    f"{_number(largest_value)} "
-                    "each)."
-                )
+        concentration_lines.extend(
+            [
+                "- Larger movement means more adjustment was required to satisfy the "
+                "executed consensus constraints.",
+                "- It does not mean an evaluator was wrong or a criterion was "
+                "incorrectly selected.",
+            ]
+        )
 
+    paragraphs.append("\n".join(concentration_lines))
+    paragraphs.append("#### Constraint check")
     paragraphs.append(
-        "After adjustment, the largest "
-        "absolute distance between an "
-        "evaluator weight and the collective "
-        "weight is "
-        f"**{_number(mcc['maxConsensusDeviation'])}**, "
-        "within the executed MCC bound "
-        f"ε = **{_number(mcc['epsilon'])}**."
+        "\n".join(
+            [
+                f"- Maximum evaluator-to-collective deviation after adjustment: "
+                f"**{_number(mcc['maxConsensusDeviation'])}**.",
+                f"- Executed MCC bound: **ε = {_number(mcc['epsilon'])}**.",
+                "- The adjusted profiles satisfy the stored bound.",
+                "- ε is the permitted deviation bound; it is not a substantive "
+                "agreement score.",
+            ]
+        )
     )
 
     return paragraphs
@@ -381,28 +482,11 @@ def _mcc_interpretation(
 def build_interpretation(
     facts: dict[str, Any],
 ) -> str:
-    """
-    Build compact Markdown from the
-    same validated analytical facts.
-    """
-
-    paragraphs = (
-        _preference_interpretation(
-            facts
-        )
-    )
-
-    paragraphs.extend(
-        _mcc_interpretation(
-            facts
-        )
-    )
-
-    return "\n\n".join(
-        paragraphs
-    )
+    """Build deterministic, result-focused Markdown from validated facts."""
+    paragraphs = _weighting_result_interpretation(facts)
+    paragraphs.extend(_preference_interpretation(facts))
+    paragraphs.extend(_mcc_interpretation(facts))
+    return "\n\n".join(paragraphs)
 
 
-__all__ = [
-    "build_interpretation"
-]
+__all__ = ["build_interpretation"]

@@ -1,3 +1,143 @@
+"""
+2-Tuple Linguistic TOPSIS
+=========================
+
+This module implements the 2-tuple linguistic TOPSIS method used by the
+decision model. The implementation keeps the original linguistic meaning of
+the evaluations while performing the TOPSIS calculations in the numeric
+linguistic-position domain (beta).
+
+Notation
+--------
+
+    i           alternative index
+    j           criterion index
+    k           expert index
+    s_r         linguistic label at position r
+    alpha       symbolic translation of a 2-tuple
+    beta        numeric linguistic position
+    lambda_k    weight of expert k
+    w_j         weight of criterion j
+
+1. 2-tuple linguistic representation
+-------------------------------------
+
+A linguistic assessment is represented as:
+
+    (s_r, alpha),    -0.5 <= alpha < 0.5
+
+The inverse symbolic translation maps the linguistic 2-tuple to its numeric
+position:
+
+    Delta^-1(s_r, alpha) = r + alpha = beta
+
+The direct transformation maps beta back to a linguistic 2-tuple:
+
+    Delta(beta) = (s_r, alpha)
+
+with:
+
+    r     = floor(beta + 0.5)
+    alpha = beta - r
+
+Half positions are assigned to the upper linguistic label. This guarantees
+the interval:
+
+    -0.5 <= alpha < 0.5
+
+
+2. Aggregation of expert evaluations
+------------------------------------
+
+Each expert evaluation is first represented by its beta value. For every
+alternative i and criterion j, the collective evaluation is the weighted
+average of the expert evaluations:
+
+    beta_ij = sum_k lambda_k * beta_ij^k
+
+subject to:
+
+    lambda_k >= 0
+    sum_k lambda_k = 1
+
+The resulting collective beta_ij is converted back to a linguistic 2-tuple
+with Delta so both numeric and linguistic representations are preserved.
+
+
+3. Positive and negative ideal solutions
+----------------------------------------
+
+For a benefit criterion (max):
+
+    beta_j+ = max_i beta_ij
+    beta_j- = min_i beta_ij
+
+For a cost criterion (min):
+
+    beta_j+ = min_i beta_ij
+    beta_j- = max_i beta_ij
+
+beta_j+ is the positive ideal and beta_j- is the negative ideal.
+
+
+4. Weighted distances to the ideal solutions
+---------------------------------------------
+
+This implementation uses weighted L1 distance in the beta domain:
+
+    D_i+ = sum_j w_j * |beta_ij - beta_j+|
+
+    D_i- = sum_j w_j * |beta_ij - beta_j-|
+
+subject to:
+
+    w_j >= 0
+    sum_j w_j = 1
+
+This is intentionally a weighted absolute-distance formulation, not the
+Euclidean-distance variant of TOPSIS.
+
+
+5. TOPSIS relative closeness
+----------------------------
+
+For each alternative:
+
+    C_i = D_i- / (D_i+ + D_i-)
+
+A larger C_i indicates that the alternative is closer to the positive ideal
+and farther from the negative ideal.
+
+If both distances are zero:
+
+    D_i+ = D_i- = 0
+
+the implementation returns the symmetric neutral value:
+
+    C_i = 0.5
+
+
+6. Final ranking
+----------------
+
+Alternatives are ranked from highest to lowest closeness coefficient:
+
+    C_(1) >= C_(2) >= ... >= C_(m)
+
+Exact technical ties preserve the original alternative order.
+
+
+Implementation conventions
+--------------------------
+
+- Calculations are performed internally with beta values.
+- Linguistic 2-tuples are preserved in the returned result.
+- Expert and criterion weights must be non-negative and sum to 1.
+- All linguistic2Tuple criteria must use the same number of labels.
+- The distance metric is weighted L1.
+- The ranking is based only on the final TOPSIS closeness coefficients.
+"""
+
 import math
 from typing import Any
 
@@ -69,6 +209,8 @@ def delta_inverse(
             "and less than 0.5"
         )
 
+    # Delta^-1: move from the linguistic 2-tuple representation
+    # (s_i, alpha) to the numeric linguistic position beta.
     beta = float(label_index + normalized_alpha)
 
     if (
@@ -125,6 +267,9 @@ def delta(
     elif normalized_beta > maximum_index:
         normalized_beta = float(maximum_index)
 
+    # Delta: choose the nearest linguistic label. Adding 0.5 before floor
+    # makes exact half positions belong to the upper label, which keeps
+    # alpha inside the canonical interval [-0.5, 0.5).
     label_index = math.floor(normalized_beta + 0.5)
 
     if label_index < 0:
@@ -132,6 +277,8 @@ def delta(
     elif label_index > maximum_index:
         label_index = maximum_index
 
+    # Symbolic translation relative to the selected linguistic label:
+    # alpha = beta - i.
     alpha = float(normalized_beta - label_index)
 
     if abs(alpha) <= FLOAT_TOLERANCE:
@@ -307,6 +454,14 @@ def aggregate_expert_matrices(
             "the same number of linguistic labels"
         )
 
+    # Step 1 — Expert aggregation.
+    #
+    # For every alternative i and criterion j:
+    #
+    #     beta_ij = sum_k lambda_k * beta_ij^k
+    #
+    # The accumulation below constructs the collective beta matrix directly
+    # from the expert beta matrices and their normalized weights.
     collective_beta_matrix = [
         [0.0 for _ in range(criterion_count)]
         for _ in range(alternative_count)
@@ -373,6 +528,8 @@ def aggregate_expert_matrices(
                     weights[expert_index] * beta
                 )
 
+    # Convert the aggregated beta values back to 2-tuples so the result
+    # keeps the linguistic representation in addition to the numeric matrix.
     collective_matrix: list[list[dict[str, Any]]] = []
 
     for alternative_index in range(alternative_count):
@@ -516,6 +673,10 @@ def calculate_ideal_solutions(
     positive_ideal_beta: list[float] = []
     negative_ideal_beta: list[float] = []
 
+    # Step 2 — Ideal solutions.
+    #
+    # Benefit/max criterion:  beta+ = max, beta- = min
+    # Cost/min criterion:     beta+ = min, beta- = max
     for criterion_index, direction in enumerate(
         criterion_directions
     ):
@@ -723,6 +884,10 @@ def calculate_weighted_distances(
         positive_distance = 0.0
         negative_distance = 0.0
 
+        # Step 3 — Weighted L1 distances for alternative i:
+        #
+        #     D_i+ = sum_j w_j * |beta_ij - beta_j+|
+        #     D_i- = sum_j w_j * |beta_ij - beta_j-|
         for criterion_index, raw_beta in enumerate(row):
             beta = _finite_number(
                 raw_beta,
@@ -839,6 +1004,11 @@ def calculate_closeness_coefficients(
                 "must be greater than or equal to 0"
             )
 
+        # Step 4 — TOPSIS relative closeness:
+        #
+        #     C_i = D_i- / (D_i+ + D_i-)
+        #
+        # Higher values are preferred.
         denominator = (
             positive_distance
             + negative_distance
@@ -907,6 +1077,9 @@ def rank_closeness_coefficients(
 
         normalized.append(score)
 
+    # Step 5 — Final TOPSIS order: decreasing closeness coefficient.
+    # Python's stable ordering keeps the original alternative order on exact
+    # technical ties.
     return sorted(
         range(len(normalized)),
         key=lambda index: (
@@ -940,6 +1113,8 @@ def run_topsis_2tuple(
     later model-specific analysis.
     """
 
+    # 1) Aggregate the expert assessments in the beta domain and recover
+    #    the collective linguistic 2-tuples.
     aggregation = aggregate_expert_matrices(
         matrices=matrices,
         expert_weights=expert_weights,
@@ -953,12 +1128,16 @@ def run_topsis_2tuple(
         "collective_matrix"
     ]
 
+    # 2) Build the positive and negative ideal solution for every
+    #    criterion according to its max/min direction.
     ideals = calculate_ideal_solutions(
         collective_beta_matrix=collective_beta_matrix,
         criterion_directions=criterion_directions,
         criterion_scales=criterion_scales,
     )
 
+    # 3) Measure each alternative against both ideals with the configured
+    #    criterion weights using weighted L1 distance.
     distances = calculate_weighted_distances(
         collective_beta_matrix=collective_beta_matrix,
         positive_ideal_beta=ideals[
@@ -970,6 +1149,8 @@ def run_topsis_2tuple(
         weights=weights,
     )
 
+    # 4) Convert the pair of ideal distances into the TOPSIS closeness
+    #    coefficient C_i.
     closeness_coefficients = (
         calculate_closeness_coefficients(
             positive_distances=distances[
@@ -981,11 +1162,14 @@ def run_topsis_2tuple(
         )
     )
 
+    # 5) Rank alternatives from the largest C_i to the smallest.
     collective_ranking = (
         rank_closeness_coefficients(
             closeness_coefficients
         )
     )
+    # The plot is presentation evidence only; it does not participate in
+    # the TOPSIS score or ranking.
     plots_graphic = get_plots_graphics_from_matrices(
         list(matrices.values()),
         collective_beta_matrix,
