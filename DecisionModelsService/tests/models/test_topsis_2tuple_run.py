@@ -1502,4 +1502,19 @@ def test_run_topsis_2tuple_preserves_algorithm_evidence() -> None:
         "criterion_directions"
     ] == directions
 
-    assert result["plots_graphic"] == {}
+    assert set(result["plots_graphic"]) == {
+        "expert_points",
+        "collective_point",
+        "expert_ids",
+        "expert_labels",
+    }
+    assert result["plots_graphic"]["expert_ids"] == list(
+        WEI_MATRICES
+    )
+    assert result["plots_graphic"]["expert_labels"] == list(
+        WEI_MATRICES
+    )
+    assert len(result["plots_graphic"]["expert_points"]) == len(
+        WEI_MATRICES
+    )
+    assert len(result["plots_graphic"]["collective_point"]) == 2

@@ -1,6 +1,10 @@
 import math
 from typing import Any
 
+from utils.get_plots_graphics_from_matrices import (
+    get_plots_graphics_from_matrices,
+)
+
 
 FLOAT_TOLERANCE = 1e-12
 WEIGHT_SUM_TOLERANCE = 1e-9
@@ -982,6 +986,19 @@ def run_topsis_2tuple(
             closeness_coefficients
         )
     )
+    plots_graphic = get_plots_graphics_from_matrices(
+        list(matrices.values()),
+        collective_beta_matrix,
+        method="MDS",
+    )
+
+    if "expert_points" in plots_graphic:
+        expert_keys = list(matrices.keys())
+        # The shared projection contract keeps points in matrix order.  Carry
+        # that same stable input identity alongside them so generic consumers
+        # never need model-specific expert metadata to label the points.
+        plots_graphic["expert_ids"] = expert_keys
+        plots_graphic["expert_labels"] = expert_keys
 
     return {
         "collective_matrix": collective_matrix,
@@ -1012,5 +1029,5 @@ def run_topsis_2tuple(
         "criterion_directions": list(
             criterion_directions
         ),
-        "plots_graphic": {},
+        "plots_graphic": plots_graphic,
     }

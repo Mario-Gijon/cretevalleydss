@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any
 
@@ -9,6 +10,7 @@ from models.topsis_2tuple.executor import (
     execute_topsis_2tuple,
 )
 from schemas.model_requests import GenericModelExecutionRequest
+from api.routers.results_analysis import analyze_generic_issue
 
 
 def _domain(label_count: int = 5) -> dict[str, Any]:
@@ -402,7 +404,22 @@ def test_topsis_2tuple_public_executor_runs_end_to_end() -> None:
     ]
 
     assert data["consensusMeasure"] is None
-    assert data["plotsGraphic"] == {}
+    assert set(data["plotsGraphic"]) == {
+        "expert_points",
+        "collective_point",
+        "expert_ids",
+        "expert_labels",
+    }
+    assert data["plotsGraphic"]["expert_ids"] == [
+        "expert-1",
+        "expert-2",
+    ]
+    assert data["plotsGraphic"]["expert_labels"] == [
+        "expert-1",
+        "expert-2",
+    ]
+    assert len(data["plotsGraphic"]["expert_points"]) == 2
+    assert len(data["plotsGraphic"]["collective_point"]) == 2
 
 
 def test_topsis_2tuple_public_executor_returns_collective_2tuples() -> None:
@@ -444,6 +461,58 @@ def test_topsis_2tuple_public_executor_returns_collective_2tuples() -> None:
     ] == {
         "labelKey": "s1",
         "alpha": pytest.approx(0.0625),
+    }
+
+
+def test_topsis_2tuple_single_expert_projection_is_available_without_disagreement() -> None:
+    payload = _base_payload()
+    payload["evaluations"] = [
+        {
+            **payload["evaluations"][0],
+            "weight": 1.0,
+        }
+    ]
+
+    data = _payload_result(
+        execute_topsis_2tuple(_request(payload))
+    )["data"]
+    projection = data["plotsGraphic"]
+
+    assert projection["expert_ids"] == ["expert-1"]
+    assert projection["expert_labels"] == ["expert-1"]
+    assert projection["expert_points"] == [[0.0, 0.0]]
+    assert len(projection["collective_point"]) == 2
+
+    context = {
+        "issue": {
+            "id": "issue-1",
+            "name": "Issue",
+            "description": "Description",
+            "lifecycle": {"active": False},
+            "consensus": {"enabled": False},
+        },
+        "participants": {"current": []},
+        "semanticDirectory": {
+            "alternativesById": {
+                "alt-a": {"name": "Alternative A"},
+                "alt-b": {"name": "Alternative B"},
+            },
+        },
+        "rounds": [{
+            "phase": 0,
+            "selectedExecution": {
+                "attemptId": "attempt-1",
+                "startedAt": "start",
+                "completedAt": "end",
+                "result": {"standardResult": data},
+            },
+        }],
+    }
+    facts = asyncio.run(analyze_generic_issue(context))["data"]["facts"]
+
+    assert facts["expertCollectiveRelationship"] == {
+        "projection": projection,
+        "unavailableReason": None,
     }
 
 
