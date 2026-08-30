@@ -79,6 +79,9 @@ def _build_placeholder_values(request: ModelScaffoldPreviewRequest) -> dict[str,
         "model_kind_literal": _format_python_string_literal(request.modelKind),
         "evaluation_structure_key": request.evaluationStructureKey,
         "evaluation_structure_stage": MODEL_KIND_STAGE_VALUE[request.modelKind],
+        "requires_homogeneous_expression_domains": repr(
+            request.requiresHomogeneousExpressionDomains
+        ),
         "evaluation_structure_key_literal": _format_python_string_literal(
             request.evaluationStructureKey
         ),

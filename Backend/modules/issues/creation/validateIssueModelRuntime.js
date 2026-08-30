@@ -121,6 +121,13 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       value: model.isMultiCriteria,
     });
   }
+  if (typeof model.requiresHomogeneousExpressionDomains !== "boolean") {
+    runtimeErrors.push({
+      field: "requiresHomogeneousExpressionDomains",
+      message: "must be boolean",
+      value: model.requiresHomogeneousExpressionDomains,
+    });
+  }
 
   if (runtimeErrors.length > 0) {
     const firstError = runtimeErrors[0];
@@ -154,5 +161,7 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights,
     usesCriterionTypes: model.usesCriterionTypes,
     isMultiCriteria: model.isMultiCriteria,
+    requiresHomogeneousExpressionDomains:
+      model.requiresHomogeneousExpressionDomains,
   };
 };

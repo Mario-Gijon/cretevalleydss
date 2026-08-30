@@ -36,6 +36,8 @@ export const mapIssueModelCatalogItem = (model) => {
     usesCriterionTypes: model.usesCriterionTypes === true,
     supportsConsensus: model.supportsConsensus === true,
     supportsConsensusSimulation: model.supportsConsensusSimulation === true,
+    requiresHomogeneousExpressionDomains:
+      model.requiresHomogeneousExpressionDomains === true,
     parameters: model.parameters,
     modelInputFields: model.modelInputFields,
     modelOutputFields: model.modelOutputFields,

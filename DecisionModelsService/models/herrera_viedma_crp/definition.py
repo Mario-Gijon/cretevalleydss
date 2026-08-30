@@ -26,6 +26,7 @@ MODEL_DEFINITION = ModelDefinition(
     display_name="Herrera Viedma CRP",
     more_info_url=None,
     model_kind="issue",
+    requires_homogeneous_expression_domains=False,
     evaluation_structure_key="alternativePairwiseByCriterion",
     supports_consensus=True,
     supports_consensus_simulation=True,

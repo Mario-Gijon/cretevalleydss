@@ -112,9 +112,11 @@ export const buildCreateIssueRequestPayload = ({
   if (
     !validateExpressionDomainConfig({
       expressionDomainConfig,
-      leafCriteria,
-      validDomainIdSet,
-    })
+    leafCriteria,
+    validDomainIdSet,
+    requiresHomogeneousExpressionDomains:
+      selectedModel?.requiresHomogeneousExpressionDomains === true,
+  })
   ) {
     return {
       ok: false,

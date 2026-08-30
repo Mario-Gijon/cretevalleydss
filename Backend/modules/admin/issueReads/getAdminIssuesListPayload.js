@@ -97,7 +97,7 @@ export const getAdminIssuesListPayload = async ({
     .populate("createdBy", "name email role accountConfirm")
     .populate(
       "model",
-      "name evaluationStructureKey criteriaWeightsStructureKey isMultiCriteria supportsConsensus supportsConsensusSimulation"
+      "name evaluationStructureKey criteriaWeightsStructureKey isMultiCriteria supportsConsensus supportsConsensusSimulation requiresHomogeneousExpressionDomains"
     )
     .sort({ active: -1, creationDate: -1, name: 1 })
     .lean();
@@ -335,6 +335,8 @@ export const getAdminIssuesListPayload = async ({
             supportsConsensus: issue.model.supportsConsensus === true,
             supportsConsensusSimulation:
               issue.model.supportsConsensusSimulation === true,
+            requiresHomogeneousExpressionDomains:
+              issue.model.requiresHomogeneousExpressionDomains === true,
             isMultiCriteria: issue.model.isMultiCriteria,
           }
           : null,

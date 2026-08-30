@@ -391,6 +391,8 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
           supportsConsensus: issue.model.supportsConsensus === true,
           supportsConsensusSimulation:
             issue.model.supportsConsensusSimulation === true,
+          requiresHomogeneousExpressionDomains:
+            issue.model.requiresHomogeneousExpressionDomains === true,
           isMultiCriteria: issue.model.isMultiCriteria,
           usesExpertWeights: issue.model.usesExpertWeights === true,
           supportedExpressionDomains:

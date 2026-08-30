@@ -101,6 +101,11 @@ const issueModelSchema = new Schema({
     required: true,
     default: false,
   },
+  requiresHomogeneousExpressionDomains: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
   visibleInIssueCreation: {
     type: Boolean,
     default: function resolveDefaultVisibility() {

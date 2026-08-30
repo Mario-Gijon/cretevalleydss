@@ -149,6 +149,7 @@ export const validateExpressionDomainConfig = ({
   expressionDomainConfig,
   leafCriteria,
   validDomainIdSet = null,
+  requiresHomogeneousExpressionDomains = false,
 }) => {
   if (!expressionDomainConfig || typeof expressionDomainConfig !== "object") {
     return false;
@@ -160,6 +161,9 @@ export const validateExpressionDomainConfig = ({
   }
 
   const mode = String(expressionDomainConfig?.mode || "").trim();
+  if (requiresHomogeneousExpressionDomains === true && mode !== "global") {
+    return false;
+  }
   const validDomainIds = validDomainIdSet instanceof Set ? validDomainIdSet : null;
 
   if (mode === "global") {
@@ -223,7 +227,7 @@ export const buildInitialExpressionDomainConfig = ({
     return normalized;
   };
 
-  if (currentMode === "byCriterion") {
+  if (currentMode === "byCriterion" && selectedModel?.requiresHomogeneousExpressionDomains !== true) {
     const prevMap =
       safeCurrent.domainsByCriterion &&
       typeof safeCurrent.domainsByCriterion === "object" &&
@@ -239,6 +243,26 @@ export const buildInitialExpressionDomainConfig = ({
     return {
       mode: "byCriterion",
       domainsByCriterion,
+    };
+  }
+
+  if (selectedModel?.requiresHomogeneousExpressionDomains === true) {
+    const previousByCriterion =
+      safeCurrent.domainsByCriterion &&
+      typeof safeCurrent.domainsByCriterion === "object" &&
+      !Array.isArray(safeCurrent.domainsByCriterion)
+        ? safeCurrent.domainsByCriterion
+        : {};
+    const previousDomainId = leafCriterionNames
+      .map((criterionName) => previousByCriterion[criterionName])
+      .map(normalizeDomainForLeaf)
+      .find(Boolean);
+
+    return {
+      mode: "global",
+      globalDomainId: normalizeDomainForLeaf(
+        safeCurrent.globalDomainId || previousDomainId
+      ),
     };
   }
 

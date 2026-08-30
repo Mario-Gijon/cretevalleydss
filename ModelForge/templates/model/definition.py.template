@@ -21,6 +21,7 @@ MODEL_DEFINITION = ModelDefinition(
     more_info_url={{ more_info_url_literal }},
     implementation_status="scaffold",
     model_kind={{ model_kind_literal }},
+    requires_homogeneous_expression_domains={{ requires_homogeneous_expression_domains }},
     evaluation_structure_key={{ evaluation_structure_key_literal }},
     supports_creator_criteria_weighting={{ supports_creator_criteria_weighting }},
     supports_expert_criteria_weighting={{ supports_expert_criteria_weighting }},

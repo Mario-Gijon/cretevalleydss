@@ -63,6 +63,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "displayName": model.display_name,
         "modelKind": model.model_kind,
         "evaluationStructureKey": model.evaluation_structure_key,
+        "requiresHomogeneousExpressionDomains": model.requires_homogeneous_expression_domains,
         "supportsCreatorCriteriaWeighting": model.supports_creator_criteria_weighting,
         "supportsExpertCriteriaWeighting": model.supports_expert_criteria_weighting,
         "apiEndpoint": {

@@ -36,15 +36,17 @@ import { formatExpressionDomainDisplayLabel } from "../../../utils/expressionDom
 
 const normalizeDomainId = (value) => String(value || "").trim();
 
-const AssignmentModeCard = ({ selected, title, description, onClick }) => {
+const AssignmentModeCard = ({ selected, title, description, onClick, disabled = false }) => {
   const theme = useTheme();
 
   return (
     <Box
       role="button"
-      tabIndex={0}
-      onClick={onClick}
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? undefined : onClick}
       onKeyDown={(event) => {
+        if (disabled) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onClick?.();
@@ -65,9 +67,11 @@ const AssignmentModeCard = ({ selected, title, description, onClick }) => {
             0.035
           )})`
           : alpha(theme.palette.common.white, 0.018),
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.58 : 1,
+        pointerEvents: disabled ? "none" : "auto",
         transition: "border-color 140ms ease, background 140ms ease",
-        "&:hover": {
+        "&:hover": disabled ? undefined : {
           borderColor: selected
             ? alpha(theme.palette.info.main, 0.9)
             : alpha(theme.palette.info.main, 0.38),
@@ -144,7 +148,13 @@ export const ExpressionDomainStep = () => {
     [selectedModel, globalDomains, expressionDomains]
   );
 
-  const mode = expressionDomainConfig?.mode === "byCriterion" ? "byCriterion" : "global";
+  const requiresHomogeneousExpressionDomains =
+    selectedModel?.requiresHomogeneousExpressionDomains === true;
+  const mode = requiresHomogeneousExpressionDomains
+    ? "global"
+    : expressionDomainConfig?.mode === "byCriterion"
+      ? "byCriterion"
+      : "global";
 
   const assignmentsByCriterion = useMemo(
     () =>
@@ -177,6 +187,7 @@ export const ExpressionDomainStep = () => {
 
   const handleModeChange = (nextMode) => {
     if (!nextMode) return;
+    if (requiresHomogeneousExpressionDomains && nextMode !== "global") return;
 
     if (nextMode === "global") {
       const currentGlobal = normalizeDomainId(expressionDomainConfig?.globalDomainId);
@@ -292,6 +303,12 @@ export const ExpressionDomainStep = () => {
                 Assignment mode
               </Typography>
 
+              {requiresHomogeneousExpressionDomains ? (
+                <Alert severity="info">
+                  This model requires the same expression domain for every leaf criterion.
+                </Alert>
+              ) : null}
+
               <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8}>
                 <AssignmentModeCard
                   selected={mode === "global"}
@@ -303,7 +320,10 @@ export const ExpressionDomainStep = () => {
                 <AssignmentModeCard
                   selected={mode === "byCriterion"}
                   title="By criterion"
-                  description="Choose a domain for each leaf criterion"
+                  description={requiresHomogeneousExpressionDomains
+                    ? "Unavailable: this model requires one common domain"
+                    : "Choose a domain for each leaf criterion"}
+                  disabled={requiresHomogeneousExpressionDomains}
                   onClick={() => handleModeChange("byCriterion")}
                 />
               </Stack>

@@ -136,6 +136,7 @@ class ModelScaffoldPreviewRequest(BaseModel):
     moreInfoUrl: str | None = None
     modelKind: str
     evaluationStructureKey: str
+    requiresHomogeneousExpressionDomains: bool = False
     supportsCreatorCriteriaWeighting: bool = False
     supportsExpertCriteriaWeighting: bool = False
     supportsConsensus: bool = False

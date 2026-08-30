@@ -24,6 +24,7 @@ MODEL_DEFINITION = ModelDefinition(
     more_info_url=None,
     implementation_status="ready",
     model_kind="criteriaWeighting",
+    requires_homogeneous_expression_domains=False,
     evaluation_structure_key="criteriaPreferenceOrder",
     supports_creator_criteria_weighting=True,
     supports_expert_criteria_weighting=True,

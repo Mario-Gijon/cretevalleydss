@@ -264,6 +264,8 @@ export const validateSyncableManifestModel = (manifestModel) => {
     manifestModel?.supportsCreatorCriteriaWeighting;
   const supportsExpertCriteriaWeighting =
     manifestModel?.supportsExpertCriteriaWeighting;
+  const requiresHomogeneousExpressionDomains =
+    manifestModel?.requiresHomogeneousExpressionDomains;
 
   if (!apiModelKey) missingFields.push("apiModelKey");
   if (!displayName) missingFields.push("displayName");
@@ -281,6 +283,9 @@ export const validateSyncableManifestModel = (manifestModel) => {
   }
   if (typeof publicUsable !== "boolean") {
     missingFields.push("publicUsable");
+  }
+  if (typeof requiresHomogeneousExpressionDomains !== "boolean") {
+    missingFields.push("requiresHomogeneousExpressionDomains");
   }
   if (modelKind === "criteriaWeighting") {
     if (typeof supportsCreatorCriteriaWeighting !== "boolean") {
@@ -343,6 +348,8 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     supportsExpertCriteriaWeighting:
       modelKind === "criteriaWeighting" &&
       manifestModel?.supportsExpertCriteriaWeighting === true,
+    requiresHomogeneousExpressionDomains:
+      manifestModel?.requiresHomogeneousExpressionDomains === true,
     visibleInIssueCreation: modelKind === "issue" && !isScaffold,
     visibleInCriteriaWeighting:
       modelKind === "criteriaWeighting" && !isScaffold,

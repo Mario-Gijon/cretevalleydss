@@ -24,6 +24,7 @@ MODEL_DEFINITION = ModelDefinition(
     more_info_url=None,
     implementation_status="ready",
     model_kind="issue",
+    requires_homogeneous_expression_domains=False,
     evaluation_structure_key="alternativeCriteriaMatrix",
     supports_creator_criteria_weighting=False,
     supports_expert_criteria_weighting=False,

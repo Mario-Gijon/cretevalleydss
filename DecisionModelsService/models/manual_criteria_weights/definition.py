@@ -25,6 +25,7 @@ MODEL_DEFINITION = ModelDefinition(
     display_name="Manual Criteria Weights",
     more_info_url=None,
     model_kind="criteriaWeighting",
+    requires_homogeneous_expression_domains=False,
     supports_creator_criteria_weighting=True,
     supports_expert_criteria_weighting=True,
     evaluation_structure_key="manualCriteriaWeights",

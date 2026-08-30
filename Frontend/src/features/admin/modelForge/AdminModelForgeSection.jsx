@@ -354,13 +354,14 @@ const ValidationPanel = ({
   );
 };
 
-const CapabilityToggle = ({ label, checked, onChange }) => {
+const CapabilityToggle = ({ label, checked, onChange, description }) => {
   const theme = useTheme();
 
   return (
     <Button
       variant="outlined"
       color={checked ? "info" : "inherit"}
+      title={description}
       onClick={() => onChange(!checked)}
       sx={{
         justifyContent: "center",
@@ -1155,6 +1156,8 @@ export default function AdminModelForgeSection() {
         moreInfoUrl: formState.moreInfoUrl.trim() || null,
         modelKind: formState.modelKind,
         evaluationStructureKey,
+        requiresHomogeneousExpressionDomains:
+          formState.requiresHomogeneousExpressionDomains === true,
         supportsConsensus:
           formState.modelKind === "issue" ? formState.supportsConsensus : false,
         supportsConsensusSimulation: formState.supportsConsensusSimulation,
@@ -1686,6 +1689,14 @@ export default function AdminModelForgeSection() {
                   label="Consensus simulation"
                   checked={formState.supportsConsensusSimulation}
                   onChange={(checked) => setField("supportsConsensusSimulation", checked)}
+                />
+                <CapabilityToggle
+                  label="Homogeneous expression domains"
+                  description="Require the same expression domain for every leaf criterion."
+                  checked={formState.requiresHomogeneousExpressionDomains}
+                  onChange={(checked) =>
+                    setField("requiresHomogeneousExpressionDomains", checked)
+                  }
                 />
                 <CapabilityToggle
                   label="Expert weights"

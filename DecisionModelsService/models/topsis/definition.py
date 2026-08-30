@@ -24,6 +24,7 @@ MODEL_DEFINITION = ModelDefinition(
         display_name="TOPSIS",
         more_info_url=None,
         model_kind="issue",
+        requires_homogeneous_expression_domains=False,
         evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
         is_multi_criteria=True,

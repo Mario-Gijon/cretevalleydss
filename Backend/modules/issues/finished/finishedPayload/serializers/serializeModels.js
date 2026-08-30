@@ -10,6 +10,8 @@ import {
 const serializeCapabilities = (model) => ({
   supportsCreatorCriteriaWeighting: model.supportsCreatorCriteriaWeighting === true,
   supportsExpertCriteriaWeighting: model.supportsExpertCriteriaWeighting === true,
+  requiresHomogeneousExpressionDomains:
+    model.requiresHomogeneousExpressionDomains === true,
   supportsConsensus: model.supportsConsensus === true,
   supportsConsensusSimulation: model.supportsConsensusSimulation === true,
   usesCriteriaWeights: model.usesCriteriaWeights === true,

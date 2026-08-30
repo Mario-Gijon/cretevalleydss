@@ -89,6 +89,7 @@ export const prepareIssueCreation = async ({
     usesCriteriaWeights,
     usesExpertWeights,
     isMultiCriteria,
+    requiresHomogeneousExpressionDomains,
     normalizedModelParameters,
   } = await loadCreateIssueActorsAndModel({
     ownerUserId,
@@ -149,6 +150,7 @@ export const prepareIssueCreation = async ({
     resolveExpressionDomainConfigByLeafCriteriaOrThrow({
       expressionDomainConfig: input.expressionDomainConfig,
       leafCriteria: orderedLeafCriteria,
+      requiresHomogeneousExpressionDomains,
     });
 
   const domainDocs = await loadAccessibleExpressionDomains({
@@ -198,6 +200,7 @@ export const prepareIssueCreation = async ({
     consensusMaxPhases,
     usesCriteriaWeights,
     usesExpertWeights,
+    requiresHomogeneousExpressionDomains,
     normalizedModelParameters,
     domainDocs,
     domainIdByCriterionName,

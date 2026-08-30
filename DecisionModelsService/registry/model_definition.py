@@ -23,6 +23,7 @@ class ModelDefinition:
 
     more_info_url: str | None = None
     model_kind: str = "issue"
+    requires_homogeneous_expression_domains: bool = False
     supports_creator_criteria_weighting: bool = False
     supports_expert_criteria_weighting: bool = False
 
@@ -51,6 +52,12 @@ class ModelDefinition:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
                 f"model_kind in {sorted(MODEL_KINDS)}."
+            )
+
+        if not isinstance(self.requires_homogeneous_expression_domains, bool):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires "
+                "requires_homogeneous_expression_domains to be boolean."
             )
 
         if not isinstance(self.evaluation_structure_key, str) or (

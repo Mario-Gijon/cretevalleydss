@@ -216,6 +216,10 @@ const buildModelRow = ({
       manifestProjection?.supportsExpertCriteriaWeighting ??
       mongoModel?.supportsExpertCriteriaWeighting ??
       null,
+    requiresHomogeneousExpressionDomains:
+      manifestProjection?.requiresHomogeneousExpressionDomains ??
+      mongoModel?.requiresHomogeneousExpressionDomains ??
+      null,
     supportsConsensus:
       manifestProjection?.supportsConsensus ?? mongoModel?.supportsConsensus ?? null,
     supportsConsensusSimulation:

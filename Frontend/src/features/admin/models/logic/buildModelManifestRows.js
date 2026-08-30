@@ -127,6 +127,8 @@ export const normalizeModelCatalogRows = (models = []) =>
     usesFuzzyCriteriaWeights: model?.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model?.usesCriterionTypes === true,
     isConsensus: model?.supportsConsensus === true,
+    requiresHomogeneousExpressionDomains:
+      model?.requiresHomogeneousExpressionDomains === true,
     isMultiCriteria: model?.isMultiCriteria,
     supportedExpressionDomains: model?.supportedExpressionDomains || null,
     endpoint: model?.apiEndpoint || null,

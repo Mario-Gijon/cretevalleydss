@@ -6,9 +6,17 @@ import { isSupportedDomainForModel } from "./domainCompatibility.js";
 export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   expressionDomainConfig,
   leafCriteria,
+  requiresHomogeneousExpressionDomains = false,
 }) => {
   const mode = expressionDomainConfig.mode;
   const leafCriterionNames = leafCriteria.map((criterion) => criterion.name);
+
+  if (requiresHomogeneousExpressionDomains === true && mode !== "global") {
+    throw createBadRequestError(
+      "This model requires a global expression domain assignment",
+      { field: "expressionDomainConfig" }
+    );
+  }
 
   const domainIdByCriterionName = new Map();
   const usedDomainIds = new Set();

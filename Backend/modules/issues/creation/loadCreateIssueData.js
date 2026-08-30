@@ -64,6 +64,7 @@ export const loadCreateIssueActorsAndModel = async ({
     usesCriteriaWeights,
     usesExpertWeights,
     isMultiCriteria,
+    requiresHomogeneousExpressionDomains,
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
 
   const sanitizedParamValues = stripCriteriaWeightParameterValues(paramValues);
@@ -116,6 +117,7 @@ export const loadCreateIssueActorsAndModel = async ({
     usesCriteriaWeights,
     usesExpertWeights,
     isMultiCriteria,
+    requiresHomogeneousExpressionDomains,
     normalizedModelParameters:
       normalizedModelParametersWithoutCriteriaWeights,
   };
