@@ -4,24 +4,33 @@
 
 import { MenuItem, Stack, TextField, Typography } from "@mui/material";
 
-const METHODS = [
-  { value: "arithmetic_mean", label: "2-Tuple Arithmetic Mean" },
-  { value: "weighted_average", label: "2-Tuple Weighted Average" },
-  { value: "l2towa", label: "L2TOWA" },
-];
-
-const QUANTIFIERS = [
-  { value: "most", label: "Most" },
-  { value: "at_least_half", label: "At least half" },
-  { value: "as_many_as_possible", label: "As many as possible" },
-  { value: "custom", label: "Custom" },
-];
-
-const isSupportedMethod = (method) => METHODS.some((item) => item.value === method);
-const isSupportedQuantifier = (quantifier) =>
-  QUANTIFIERS.some((item) => item.value === quantifier);
-
 const toNumericDraft = (input) => (input === "" ? "" : Number(input));
+
+const isVisible = (definition, options) => {
+  const condition = definition.visibleWhen;
+  return !condition || options[condition.field] === condition.equals;
+};
+
+const optionValue = (option) =>
+  option && typeof option === "object" ? option.value : option;
+
+const optionLabel = (option) =>
+  option && typeof option === "object" ? option.label : String(option);
+
+const buildOptions = (methodDefinition, sourceOptions = {}) => {
+  const normalized = {};
+  const subparameters = Array.isArray(methodDefinition?.subparameters)
+    ? methodDefinition.subparameters
+    : [];
+
+  subparameters.forEach((definition) => {
+    if (!isVisible(definition, normalized)) return;
+    const nextValue = sourceOptions[definition.key] ?? definition.default;
+    if (nextValue !== undefined) normalized[definition.key] = nextValue;
+  });
+
+  return normalized;
+};
 
 export const TwoTupleAggregationParameterField = ({
   parameter,
@@ -33,39 +42,33 @@ export const TwoTupleAggregationParameterField = ({
 }) => {
   void parameterContext;
 
-  const method = isSupportedMethod(value?.method) ? value.method : "";
+  const methods = Array.isArray(parameter?.restrictions?.methods)
+    ? parameter.restrictions.methods
+    : [];
+  const methodDefinition = methods.find((item) => item?.key === value?.method);
+  const method = methodDefinition?.key || "";
   const options = value?.options && typeof value.options === "object" ? value.options : {};
-  const quantifier = isSupportedQuantifier(options.quantifier)
-    ? options.quantifier
-    : "";
+  const visibleSubparameters = Array.isArray(methodDefinition?.subparameters)
+    ? methodDefinition.subparameters.filter((definition) => isVisible(definition, options))
+    : [];
   const label = parameter?.label || "Aggregation";
 
   const updateMethod = (nextMethod) => {
+    const nextMethodDefinition = methods.find((item) => item?.key === nextMethod);
     onChange({
       method: nextMethod,
-      options: nextMethod === "l2towa" ? { quantifier: "most" } : {},
+      options: buildOptions(nextMethodDefinition),
     });
   };
 
-  const updateQuantifier = (nextQuantifier) => {
+  const updateOption = (definition, nextValue) => {
+    if (!methodDefinition) return;
     onChange({
-      method: "l2towa",
-      options:
-        nextQuantifier === "custom"
-          ? { quantifier: "custom", a: 0, b: 1 }
-          : { quantifier: nextQuantifier },
-    });
-  };
-
-  const updateCustomValue = (key, nextValue) => {
-    onChange({
-      method: "l2towa",
-      options: {
-        quantifier: "custom",
-        a: options.a ?? 0,
-        b: options.b ?? 1,
-        [key]: toNumericDraft(nextValue),
-      },
+      method,
+      options: buildOptions(methodDefinition, {
+        ...options,
+        [definition.key]: nextValue,
+      }),
     });
   };
 
@@ -83,62 +86,63 @@ export const TwoTupleAggregationParameterField = ({
         error={Boolean(error)}
         inputProps={{ "aria-label": `${label} method` }}
       >
-        {METHODS.map((item) => (
-          <MenuItem key={item.value} value={item.value}>
-            {item.label}
+        {methods.map((item) => (
+          <MenuItem key={item.key} value={item.key}>
+            {item.label || item.key}
           </MenuItem>
         ))}
       </TextField>
 
-      {method === "l2towa" ? (
+      {methodDefinition ? (
         <Stack direction={{ xs: "column", sm: "row" }} spacing={0.75}>
-          <TextField
-            select
-            label="Quantifier"
-            variant="outlined"
-            color="secondary"
-            size="small"
-            value={quantifier}
-            onChange={(event) => updateQuantifier(event.target.value)}
-            disabled={disabled}
-            error={Boolean(error)}
-            sx={{ minWidth: 190 }}
-          >
-            {QUANTIFIERS.map((item) => (
-              <MenuItem key={item.value} value={item.value}>
-                {item.label}
-              </MenuItem>
-            ))}
-          </TextField>
+          {visibleSubparameters.map((definition) => {
+            if (definition.type === "select") {
+              const choices = Array.isArray(definition.options) ? definition.options : [];
+              return (
+                <TextField
+                  key={definition.key}
+                  select
+                  label={definition.label || definition.key}
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  value={options[definition.key] ?? ""}
+                  onChange={(event) => updateOption(definition, event.target.value)}
+                  disabled={disabled}
+                  error={Boolean(error)}
+                  sx={{ minWidth: 190 }}
+                >
+                  {choices.map((choice) => (
+                    <MenuItem key={optionValue(choice)} value={optionValue(choice)}>
+                      {optionLabel(choice)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              );
+            }
 
-          {quantifier === "custom" ? (
-            <>
-              <TextField
-                label="a"
-                type="number"
-                variant="outlined"
-                color="secondary"
-                size="small"
-                value={options.a ?? ""}
-                onChange={(event) => updateCustomValue("a", event.target.value)}
-                disabled={disabled}
-                error={Boolean(error)}
-                inputProps={{ min: 0, max: 1, step: "any" }}
-              />
-              <TextField
-                label="b"
-                type="number"
-                variant="outlined"
-                color="secondary"
-                size="small"
-                value={options.b ?? ""}
-                onChange={(event) => updateCustomValue("b", event.target.value)}
-                disabled={disabled}
-                error={Boolean(error)}
-                inputProps={{ min: 0, max: 1, step: "any" }}
-              />
-            </>
-          ) : null}
+            if (definition.type === "number") {
+              return (
+                <TextField
+                  key={definition.key}
+                  label={definition.label || definition.key}
+                  type="number"
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  value={options[definition.key] ?? ""}
+                  onChange={(event) =>
+                    updateOption(definition, toNumericDraft(event.target.value))
+                  }
+                  disabled={disabled}
+                  error={Boolean(error)}
+                  inputProps={{ step: "any" }}
+                />
+              );
+            }
+
+            return null;
+          })}
         </Stack>
       ) : null}
 

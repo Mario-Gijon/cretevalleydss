@@ -5,19 +5,21 @@
 import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
-const METHODS = new Set(["arithmetic_mean", "weighted_average", "l2towa"]);
-const PREDEFINED_QUANTIFIERS = new Set([
-  "most",
-  "at_least_half",
-  "as_many_as_possible",
-]);
+const isVisible = (definition, options) => {
+  const condition = definition.visibleWhen;
+  return !isPlainObject(condition) || options[condition.field] === condition.equals;
+};
+
+const optionValue = (option) =>
+  isPlainObject(option) ? option.value : option;
+
+const getMethods = (parameter) => parameter?.restrictions?.methods;
 
 export const validateTwoTupleAggregationParameter = ({
   value,
   parameter,
   context,
 }) => {
-  void parameter;
   void context;
 
   if (!isPlainObject(value)) {
@@ -25,35 +27,59 @@ export const validateTwoTupleAggregationParameter = ({
   }
 
   const { method, options } = value;
-  if (typeof method !== "string" || !METHODS.has(method)) {
+  const methods = getMethods(parameter);
+  if (!Array.isArray(methods)) {
+    return toInvalid("requires restrictions.methods to define aggregation methods", value);
+  }
+
+  const methodDefinition = methods.find(
+    (candidate) => isPlainObject(candidate) && candidate.key === method
+  );
+  if (typeof method !== "string" || !methodDefinition) {
     return toInvalid("must use a supported aggregation method", value);
   }
   if (!isPlainObject(options)) {
     return toInvalid("options must be an object", value);
   }
 
-  if (method === "arithmetic_mean" || method === "weighted_average") {
-    return toValid({ method, options: {} });
+  const subparameters = Array.isArray(methodDefinition.subparameters)
+    ? methodDefinition.subparameters
+    : [];
+  const normalizedOptions = {};
+
+  for (const definition of subparameters) {
+    if (!isPlainObject(definition) || typeof definition.key !== "string") {
+      return toInvalid("has an invalid aggregation method definition", value);
+    }
+    if (!isVisible(definition, normalizedOptions)) continue;
+
+    const option = options[definition.key];
+    if (definition.type === "select") {
+      const allowedOptions = Array.isArray(definition.options)
+        ? definition.options.map(optionValue)
+        : [];
+      if (typeof option !== "string" || !allowedOptions.includes(option)) {
+        return toInvalid(`${definition.key} must be one of the declared options`, value);
+      }
+    } else if (definition.type === "number") {
+      if (typeof option !== "number" || !Number.isFinite(option)) {
+        return toInvalid(`${definition.key} must be a finite number`, value);
+      }
+    } else {
+      return toInvalid(`does not support subparameter type '${definition.type}'`, value);
+    }
+
+    normalizedOptions[definition.key] = option;
   }
 
-  const { quantifier } = options;
-  if (PREDEFINED_QUANTIFIERS.has(quantifier)) {
-    return toValid({ method, options: { quantifier } });
-  }
-  if (quantifier !== "custom") {
-    return toInvalid("l2towa options must include a supported quantifier", value);
-  }
-
-  const { a, b } = options;
-  if (typeof a !== "number" || !Number.isFinite(a)) {
-    return toInvalid("custom l2towa quantifier requires a finite numeric a", value);
-  }
-  if (typeof b !== "number" || !Number.isFinite(b)) {
-    return toInvalid("custom l2towa quantifier requires a finite numeric b", value);
-  }
-  if (a < 0 || a >= b || b > 1) {
+  if (
+    normalizedOptions.quantifier === "custom" &&
+    (normalizedOptions.a < 0 ||
+      normalizedOptions.a >= normalizedOptions.b ||
+      normalizedOptions.b > 1)
+  ) {
     return toInvalid("custom l2towa quantifier must satisfy 0 <= a < b <= 1", value);
   }
 
-  return toValid({ method, options: { quantifier, a, b } });
+  return toValid({ method, options: normalizedOptions });
 };

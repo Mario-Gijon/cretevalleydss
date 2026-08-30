@@ -5,6 +5,7 @@
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
 from .executor import execute_two_tuple
+from .aggregation import AGGREGATION_METHODS
 from .examples import (
     TWO_TUPLE_REQUEST_EXAMPLES,
     TWO_TUPLE_RESPONSE_EXAMPLES,
@@ -35,14 +36,22 @@ MODEL_DEFINITION = ModelDefinition(
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=True,
     supported_expression_domains=[{'typeKey': 'linguistic2Tuple', 'constraints': {}}],
-    parameters=[{'key': 'expertAggregation',
-  'label': 'Expert aggregation',
-  'parameterStructureKey': 'twoTupleAggregation',
-  'required': True,
-  'default': {'method': 'arithmetic_mean', 'options': {}}},
- {'key': 'criteriaAggregation',
-  'label': 'Criteria aggregation',
-  'parameterStructureKey': 'twoTupleAggregation',
-  'required': True,
-  'default': {'method': 'weighted_average', 'options': {}}}],
+    parameters=[
+        {
+            "key": "expertAggregation",
+            "label": "Expert aggregation",
+            "parameterStructureKey": "twoTupleAggregation",
+            "required": True,
+            "default": {"method": "arithmetic_mean", "options": {}},
+            "restrictions": {"methods": AGGREGATION_METHODS},
+        },
+        {
+            "key": "criteriaAggregation",
+            "label": "Criteria aggregation",
+            "parameterStructureKey": "twoTupleAggregation",
+            "required": True,
+            "default": {"method": "weighted_average", "options": {}},
+            "restrictions": {"methods": AGGREGATION_METHODS},
+        },
+    ],
 )

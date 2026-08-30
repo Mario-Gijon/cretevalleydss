@@ -4,17 +4,17 @@
 
 import { Stack, Typography } from "@mui/material";
 
-const METHOD_LABELS = {
-  arithmetic_mean: "2-Tuple Arithmetic Mean",
-  weighted_average: "2-Tuple Weighted Average",
-  l2towa: "L2TOWA",
+const isVisible = (definition, options) => {
+  const condition = definition.visibleWhen;
+  return !condition || options[condition.field] === condition.equals;
 };
 
-const QUANTIFIER_LABELS = {
-  most: "Most",
-  at_least_half: "At least half",
-  as_many_as_possible: "As many as possible",
-  custom: "Custom",
+const optionValue = (option) =>
+  option && typeof option === "object" ? option.value : option;
+
+const optionLabel = (definition, value) => {
+  const option = definition.options?.find((item) => optionValue(item) === value);
+  return option && typeof option === "object" ? option.label : String(value);
 };
 
 export const TwoTupleAggregationParameterReadOnly = ({
@@ -22,28 +22,37 @@ export const TwoTupleAggregationParameterReadOnly = ({
   value,
   parameterContext,
 }) => {
-  void parameter;
   void parameterContext;
 
-  const method = METHOD_LABELS[value?.method];
-  const options = value?.options;
+  const methods = Array.isArray(parameter?.restrictions?.methods)
+    ? parameter.restrictions.methods
+    : [];
+  const methodDefinition = methods.find((item) => item?.key === value?.method);
+  const options = value?.options && typeof value.options === "object" ? value.options : {};
 
-  if (!method) {
+  if (!methodDefinition) {
     return <Typography variant="body2" sx={{ fontWeight: 800 }}>—</Typography>;
   }
 
-  const quantifier = QUANTIFIER_LABELS[options?.quantifier];
-  const optionSummary =
-    value.method === "l2towa" && options?.quantifier === "custom"
-      ? `Custom (a: ${String(options.a)}, b: ${String(options.b)})`
-      : value.method === "l2towa" && quantifier
-        ? quantifier
-        : null;
+  const visibleSubparameters = Array.isArray(methodDefinition.subparameters)
+    ? methodDefinition.subparameters.filter((definition) => isVisible(definition, options))
+    : [];
+  const optionSummary = visibleSubparameters
+    .filter((definition) => options[definition.key] !== undefined)
+    .map((definition) => {
+      const option = options[definition.key];
+      const display =
+        definition.type === "select"
+          ? optionLabel(definition, option)
+          : String(option);
+      return `${definition.label || definition.key}: ${display}`;
+    })
+    .join(" · ");
 
   return (
     <Stack spacing={0.1}>
       <Typography variant="body2" sx={{ fontWeight: 800 }}>
-        {method}
+        {methodDefinition.label || methodDefinition.key}
       </Typography>
       {optionSummary ? (
         <Typography variant="caption" color="text.secondary">
