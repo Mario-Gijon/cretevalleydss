@@ -48,6 +48,12 @@ def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
         raise ScenarioLabError("two-tuple Greece fixture must declare the ordered five-label linguistic scale")
     if set(data.get("rankings", {})) != set(data.get("participants", {}).get("criteriaWeightingExperts", [])):
         raise ScenarioLabError("two-tuple Greece fixture must contain rankings for all weighting experts")
+    for criterion in [*data["parents"], *leaves]:
+        name, description = criterion.get("name"), criterion.get("description")
+        if not isinstance(name, str) or not name.strip() or len(name) > 60:
+            raise ScenarioLabError("two-tuple Greece fixture criterion names must be non-empty and at most 60 characters")
+        if description is not None and (not isinstance(description, str) or len(description) > 500):
+            raise ScenarioLabError("two-tuple Greece fixture criterion descriptions must be strings of at most 500 characters")
     return data
 
 
@@ -91,19 +97,22 @@ def _domain(domains: Any) -> dict[str, Any]:
     raise ScenarioLabError("no compatible five-label linguistic2Tuple domain is available")
 
 
+def _leaf_node(child: dict[str, Any]) -> dict[str, Any]:
+    node = {"id": f"criterion-{child['key']}", "name": child["name"], "type": "benefit", "children": []}
+    if child.get("description") is not None:
+        node["description"] = child["description"]
+    return node
+
+
 def _tree(data: dict[str, Any], *, leaves_only: bool = False) -> list[dict[str, Any]]:
     if leaves_only:
-        return [
-            {"id": f"criterion-{child['key']}", "name": child["name"], "type": "benefit", "children": []}
-            for parent in data["parents"]
-            for child in parent["children"]
-        ]
+        return [_leaf_node(child) for parent in data["parents"] for child in parent["children"]]
     return [
         {
             "id": f"criterion-{parent['key']}",
             "name": parent["name"],
             "type": "group",
-            "children": [{"id": f"criterion-{child['key']}", "name": child["name"], "type": "benefit", "children": []} for child in parent["children"]],
+            "children": [_leaf_node(child) for child in parent["children"]],
         }
         for parent in data["parents"]
     ]
@@ -180,7 +189,6 @@ def _parent_weights(data: dict[str, Any], sessions: SessionPool, owner: IssuesAp
             "children": [{"id": f"criterion-{p['key']}", "name": p["name"], "type": "benefit", "children": []} for p in data["parents"]],
         }
     ]
-    temp["paramValues"] = {}
     owner.create_issue(temp)
     try:
         issue_id = _find_issue(owner, temp_name)
@@ -355,23 +363,8 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         weighting = _model(models, WEIGHTING_KEY, kind="criteriaWeighting")
         if weighting.get("supportsExpertCriteriaWeighting") is not True:
             raise ScenarioLabError("preference_order_criteria_weights does not support expert criteria weighting")
-        issue_models = [item for item in _items(models.get("models", [])) if item.get("modelKind") == "issue"]
-        temp_model = next(
-            (item for item in issue_models if item.get("apiModelKey") == "topsis_2tuple" and item.get("supportsExpertCriteriaWeighting") is True), None
-        )
-        if temp_model is None:
-            temp_model = next(
-                (
-                    item
-                    for item in issue_models
-                    if item.get("supportsExpertCriteriaWeighting") is True and item.get("evaluationStructureKey") == "alternativeCriteriaMatrix"
-                ),
-                None,
-            )
-        if temp_model is None:
-            raise ScenarioLabError("no issue model supports the temporary expert criteria-weighting stage")
         domain = _domain(owner.expression_domains())
-        parents = _parent_weights(data, sessions, owner, _id(temp_model) or "", _id(domain) or "", generation_id)
+        parents = _parent_weights(data, sessions, owner, _id(main) or "", _id(domain) or "", generation_id)
         leaves = _leaf_weights(data, parents)
         final = _payload(
             data,
