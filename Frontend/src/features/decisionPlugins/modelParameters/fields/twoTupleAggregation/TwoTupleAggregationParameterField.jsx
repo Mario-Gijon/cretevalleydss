@@ -136,7 +136,11 @@ export const TwoTupleAggregationParameterField = ({
                   }
                   disabled={disabled}
                   error={Boolean(error)}
-                  inputProps={{ step: "any" }}
+                  inputProps={{
+                    ...(definition.min !== undefined ? { min: definition.min } : {}),
+                    ...(definition.max !== undefined ? { max: definition.max } : {}),
+                    step: "any",
+                  }}
                 />
               );
             }

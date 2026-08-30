@@ -44,6 +44,8 @@ AGGREGATION_METHODS = [
                 "type": "number",
                 "required": True,
                 "default": 0,
+                "min": 0,
+                "max": 1,
                 "visibleWhen": {"field": "quantifier", "equals": "custom"},
             },
             {
@@ -52,6 +54,8 @@ AGGREGATION_METHODS = [
                 "type": "number",
                 "required": True,
                 "default": 1,
+                "min": 0,
+                "max": 1,
                 "visibleWhen": {"field": "quantifier", "equals": "custom"},
             },
         ],

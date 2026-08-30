@@ -54,6 +54,13 @@ export const validateTwoTupleAggregationParameter = ({
     if (!isVisible(definition, normalizedOptions)) continue;
 
     const option = options[definition.key];
+    if (option === undefined) {
+      if (definition.required === true) {
+        return toInvalid(`${definition.key} is required`, value);
+      }
+      continue;
+    }
+
     if (definition.type === "select") {
       const allowedOptions = Array.isArray(definition.options)
         ? definition.options.map(optionValue)
@@ -64,6 +71,12 @@ export const validateTwoTupleAggregationParameter = ({
     } else if (definition.type === "number") {
       if (typeof option !== "number" || !Number.isFinite(option)) {
         return toInvalid(`${definition.key} must be a finite number`, value);
+      }
+      if (definition.min !== undefined && option < definition.min) {
+        return toInvalid(`${definition.key} must be greater than or equal to ${definition.min}`, value);
+      }
+      if (definition.max !== undefined && option > definition.max) {
+        return toInvalid(`${definition.key} must be less than or equal to ${definition.max}`, value);
       }
     } else {
       return toInvalid(`does not support subparameter type '${definition.type}'`, value);
