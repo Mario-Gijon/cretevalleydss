@@ -100,8 +100,15 @@ export const resolveCriteriaWeightingModeConfigOrThrow = (rawConfig) => {
     );
   }
 
+  if (rawConfig.level !== undefined && rawConfig.level !== "leaf" && rawConfig.level !== "parent") {
+    throw createBadRequestError("criteriaWeightingConfig.level must be 'leaf' or 'parent'", {
+      field: "criteriaWeightingConfig.level",
+    });
+  }
+
   return {
     mode,
+    level: rawConfig.level === "parent" ? "parent" : "leaf",
     source: modeConfig.source,
     method: modeConfig.method,
     structureKey: modeConfig.structureKey,

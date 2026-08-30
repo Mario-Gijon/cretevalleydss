@@ -18,6 +18,7 @@ export const buildIssueCreationDocument = ({
   consensusMaxPhases,
   consensusThreshold,
   normalizedModelParameters,
+  criteriaWeightingLevel = "leaf",
 }) => {
   return new Issue({
     ownerId: ownerUserId,
@@ -30,6 +31,8 @@ export const buildIssueCreationDocument = ({
     criteriaWeightingApiModelKey: null,
     criteriaWeightingApiEndpoint: null,
     criteriaWeightingParameters: {},
+    criteriaWeightingLevel,
+    criteriaWeightingSourceWeights: null,
     evaluationStructureKey,
     supportsConsensus,
     simulateConsensus,

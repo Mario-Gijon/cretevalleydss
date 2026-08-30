@@ -25,6 +25,8 @@ export const snapshotIssueLifecycle = (issue) => ({
     Number.isInteger(issue?.consensusMaxPhases) && issue.consensusMaxPhases > 0
       ? issue.consensusMaxPhases
       : null,
+  criteriaWeightingLevel: issue?.criteriaWeightingLevel === "parent" ? "parent" : "leaf",
+  criteriaWeightingSourceWeights: issue?.criteriaWeightingSourceWeights ?? null,
   finishedAt: serializeDate(issue?.finishedAt),
 });
 
@@ -106,6 +108,7 @@ export const writeCriteriaWeightsChanged = async ({
   stageResultId = null,
   executionAttemptId = null,
   structureKey = null,
+  sourceWeightsByCriterionId = null,
   session = null,
 }) => writeIssueEvent({
   issueId: issue._id,
@@ -117,7 +120,7 @@ export const writeCriteriaWeightsChanged = async ({
   occurredAt,
   correlationId,
   previousState: { weightsByCriterionId: previousWeightsByCriterionId ?? {} },
-  nextState: { weightsByCriterionId: nextWeightsByCriterionId ?? {} },
+  nextState: { weightsByCriterionId: nextWeightsByCriterionId ?? {}, sourceWeightsByCriterionId: sourceWeightsByCriterionId ?? null },
   details: {
     cause,
     sourceStage: "criteriaWeighting",

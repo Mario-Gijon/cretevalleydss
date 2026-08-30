@@ -86,6 +86,15 @@ const issueSchema = new Schema(
       type: Schema.Types.Mixed,
       default: {},
     },
+    criteriaWeightingLevel: {
+      type: String,
+      enum: ["leaf", "parent"],
+      default: "leaf",
+    },
+    criteriaWeightingSourceWeights: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
     evaluationStructureKey: {
       type: String,
       trim: true,

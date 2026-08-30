@@ -58,6 +58,7 @@ const serializeIssue = (issue) => ({
   apiModelKey: issue.apiModelKey, apiEndpoint: issue.apiEndpoint, name: issue.name,
   description: issue.description, isConsensus: issue.isConsensus, supportsConsensus: issue.supportsConsensus,
   simulateConsensus: issue.simulateConsensus, criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
+  criteriaWeightingLevel: issue.criteriaWeightingLevel ?? "leaf", criteriaWeightingSourceWeights: issue.criteriaWeightingSourceWeights ?? null,
   criteriaWeightingModelId: id(issue.criteriaWeightingModel), criteriaWeightingApiModelKey: issue.criteriaWeightingApiModelKey,
   criteriaWeightingApiEndpoint: issue.criteriaWeightingApiEndpoint, criteriaWeightingParameters: issue.criteriaWeightingParameters,
   evaluationStructureKey: issue.evaluationStructureKey, consensusMaxPhases: issue.consensusMaxPhases,

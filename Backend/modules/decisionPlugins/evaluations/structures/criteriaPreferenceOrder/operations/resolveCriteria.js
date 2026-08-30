@@ -9,7 +9,7 @@ export const resolveCriteria = ({ decisionContext }) => {
     });
   }
 
-  const sourceCriteria = decisionContext.leafCriteria;
+  const sourceCriteria = decisionContext.criteriaWeightingCriteria ?? decisionContext.leafCriteria;
 
   if (!Array.isArray(sourceCriteria)) {
     throw createInternalError(

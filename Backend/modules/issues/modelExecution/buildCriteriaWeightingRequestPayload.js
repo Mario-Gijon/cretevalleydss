@@ -1,4 +1,4 @@
-import { getOrderedAlternativeAndCriterionNames } from "../evaluations/evaluationStructureData.js";
+import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { normalizeEvaluationsPayload } from "./normalizeEvaluationsPayload.js";
@@ -10,7 +10,7 @@ export const buildCriteriaWeightingRequestPayload = async ({
   phase,
   expertWeightsByExpertId = null,
 }) => {
-  const { criteria } = await getOrderedAlternativeAndCriterionNames({ issue });
+  const { criteria } = await getOrderedCriteriaForWeightingOrThrow({ issue });
 
   return {
     modelParameters: issue.criteriaWeightingParameters,

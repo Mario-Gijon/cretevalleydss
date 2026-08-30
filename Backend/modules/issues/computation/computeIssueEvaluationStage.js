@@ -29,6 +29,7 @@ import { buildDecisionContext } from "../evaluations/buildDecisionContext.js";
 import { persistIssueEvaluationOperation } from "../evaluations/issueEvaluationPersistence.js";
 import { writeIssueStateSnapshot } from "../stateSnapshots/issueStateSnapshot.js";
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
+import { getOrderedLeafCriteriaDb } from "../shared/ordering.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 import { buildExpertWeightSnapshotOrThrow } from "../shared/expertWeights.js";
@@ -376,6 +377,15 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
   }
 
   const { criteria } = await getOrderedCriteriaForWeightingOrThrow({ issue });
+  if (issue.criteriaWeightingLevel === "parent") {
+    const expectedCriterionIds = new Set(criteria.map((criterion) => criterion.id));
+    const unexpectedCriterionId = Object.keys(computeResult.weightsByCriterion).find((criterionId) => !expectedCriterionIds.has(criterionId));
+    if (unexpectedCriterionId) {
+      throw createBadRequestError("Criteria weighting compute result contains an unknown criterion", {
+        field: `computeResult.weightsByCriterion.${unexpectedCriterionId}`,
+      });
+    }
+  }
   const normalizedWeightsByCriterion = {};
   criteria.forEach((criterion) => {
     if (!hasOwnKey(computeResult.weightsByCriterion, criterion.id)) {
@@ -410,6 +420,40 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
   };
 };
 
+const resolveOperationalCriteriaWeightsOrThrow = async ({ issue, sourceWeightsByCriterion }) => {
+  if (issue.criteriaWeightingLevel !== "parent") return sourceWeightsByCriterion;
+  const { weightingCriteria } = await getOrderedCriteriaForWeightingOrThrow({ issue });
+  const leafCriteria = await getOrderedLeafCriteriaDb({ issueId: issue._id, issueDoc: issue, select: "_id parentCriterion isLeaf position", lean: true });
+  const parentIds = weightingCriteria.map((criterion) => toIdString(criterion._id));
+  const sourceIds = Object.keys(sourceWeightsByCriterion);
+  if (sourceIds.length !== parentIds.length || sourceIds.some((id) => !parentIds.includes(id))) {
+    throw createBadRequestError("Parent criteria weighting result must contain exactly the resolved parent criteria", { field: "computeResult.weightsByCriterion" });
+  }
+  const operational = {};
+  for (const parent of weightingCriteria) {
+    const parentId = toIdString(parent._id);
+    const parentWeight = sourceWeightsByCriterion[parentId];
+    if (!isFiniteNumber(parentWeight) || parentWeight < 0) {
+      throw createBadRequestError("Parent criteria weights must be finite and non-negative", { field: `computeResult.weightsByCriterion.${parentId}` });
+    }
+    const children = leafCriteria.filter((criterion) => toIdString(criterion.parentCriterion) === parentId);
+    if (children.length === 0) {
+      throw createBadRequestError(`Parent criterion '${parent.name}' has no direct leaf children`, { field: "criteriaWeightingConfig.level" });
+    }
+    const childWeight = parentWeight / children.length;
+    children.forEach((child) => { operational[toIdString(child._id)] = childWeight; });
+    if (Math.abs(childWeight * children.length - parentWeight) > 1e-9) {
+      throw createBadRequestError("Propagated leaf weights do not reconstruct parent weights", { field: "computeResult.weightsByCriterion" });
+    }
+  }
+  const parentTotal = Object.values(sourceWeightsByCriterion).reduce((sum, value) => sum + value, 0);
+  const leafTotal = Object.values(operational).reduce((sum, value) => sum + value, 0);
+  if (Math.abs(parentTotal - 1) > 1e-6 || Object.keys(operational).length !== leafCriteria.length || Math.abs(leafTotal - 1) > 1e-6 || Object.values(operational).some((value) => !isFiniteNumber(value) || value < 0)) {
+    throw createBadRequestError("Criteria weights must sum to one after parent-to-leaf propagation", { field: "computeResult.weightsByCriterion" });
+  }
+  return operational;
+};
+
 const mapCriteriaWeightingResultToStageResult = (computeResult) => ({
   consensusMeasure: computeResult.consensusMeasure,
   weightsByCriterion: computeResult.weightsByCriterion,
@@ -421,6 +465,7 @@ const mapCriteriaWeightingResultToStageResult = (computeResult) => ({
 const applyCriteriaWeightingIssueUpdates = async ({
   issue,
   weightsByCriterion,
+  operationalWeightsByCriterion = weightsByCriterion,
   stageResult,
   executionAttempt = null,
   actorUser,
@@ -443,14 +488,16 @@ const applyCriteriaWeightingIssueUpdates = async ({
 
   issue.modelParameters = {
     ...modelParameters,
-    weights: weightsByCriterion,
+    weights: operationalWeightsByCriterion,
   };
+  issue.criteriaWeightingSourceWeights = weightsByCriterion;
   issue.currentStage = ISSUE_STAGES.ALTERNATIVE_EVALUATION;
   await issue.save({ session });
   await writeCriteriaWeightsChanged({
     issue,
     previousWeightsByCriterionId,
-    nextWeightsByCriterionId: weightsByCriterion,
+      nextWeightsByCriterionId: operationalWeightsByCriterion,
+      sourceWeightsByCriterionId: weightsByCriterion,
     actorType: "user",
     actorUser,
     occurredAt,
@@ -1081,6 +1128,10 @@ export const computeIssueEvaluationStage = async ({
 
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
     const normalizedCriteriaWeightingResult = computeResult;
+    const operationalWeights = await resolveOperationalCriteriaWeightsOrThrow({
+      issue,
+      sourceWeightsByCriterion: normalizedCriteriaWeightingResult.weightsByCriterion,
+    });
     const applicationOccurredAt = new Date();
 
     let appliedStageResult = null;
@@ -1102,6 +1153,7 @@ export const computeIssueEvaluationStage = async ({
         await applyCriteriaWeightingIssueUpdates({
           issue,
           weightsByCriterion: normalizedCriteriaWeightingResult.weightsByCriterion,
+          operationalWeightsByCriterion: operationalWeights,
           stageResult,
           executionAttempt: computeResult.executionAttempt,
           actorUser: userId,

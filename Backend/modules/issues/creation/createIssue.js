@@ -37,6 +37,7 @@ import {
   assignIssueExpressionDomainSnapshotsOrThrow,
 } from "../../expressionDomains/assignIssueDomainSnapshots.js";
 import { getOrderedLeafCriterionNamesFromInputOrThrow } from "./getOrderedLeafCriterionNamesFromInput.js";
+import { getOrderedParentCriteriaFromInputOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import {
   validateAndNormalizeExpertWeightsOrThrow,
 } from "../shared/expertWeights.js";
@@ -136,6 +137,9 @@ export const prepareIssueCreation = async ({
 
   const { criterionNames, isSingleLeafCriterion, orderedLeafCriteria } =
     getOrderedLeafCriterionNamesFromInputOrThrow(input.criteria);
+  const weightingCriteria = input.criteriaWeightingConfig?.level === "parent"
+    ? getOrderedParentCriteriaFromInputOrThrow(input.criteria)
+    : orderedLeafCriteria;
 
   if (!isMultiCriteria && criterionNames.length > 1) {
     throw createBadRequestError(
@@ -170,6 +174,7 @@ export const prepareIssueCreation = async ({
       criteriaWeightingParameters: input.criteriaWeightingParameters,
       criterionNames,
       leafCriteria: orderedLeafCriteria,
+      weightingCriteria,
       isSingleLeafCriterion,
       model,
       fuzzyValueCount: fuzzyCriteriaWeightValueCount,
@@ -270,6 +275,7 @@ export const persistPreparedIssueCreation = async ({
     consensusMaxPhases,
     consensusThreshold,
     normalizedModelParameters,
+    criteriaWeightingLevel: resolvedCriteriaWeighting.level ?? "leaf",
   });
 
   await issue.save({ session });

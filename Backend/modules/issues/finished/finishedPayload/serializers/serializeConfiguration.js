@@ -38,6 +38,8 @@ export const serializeConfiguration = ({ issue, evaluations, finalWeights, crite
       Boolean(issue.criteriaWeightingModel || issue.criteriaWeightsStructureKey) ||
       evaluations.some((evaluation) => evaluation.stage === "criteriaWeighting"),
     source: resolveCriteriaWeightingSource({ issue, evaluations, finalWeights }),
+    level: issue.criteriaWeightingLevel ?? "leaf",
+    sourceWeightsByCriterionId: cloneSerializable(issue.criteriaWeightingSourceWeights, null),
     structureKey: issue.criteriaWeightsStructureKey ?? null,
     modelId: toNullableId(issue.criteriaWeightingModel),
     configuredParameters: cloneSerializable(issue.criteriaWeightingParameters, {}),

@@ -16,6 +16,7 @@ import {
   comparePositionId,
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
+  getOrderedParentCriteriaFromDocsOrThrow,
 } from "../shared/ordering.js";
 import { serializeIssueExpressionDomainSnapshot } from "./evaluationStructureData.js";
 
@@ -547,6 +548,12 @@ export const buildDecisionContext = async ({
     criteriaDocs,
     leafItems,
   });
+  const criteriaWeightingCriteria =
+    resolvedStage === EVALUATION_STAGES.CRITERIA_WEIGHTING
+      ? (issue?.criteriaWeightingLevel === "parent"
+          ? getOrderedParentCriteriaFromDocsOrThrow(criteriaDocs, { issueId: issue?._id })
+          : leafItems)
+      : [];
   const currentCollectiveEvaluations = isPlainObject(collectiveEvaluations)
     ? cloneSerializable(collectiveEvaluations, {})
     : {};
@@ -567,6 +574,8 @@ export const buildDecisionContext = async ({
       isConsensus: issue?.isConsensus === true,
       consensusThreshold: normalizeFiniteNumberOrNull(issue?.consensusThreshold),
       consensusMaxPhases: normalizePositiveIntegerOrNull(issue?.consensusMaxPhases),
+      criteriaWeightingLevel: issue?.criteriaWeightingLevel === "parent" ? "parent" : "leaf",
+      criteriaWeightingSourceWeights: cloneSerializable(issue?.criteriaWeightingSourceWeights, null),
     },
     structure: {
       key: typeof resolvedStructure?.key === "string" ? resolvedStructure.key : null,
@@ -581,6 +590,11 @@ export const buildDecisionContext = async ({
     alternatives: alternativeItems,
     criteriaTree,
     leafCriteria: leafItems,
+    criteriaWeightingCriteria: criteriaWeightingCriteria.map((criterion) => ({
+      id: toIdString(criterion?._id || criterion?.id) || null,
+      name: typeof criterion?.name === "string" ? criterion.name.trim() : "",
+      type: typeof criterion?.type === "string" ? criterion.type : null,
+    })),
     experts: expertContext.experts,
     criteriaWeights: resolveCriteriaWeights(issue),
     expertWeights: expertContext.expertWeights,

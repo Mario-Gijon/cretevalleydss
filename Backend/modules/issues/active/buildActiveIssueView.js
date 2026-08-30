@@ -136,6 +136,8 @@ export const buildActiveIssueView = ({
       model: issue.model,
       usesExpertWeights: issue.model?.usesExpertWeights === true,
       criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
+      criteriaWeightingLevel: issue.criteriaWeightingLevel ?? "leaf",
+      criteriaWeightingSourceWeights: issue.criteriaWeightingSourceWeights ?? null,
       evaluationStructureKey: issue.evaluationStructureKey,
       isConsensus: issue.isConsensus,
       supportsConsensus: issue.supportsConsensus,

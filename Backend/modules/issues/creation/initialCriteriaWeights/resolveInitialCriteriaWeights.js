@@ -95,6 +95,7 @@ const buildResolvedCriteriaWeightingConfig = ({
   source = null,
   mode = null,
   method = null,
+  level = "leaf",
 }) => {
   return {
     criteriaWeightsStructureKey,
@@ -111,6 +112,7 @@ const buildResolvedCriteriaWeightingConfig = ({
     source,
     mode,
     method,
+    level,
   };
 };
 
@@ -324,6 +326,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   criteriaWeightingParameters,
   criterionNames,
   leafCriteria = [],
+  weightingCriteria = null,
   isSingleLeafCriterion,
   model,
   fuzzyValueCount = null,
@@ -340,6 +343,12 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
 
   const resolvedConfig =
     resolveCriteriaWeightingModeConfigOrThrow(criteriaWeightingConfig);
+  const criteriaForWeighting = Array.isArray(weightingCriteria) && weightingCriteria.length > 0 ? weightingCriteria : leafCriteria;
+  if (resolvedConfig.level === "parent" && resolvedConfig.source !== "experts") {
+    throw createBadRequestError("Parent criteria weighting currently supports expert criteria weighting only", {
+      field: "criteriaWeightingConfig.level",
+    });
+  }
   const fuzzyModel = model.usesFuzzyCriteriaWeights;
 
   if (fuzzyModel && resolvedConfig.mode !== "creatorFuzzy") {
@@ -365,7 +374,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     const apiModelContext = await loadCriteriaWeightingApiModelContextOrThrow({
       resolvedConfig,
       criteriaWeightingParameters,
-      leafCriteria,
+      leafCriteria: criteriaForWeighting,
       session,
     });
     criteriaWeightingModel = apiModelContext.criteriaWeightingModel;
@@ -391,7 +400,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     criteriaWeightingRuntime,
     normalizedCriteriaWeightingParameters,
   });
-  const criterionIds = getCriterionIdsOrThrow(leafCriteria);
+  const criterionIds = getCriterionIdsOrThrow(criteriaForWeighting);
 
   if (resolvedConfig.mode === "creatorFuzzy") {
     if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
@@ -421,6 +430,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       source: resolvedConfig.source,
       mode: resolvedConfig.mode,
       method: resolvedConfig.method,
+      level: resolvedConfig.level,
     });
     }
 
@@ -444,11 +454,12 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       isCriteriaWeightingRequired: false,
       source: resolvedConfig.source,
       mode: resolvedConfig.mode,
-      method: resolvedConfig.method,
+        method: resolvedConfig.method,
+        level: resolvedConfig.level,
     });
   }
 
-  if (isSingleLeafCriterion) {
+  if (isSingleLeafCriterion && resolvedConfig.level === "leaf") {
     const fixedWeights = {
       [criterionIds[0]]: 1,
     };
@@ -468,6 +479,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       source: resolvedConfig.source,
       mode: resolvedConfig.mode,
       method: resolvedConfig.method,
+      level: resolvedConfig.level,
     });
   }
 
@@ -487,6 +499,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       source: resolvedConfig.source,
       mode: resolvedConfig.mode,
       method: resolvedConfig.method,
+      level: resolvedConfig.level,
     });
 
     validateExpertCriteriaWeightingResolutionOrThrow({
@@ -503,7 +516,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   if (resolvedConfig.method === "manual") {
     modelWeights = normalizeCreatorManualWeightsOrThrow({
       payload: resolvedConfig.payload,
-      leafCriteria,
+      leafCriteria: criteriaForWeighting,
     });
   } else if (resolvedConfig.method === "apiModel") {
     deferredPayload = await normalizeCreatorApiCriteriaWeightingPayloadOrThrow({
@@ -538,6 +551,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     source: resolvedConfig.source,
     mode: resolvedConfig.mode,
     method: resolvedConfig.method,
+    level: resolvedConfig.level,
   });
 };
 

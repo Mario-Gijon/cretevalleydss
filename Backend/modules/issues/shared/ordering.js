@@ -180,6 +180,67 @@ export const orderCriteriaDocsByTreePosition = (criteriaDocs, { issueId = null }
   return orderedLeafDocs;
 };
 
+export const getOrderedParentCriteriaFromDocsOrThrow = (criteriaDocs, { issueId = null } = {}) => {
+  if (!Array.isArray(criteriaDocs) || criteriaDocs.length === 0) {
+    throw createBadRequestError("Issue has no criteria", { field: "criteria" });
+  }
+
+  const docsById = new Map(criteriaDocs.map((criterion) => [toIdString(criterion?._id), criterion]));
+  const leafDocs = criteriaDocs.filter((criterion) => criterion?.isLeaf === true);
+  if (leafDocs.length === 0) {
+    throw createBadRequestError("Issue has no leaf criteria", { field: "criteria" });
+  }
+
+  const parentIds = new Set();
+  for (const leaf of leafDocs) {
+    const parentId = toIdString(leaf?.parentCriterion);
+    const parent = parentId ? docsById.get(parentId) : null;
+    if (!parent || parent.isLeaf === true) {
+      throw createBadRequestError("Parent criteria weighting requires every leaf to have a direct parent", { field: "criteriaWeightingConfig.level" });
+    }
+    parentIds.add(parentId);
+  }
+
+  const parents = Array.from(parentIds).map((id) => docsById.get(id)).filter(Boolean);
+  const parentLayerIds = new Set(parents.map((parent) => toIdString(parent._id)));
+  if (parents.length !== parentIds.size || parents.some((parent) => parentIds.has(toIdString(parent.parentCriterion)))) {
+    throw createBadRequestError("Parent criteria weighting hierarchy is ambiguous", { field: "criteriaWeightingConfig.level" });
+  }
+
+  const siblings = new Set(parents.map((parent) => toIdString(parent.parentCriterion) || null));
+  if (siblings.size !== 1) {
+    throw createBadRequestError("Parent criteria weighting requires one coherent sibling layer", { field: "criteriaWeightingConfig.level" });
+  }
+
+  for (const parent of parents) {
+    const children = criteriaDocs.filter((criterion) => toIdString(criterion.parentCriterion) === toIdString(parent._id));
+    if (children.length === 0 || children.some((child) => child.isLeaf !== true)) {
+      throw createBadRequestError("Parent criteria weighting parents must contain only direct leaf children", { field: "criteriaWeightingConfig.level" });
+    }
+  }
+
+  const ordered = [];
+  const walk = (docs) => {
+    for (const criterion of sortDocsByPositionId(docs, (doc) => doc.position, (doc) => doc._id)) {
+      if (parentLayerIds.has(toIdString(criterion._id))) ordered.push(criterion);
+      const children = criteriaDocs.filter((child) => toIdString(child.parentCriterion) === toIdString(criterion._id));
+      if (children.length > 0) walk(children);
+    }
+  };
+  walk(criteriaDocs.filter((criterion) => !toIdString(criterion.parentCriterion) || !docsById.has(toIdString(criterion.parentCriterion))));
+  if (ordered.length !== parents.length) {
+    throw createBadRequestError("Parent criteria weighting hierarchy could not be ordered", { field: "criteriaWeightingConfig.level" });
+  }
+  return ordered;
+};
+
+export const getOrderedParentCriteriaDb = async ({ issueId, issueDoc = null, session = null, select = "_id name type parentCriterion position isLeaf", lean = true } = {}) => {
+  const issue = await loadIssueIdentityOrThrow({ issueId, issueDoc, session, action: "ordering parent criteria" });
+  const query = Criterion.find({ issue: issue._id }).select(appendSelectField(select, "position")).session(session);
+  const criteria = lean ? await query.lean() : await query;
+  return getOrderedParentCriteriaFromDocsOrThrow(criteria, { issueId });
+};
+
 const loadOrderedLeafCriterionIdsDb = async ({ issueId, session = null }) => {
   const criteria = await Criterion.find({ issue: issueId })
     .select("_id isLeaf parentCriterion position")
