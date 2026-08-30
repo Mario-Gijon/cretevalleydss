@@ -12,6 +12,7 @@ vi.mock(
 );
 
 import { serializeEvaluations } from "../../../modules/issues/finished/finishedPayload/serializers/serializeEvaluations.js";
+import { getCriteriaPreferenceOrderPayload } from "../../../modules/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/criteriaPreferenceOrder.get.js";
 
 const baseIssue = ({ criteriaWeightingModel = { _id: "weight-model", name: "Weight model" } } = {}) => ({
   _id: "issue-1",
@@ -44,6 +45,17 @@ const criteria = {
   }],
   rootIds: ["criterion-1"],
 };
+const parentCriteria = {
+  nodes: [
+    { id: "root", name: "Root", type: "group", isLeaf: false, parentId: null, position: 0, childIds: ["c1", "c2"], expressionDomainId: null },
+    { id: "c1", name: "C1", type: "benefit", isLeaf: false, parentId: "root", position: 0, childIds: ["l1"], expressionDomainId: null },
+    { id: "l1", name: "L1", type: "benefit", isLeaf: true, parentId: "c1", position: 0, childIds: [], expressionDomainId: "domain-1" },
+    { id: "c2", name: "C2", type: "benefit", isLeaf: false, parentId: "root", position: 1, childIds: ["l2", "l3"], expressionDomainId: null },
+    { id: "l2", name: "L2", type: "benefit", isLeaf: true, parentId: "c2", position: 0, childIds: [], expressionDomainId: "domain-1" },
+    { id: "l3", name: "L3", type: "benefit", isLeaf: true, parentId: "c2", position: 1, childIds: [], expressionDomainId: "domain-1" },
+  ],
+  rootIds: ["root"],
+};
 const expressionDomains = [{
   id: "domain-1",
   name: "Domain",
@@ -74,7 +86,7 @@ const evaluation = ({ stage = "alternativeEvaluation", phase = 2, id = "evaluati
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
 });
 
-const serialize = ({ issue = baseIssue(), evaluations = [evaluation()], phaseResults, rawPhaseResults } = {}) =>
+const serialize = ({ issue = baseIssue(), evaluations = [evaluation()], phaseResults, rawPhaseResults, serializedCriteria = criteria } = {}) =>
   serializeEvaluations({
     issue,
     evaluations,
@@ -84,7 +96,7 @@ const serialize = ({ issue = baseIssue(), evaluations = [evaluation()], phaseRes
       rawResult("alternativeEvaluation", 2, { phase: 2 }),
     ],
     alternatives,
-    criteria,
+    criteria: serializedCriteria,
     expressionDomains,
   });
 
@@ -140,6 +152,77 @@ describe("finished evaluation serialization", () => {
     expect(context.decisionContext).toMatchObject({
       model: { id: "weight-model" },
       consensus: { previousCollectiveEvaluations: { phase: 1 } },
+      criteriaWeightingCriteria: [{ id: "criterion-1", name: "Criterion", type: "benefit" }],
+    });
+  });
+
+  it("reconstructs parent criteria for historical parent-level preference orders", async () => {
+    registryState.get.mockImplementation((key) => ({
+      key,
+      stage: "criteriaWeighting",
+      get: getCriteriaPreferenceOrderPayload,
+    }));
+
+    const result = await serialize({
+      issue: { ...baseIssue(), criteriaWeightingLevel: "parent" },
+      evaluations: [
+        evaluation({
+          stage: "criteriaWeighting",
+          phase: 0,
+          id: "parent-order",
+        }),
+      ].map((entry) => ({
+        ...entry,
+        payload: { criterionOrder: ["c2", "c1"] },
+      })),
+      phaseResults: [serializedResult("criteriaWeighting", 0, "result-0")],
+      rawPhaseResults: [rawResult("criteriaWeighting", 0, {})],
+      serializedCriteria: parentCriteria,
+    });
+    const context = result.contexts[0];
+
+    expect(context.criteriaWeightingCriteria.map((criterion) => criterion.id)).toEqual([
+      "c1",
+      "c2",
+    ]);
+    expect(context.decisionContext.criteriaWeightingCriteria.map((criterion) => criterion.id)).toEqual([
+      "c1",
+      "c2",
+    ]);
+    expect(context.decisionContext.leafCriteria.map((criterion) => criterion.id)).toEqual([
+      "l1",
+      "l2",
+      "l3",
+    ]);
+    expect(result.individual[0].displayPayload).toEqual({
+      criterionOrder: ["c2", "c1"],
+    });
+  });
+
+  it("fails clearly for an invalid finished parent hierarchy", async () => {
+    registryState.get.mockImplementation((key) => ({
+      key,
+      stage: "criteriaWeighting",
+      get: getCriteriaPreferenceOrderPayload,
+    }));
+
+    await expect(
+      serialize({
+        issue: { ...baseIssue(), criteriaWeightingLevel: "parent" },
+        evaluations: [evaluation({ stage: "criteriaWeighting", phase: 0 })],
+        phaseResults: [serializedResult("criteriaWeighting", 0, "result-0")],
+        rawPhaseResults: [rawResult("criteriaWeighting", 0, {})],
+        serializedCriteria: {
+          ...parentCriteria,
+          nodes: parentCriteria.nodes.map((node) =>
+            node.id === "l3" ? { ...node, parentId: null } : node
+          ),
+        },
+      })
+    ).rejects.toMatchObject({
+      statusCode: 500,
+      code: "INTERNAL_ERROR",
+      field: "criteriaWeightingLevel",
     });
   });
 

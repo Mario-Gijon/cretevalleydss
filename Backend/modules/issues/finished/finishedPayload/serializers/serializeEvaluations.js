@@ -1,5 +1,6 @@
 import { createInternalError } from "../../../../../utils/common/errors.js";
 import { getEvaluationStructureOrThrow } from "../../../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
+import { getOrderedParentCriteriaFromDocsOrThrow } from "../../../shared/ordering.js";
 import { serializeCriterionTreeForContext } from "./serializeCriteria.js";
 import {
   cloneSerializable,
@@ -45,6 +46,50 @@ const serializeLeafCriteria = ({ criteria, expressionDomainsById }) =>
         : null,
     }));
 
+const projectCriteriaWeightingCriteria = (criteria) =>
+  criteria.map((criterion) => ({
+    id: criterion.id,
+    name: criterion.name,
+    type: criterion.type,
+  }));
+
+const serializeCriteriaWeightingCriteria = ({ issue, stage, criteria, leafCriteria }) => {
+  if (stage !== "criteriaWeighting") return [];
+
+  if (issue.criteriaWeightingLevel !== "parent") {
+    return projectCriteriaWeightingCriteria(leafCriteria);
+  }
+
+  try {
+    const parentCriteria = getOrderedParentCriteriaFromDocsOrThrow(
+      criteria.nodes.map((criterion) => ({
+        _id: criterion.id,
+        name: criterion.name,
+        type: criterion.type,
+        isLeaf: criterion.isLeaf,
+        parentCriterion: criterion.parentId,
+        position: criterion.position,
+      }))
+    );
+
+    return projectCriteriaWeightingCriteria(
+      parentCriteria.map((criterion) => ({
+        id: criterion._id,
+        name: criterion.name,
+        type: criterion.type,
+      }))
+    );
+  } catch (cause) {
+    throw createInternalError(
+      "Finished parent criteria-weighting hierarchy is inconsistent",
+      {
+        field: "criteriaWeightingLevel",
+        cause,
+      }
+    );
+  }
+};
+
 const serializeContext = ({
   issue,
   stage,
@@ -62,6 +107,12 @@ const serializeContext = ({
   );
   const previousResult = findPreviousStageResult({ stage, phase, rawPhaseResults });
   const leafCriteria = serializeLeafCriteria({ criteria, expressionDomainsById });
+  const criteriaWeightingCriteria = serializeCriteriaWeightingCriteria({
+    issue,
+    stage,
+    criteria,
+    leafCriteria,
+  });
   const decisionModel = serializeContextModel({
     model: issue.model,
     runtimeApiModelKey: issue.apiModelKey,
@@ -108,6 +159,7 @@ const serializeContext = ({
     criteriaWeightingParameters: cloneSerializable(issue.criteriaWeightingParameters, {}),
     criteriaWeightingLevel: issue.criteriaWeightingLevel ?? "leaf",
     criteriaWeightingSourceWeights: cloneSerializable(issue.criteriaWeightingSourceWeights, null),
+    criteriaWeightingCriteria: cloneSerializable(criteriaWeightingCriteria, []),
     alternativeIds: alternatives.map((alternative) => alternative.id),
     criterionIds: criteria.nodes.map((criterion) => criterion.id),
     expressionDomainIds: leafCriteria
@@ -134,6 +186,7 @@ const serializeContext = ({
       alternatives: alternatives.map(({ id, name }) => ({ id, name })),
       criteriaTree: serializeCriterionTreeForContext({ criteria }),
       leafCriteria,
+      criteriaWeightingCriteria,
       experts: expertIds.map((id) => ({
         id,
         name: participantByExpertId.get(id)?.expert?.name ?? null,
