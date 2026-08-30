@@ -23,7 +23,7 @@ MODEL_DEFINITION = ModelDefinition(
     request_examples=TWO_TUPLE_REQUEST_EXAMPLES,
     response_examples=TWO_TUPLE_RESPONSE_EXAMPLES,
     more_info_url=None,
-    implementation_status="scaffold",
+    implementation_status="ready",
     model_kind="issue",
     requires_homogeneous_expression_domains=True,
     evaluation_structure_key="alternativeCriteriaMatrix",
@@ -35,7 +35,7 @@ MODEL_DEFINITION = ModelDefinition(
     uses_criteria_weights=True,
     uses_expert_weights=True,
     uses_fuzzy_criteria_weights=False,
-    uses_criterion_types=True,
+    uses_criterion_types=False,
     supported_expression_domains=[{'typeKey': 'linguistic2Tuple', 'constraints': {}}],
     parameters=[
         {

@@ -5,34 +5,172 @@
 from typing import Any
 
 
+LINGUISTIC_2TUPLE_DOMAIN: dict[str, Any] = {
+    "name": "Five-level linguistic 2-tuple scale",
+    "typeKey": "linguistic2Tuple",
+    "definition": {
+        "labelCount": 5,
+        "labels": [
+            {"key": "s0", "label": "Very Low", "index": 0},
+            {"key": "s1", "label": "Low", "index": 1},
+            {"key": "s2", "label": "Medium", "index": 2},
+            {"key": "s3", "label": "High", "index": 3},
+            {"key": "s4", "label": "Very High", "index": 4},
+        ],
+    },
+}
+
+
 TWO_TUPLE_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
-    "scaffold_request": {
-        "summary": "Generated scaffold request",
+    "basic_linguistic_2tuple_matrix": {
+        "summary": "Two-expert linguistic 2-tuple decision matrix",
         "value": {
-            "modelParameters": {},
-            "evaluations": [],
             "context": {
+                "issue": {
+                    "id": "issue-two-tuple-001",
+                    "name": "Linguistic supplier selection",
+                    "consensusThreshold": None,
+                    "consensusMaxPhases": None,
+                },
+                "alternatives": [
+                    {"id": "alt-a", "name": "Alternative A"},
+                    {"id": "alt-b", "name": "Alternative B"},
+                ],
+                "criteria": [
+                    {
+                        "id": "quality",
+                        "name": "Quality",
+                        "type": "benefit",
+                        "expressionDomain": LINGUISTIC_2TUPLE_DOMAIN,
+                    },
+                    {
+                        "id": "service",
+                        "name": "Service",
+                        "type": "benefit",
+                        "expressionDomain": LINGUISTIC_2TUPLE_DOMAIN,
+                    },
+                ],
+                "consensusPhase": 0,
+                "previousStageResult": None,
                 "structure": {
                     "key": "alternativeCriteriaMatrix",
                     "stage": "alternativeEvaluation",
-                }
+                },
             },
+            "modelParameters": {
+                "expertAggregation": {
+                    "method": "arithmetic_mean",
+                    "options": {},
+                },
+                "criteriaAggregation": {
+                    "method": "weighted_average",
+                    "options": {},
+                },
+                "weights": {
+                    "quality": 0.6,
+                    "service": 0.4,
+                },
+            },
+            "evaluations": [
+                {
+                    "expert": {
+                        "id": "expert-1",
+                        "name": "Expert 1",
+                        "email": "expert1@example.com",
+                    },
+                    "payload": {
+                        "alt-a": {
+                            "quality": {"labelKey": "s3", "alpha": 0.0},
+                            "service": {"labelKey": "s2", "alpha": 0.0},
+                        },
+                        "alt-b": {
+                            "quality": {"labelKey": "s2", "alpha": 0.0},
+                            "service": {"labelKey": "s1", "alpha": 0.0},
+                        },
+                    },
+                },
+                {
+                    "expert": {
+                        "id": "expert-2",
+                        "name": "Expert 2",
+                        "email": "expert2@example.com",
+                    },
+                    "payload": {
+                        "alt-a": {
+                            "quality": {"labelKey": "s4", "alpha": -0.25},
+                            "service": {"labelKey": "s3", "alpha": 0.0},
+                        },
+                        "alt-b": {
+                            "quality": {"labelKey": "s1", "alpha": 0.25},
+                            "service": {"labelKey": "s2", "alpha": 0.0},
+                        },
+                    },
+                },
+            ],
         },
     }
 }
 
 
 TWO_TUPLE_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
-    "under_development": {
-        "summary": "Generated scaffold under development",
+    "success": {
+        "summary": "Two-tuple linguistic aggregation result",
         "value": {
-            "success": False,
-            "message": "2-Tuple Linguistic Model is a generated scaffold and is still under development.",
-            "data": None,
-            "error": {
-                "code": "MODEL_UNDER_DEVELOPMENT",
-                "field": None,
-                "details": None,
+            "success": True,
+            "message": "2-Tuple Linguistic Model executed successfully",
+            "data": {
+                "rankedAlternatives": [
+                    {
+                        "alternativeId": "alt-a",
+                        "name": "Alternative A",
+                        "score": 3.025,
+                        "rank": 1,
+                    },
+                    {
+                        "alternativeId": "alt-b",
+                        "name": "Alternative B",
+                        "score": 1.575,
+                        "rank": 2,
+                    },
+                ],
+                "collectiveEvaluations": {
+                    "alt-a": {
+                        "quality": {"labelKey": "s3", "alpha": 0.375},
+                        "service": {"labelKey": "s3", "alpha": -0.5},
+                    },
+                    "alt-b": {
+                        "quality": {"labelKey": "s2", "alpha": -0.375},
+                        "service": {"labelKey": "s2", "alpha": -0.5},
+                    },
+                },
+                "plotsGraphic": {},
+                "consensusMeasure": None,
+                "rawOutput": {
+                    "collective_matrix": [
+                        [
+                            {"labelKey": "s3", "alpha": 0.375},
+                            {"labelKey": "s3", "alpha": -0.5},
+                        ],
+                        [
+                            {"labelKey": "s2", "alpha": -0.375},
+                            {"labelKey": "s2", "alpha": -0.5},
+                        ],
+                    ],
+                    "collective_values": [
+                        {"labelKey": "s3", "alpha": 0.025},
+                        {"labelKey": "s2", "alpha": -0.425},
+                    ],
+                    "collective_scores": [3.025, 1.575],
+                    "collective_ranking": [0, 1],
+                    "expert_aggregation": {
+                        "method": "arithmetic_mean",
+                        "options": {},
+                    },
+                    "criteria_aggregation": {
+                        "method": "weighted_average",
+                        "options": {},
+                    },
+                },
             },
         },
     }
