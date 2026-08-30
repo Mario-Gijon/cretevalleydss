@@ -1,0 +1,429 @@
+# Implement twoTupleAggregation Frontend — Standalone LLM prompt
+
+You are implementing the Frontend of a CreteValleyDSS Parameter Structure.
+
+This prompt is self-contained.
+
+## Developer requirements
+
+### Parameter Structure description
+[PARAMETER STRUCTURE DESCRIPTION]
+
+### Canonical value shape
+[VALUE SHAPE]
+
+### Desired UI / behavior
+[DESIRED UI / BEHAVIOR]
+
+### Additional requirements
+[ADDITIONAL REQUIREMENTS]
+
+### Actual runtime input — optional
+[ACTUAL RUNTIME INPUT]
+
+## Exact generated package location
+
+```text
+Frontend/src/features/decisionPlugins/modelParameters/fields/twoTupleAggregation/
+```
+
+Exact generated files:
+
+```text
+Frontend/src/features/decisionPlugins/modelParameters/fields/twoTupleAggregation/index.js
+Frontend/src/features/decisionPlugins/modelParameters/fields/twoTupleAggregation/TwoTupleAggregationParameterField.jsx
+Frontend/src/features/decisionPlugins/modelParameters/fields/twoTupleAggregation/TwoTupleAggregationParameterReadOnly.jsx
+```
+
+## Editable Field contract
+
+```js
+{
+  parameter,
+  value,
+  onChange,
+  error,
+  disabled,
+  parameterContext,
+}
+```
+
+`value` is the complete canonical current parameter value.
+
+`onChange(nextValue)` replaces the complete value.
+
+Treat object/array values immutably.
+
+Display `error` appropriately.
+
+When disabled, prevent all changes.
+
+## ReadOnly contract
+
+```js
+{
+  parameter,
+  value,
+  parameterContext,
+}
+```
+
+Display the same canonical value without mutation.
+
+## Representative parameterContext
+
+```json
+{
+  "model": {
+    "id": "MODEL_1",
+    "name": "Example model",
+    "apiModelKey": "example_model"
+  },
+  "alternatives": [
+    { "id": "ALT_1", "name": "Supplier A" }
+  ],
+  "criteriaTree": [],
+  "leafCriteria": [
+    {
+      "id": "CRIT_1",
+      "name": "Cost",
+      "type": "cost",
+      "expressionDomain": {
+        "id": "DOMAIN_1",
+        "_id": "DOMAIN_1",
+        "name": "Cost scale",
+        "typeKey": "numericContinuous",
+        "definition": {
+          "min": 0,
+          "max": 100,
+          "step": null
+        }
+      }
+    }
+  ]
+}
+```
+
+Frontend `parameterContext` differs from Backend validator `context`.
+
+## Frontend/Backend agreement
+
+Field, ReadOnly and Backend validator must share one canonical value
+representation unless requirements explicitly define a normalization boundary.
+
+## Expression Domain API
+
+Only when this parameter explicitly stores a criterion-domain evaluation, from
+a root component import:
+
+```js
+import {
+  ExpressionDomainEvaluationInput,
+  validateExpressionDomainEvaluation,
+} from "../../../../expressionDomains";
+```
+
+Do not recreate registered domain-specific UI/validation.
+
+
+## Exact CreteValleyDSS Frontend/theme context
+
+CreteValleyDSS already mounts the application with Material UI:
+
+```jsx
+<ThemeProvider theme={theme} disableTransitionOnChange>
+  <CssBaseline enableColorScheme />
+  <GlobalStyles styles={appGlobalStyles} />
+  ...
+</ThemeProvider>
+```
+
+Do not create another `ThemeProvider`, global theme or parallel design system.
+
+The application uses `@mui/material` and supports both light and dark schemes.
+
+The current theme contract is:
+
+```js
+const FONT_FAMILY = "Source Sans Pro, Arial, sans-serif";
+
+let theme = extendTheme({
+  typography: {
+    fontFamily: FONT_FAMILY,
+    fontSize: 15,
+    h1: { fontWeight: "bold" },
+    h2: { fontWeight: "bold" },
+    h3: { fontWeight: "bold" },
+    h4: { fontWeight: "bold" },
+    h5: { fontWeight: "bold" },
+    h6: { fontWeight: "bold" },
+    subtitle1: { fontWeight: "normal" },
+    subtitle2: { fontWeight: "bold" },
+    body1: { fontWeight: "normal" },
+    body2: { fontWeight: "normal" },
+    button: { fontWeight: "bold" },
+    caption: { fontWeight: "normal" },
+    overline: { fontWeight: "normal" },
+  },
+  colorSchemes: {
+    light: {
+      palette: {
+        mode: "light",
+        primary: {
+          main: "#134F8A",
+          light: "#134F8A",
+        },
+        secondary: {
+          main: "#45C5C5",
+          contrastText: "#fff",
+        },
+        background: {
+          default: "#F5F0F6",
+          paper: "#FFFFFF",
+        },
+        text: {
+          primary: "#1D1D1B",
+          secondary: "#545454",
+          disabled: "#134F8A",
+        },
+        info: {
+          main: "#45C5C5",
+          contrastText: "#fff",
+        },
+      },
+    },
+    dark: {
+      palette: {
+        mode: "dark",
+        primary: {
+          main: "#224261",
+          light: "#45C5C5",
+        },
+        secondary: {
+          main: "#45C5C5",
+        },
+        background: {
+          default: "#1D1D1B",
+          paper: "#262B32",
+        },
+        text: {
+          primary: "#FFFFFF",
+          secondary: "#BFBFBF",
+          disabled: "#9AECA4",
+          info: "#45C5C5",
+        },
+        info: {
+          main: "#45C5C5",
+        },
+      },
+    },
+  },
+  colorSchemeSelector: "class",
+});
+```
+
+Prefer semantic theme values in `sx` rather than copying literal colors:
+
+```js
+bgcolor: "background.paper"
+color: "text.primary"
+borderColor: "divider"
+```
+
+Use `secondary`/`info` accents for selected or interactive states when useful.
+
+The app's plugin UI is intentionally compact:
+
+- use `Stack`, `Box`, `Paper`, `Typography`, `Alert`, `Button`,
+  `IconButton`, `TextField`, `Select`, etc. from Material UI as appropriate;
+- prefer spacing around 1–1.5 theme units for compact plugin surfaces;
+- prefer modest padding around 1–1.5 units;
+- `borderRadius: 2` is a common compact surface radius;
+- use subtle borders/dividers;
+- use `body2` or `caption` for explanations;
+- avoid giant cards, large empty areas and oversized controls;
+- make selected/active states clear but restrained;
+- wrap/reflow on narrow screens rather than assuming a fixed wide layout;
+- preserve accessibility and do not communicate meaning only through color.
+
+Do not introduce Tailwind, Bootstrap, styled-components, another component
+library, a new ThemeProvider or a new global CSS architecture.
+
+Prefer MUI `sx`. Extract `styles/<ComponentName>.styles.js` only when styling is
+large enough that extraction improves readability.
+
+
+
+## React implementation rules
+
+Prefer the simplest state model that satisfies the UI:
+
+- host-provided `evaluation`/`value` is the source of truth;
+- treat props and nested objects/arrays as immutable;
+- do not mirror props into component state without a genuine interaction/lifecycle
+  requirement;
+- do not add `useEffect` merely to synchronize a value that can be derived during
+  render;
+- derive inexpensive values directly;
+- use `useMemo`/`useCallback` only for a concrete reason;
+- do not create a custom hook for a single local use;
+- do not fetch data already provided through `decisionContext` or
+  `parameterContext`;
+- do not create compatibility aliases or alternate payload shapes unless the
+  supplied public contract requires them;
+- do not add dependencies when React, Material UI and platform APIs are enough.
+
+
+
+## Reference Frontend Parameter Structure convention
+
+A current numeric field uses Material UI and the canonical `onChange(nextValue)`
+boundary like this:
+
+```jsx
+import { Stack, Typography, TextField } from "@mui/material";
+
+export const NumberGlobalParameterField = ({
+  parameter,
+  value,
+  onChange,
+  disabled = false,
+  error = "",
+}) => {
+  const { restrictions = {}, label, valueType } = parameter;
+  const isInteger = valueType === "integer";
+  const min = Number.isFinite(restrictions.min)
+    ? restrictions.min
+    : undefined;
+  const max = Number.isFinite(restrictions.max)
+    ? restrictions.max
+    : undefined;
+
+  return (
+    <Stack spacing={0.35}>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Typography variant="body2">
+          {label}:
+        </Typography>
+
+        <TextField
+          type="number"
+          variant="outlined"
+          color="secondary"
+          size="small"
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value)}
+          inputProps={{
+            "aria-label": label,
+            min,
+            max,
+            step: isInteger ? 1 : "any",
+          }}
+          disabled={disabled}
+          error={Boolean(error)}
+          helperText={error || ""}
+        />
+      </Stack>
+    </Stack>
+  );
+};
+```
+
+This is a style/API reference only. Do not assume the new parameter is numeric.
+
+
+## Exact generated starting source
+
+### `Frontend/src/features/decisionPlugins/modelParameters/fields/twoTupleAggregation/index.js`
+
+```js
+// Generated by ModelForge.
+// Registers this Parameter Structure UI.
+// See IMPLEMENTATION_GUIDE.md.
+
+import TwoTupleAggregationParameterField from "./TwoTupleAggregationParameterField";
+import TwoTupleAggregationParameterReadOnly from "./TwoTupleAggregationParameterReadOnly";
+
+export const twoTupleAggregationParameterField = Object.freeze({
+  key: "twoTupleAggregation",
+  implementationStatus: "scaffold",
+  FieldComponent: TwoTupleAggregationParameterField,
+  ReadOnlyComponent: TwoTupleAggregationParameterReadOnly,
+});
+
+```
+
+### `Frontend/src/features/decisionPlugins/modelParameters/fields/twoTupleAggregation/TwoTupleAggregationParameterField.jsx`
+
+```jsx
+// Generated by ModelForge.
+// Implements the editable field for this Parameter Structure.
+// See IMPLEMENTATION_GUIDE.md.
+
+import { Alert } from "@mui/material";
+
+export const TwoTupleAggregationParameterField = ({
+  parameter,
+  value,
+  onChange,
+  error,
+  disabled,
+  parameterContext,
+}) => {
+  void parameter;
+  void value;
+  void onChange;
+  void error;
+  void disabled;
+  void parameterContext;
+
+  return (
+    <Alert severity="info">
+      twoTupleAggregation is under development.
+    </Alert>
+  );
+};
+
+export default TwoTupleAggregationParameterField;
+
+```
+
+### `Frontend/src/features/decisionPlugins/modelParameters/fields/twoTupleAggregation/TwoTupleAggregationParameterReadOnly.jsx`
+
+```jsx
+// Generated by ModelForge.
+// Implements read-only presentation for this Parameter Structure.
+// See IMPLEMENTATION_GUIDE.md.
+
+import { Alert } from "@mui/material";
+
+export const TwoTupleAggregationParameterReadOnly = ({
+  parameter,
+  value,
+  parameterContext,
+}) => {
+  void parameter;
+  void value;
+  void parameterContext;
+
+  return (
+    <Alert severity="info">
+      twoTupleAggregation is under development.
+    </Alert>
+  );
+};
+
+export default TwoTupleAggregationParameterReadOnly;
+
+```
+
+Use `components/`, `operations/`, `styles/` only when genuinely useful.
+
+Use `"ready"` when every requested UI/runtime behavior is complete.
+
+Tests are outside scope. Do not create/modify tests unless explicitly requested.
+
+## Required output
+
+For each file print `FILE: <complete repository path>` followed by complete
+source. No diffs, ellipses, partial implementations or pseudocode.

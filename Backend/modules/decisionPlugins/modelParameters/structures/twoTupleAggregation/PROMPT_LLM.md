@@ -1,0 +1,383 @@
+# Implement twoTupleAggregation Backend — Standalone LLM prompt
+
+You are implementing the Backend of a CreteValleyDSS Parameter Structure.
+
+This prompt is self-contained; repository access is not required.
+
+## Developer requirements
+
+### Parameter Structure description
+[PARAMETER STRUCTURE DESCRIPTION]
+
+### Canonical value shape
+[VALUE SHAPE]
+
+### Default / restrictions contract
+[DEFAULT / RESTRICTIONS CONTRACT]
+
+### Additional requirements
+[ADDITIONAL REQUIREMENTS]
+
+### Actual runtime input — optional
+[ACTUAL RUNTIME INPUT]
+
+## Exact generated package location
+
+```text
+Backend/modules/decisionPlugins/modelParameters/structures/twoTupleAggregation/
+```
+
+Exact generated files:
+
+```text
+Backend/modules/decisionPlugins/modelParameters/structures/twoTupleAggregation/index.js
+Backend/modules/decisionPlugins/modelParameters/structures/twoTupleAggregation/validate.js
+```
+
+From a root file, common Backend utilities are:
+
+```js
+import { createInternalError } from "../../../../../utils/common/errors.js";
+import { isPlainObject, hasOwnKey } from "../../../../../utils/common/objects.js";
+import { normalizeNonEmptyString, isNonEmptyString } from "../../../../../utils/common/strings.js";
+```
+
+The shared Parameter validation-result helper is:
+
+```js
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
+```
+
+Use only imports actually needed.
+
+
+## Exact shared Backend contracts
+
+The following repository modules already exist. Their public contracts are part
+of this standalone prompt.
+
+### `Backend/utils/common/errors.js`
+
+```js
+export class AppError extends Error {
+  constructor(
+    message,
+    {
+      statusCode = 500,
+      code = "INTERNAL_ERROR",
+      field = null,
+      details = null,
+      expose = true,
+      cause = null,
+    } = {}
+  ) {
+    super(message);
+    this.name = "AppError";
+    this.statusCode = statusCode;
+    this.code = code;
+    this.field = field;
+    this.details = details;
+    this.expose = expose;
+    this.cause = cause;
+
+    Error.captureStackTrace?.(this, AppError);
+  }
+}
+
+export const isAppError = (error) => error instanceof AppError;
+
+const buildErrorFactory =
+  (statusCode, code) =>
+  (message, options = {}) =>
+    new AppError(message, {
+      statusCode,
+      code,
+      ...options,
+    });
+
+export const createBadRequestError = buildErrorFactory(400, "BAD_REQUEST");
+export const createUnauthorizedError = buildErrorFactory(401, "UNAUTHORIZED");
+export const createForbiddenError = buildErrorFactory(403, "FORBIDDEN");
+export const createNotFoundError = buildErrorFactory(404, "NOT_FOUND");
+export const createConflictError = buildErrorFactory(409, "CONFLICT");
+export const createInternalError = buildErrorFactory(500, "INTERNAL_ERROR");
+```
+
+Use `createBadRequestError(...)` for invalid user-controlled or persisted
+evaluation input.
+
+Use `createInternalError(...)` when application-provided canonical/runtime
+context is malformed or inconsistent.
+
+Do not throw plain `Error` or `TypeError` for those known conditions.
+
+### `Backend/utils/common/objects.js`
+
+```js
+export const isPlainObject = (value) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+
+  return prototype === Object.prototype || prototype === null;
+};
+
+export const hasOwnKey = (object, key) =>
+  Object.prototype.hasOwnProperty.call(object, key);
+```
+
+### `Backend/utils/common/strings.js`
+
+Relevant existing APIs:
+
+```js
+export const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+export const isNonEmptyString = (value) =>
+  normalizeString(value).length > 0;
+```
+
+`normalizeNonEmptyString` is strict about the original value being a string.
+
+Prefer existing shared helpers when their semantics match instead of creating a
+local generic equivalent.
+
+
+
+## Exact Parameter validation-result contract
+
+The existing project helper is:
+
+`Backend/modules/decisionPlugins/modelParameters/parameterValidationResult.js`
+
+```js
+export const toInvalid = (message, value) => ({
+  ok: false,
+  message,
+  value,
+});
+
+export const toValid = (value) => ({ ok: true, value });
+```
+
+A normal invalid user parameter value is NOT an exception.
+
+It must produce:
+
+```js
+{
+  ok: false,
+  message: "Human-readable validation message",
+  value,
+}
+```
+
+A valid value must produce:
+
+```js
+{
+  ok: true,
+  value: normalizedValue,
+}
+```
+
+Only a genuine malformed/inconsistent application runtime context may use the
+Backend internal-error contract.
+
+
+## Parameter architecture
+
+The higher-level model-parameter system already handles:
+
+- parameter-key resolution;
+- unknown parameter keys;
+- required/missing values;
+- default application;
+- `parameterStructureKey` resolution;
+- aggregation of validation results.
+
+Do not duplicate that orchestration.
+
+Preserve the generated validator signature:
+
+```js
+validateTwoTupleAggregationParameter({
+  value,
+  parameter,
+  context,
+})
+```
+
+Frontend `parameterContext` and Backend validator `context` are intentionally
+different contracts.
+
+Representative Backend context:
+
+```json
+{
+  "modelName": "Example model",
+  "leafCriteria": [
+    {
+      "id": "CRIT_1",
+      "name": "Cost",
+      "type": "cost",
+      "expressionDomain": {
+        "id": "DOMAIN_1",
+        "_id": "DOMAIN_1",
+        "name": "Cost scale",
+        "typeKey": "numericContinuous",
+        "definition": {
+          "min": 0,
+          "max": 100,
+          "step": null
+        }
+      }
+    }
+  ],
+  "alternatives": [
+    { "id": "ALT_1", "name": "Supplier A" }
+  ]
+}
+```
+
+Do not hard-code the representative data.
+
+## Expression Domains
+
+Do NOT assume every parameter is an Expression Domain evaluation.
+
+Only if requirements explicitly say the parameter value belongs to a
+criterion's Expression Domain:
+
+- resolve the canonical criterion/domain from Backend `context`;
+- reuse existing Backend Expression Domain validation;
+- do not recreate domain-specific validation.
+
+
+## Reference Backend Parameter Structure convention
+
+A current numeric Parameter Structure validates/normalizes like this:
+
+```js
+import { normalizeNumberValue } from "../../../../modelParameters/parameterValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
+
+export const validateAndNormalizeNumberGlobal = ({ value, parameter }) => {
+  const normalizedValue = normalizeNumberValue(value);
+  if (normalizedValue === null) {
+    return toInvalid("must be a finite number", value);
+  }
+
+  if (parameter?.valueType === "integer" && !Number.isInteger(normalizedValue)) {
+    return toInvalid("must be an integer", value);
+  }
+
+  const {
+    min = null,
+    max = null,
+    allowed = null,
+  } = parameter?.restrictions || {};
+
+  if (min !== null && normalizedValue < min) {
+    return toInvalid(`must be greater than or equal to ${min}`, value);
+  }
+
+  if (max !== null && normalizedValue > max) {
+    return toInvalid(`must be less than or equal to ${max}`, value);
+  }
+
+  if (
+    Array.isArray(allowed) &&
+    allowed.length > 0 &&
+    !allowed.includes(normalizedValue)
+  ) {
+    return toInvalid("must be one of the declared allowed values", value);
+  }
+
+  return toValid(normalizedValue);
+};
+```
+
+This example is only a convention reference. Do not assume a newly generated
+Parameter Structure is numeric unless its developer requirements say so.
+
+
+## Exact generated starting source
+
+### `Backend/modules/decisionPlugins/modelParameters/structures/twoTupleAggregation/index.js`
+
+```js
+// Generated by ModelForge.
+// Registers this Parameter Structure.
+// See IMPLEMENTATION_GUIDE.md.
+
+import { validateTwoTupleAggregationParameter } from "./validate.js";
+
+export const twoTupleAggregationParameterStructure = Object.freeze({
+  key: "twoTupleAggregation",
+  implementationStatus: "scaffold",
+  validateAndNormalize: validateTwoTupleAggregationParameter,
+});
+
+```
+
+### `Backend/modules/decisionPlugins/modelParameters/structures/twoTupleAggregation/validate.js`
+
+```js
+// Generated by ModelForge.
+// Validates and normalizes this Parameter Structure value.
+// See IMPLEMENTATION_GUIDE.md.
+
+export const validateTwoTupleAggregationParameter = ({
+  value,
+  parameter,
+  context,
+}) => {
+  void parameter;
+  void context;
+
+  return {
+    ok: false,
+    message: "twoTupleAggregation is under development.",
+    value,
+  };
+};
+
+```
+
+## Implementation style
+
+Use ES modules, immutable values, deliberate normalization and existing shared
+helpers. Keep structure-specific logic local. Do not create compatibility
+fallbacks, generic one-use abstractions or unnecessary dependencies.
+
+## Lifecycle
+
+Use `"ready"` when every requested runtime behavior is implemented.
+
+Tests are outside scope. Do not create/modify test files unless explicitly
+requested.
+
+If essential semantics are missing, retain `"scaffold"` and explain exactly
+what is missing.
+
+## Required output
+
+Print each required file as:
+
+```text
+FILE: <complete repository path>
+```
+
+then complete source.
+
+No diffs, ellipses, partial functions, pseudocode or unfinished TODO code.

@@ -1,0 +1,141 @@
+# Implement twoTupleAggregation Backend — Agent prompt
+
+Target:
+
+```text
+Backend/modules/decisionPlugins/modelParameters/structures/twoTupleAggregation/
+```
+
+Read the generated package and guide, matching Frontend when useful, plus:
+
+```text
+Backend/modules/decisionPlugins/modelParameters/parameterValidationResult.js
+Backend/utils/common/errors.js
+Backend/utils/common/objects.js
+Backend/utils/common/strings.js
+```
+
+## Developer requirements
+
+### Parameter Structure description
+[PARAMETER STRUCTURE DESCRIPTION]
+
+### Canonical value shape
+[VALUE SHAPE]
+
+### Default / restrictions contract
+[DEFAULT / RESTRICTIONS CONTRACT]
+
+### Additional requirements
+[ADDITIONAL REQUIREMENTS]
+
+### Actual runtime input — optional
+[ACTUAL RUNTIME INPUT]
+
+
+## Exact Parameter validation-result contract
+
+The existing project helper is:
+
+`Backend/modules/decisionPlugins/modelParameters/parameterValidationResult.js`
+
+```js
+export const toInvalid = (message, value) => ({
+  ok: false,
+  message,
+  value,
+});
+
+export const toValid = (value) => ({ ok: true, value });
+```
+
+A normal invalid user parameter value is NOT an exception.
+
+It must produce:
+
+```js
+{
+  ok: false,
+  message: "Human-readable validation message",
+  value,
+}
+```
+
+A valid value must produce:
+
+```js
+{
+  ok: true,
+  value: normalizedValue,
+}
+```
+
+Only a genuine malformed/inconsistent application runtime context may use the
+Backend internal-error contract.
+
+
+
+## Reference Backend Parameter Structure convention
+
+A current numeric Parameter Structure validates/normalizes like this:
+
+```js
+import { normalizeNumberValue } from "../../../../modelParameters/parameterValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
+
+export const validateAndNormalizeNumberGlobal = ({ value, parameter }) => {
+  const normalizedValue = normalizeNumberValue(value);
+  if (normalizedValue === null) {
+    return toInvalid("must be a finite number", value);
+  }
+
+  if (parameter?.valueType === "integer" && !Number.isInteger(normalizedValue)) {
+    return toInvalid("must be an integer", value);
+  }
+
+  const {
+    min = null,
+    max = null,
+    allowed = null,
+  } = parameter?.restrictions || {};
+
+  if (min !== null && normalizedValue < min) {
+    return toInvalid(`must be greater than or equal to ${min}`, value);
+  }
+
+  if (max !== null && normalizedValue > max) {
+    return toInvalid(`must be less than or equal to ${max}`, value);
+  }
+
+  if (
+    Array.isArray(allowed) &&
+    allowed.length > 0 &&
+    !allowed.includes(normalizedValue)
+  ) {
+    return toInvalid("must be one of the declared allowed values", value);
+  }
+
+  return toValid(normalizedValue);
+};
+```
+
+This example is only a convention reference. Do not assume a newly generated
+Parameter Structure is numeric unless its developer requirements say so.
+
+
+Ordinary invalid values return an invalid result object. Only genuine malformed
+application context uses internal errors.
+
+Keep logic local, explicit and immutable.
+
+Do not duplicate higher-level parameter orchestration.
+
+Tests are outside scope. Do not create/modify/run tests unless requested.
+
+Use `"ready"` when runtime behavior is complete.
+
+Run targeted lint/static checks when practical plus `git diff --check`. Do not
+install dependencies.
+
+Report files changed, canonical value/normalization, defaults/restrictions,
+context/shared-helper usage, lifecycle status and validation.
