@@ -1,5 +1,15 @@
-import { useEffect, useMemo } from "react";
-import { Alert, Box, Stack, ToggleButton, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  IconButton,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
@@ -8,8 +18,12 @@ import {
   buildApiCriteriaWeightingConfig,
   buildConfigByMode,
   isManualCriteriaWeightingApiModel,
+  isExpertCriteriaWeightingMode,
+  normalizeCriteriaWeightingLevel,
   normalizeMode,
+  resolveCriteriaWeightingLevel,
 } from "../../logic/createIssueCriteriaWeightingModes";
+import { isParentCriteriaWeightingAvailable } from "../../logic/createIssueParentCriteriaWeighting";
 import {
   buildCreateIssueEqualManualWeights,
   isFuzzyCriteriaWeightModel,
@@ -34,6 +48,7 @@ import { resolveCriteriaWeightingMccAvailability } from "../../logic/createIssue
 import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
 import { getEvaluationStructureEntryForStage } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry";
 import { requireCompleteEvaluationObject } from "../../../issueEvaluation/logic/requireCompleteEvaluationObject";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 
 export const CriteriaWeightingPanel = ({
   selectedModel,
@@ -101,6 +116,19 @@ export const CriteriaWeightingPanel = ({
     : null;
 
   const mode = normalizeMode(criteriaWeightingConfig?.mode);
+  const [parentConfirmationOpen, setParentConfirmationOpen] = useState(false);
+  const requestedLevel = normalizeCriteriaWeightingLevel(
+    criteriaWeightingConfig?.level
+  );
+  const hasExpertWeightingSource =
+    criteriaWeightingConfig?.source === "experts" ||
+    (!criteriaWeightingConfig?.source && isExpertCriteriaWeightingMode(mode));
+  const parentHierarchyAvailable = useMemo(
+    () => isParentCriteriaWeightingAvailable(criteria),
+    [criteria]
+  );
+  const parentLevelAvailable =
+    hasExpertWeightingSource && parentHierarchyAvailable;
   const availableCriteriaWeightingModels = useMemo(
     () =>
       (Array.isArray(criteriaWeightingModels) ? criteriaWeightingModels : []).filter(
@@ -264,6 +292,24 @@ export const CriteriaWeightingPanel = ({
     leafCriteria,
     mode,
     modelUsesWeights,
+    setCriteriaWeightingConfig,
+  ]);
+
+  useEffect(() => {
+    if (!setCriteriaWeightingConfig || !criteriaWeightingConfig?.mode) return;
+
+    const normalizedLevel = parentLevelAvailable
+      ? resolveCriteriaWeightingLevel(criteriaWeightingConfig)
+      : "leaf";
+    if (criteriaWeightingConfig.level === normalizedLevel) return;
+
+    setCriteriaWeightingConfig({
+      ...criteriaWeightingConfig,
+      level: normalizedLevel,
+    });
+  }, [
+    criteriaWeightingConfig,
+    parentLevelAvailable,
     setCriteriaWeightingConfig,
   ]);
 
@@ -499,7 +545,67 @@ export const CriteriaWeightingPanel = ({
             Choose how criterion weights are produced.
           </Typography>
         </Stack>
-        {equalWeightsActionAvailable || mccActionAvailable ? (
+        <Stack
+          direction="row"
+          spacing={0.75}
+          useFlexGap
+          flexWrap="wrap"
+          justifyContent="flex-end"
+          alignItems="center"
+        >
+          <Stack direction="row" spacing={0.35} alignItems="center">
+            <Typography variant="caption" sx={{ fontWeight: 900 }}>
+              Criteria weighting level
+            </Typography>
+            <Tooltip title="Leaf: experts weight the criteria used directly to evaluate alternatives. Parent: experts weight the parent criteria; each parent weight is distributed equally among its direct leaf criteria. Alternatives are still evaluated using the leaf criteria.">
+              <IconButton
+                aria-label="About criteria weighting levels"
+                size="small"
+                sx={{ p: 0.25, color: "text.secondary" }}
+              >
+                <InfoOutlinedIcon fontSize="inherit" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            color="info"
+            value={requestedLevel}
+            aria-label="Criteria weighting level"
+            onChange={(_, nextLevel) => {
+              if (!nextLevel) return;
+              if (nextLevel === "parent") {
+                setParentConfirmationOpen(true);
+                return;
+              }
+              updateConfig(
+                {
+                  ...safeConfig,
+                  level: "leaf",
+                },
+                { markDirty: true }
+              );
+            }}
+          >
+            <ToggleButton value="leaf" aria-label="Leaf criteria weighting">
+              Leaf criteria
+            </ToggleButton>
+            <ToggleButton
+              value="parent"
+              aria-label="Parent criteria weighting"
+              disabled={!parentLevelAvailable}
+            >
+              Parent criteria
+            </ToggleButton>
+          </ToggleButtonGroup>
+          {!parentLevelAvailable ? (
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {hasExpertWeightingSource
+                ? "Parent criteria weighting requires a compatible parent hierarchy."
+                : "Parent criteria weighting currently requires expert criteria weighting."}
+            </Typography>
+          ) : null}
           <Stack
             direction="row"
             spacing={0.75}
@@ -559,7 +665,7 @@ export const CriteriaWeightingPanel = ({
               />
             ) : null}
           </Stack>
-        ) : null}
+        </Stack>
       </Stack>
 
       {isFuzzyModel ? (
@@ -647,6 +753,7 @@ export const CriteriaWeightingPanel = ({
                           mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
                           leafCriteria,
                           criteriaWeightingModel: criteriaModel,
+                          level: requestedLevel,
                         }),
                     { markDirty: true }
                   );
@@ -730,6 +837,35 @@ export const CriteriaWeightingPanel = ({
           </Alert>
         )
       ) : null}
+
+      <ConfirmationDialog
+        open={parentConfirmationOpen}
+        onClose={() => setParentConfirmationOpen(false)}
+        tone="info"
+        title="Use parent criteria weighting?"
+        subtitle="Experts will evaluate the parent criteria instead of the leaf criteria. Each resulting parent weight will be distributed equally among its direct leaf criteria. Alternative evaluations will continue to use the leaf criteria."
+        actions={[
+          {
+            label: "Cancel",
+            onClick: () => setParentConfirmationOpen(false),
+          },
+          {
+            label: "Use parent criteria",
+            color: "info",
+            variant: "contained",
+            onClick: () => {
+              updateConfig(
+                {
+                  ...safeConfig,
+                  level: "parent",
+                },
+                { markDirty: true }
+              );
+              setParentConfirmationOpen(false);
+            },
+          },
+        ]}
+      />
     </Stack>
   );
 };

@@ -8,6 +8,7 @@ import {
   buildApiCriteriaWeightingConfig,
   buildConfigByMode,
   isManualCriteriaWeightingApiModel,
+  normalizeCriteriaWeightingLevel,
   normalizeMode,
 } from "../../logic/createIssueCriteriaWeightingModes";
 import {
@@ -47,6 +48,9 @@ export const CriteriaWeightingMccAction = ({
     [criteria]
   );
   const mode = normalizeMode(criteriaWeightingConfig?.mode);
+  const currentLevel = normalizeCriteriaWeightingLevel(
+    criteriaWeightingConfig?.level
+  );
   const models = useMemo(
     () => (Array.isArray(criteriaWeightingModels) ? criteriaWeightingModels : [])
       .filter((model) => model?.modelKind === "criteriaWeighting"),
@@ -104,6 +108,7 @@ export const CriteriaWeightingMccAction = ({
         mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
         leafCriteria,
         criteriaWeightingModel: selectedApiModel,
+        level: currentLevel,
       }),
       payload: initialization.evaluation,
       initializationIdentity: initialization.initializationIdentity,
@@ -124,6 +129,7 @@ export const CriteriaWeightingMccAction = ({
                 ? CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL
                 : CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
               leafCriteria,
+              level: currentLevel,
             })
           );
         } else if (selectedApiModel) {
@@ -134,6 +140,7 @@ export const CriteriaWeightingMccAction = ({
                   mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
                   leafCriteria,
                   criteriaWeightingModel: selectedApiModel,
+                  level: currentLevel,
                 })
           );
         }

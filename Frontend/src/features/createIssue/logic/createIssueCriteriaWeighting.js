@@ -1,5 +1,6 @@
 import {
   CRITERIA_WEIGHTING_MODES,
+  normalizeCriteriaWeightingLevel,
 } from "./createIssueCriteriaWeightingModes";
 import {
   isDeepEqual,
@@ -35,6 +36,7 @@ export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
       source: "creator",
       method: "fuzzy",
       structureKey: null,
+      level: "leaf",
       payload: {},
     };
   }
@@ -44,6 +46,7 @@ export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
     source: "experts",
     method: "manual",
     structureKey: "manualCriteriaWeights",
+    level: "leaf",
     payload: {},
   };
 };
@@ -135,7 +138,13 @@ export const isCreateIssueCriteriaWeightingConfigOnDefault = ({
       }
     }
 
-    return isDeepEqual(criteriaWeightingConfig, expectedDefault);
+    return isDeepEqual(
+      {
+        ...criteriaWeightingConfig,
+        level: normalizeCriteriaWeightingLevel(criteriaWeightingConfig.level),
+      },
+      expectedDefault
+    );
   }
 
   const expectedFuzzyWeights = buildDefaultFuzzyWeightsByCriterion({
@@ -152,6 +161,7 @@ export const isCreateIssueCriteriaWeightingConfigOnDefault = ({
     criteriaWeightingConfig.source === expectedDefault.source &&
     criteriaWeightingConfig.method === expectedDefault.method &&
     criteriaWeightingConfig.structureKey === expectedDefault.structureKey &&
+    normalizeCriteriaWeightingLevel(criteriaWeightingConfig.level) === "leaf" &&
     fuzzyWeightsOnDefault
   );
 };

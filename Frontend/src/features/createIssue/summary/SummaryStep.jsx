@@ -38,7 +38,11 @@ import { useCreateIssueContext } from "../context/createIssue.context";
 
 import { getRemainingTime } from "../logic/createIssueDates";
 import { buildCreateIssueParameterDefaults } from "../../modelParameters/draft";
-import { buildDefaultCriteriaWeightingConfig } from "../logic/createIssueCriteriaWeighting";
+import {
+  buildDefaultCriteriaWeightingConfig,
+  modelUsesCriteriaWeights,
+} from "../logic/createIssueCriteriaWeighting";
+import { normalizeCriteriaWeightingLevel } from "../logic/createIssueCriteriaWeightingModes";
 import { modelUsesExpertWeights } from "../logic/createIssueExpertWeights";
 import { getRenderableNormalModelParameters } from "./logic/getRenderableNormalModelParameters";
 import {
@@ -112,12 +116,17 @@ export const SummaryStep = () => {
     criteria,
     addedExperts,
     expressionDomainConfig,
+    criteriaWeightingConfig,
   } = allData;
   const showSimulationModeToggle =
     isConsensus &&
     selectedModel?.supportsConsensus === true &&
     selectedModel?.supportsConsensusSimulation === true;
   const showExpertWeights = modelUsesExpertWeights(selectedModel);
+  const showCriteriaWeighting = modelUsesCriteriaWeights(selectedModel);
+  const criteriaWeightingLevel = normalizeCriteriaWeightingLevel(
+    criteriaWeightingConfig?.level
+  );
 
   const domainNameMap = useMemo(
     () =>
@@ -283,6 +292,23 @@ export const SummaryStep = () => {
               {criteria.map((criterion) => (
                 <CriterionAccordion key={criterion.id} criterion={criterion} />
               ))}
+              {showCriteriaWeighting ? (
+                <Stack spacing={0.2} sx={{ pt: 0.65 }}>
+                  <KVRow
+                    k="Weighting level"
+                    v={
+                      criteriaWeightingLevel === "parent"
+                        ? "Parent criteria"
+                        : "Leaf criteria"
+                    }
+                  />
+                  {criteriaWeightingLevel === "parent" ? (
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Parent weights are distributed equally to direct leaf criteria.
+                    </Typography>
+                  ) : null}
+                </Stack>
+              ) : null}
             </Stack>
           </AccordionDetails>
         </Accordion>

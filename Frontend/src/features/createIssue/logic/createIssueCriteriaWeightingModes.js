@@ -16,7 +16,23 @@ export const normalizeMode = (mode) =>
     ? mode.trim()
     : CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL;
 
-export const buildConfigByMode = ({ mode, leafCriteria }) => {
+export const normalizeCriteriaWeightingLevel = (level) =>
+  level === "parent" ? "parent" : "leaf";
+
+export const isExpertCriteriaWeightingMode = (mode) => {
+  const normalizedMode = normalizeMode(mode);
+  return (
+    normalizedMode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ||
+    normalizedMode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL
+  );
+};
+
+export const resolveCriteriaWeightingLevel = ({ level, mode, source } = {}) =>
+  source === "creator" || !isExpertCriteriaWeightingMode(mode)
+    ? "leaf"
+    : normalizeCriteriaWeightingLevel(level);
+
+export const buildConfigByMode = ({ mode, leafCriteria, level }) => {
   const resolvedMode = normalizeMode(mode);
 
   if (resolvedMode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
@@ -25,6 +41,7 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
       source: "creator",
       method: "fuzzy",
       structureKey: null,
+      level: "leaf",
       payload: {},
     };
   }
@@ -35,6 +52,7 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
       source: "creator",
       method: "manual",
       structureKey: "manualCriteriaWeights",
+      level: "leaf",
       payload: {
         weightsByCriterion: buildEqualWeightsByCriterion(leafCriteria),
       },
@@ -47,6 +65,11 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
     method: "manual",
     structureKey: "manualCriteriaWeights",
     criteriaWeightingModelKey: MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY,
+    level: resolveCriteriaWeightingLevel({
+      level,
+      mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+      source: "experts",
+    }),
     payload: {},
   };
 };
@@ -55,6 +78,7 @@ export const buildApiCriteriaWeightingConfig = ({
   mode,
   leafCriteria,
   criteriaWeightingModel,
+  level,
 }) => {
   void leafCriteria;
   const isCreatorMode = mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL;
@@ -76,6 +100,13 @@ export const buildApiCriteriaWeightingConfig = ({
     criteriaWeightingModelId: modelId || null,
     criteriaWeightingModelKey: modelKey || null,
     criteriaWeightingParameters: {},
+    level: resolveCriteriaWeightingLevel({
+      level,
+      mode: isCreatorMode
+        ? CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL
+        : CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
+      source: isCreatorMode ? "creator" : "experts",
+    }),
     payload: {},
   };
 };

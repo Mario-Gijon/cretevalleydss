@@ -33,6 +33,7 @@ describe("createIssueCriteriaWeighting", () => {
       source: "experts",
       method: "manual",
       structureKey: "manualCriteriaWeights",
+      level: "leaf",
       payload: {},
     });
     expect(buildDefaultCriteriaWeightingConfig(fuzzyCriteriaWeightModelFixture)).toEqual({
@@ -40,6 +41,7 @@ describe("createIssueCriteriaWeighting", () => {
       source: "creator",
       method: "fuzzy",
       structureKey: null,
+      level: "leaf",
       payload: {},
     });
   });

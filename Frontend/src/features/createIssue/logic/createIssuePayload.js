@@ -16,6 +16,7 @@ import {
   modelUsesExpertWeights,
   validateExpertWeights,
 } from "./createIssueExpertWeights";
+import { resolveCriteriaWeightingLevel } from "./createIssueCriteriaWeightingModes";
 import { normalizeCreateIssueAlternatives } from "./createIssueAlternativeIds";
 
 const CRITERIA_WEIGHTING_REQUEST_FIELDS = Object.freeze([
@@ -27,6 +28,7 @@ const CRITERIA_WEIGHTING_REQUEST_FIELDS = Object.freeze([
   "criteriaWeightingModelKey",
   "criteriaWeightingParameters",
   "payload",
+  "level",
 ]);
 
 const normalizeConsensusMaxPhases = (value) =>
@@ -44,11 +46,16 @@ const buildCriteriaWeightingRequestConfig = (criteriaWeightingConfig) => {
     return criteriaWeightingConfig;
   }
 
-  return Object.fromEntries(
+  const requestConfig = Object.fromEntries(
     CRITERIA_WEIGHTING_REQUEST_FIELDS
       .filter((field) => Object.hasOwn(criteriaWeightingConfig, field))
       .map((field) => [field, criteriaWeightingConfig[field]])
   );
+
+  return {
+    ...requestConfig,
+    level: resolveCriteriaWeightingLevel(criteriaWeightingConfig),
+  };
 };
 
 export const buildCreateIssueRequestPayload = ({

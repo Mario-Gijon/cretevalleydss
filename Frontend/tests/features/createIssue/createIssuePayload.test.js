@@ -43,7 +43,10 @@ const buildPayloadInput = (overrides = {}) => {
       expertWeights: createIssueExpertWeightsFixture,
       closureDate: new Date("2026-07-10T00:00:00.000Z"),
       expressionDomainConfig: createIssueGlobalExpressionDomainConfigFixture,
-      criteriaWeightingConfig: createIssueManualCriteriaWeightingConfigFixture,
+      criteriaWeightingConfig: {
+        ...createIssueManualCriteriaWeightingConfigFixture,
+        level: "leaf",
+      },
       paramValues: createIssueParamValuesFixture,
       consensusMaxPhases: 4,
       consensusThreshold: 0.8,
@@ -102,7 +105,10 @@ describe("createIssuePayload", () => {
       ],
       closureDate: new Date("2026-07-10T00:00:00.000Z"),
       expressionDomainConfig: createIssueGlobalExpressionDomainConfigFixture,
-      criteriaWeightingConfig: createIssueManualCriteriaWeightingConfigFixture,
+      criteriaWeightingConfig: {
+        ...createIssueManualCriteriaWeightingConfigFixture,
+        level: "leaf",
+      },
       paramValues: {
         threshold: 0.6,
         criterionScores: {
@@ -366,7 +372,10 @@ describe("createIssuePayload", () => {
 
     expect(result.ok).toBe(true);
     expect(result.payload.criteriaWeightingConfig).toEqual(
-      createIssueManualCriteriaWeightingConfigFixture
+      {
+        ...createIssueManualCriteriaWeightingConfigFixture,
+        level: "leaf",
+      }
     );
     expect(
       result.payload.criteriaWeightingConfig.payload
@@ -380,5 +389,23 @@ describe("createIssuePayload", () => {
     expect(criteriaWeightingConfig).toHaveProperty(
       "initializationIdentity"
     );
+  });
+
+  it("includes an explicit parent weighting level without changing other fields", () => {
+    const criteriaWeightingConfig = {
+      ...createIssueManualCriteriaWeightingConfigFixture,
+      mode: "expertManual",
+      source: "experts",
+      level: "parent",
+    };
+    const result = buildCreateIssueRequestPayload(
+      buildPayloadInput({
+        allData: { criteriaWeightingConfig },
+        criteriaWeightingConfig,
+      })
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.criteriaWeightingConfig).toEqual(criteriaWeightingConfig);
   });
 });
