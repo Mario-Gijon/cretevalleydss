@@ -1,7 +1,10 @@
 import { Issue } from "../../../models/Issues.js";
 import { Alternative } from "../../../models/Alternatives.js";
 import { Criterion } from "../../../models/Criteria.js";
-import { createInternalError } from "../../../utils/common/errors.js";
+import {
+  createBadRequestError,
+  createInternalError,
+} from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
 const COLLATOR = new Intl.Collator("es", { sensitivity: "base", numeric: true });

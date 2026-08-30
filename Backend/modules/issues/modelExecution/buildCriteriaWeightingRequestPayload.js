@@ -1,4 +1,5 @@
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
+import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { normalizeEvaluationsPayload } from "./normalizeEvaluationsPayload.js";
@@ -10,7 +11,32 @@ export const buildCriteriaWeightingRequestPayload = async ({
   phase,
   expertWeightsByExpertId = null,
 }) => {
-  const { criteria } = await getOrderedCriteriaForWeightingOrThrow({ issue });
+  const { weightingCriteria } = await getOrderedCriteriaForWeightingOrThrow({
+    issue,
+  });
+
+  const criteria = weightingCriteria.map((criterion, index) => {
+    const id = toIdString(criterion?._id);
+
+    if (!id) {
+      throw createInternalError(
+        "A persisted criteria-weighting criterion is missing its id.",
+        {
+          field: `criteria[${index}].id`,
+          details: {
+            issueId: toIdString(issue?._id),
+            criterionName: criterion?.name ?? null,
+          },
+        }
+      );
+    }
+
+    return {
+      id,
+      name: criterion.name,
+      type: criterion.type,
+    };
+  });
 
   return {
     modelParameters: issue.criteriaWeightingParameters,
@@ -29,11 +55,7 @@ export const buildCriteriaWeightingRequestPayload = async ({
             ? issue.consensusMaxPhases
             : null,
       },
-      criteria: criteria.map((criterion) => ({
-        id: toIdString(criterion._id),
-        name: criterion.name,
-        type: criterion.type,
-      })),
+      criteria,
       consensusPhase: phase,
       previousStageResult: null,
       structure: {
