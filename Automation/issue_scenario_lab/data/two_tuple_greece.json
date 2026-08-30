@@ -1,0 +1,43 @@
+{
+  "issue": {
+    "name": "2-Tuple Greece renewable-energy sites",
+    "description": "Authoritative Greece alternative-evaluation scenario for the two-tuple linguistic model."
+  },
+  "participants": {
+    "creator": "owner",
+    "criteriaWeightingExperts": ["expert_a", "expert_b", "expert_c", "expert_d", "expert_e"],
+    "finalExpert": "expert_a",
+    "questionnaireByAlias": {"expert_a": 1, "expert_b": 2, "expert_c": 4, "expert_d": 5, "expert_e": 6}
+  },
+  "expressionDomain": {"typeKey": "linguistic2Tuple", "labelCount": 5, "labels": ["Very Low", "Low", "Medium", "High", "Very High"]},
+  "parents": [
+    {"key": "c1", "name": "Wind Resource Potential", "children": [{"key": "c1_wind_potential", "name": "Wind potential"}]},
+    {"key": "c2", "name": "Accessibility & Infrastructure Security", "children": [{"key": "c2_accessibility_location", "name": "Accessibility of location"}, {"key": "c2_infrastructure_security", "name": "Infrastructure security"}]},
+    {"key": "c3", "name": "Clustering & Hybrid PV-Wind Suitability", "children": [{"key": "c3_clustering_possible", "name": "Clustering of 3 windmills possible"}, {"key": "c3_pv_compatibility", "name": "Compatibility with planned PV if any"}, {"key": "c3_shared_infrastructure", "name": "Shared infrastructure potential in future"}]},
+    {"key": "c4", "name": "Visibility & Demonstration Value", "children": [{"key": "c4_visibility_public", "name": "Visibility from roads/public areas"}, {"key": "c4_visitor_accessibility", "name": "Visitor accessibility"}]},
+    {"key": "c5", "name": "Local Socio-Economic Benefits", "children": [{"key": "c5_households_farms_benefit", "name": "Benefits to Households/farms service/street lighting from energy supply"}, {"key": "c5_irrigation_public_benefit", "name": "Benefits to Irrigation/public building support from energy supply"}, {"key": "c5_local_development", "name": "Contribution to local development"}]},
+    {"key": "c6", "name": "Cost & Maintainability", "children": [{"key": "c6_land_rent", "name": "Land rent"}, {"key": "c6_installation_cost", "name": "Installation cost"}, {"key": "c6_maintenance_cost", "name": "Maintenance cost"}, {"key": "c6_long_term_potential", "name": "Long-term operational potential (after project period)"}]},
+    {"key": "c7", "name": "Community Acceptance & Implementation Risk", "children": [{"key": "c7_community_acceptance", "name": "Community acceptance"}, {"key": "c7_landowner_cooperation", "name": "Landowner cooperation Risk"}, {"key": "c7_environmental_social_concerns", "name": "Environmental/social concerns"}]}
+  ],
+  "rankings": {
+    "expert_a": ["c5", "c6", "c4", "c7", "c2", "c1", "c3"],
+    "expert_b": ["c5", "c4", "c1", "c7", "c2", "c3", "c6"],
+    "expert_c": ["c1", "c2", "c5", "c4", "c6", "c7", "c3"],
+    "expert_d": ["c2", "c5", "c4", "c7", "c6", "c3", "c1"],
+    "expert_e": ["c6", "c5", "c3", "c7", "c4", "c1", "c2"]
+  },
+  "alternatives": [
+    {"key": "s03", "sourceSiteId": "S03 (Landsite 3)", "name": "Agios Georgios (Saint George Village)"},
+    {"key": "s04", "sourceSiteId": "S04 (Landsite 1 & 2)", "name": "Plati"},
+    {"key": "s10", "sourceSiteId": "S10 (Landsite 1 & 2)", "name": "Psyxro"},
+    {"key": "s12", "sourceSiteId": "S12 (Landsite 3)", "name": "Old TEEI"},
+    {"key": "s14", "sourceSiteId": "S14 (Landsite 3)", "name": "Saint George Village Entrance"}
+  ],
+  "sourceValues": {
+    "s03": [3, 5, 2, "Yes", 3, 2, 4, 5, 3, 4, 3, 2, 2, 3, 3, 5, 3, 5],
+    "s04": [3, 5, 4, "Yes", 5, 4, 5, 5, 4, 2, 4, 2, 3, 3, 5, 5, 3, 5],
+    "s10": [3, 5, 4, "Yes", 5, 5, 5, 5, 4, 4, 4, 2, 3, 3, 3, 5, 3, 5],
+    "s12": [3, 4, 4, "Yes", 5, 4, 4, 4, 4, 4, 4, 5, 2, 3, 4, 5, 5, 5],
+    "s14": [3, 5, 4, "Yes", 4, 4, 5, 5, 4, 3, 4, 2, 3, 3, 3, 5, 3, 5]
+  }
+}

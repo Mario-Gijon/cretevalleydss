@@ -28,6 +28,8 @@ from issue_scenario_lab.scenarios.no_consensus_expert_weights import SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_expert_weights import generate as generate_no_consensus_expert_weights
 from issue_scenario_lab.scenarios.topsis_2tuple_greece import SCENARIO_ID as TOPSIS_2TUPLE_GREECE_SCENARIO_ID
 from issue_scenario_lab.scenarios.topsis_2tuple_greece import generate as generate_topsis_2tuple_greece
+from issue_scenario_lab.scenarios.two_tuple_greece import SCENARIO_ID as TWO_TUPLE_GREECE_SCENARIO_ID
+from issue_scenario_lab.scenarios.two_tuple_greece import generate as generate_two_tuple_greece
 
 app = typer.Typer(add_completion=False, help="Local HTTP foundation for CreteValleyDSS issue variants.")
 console = Console()
@@ -287,6 +289,16 @@ def generate(
             generate_topsis_2tuple_greece,
             {"model": "2-TUPLE TOPSIS", "criteriaWeightingModel": "Preference Order Criteria Weights"},
         ),
+        TWO_TUPLE_GREECE_SCENARIO_ID: (
+            generate_two_tuple_greece,
+            {
+                "model": "2-Tuple Linguistic Model",
+                "criteriaWeightingModel": "Preference Order Criteria Weights",
+                "parentCriteria": 7,
+                "leafCriteria": 18,
+                "alternatives": 5,
+            },
+        ),
     }
     selected = generators.get(scenario_id)
     if selected is None:
@@ -295,7 +307,11 @@ def generate(
     try:
         settings = _settings()
         with SessionPool.from_settings(settings) as sessions:
-            kwargs = ({"owner_alias": "owner"} if scenario_id == TOPSIS_2TUPLE_GREECE_SCENARIO_ID else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias})
+            kwargs = (
+                {"owner_alias": "owner"}
+                if scenario_id in {TOPSIS_2TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_SCENARIO_ID}
+                else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+            )
             result = selected[0](sessions, ManifestStore(settings.manifest_file), **kwargs)
     except ScenarioLabError as error:
         _raise_cli_error(error)
