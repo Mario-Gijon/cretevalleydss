@@ -229,17 +229,6 @@ def run_two_tuple(
 
     expert_keys, alternatives_count, criteria_count = _validate_matrices(matrices)
 
-    expert_weights = _validate_weight_vector(
-        expert_weights,
-        expected_length=len(expert_keys),
-        field="expert_weights",
-    )
-    criterion_weights = _validate_weight_vector(
-        criterion_weights,
-        expected_length=criteria_count,
-        field="criterion_weights",
-    )
-
     expert_method, expert_options = _aggregation_config(
         expert_aggregation,
         field="expert_aggregation",
@@ -247,6 +236,25 @@ def run_two_tuple(
     criteria_method, criteria_options = _aggregation_config(
         criteria_aggregation,
         field="criteria_aggregation",
+    )
+
+    expert_weights_for_aggregation = (
+        _validate_weight_vector(
+            expert_weights,
+            expected_length=len(expert_keys),
+            field="expert_weights",
+        )
+        if expert_method == "weighted_average"
+        else None
+    )
+    criterion_weights_for_aggregation = (
+        _validate_weight_vector(
+            criterion_weights,
+            expected_length=criteria_count,
+            field="criterion_weights",
+        )
+        if criteria_method == "weighted_average"
+        else None
     )
 
     collective_matrix = _aggregate_experts(
@@ -257,7 +265,7 @@ def run_two_tuple(
         label_count=label_count,
         method=expert_method,
         options=expert_options,
-        expert_weights=expert_weights,
+        expert_weights=expert_weights_for_aggregation,
     )
 
     collective_values = _aggregate_criteria(
@@ -265,7 +273,7 @@ def run_two_tuple(
         label_count=label_count,
         method=criteria_method,
         options=criteria_options,
-        criterion_weights=criterion_weights,
+        criterion_weights=criterion_weights_for_aggregation,
     )
 
     collective_scores, collective_ranking = _ranking(
