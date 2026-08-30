@@ -21,6 +21,15 @@ WEIGHTING_KEY = "preference_order_criteria_weights"
 FIXTURE_PATH = Path(__file__).parents[3] / "data" / "two_tuple_greece.json"
 LEAF_KEYS = [child["key"] for parent in json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))["parents"] for child in parent["children"]]
 COST_KEYS = {"c6_land_rent", "c6_installation_cost", "c6_maintenance_cost"}
+EXPECTED_LABELS = ("Very Low", "Low", "Medium", "High", "Very High")
+
+
+def _finite(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _fixture_leaves(data: dict[str, Any]) -> list[dict[str, str]]:
+    return [child for parent in data["parents"] for child in parent["children"]]
 
 
 def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
@@ -30,10 +39,15 @@ def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
         raise ScenarioLabError(f"unable to load two-tuple Greece fixture: {path}") from error
     if not isinstance(data, dict) or len(data.get("parents", [])) != 7 or len(data.get("alternatives", [])) != 5:
         raise ScenarioLabError("two-tuple Greece fixture must contain seven parents and five alternatives")
-    if len(LEAF_KEYS) != 18 or any(len(row) != 18 for row in data.get("sourceValues", {}).values()):
+    leaves = _fixture_leaves(data)
+    if len(leaves) != 18 or [leaf.get("key") for leaf in leaves] != LEAF_KEYS or any(len(row) != 18 for row in data.get("sourceValues", {}).values()):
         raise ScenarioLabError("two-tuple Greece fixture must contain an 18-column source matrix")
     if set(data.get("sourceValues", {})) != {item["key"] for item in data["alternatives"]}:
         raise ScenarioLabError("source matrix must contain every authoritative alternative")
+    if data.get("expressionDomain", {}).get("labels") != list(EXPECTED_LABELS):
+        raise ScenarioLabError("two-tuple Greece fixture must declare the ordered five-label linguistic scale")
+    if set(data.get("rankings", {})) != set(data.get("participants", {}).get("criteriaWeightingExperts", [])):
+        raise ScenarioLabError("two-tuple Greece fixture must contain rankings for all weighting experts")
     return data
 
 
@@ -46,14 +60,33 @@ def _model(models: Any, key: str, *, kind: str | None = None) -> dict[str, Any]:
     raise ScenarioLabError(f"required model {key} is unavailable or not publicly usable")
 
 
+def _validate_main_model(model: dict[str, Any]) -> None:
+    checks = {
+        "apiModelKey": model.get("apiModelKey") == MODEL_KEY,
+        "modelKind": model.get("modelKind") == "issue",
+        "implementationStatus": model.get("implementationStatus") == "ready",
+        "publicUsable": model.get("publicUsable") is True,
+        "evaluationStructureKey": model.get("evaluationStructureKey") == "alternativeCriteriaMatrix",
+        "requiresHomogeneousExpressionDomains": model.get("requiresHomogeneousExpressionDomains") is True,
+        "usesCriterionTypes": model.get("usesCriterionTypes") is False,
+        "usesCriteriaWeights": model.get("usesCriteriaWeights") is True,
+    }
+    parameters = {item.get("key"): item for item in model.get("parameters", []) if isinstance(item, dict)}
+    for key, method in (("expertAggregation", "arithmetic_mean"), ("criteriaAggregation", "weighted_average")):
+        methods = (parameters.get(key, {}).get("restrictions") or {}).get("methods")
+        checks[f"{key} metadata"] = isinstance(methods, list) and any(isinstance(item, dict) and item.get("key") == method for item in methods)
+    if not all(checks.values()):
+        raise ScenarioLabError(f"two_tuple model is incompatible: {', '.join(key for key, valid in checks.items() if not valid)}")
+
+
 def _domain(domains: Any) -> dict[str, Any]:
     for group_name in ("globals", "userDomains"):
         for item in _items(domains.get(group_name, []) if isinstance(domains, dict) else []):
             if item.get("typeKey") != "linguistic2Tuple" or not _id(item):
                 continue
             labels = (item.get("definition") or {}).get("labels", [])
-            names = [label.get("label", "").casefold() for label in labels if isinstance(label, dict)]
-            if len(labels) == 5 and names == [name.casefold() for name in ["Very Low", "Low", "Medium", "High", "Very High"]]:
+            names = [label.get("label", "").strip().casefold() for label in labels if isinstance(label, dict)]
+            if len(labels) == 5 and names == [name.casefold() for name in EXPECTED_LABELS]:
                 return item
     raise ScenarioLabError("no compatible five-label linguistic2Tuple domain is available")
 
@@ -104,6 +137,13 @@ def _find_issue(api: IssuesApi, name: str) -> str:
     return _id(issue) or ""
 
 
+def _delete_named_active_issue(api: IssuesApi, name: str) -> None:
+    matches = [item for item in _items(api.active_issues(), "issues") if item.get("name") == name and _id(item)]
+    if len(matches) != 1:
+        raise ScenarioLabError(f"could not uniquely resolve generated active issue for cleanup: {name}")
+    api.delete_active_issue(_id(matches[0]) or "")
+
+
 def _context(response: Any, issue_id: str, stage: str, model_key: str) -> dict[str, Any]:
     context = response.get("decisionContext") if isinstance(response, dict) else None
     issue = context.get("issue") if isinstance(context, dict) else None
@@ -142,7 +182,14 @@ def _parent_weights(data: dict[str, Any], sessions: SessionPool, owner: IssuesAp
     ]
     temp["paramValues"] = {}
     owner.create_issue(temp)
-    issue_id = _find_issue(owner, temp_name)
+    try:
+        issue_id = _find_issue(owner, temp_name)
+    except Exception as error:
+        try:
+            _delete_named_active_issue(owner, temp_name)
+        except Exception as cleanup_error:
+            raise ScenarioLabError(f"temporary parent-weighting issue could not be resolved and cleanup failed: {cleanup_error}") from cleanup_error
+        raise ScenarioLabError("temporary parent-weighting issue could not be resolved after creation and was deleted") from error
     criterion_ids: dict[str, str] = {}
     try:
         for alias in experts:
@@ -168,23 +215,77 @@ def _parent_weights(data: dict[str, Any], sessions: SessionPool, owner: IssuesAp
 
 
 def _leaf_weights(data: dict[str, Any], parents: dict[str, float]) -> dict[str, float]:
+    if set(parents) != {parent["key"] for parent in data["parents"]}:
+        raise ScenarioLabError("parent weights do not match the seven fixture parents")
     weights = {child["key"]: parents[parent["key"]] / len(parent["children"]) for parent in data["parents"] for child in parent["children"]}
     if abs(sum(weights.values()) - 1) > 1e-6 or any(not math.isfinite(value) or value < 0 for value in weights.values()):
         raise ScenarioLabError("propagated leaf weights are invalid")
+    for parent in data["parents"]:
+        children_total = sum(weights[child["key"]] for child in parent["children"])
+        if abs(children_total - parents[parent["key"]]) > 1e-9:
+            raise ScenarioLabError(f"propagated weights do not reconstruct parent {parent['key']}")
     return weights
 
 
-def _matrix(data: dict[str, Any], context: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
-    labels = {
-        label.casefold(): label.get("key")
-        for label in ((next(iter(_items(context, "leafCriteria")), {}).get("expressionDomain") or {}).get("definition", {}).get("labels", []))
-        if isinstance(label, dict)
-    }
-    expected = [name.casefold() for name in data["expressionDomain"]["labels"]]
-    if set(labels) != set(expected) or any(not isinstance(value, str) for value in labels.values()):
-        raise ScenarioLabError("final context lacks the required five-label linguistic domain")
+def _label_keys(context: dict[str, Any]) -> dict[str, str]:
+    leaf_criteria = _items(context, "leafCriteria")
+    if len(leaf_criteria) != 18:
+        raise ScenarioLabError("final context must expose exactly 18 leaf criteria")
+    resolved: dict[str, str] | None = None
+    expected = tuple(label.casefold() for label in EXPECTED_LABELS)
+    for criterion in leaf_criteria:
+        labels = ((criterion.get("expressionDomain") or {}).get("definition") or {}).get("labels")
+        if not isinstance(labels, list) or len(labels) != 5:
+            raise ScenarioLabError("final context has an incompatible linguistic domain")
+        mapping: dict[str, str] = {}
+        for label in labels:
+            human_label = label.get("label") if isinstance(label, dict) else None
+            key = label.get("key") if isinstance(label, dict) else None
+            normalized = human_label.strip().casefold() if isinstance(human_label, str) else ""
+            if normalized in mapping or normalized not in expected or not isinstance(key, str) or not key.strip():
+                raise ScenarioLabError("final context has malformed linguistic label definitions")
+            mapping[normalized] = key.strip()
+        if tuple(mapping) != expected:
+            raise ScenarioLabError("final context linguistic labels are not in the required semantic order")
+        if resolved is not None and mapping != resolved:
+            raise ScenarioLabError("final context does not use one homogeneous linguistic domain")
+        resolved = mapping
+    assert resolved is not None
+    return resolved
+
+
+def _final_identities(data: dict[str, Any], context: dict[str, Any], expected_weights: dict[str, float]) -> tuple[dict[str, str], dict[str, str]]:
+    fixture_leaves = _fixture_leaves(data)
+    criteria = _items(context, "leafCriteria")
+    actual_names = [item.get("name") for item in criteria]
+    expected_names = [item["name"] for item in fixture_leaves]
+    persisted_ids = [_id(item) for item in criteria]
+    if actual_names != expected_names or len(persisted_ids) != 18 or any(not item for item in persisted_ids) or len(set(persisted_ids)) != 18:
+        raise ScenarioLabError("final leaf criteria do not preserve the fixture hierarchy order and unique persisted identities")
+    leaf_ids = {leaf["key"]: persisted_ids[index] for index, leaf in enumerate(fixture_leaves)}
     alternatives = {item.get("name"): _id(item) for item in _items(context, "alternatives")}
-    criteria = {item.get("name"): _id(item) for item in _items(context, "leafCriteria")}
+    expected_alternatives = [item["name"] for item in data["alternatives"]]
+    if set(alternatives) != set(expected_alternatives) or any(not value for value in alternatives.values()) or len(set(alternatives.values())) != 5:
+        raise ScenarioLabError("final alternatives do not have the expected persisted identities")
+    model_parameters = context.get("modelParameters")
+    weights = model_parameters.get("weights") if isinstance(model_parameters, dict) else None
+    if not isinstance(weights, dict) or set(weights) != set(persisted_ids):
+        raise ScenarioLabError("final persisted weights do not use exactly the resolved leaf criterion identities")
+    if any(not _finite(value) or value < 0 for value in weights.values()) or abs(sum(weights.values()) - 1) > 1e-6:
+        raise ScenarioLabError("final persisted weights are not finite non-negative values summing to one")
+    if any(abs(weights[criterion_id] - expected_weights[key]) > 1e-9 for key, criterion_id in leaf_ids.items()):
+        raise ScenarioLabError("final persisted weights do not match propagated parent weights")
+    if (
+        model_parameters.get("expertAggregation", {}).get("method") != "arithmetic_mean"
+        or model_parameters.get("criteriaAggregation", {}).get("method") != "weighted_average"
+    ):
+        raise ScenarioLabError("final model parameters do not preserve the requested aggregation methods")
+    return alternatives, leaf_ids
+
+
+def _matrix(data: dict[str, Any], context: dict[str, Any], *, alternatives: dict[str, str], criteria: dict[str, str]) -> dict[str, dict[str, dict[str, Any]]]:
+    labels = _label_keys(context)
+    expected = [name.casefold() for name in EXPECTED_LABELS]
     matrix: dict[str, dict[str, dict[str, Any]]] = {}
     for alt in data["alternatives"]:
         row: dict[str, dict[str, Any]] = {}
@@ -194,11 +295,45 @@ def _matrix(data: dict[str, Any], context: dict[str, Any]) -> dict[str, dict[str
                 level = 6 - raw if child["key"] in COST_KEYS else raw
                 if child["key"] == "c3_clustering_possible":
                     level = {"Yes": 5, "Unsure": 3, "No": 1}[raw]
-                if not isinstance(level, (int, float)) or not 1 <= level <= 5 or not alternatives.get(alt["name"]) or not criteria.get(child["name"]):
+                if not isinstance(level, (int, float)) or not 1 <= level <= 5 or not alternatives.get(alt["name"]) or not criteria.get(child["key"]):
                     raise ScenarioLabError("source matrix cannot be mapped to persisted issue identities")
-                row[criteria[child["name"]]] = {"labelKey": labels[expected[int(level) - 1]], "alpha": 0}
+                row[criteria[child["key"]]] = {"labelKey": labels[expected[int(level) - 1]], "alpha": 0}
         matrix[alternatives[alt["name"]]] = row
     return matrix
+
+
+def _validate_finished(response: Any, alternative_ids: dict[str, str], criterion_ids: dict[str, str]) -> None:
+    result = response.get("result") if isinstance(response, dict) else None
+    if not isinstance(response, dict) or response.get("currentStage") != "finished" or not isinstance(result, dict):
+        raise ScenarioLabError("two-tuple Greece computation did not finish")
+    ranking = result.get("rankedAlternatives")
+    if not isinstance(ranking, list) or len(ranking) != 5:
+        raise ScenarioLabError("final result must rank exactly five alternatives")
+    ranking_ids = [item.get("alternativeId") for item in ranking if isinstance(item, dict)]
+    ranks = [item.get("rank") for item in ranking if isinstance(item, dict)]
+    if (
+        set(ranking_ids) != set(alternative_ids.values())
+        or len(set(ranking_ids)) != 5
+        or any(item.get("name") not in alternative_ids for item in ranking if isinstance(item, dict))
+        or any(item.get("alternativeId") != alternative_ids.get(item.get("name")) for item in ranking if isinstance(item, dict))
+        or any(not _finite(item.get("score")) for item in ranking if isinstance(item, dict))
+        or set(ranks) != {1, 2, 3, 4, 5}
+        or any(not isinstance(rank, int) or isinstance(rank, bool) for rank in ranks)
+    ):
+        raise ScenarioLabError("final ranking is incompatible with persisted alternatives")
+    collective = result.get("collectiveEvaluations")
+    if not isinstance(collective, dict) or set(collective) != set(alternative_ids.values()):
+        raise ScenarioLabError("final collective evaluations do not contain exactly five persisted alternatives")
+    for row in collective.values():
+        if not isinstance(row, dict) or set(row) != set(criterion_ids.values()):
+            raise ScenarioLabError("final collective evaluations do not contain every persisted leaf criterion")
+        for cell in row.values():
+            if not isinstance(cell, dict) or set(cell) != {"labelKey", "alpha"} or not isinstance(cell.get("labelKey"), str) or not _finite(cell.get("alpha")):
+                raise ScenarioLabError("final collective linguistic cells are not canonical JSON values")
+    try:
+        json.dumps(result, allow_nan=False)
+    except (TypeError, ValueError) as error:
+        raise ScenarioLabError("final two-tuple result is not JSON serializable") from error
 
 
 def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = "owner", fixture_path: Path = FIXTURE_PATH) -> Any:
@@ -216,6 +351,7 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
     try:
         models = owner.models()
         main = _model(models, MODEL_KEY, kind="issue")
+        _validate_main_model(main)
         weighting = _model(models, WEIGHTING_KEY, kind="criteriaWeighting")
         if weighting.get("supportsExpertCriteriaWeighting") is not True:
             raise ScenarioLabError("preference_order_criteria_weights does not support expert criteria weighting")
@@ -257,14 +393,17 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         expert.respond_to_invitation(issue_id, "accepted")
         response = expert.evaluation(issue_id, ALTERNATIVE_STAGE)
         context = _context(response, issue_id, ALTERNATIVE_STAGE, MODEL_KEY)
-        persisted_leaf_ids = {_id(item) for item in _items(context, "leafCriteria")}
-        if persisted_leaf_ids != {f"criterion-{key}" for key in leaves}:
-            raise ScenarioLabError("final issue did not preserve the resolved leaf criterion identities used for weights")
-        matrix = _matrix(data, context)
+        alternatives, criterion_ids = _final_identities(data, context, leaves)
+        matrix = _matrix(data, context, alternatives=alternatives, criteria=criterion_ids)
         expert.submit_evaluation(issue_id, ALTERNATIVE_STAGE, matrix)
         finished = owner.compute_evaluation(issue_id, ALTERNATIVE_STAGE)
-        if finished.get("currentStage") != "finished":
-            raise ScenarioLabError("two-tuple Greece issue did not finish")
+        _validate_finished(finished, alternatives, criterion_ids)
+        detail = owner.finished_issue(issue_id)
+        final_expert_email = sessions.users[data["participants"]["finalExpert"]].email.casefold()
+        participants = _items(detail, "participants")
+        accepted = [item for item in participants if ((item.get("expert") or {}).get("email") or "").casefold() == final_expert_email]
+        if len(participants) != 1 or len(accepted) != 1:
+            raise ScenarioLabError("finished issue does not have exactly one final accepted expert")
         entry = GeneratedIssue(
             generationId=generation_id,
             scenarioId=SCENARIO_ID,
