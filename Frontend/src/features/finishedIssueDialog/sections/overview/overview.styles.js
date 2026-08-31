@@ -206,7 +206,7 @@ export const overviewScrollableListSx = {
 export const overviewCriteriaViewportSx = {
   ...overviewScrollableSurfaceSx,
   minHeight: 0,
-  width: "100%",
+  maxWidth: "100%",
   maxHeight: { xs: 420, md: 460, xl: 520 },
   overflow: "auto",
   pr: 0.4,
@@ -233,8 +233,7 @@ export const overviewDomainListSx = {
 
 export const overviewCriterionRowSx = (depth, hasChildren) => ({
   position: "relative",
-  width: `calc(100% - ${depth * 2.15}rem)`,
-  minWidth: 0,
+  minWidth: "max-content",
   ml: depth * 2.15,
   mb: 0.65,
   "&::before":
@@ -271,10 +270,8 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
 });
 
 export const overviewCriterionSurfaceSx = {
-  width: "100%",
-  minWidth: 0,
-  display: "grid",
-  gridTemplateColumns: "25px minmax(0, 1fr) auto",
+  minWidth: 260,
+  display: "flex",
   alignItems: "center",
   gap: 0.7,
   px: 0.85,

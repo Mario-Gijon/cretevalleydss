@@ -28,8 +28,8 @@ describe("OverviewView", () => {
     expect(nested["&::after"]).toMatchObject({ height: "1px", left: -15, top: 23, width: 12, bgcolor: "rgba(76, 201, 211, 0.30)" });
     expect(overviewCriterionRowSx(0, false)["&::before"]).toBeUndefined();
     expect(overviewCriterionRowSx(0, false)["&::after"]).toBeUndefined();
-    expect(overviewCriterionRowSx(2, false)).toMatchObject({ width: "calc(100% - 4.3rem)", minWidth: 0 });
-    expect(overviewCriterionSurfaceSx).toMatchObject({ width: "100%", minWidth: 0 });
+    expect(overviewCriterionRowSx(2, false)).toMatchObject({ minWidth: "max-content", ml: 4.3 });
+    expect(overviewCriterionSurfaceSx).toMatchObject({ minWidth: 260, display: "flex" });
     expect(overviewCriteriaViewportSx.overflow).toBe("auto");
   });
 
@@ -229,6 +229,6 @@ describe("OverviewView", () => {
 
     expect(overviewScrollableListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 360, md: 390, xl: 430 } });
     expect(overviewParticipationListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 260, md: 218, xl: 250 } });
-    expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", width: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
+    expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", maxWidth: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
   });
 });
