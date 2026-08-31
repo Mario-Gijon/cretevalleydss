@@ -4,7 +4,16 @@ import { resolveAnalyticalGraphRenderer } from "./analyticalGraphRegistry.js";
 import { finishedIssueScrollbarSx } from "../../features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
 
 const graphFrameSx = (chartHeight) => ({ height: chartHeight || { xs: 300, sm: 360 }, minHeight: 0, width: "100%" });
-const graphViewportSx = { ...finishedIssueScrollbarSx, width: "100%", height: "100%", overflowX: "auto", overflowY: "hidden" };
+const HORIZONTAL_SCROLLBAR_GUTTER = 12;
+const graphViewportSx = {
+  ...finishedIssueScrollbarSx,
+  boxSizing: "border-box",
+  width: "100%",
+  height: "100%",
+  pb: `${HORIZONTAL_SCROLLBAR_GUTTER}px`,
+  overflowX: "auto",
+  overflowY: "hidden",
+};
 const graphContentSx = (chartMinWidth) => ({ height: "100%", minWidth: chartMinWidth || 0, width: "100%" });
 
 const AnalyticalGraph = ({ visualization, chartHeight, chartMinWidth, titleVariant = "h6" }) => {

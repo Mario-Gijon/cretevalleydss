@@ -39,7 +39,7 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
   const diverging = visualization?.scale?.kind === "diverging";
   const center = Number.isFinite(visualization?.scale?.center) ? visualization.scale.center : 0;
   const magnitude = finiteValues.reduce((maximumDeviation, value) => Math.max(maximumDeviation, Math.abs(value - center)), 0);
-  return <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", gridTemplateColumns: `minmax(90px, auto) repeat(${data.columns.length}, minmax(64px, 1fr))`, gap: 0.5, overflowX: "auto" }}>
+  return <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", gridTemplateColumns: `minmax(90px, auto) repeat(${data.columns.length}, minmax(64px, 1fr))`, gap: 0.5 }}>
     <Box />
     {data.columns.map((column) => <Typography key={column.key} variant="caption" sx={{ textAlign: "center", fontWeight: 700 }}>{column.label || column.key}</Typography>)}
     {data.rows.map((row, rowIndex) => <Box key={row.key} sx={{ display: "contents" }}>

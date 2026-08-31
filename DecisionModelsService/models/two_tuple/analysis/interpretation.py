@@ -53,6 +53,20 @@ def _bold_names(
     return ", ".join(names[:-1]) + f", and {names[-1]}"
 
 
+def _named_group(
+    items: list[dict[str, Any]],
+    *,
+    key: str,
+    noun: str,
+    list_limit: int = 5,
+) -> str:
+    if not items:
+        return "none"
+    if len(items) <= list_limit:
+        return _bold_names(items, key=key)
+    return f"**{len(items)} {noun}**"
+
+
 def _tuple_text(
     tuple_value: dict[str, Any] | None,
 ) -> str:
@@ -125,13 +139,12 @@ def _result_interpretation(
             [
                 (
                     f"- Only **{_escape(item['name'])}** was evaluated, "
-                    "so this execution does not support a comparative "
-                    "winner."
+                    "so this execution does not support a comparative winner."
                 ),
                 (
                     f"- Its final assessment is {_tuple_text(item['tuple'])}, "
-                    f"corresponding to linguistic position "
-                    f"**β = {_number(item['beta'])}**."
+                    f"corresponding to **β = {_number(item['beta'])}** on "
+                    "the common linguistic scale."
                 ),
             ]
         )
@@ -143,10 +156,11 @@ def _result_interpretation(
         selected = winner["alternative"]
         lines.append(
             (
-                f"- **{_escape(selected['name'])} is the unique semantic "
-                f"leader**, with final assessment "
-                f"{_tuple_text(selected['tuple'])} and "
-                f"**β = {_number(selected['beta'])}**."
+                f"- **{_escape(selected['name'])} is the unique leading "
+                f"alternative**. Its final assessment is "
+                f"{_tuple_text(selected['tuple'])}, corresponding to "
+                f"**β = {_number(selected['beta'])}** on the common "
+                "linguistic scale."
             )
         )
     else:
@@ -156,52 +170,57 @@ def _result_interpretation(
             "no_discrimination",
         }:
             lines.append(
-                (
-                    "- The execution does **not** support a unique "
-                    "preferred alternative."
-                )
+                "- The execution does **not** support a unique preferred alternative."
+            )
+            lines.append(
+                f"- The effective leading group is {_bold_names(leaders)}."
             )
             lines.append(
                 (
-                    f"- The effective leading group is "
-                    f"{_bold_names(leaders)}."
-                )
-            )
-            lines.append(
-                (
-                    "- The stored technical order is retained for "
-                    "traceability and must not be interpreted as "
-                    "substantive superiority inside an effective tie."
+                    "- The stored technical order is retained for traceability "
+                    "and must not be interpreted as substantive superiority "
+                    "inside an effective tie."
                 )
             )
         else:
             lines.append(
-                "- No unique semantic winner is available for this execution."
+                "- No unique leading alternative is available for this execution."
             )
 
     lines.append(
-        f"- Stored technical ordering: **{_ranking_text(ranking)}**."
+        f"- Final technical ordering: **{_ranking_text(ranking)}**."
     )
 
-    if result.get("closestAdjacentAlternatives"):
-        closest = result["closestAdjacentAlternatives"]
+    closest = result.get("closestAdjacentAlternatives")
+    if closest:
         gap = closest["betaGap"]
         pairs = closest["pairs"]
 
         if pairs:
-            pair_text = ", ".join(
-                (
-                    f"{_escape(item['higherAlternativeName'])} / "
-                    f"{_escape(item['lowerAlternativeName'])}"
+            if len(pairs) == 1:
+                pair = pairs[0]
+                lines.append(
+                    (
+                        f"- **{_escape(pair['higherAlternativeName'])}** and "
+                        f"**{_escape(pair['lowerAlternativeName'])}** are the "
+                        "closest adjacent alternatives in the final ordering, "
+                        f"separated by only **{_number(gap)} β units**."
+                    )
                 )
-                for item in pairs
-            )
-            lines.append(
-                (
-                    f"- Smallest adjacent final-β gap: "
-                    f"**{_number(gap)}**, observed for {pair_text}."
+            else:
+                pair_text = ", ".join(
+                    (
+                        f"{_escape(item['higherAlternativeName'])} / "
+                        f"{_escape(item['lowerAlternativeName'])}"
+                    )
+                    for item in pairs
                 )
-            )
+                lines.append(
+                    (
+                        f"- The smallest adjacent separation is "
+                        f"**{_number(gap)} β units**, shared by {pair_text}."
+                    )
+                )
 
     return "\n".join(lines)
 
@@ -219,28 +238,29 @@ def _linguistic_interpretation(
         "### Linguistic 2-tuple interpretation",
         "",
         (
-            "- **β** is the numerical position on the common linguistic "
-            "term set. **α** is the symbolic translation around the "
-            "selected label; it is not uncertainty, confidence, or "
-            "evaluator disagreement."
-        ),
-        (
-            f"- Across the collective alternative × criterion matrix, "
-            f"**{summary['translatedValueCount']} of "
-            f"{summary['valueCount']}** values use a non-zero α "
-            f"({_percent(summary['translatedShare'])})."
+            "- **β** represents position on the common linguistic scale. "
+            "**α** is the symbolic translation around the selected linguistic "
+            "label; it is not uncertainty, confidence, or evaluator disagreement."
         ),
     ]
 
     if summary["translatedValueCount"] == 0:
         lines.append(
             (
-                "- Every collective evaluation lies exactly on a "
-                "linguistic label, so no symbolic translation is "
-                "needed in the collective matrix."
+                f"- All **{summary['valueCount']}** collective alternative × "
+                "criterion assessments fall exactly on linguistic labels "
+                "(α = 0)."
             )
         )
     else:
+        lines.append(
+            (
+                f"- Across the collective alternative × criterion matrix, "
+                f"**{summary['translatedValueCount']} of "
+                f"{summary['valueCount']}** values require non-zero symbolic "
+                f"translation ({_percent(summary['translatedShare'])})."
+            )
+        )
         strongest = collective["strongestTranslations"]
         if strongest.get("available"):
             descriptions = [
@@ -261,19 +281,31 @@ def _linguistic_interpretation(
                 )
             )
 
-    if final_summary["translatedValueCount"] == 0:
+    if (
+        summary["translatedValueCount"] == 0
+        and final_summary["translatedValueCount"] > 0
+    ):
         lines.append(
             (
-                "- All final alternative results also fall exactly "
-                "on linguistic labels."
+                f"- After criteria aggregation, however, "
+                f"**{final_summary['translatedValueCount']} of "
+                f"{final_summary['valueCount']}** final alternative results "
+                "fall between linguistic labels and therefore require "
+                "symbolic translation α. This is a direct consequence of "
+                "aggregating the exact-label criterion positions on the β scale."
             )
+        )
+    elif final_summary["translatedValueCount"] == 0:
+        lines.append(
+            "- All final alternative results also fall exactly on linguistic labels."
         )
     else:
         lines.append(
             (
-                f"- **{final_summary['translatedValueCount']} of "
-                f"{final_summary['valueCount']}** final alternative "
-                "results require non-zero symbolic translation."
+                f"- At the final-alternative level, "
+                f"**{final_summary['translatedValueCount']} of "
+                f"{final_summary['valueCount']}** results require non-zero "
+                "symbolic translation."
             )
         )
 
@@ -286,45 +318,58 @@ def _aggregation_interpretation(
     aggregation = facts["aggregation"]
     expert = aggregation["expertAggregation"]["summary"]
     criteria = aggregation["criteriaAggregation"]["summary"]
+    evaluators = facts["evaluators"]["items"]
 
     lines = [
         "### Aggregation interpretation",
         "",
-        (
-            f"- Evaluator assessments were combined using "
-            f"**{_method_text(expert)}**."
-        ),
-        (
-            f"- Collective criterion assessments were then combined "
-            f"using **{_method_text(criteria)}**."
-        ),
     ]
 
-    if expert["method"] == "l2towa":
+    if len(evaluators) == 1:
+        only = evaluators[0]
         lines.append(
             (
-                "- In evaluator L2TOWA, an OWA coefficient belongs to "
-                "the evaluator assessment's **ordered β position in "
-                "that specific cell**, not to a permanent evaluator "
-                "identity."
+                f"- Only **{_escape(only['expertLabel'])}** contributed to "
+                "alternative evaluation, so the expert-aggregation stage is "
+                "mathematically trivial: the collective alternative × criterion "
+                "matrix is identical to that evaluator's submitted matrix."
+            )
+        )
+    else:
+        lines.append(
+            (
+                f"- Evaluator assessments were combined using "
+                f"**{_method_text(expert)}**."
+            )
+        )
+
+    lines.append(
+        (
+            f"- Collective criterion assessments were then combined using "
+            f"**{_method_text(criteria)}**."
+        )
+    )
+
+    if expert["method"] == "l2towa" and len(evaluators) > 1:
+        lines.append(
+            (
+                "- In evaluator L2TOWA, an OWA coefficient belongs to the "
+                "assessment's **ordered β position in that specific cell**, "
+                "not to a permanent evaluator identity."
             )
         )
 
     if criteria["method"] == "l2towa":
         lines.append(
             (
-                "- In criteria L2TOWA, an OWA coefficient belongs to "
-                "the **ordered β position for that alternative**. A "
-                "criterion can therefore occupy different positions "
-                "for different alternatives."
+                "- In criteria L2TOWA, an OWA coefficient belongs to the "
+                "**ordered β position for that alternative**. A criterion can "
+                "therefore occupy different positions for different alternatives."
             )
         )
 
     if criteria["method"] == "weighted_average":
-        weights = criteria["effectiveWeights"]
-        traces = aggregation["criteriaAggregation"]["trace"][
-            "alternatives"
-        ]
+        traces = aggregation["criteriaAggregation"]["trace"]["alternatives"]
         if traces:
             first_sources = traces[0]["sources"]
             weighted = [
@@ -348,7 +393,9 @@ def _aggregation_interpretation(
             ]
             lines.append(
                 (
-                    "- Highest configured criterion importance weight: "
+                    "- At the **leaf-criterion level used by this 2-tuple "
+                    "aggregation**, the largest effective criterion importance "
+                    "weight belongs to "
                     + _bold_names(top)
                     + f" at **{_percent(top_weight)}**."
                 )
@@ -356,9 +403,9 @@ def _aggregation_interpretation(
 
     lines.append(
         (
-            "- The aggregation traces in the visual analysis show "
-            "how the executed β inputs and effective coefficients "
-            "combine into each final β."
+            "- The aggregation traces in the visual analysis show how each "
+            "executed β input and effective coefficient contributes to the "
+            "corresponding final β."
         )
     )
 
@@ -377,19 +424,12 @@ def _evaluator_interpretation(
     ]
 
     if len(items) == 1:
-        only = items[0]
-        lines.extend(
-            [
-                (
-                    f"- Only **{_escape(only['expertLabel'])}** "
-                    "contributed to alternative evaluation."
-                ),
-                (
-                    "- Evaluator-comparison, disagreement, LOEO, and "
-                    "expert-weight comparison are therefore not "
-                    "meaningful for this execution."
-                ),
-            ]
+        lines.append(
+            (
+                "- With only one evaluator, cross-evaluator alignment, "
+                "disagreement, LOEO, and evaluator-weight comparison are not "
+                "meaningful for this execution."
+            )
         )
         return "\n".join(lines)
 
@@ -403,8 +443,8 @@ def _evaluator_interpretation(
         )
         lines.append(
             (
-                f"- Closest evaluator profile to the collective "
-                f"matrix: {names}, at mean absolute β distance "
+                f"- Closest evaluator profile to the collective matrix: "
+                f"{names}, at mean absolute β distance "
                 f"**{_number(closest['value'])}**."
             )
         )
@@ -416,8 +456,8 @@ def _evaluator_interpretation(
         )
         lines.append(
             (
-                f"- Farthest evaluator profile from the collective "
-                f"matrix: {names}, at mean absolute β distance "
+                f"- Farthest evaluator profile from the collective matrix: "
+                f"{names}, at mean absolute β distance "
                 f"**{_number(farthest['value'])}**."
             )
         )
@@ -452,18 +492,15 @@ def _evaluator_interpretation(
     if differing:
         lines.append(
             (
-                f"- **{len(differing)} of {len(items)}** evaluators "
-                "produce a personal technical ranking different from "
-                "the collective ordering when the same configured "
-                "criteria aggregation is applied to their own matrix."
+                f"- **{len(differing)} of {len(items)}** evaluators produce "
+                "a personal technical ranking different from the collective "
+                "ordering when the same configured criteria aggregation is "
+                "applied to their own matrix."
             )
         )
     else:
         lines.append(
-            (
-                "- Every evaluator's personal technical ranking "
-                "matches the collective technical ordering."
-            )
+            "- Every evaluator's personal technical ranking matches the collective ordering."
         )
 
     return "\n".join(lines)
@@ -510,41 +547,52 @@ def _robustness_group_text(
         for item in items
         if item["impact"]["technicalRankingChanged"]
     ]
+    unchanged_count = len(items) - len(ranking_changes)
     winner_changes = (
         group["winnerStateChangingEvaluators"]
         if identity == "evaluator"
         else group["winnerStateChangingCriteria"]
     )
 
+    if identity == "criterion":
+        noun_singular = "criterion"
+        noun_plural = "criteria"
+        winner_key = "name"
+    else:
+        noun_singular = "evaluator"
+        noun_plural = "evaluators"
+        winner_key = "expertLabel"
+
     lines = []
 
     if ranking_changes:
         lines.append(
             (
-                f"- Removing **{len(ranking_changes)} of {len(items)}** "
-                f"available {identity}s changes the stored technical "
-                "ranking."
+                f"- The technical ordering remains unchanged after removing "
+                f"**{unchanged_count} of {len(items)} {noun_plural}**; "
+                f"removing the other **{len(ranking_changes)}** produces some "
+                "technical rank displacement."
             )
         )
     else:
         lines.append(
             (
-                f"- The technical ranking is stable across every "
-                f"available leave-one-{identity}-out removal."
+                f"- The technical ordering is stable across all "
+                f"**{len(items)}** available single-{noun_singular} removals."
             )
         )
 
     if winner_changes:
         lines.append(
             (
-                f"- Semantic winner state changes when removing "
-                f"{_bold_names(winner_changes, key=('expertLabel' if identity == 'evaluator' else 'name'))}."
+                "- More importantly, the semantic winner state changes only "
+                f"when removing {_bold_names(winner_changes, key=winner_key)}."
             )
         )
     else:
         lines.append(
             (
-                f"- No available leave-one-{identity}-out removal "
+                f"- None of the available single-{noun_singular} removals "
                 "changes the semantic winner state."
             )
         )
@@ -561,8 +609,8 @@ def _robustness_interpretation(
         "### Robustness diagnostics",
         "",
         (
-            "- These are **counterfactual diagnostics**, not an "
-            "additional rule of the 2-tuple linguistic model."
+            "- These are **counterfactual diagnostics**, not additional rules "
+            "of the 2-tuple linguistic model."
         ),
     ]
     lines.extend(
@@ -619,24 +667,32 @@ def _sensitivity_group_text(
     group: dict[str, Any],
     *,
     kind: str,
+    evaluator_count: int,
 ) -> list[str]:
     if not group["availability"].get("available"):
         reason = group["availability"].get("reason")
 
+        if kind == "evaluator" and evaluator_count == 1:
+            return [
+                (
+                    "- Evaluator-weight sensitivity is not meaningful here: "
+                    "only one evaluator contributed to alternative evaluation."
+                )
+            ]
         if reason == "criteria_aggregation_not_weighted_average":
             return [
                 (
-                    "- Criterion-weight sensitivity is not applicable "
-                    "because the selected criteria aggregation does not "
-                    "use criterion-importance weights."
+                    "- Criterion-weight sensitivity is not applicable because "
+                    "the selected criteria aggregation does not use "
+                    "criterion-importance weights."
                 )
             ]
         if reason == "expert_aggregation_not_weighted_average":
             return [
                 (
-                    "- Evaluator-weight sensitivity is not applicable "
-                    "because the selected expert aggregation does not "
-                    "use evaluator-importance weights."
+                    "- Evaluator-weight sensitivity is not applicable because "
+                    "the selected expert aggregation does not use "
+                    "evaluator-importance weights."
                 )
             ]
         if reason == "single_criterion":
@@ -655,85 +711,42 @@ def _sensitivity_group_text(
             f"- {kind.capitalize()} weight sensitivity is unavailable."
         ]
 
-    changing = (
-        group["winnerStateChangingEvaluators"]
-        if kind == "evaluator"
-        else group["winnerStateChangingCriteria"]
-    )
+    items = [
+        item
+        for item in group.get("items") or []
+        if item.get("available")
+    ]
+    if not items:
+        return [
+            f"- No valid {kind}-weight sensitivity items are available."
+        ]
 
-    if kind == "evaluator":
-        nearest = _nearest_weight_change(
-            group,
-            identity_key="expertKey",
-            label_key="expertLabel",
-        )
-        name_key = "expertLabel"
-    else:
-        nearest = _nearest_weight_change(
-            group,
-            identity_key="criterionId",
-            label_key="name",
-        )
-        name_key = "name"
-
-    lines: list[str] = []
+    name_key = "expertLabel" if kind == "evaluator" else "name"
+    noun = "evaluators" if kind == "evaluator" else "criteria"
 
     interior_items = [
         item
-        for item in group.get("items") or []
-        if (
-            item.get("available")
-            and item["summary"][
-                "interiorWinnerStateChangedSampleCount"
-            ] > 0
-        )
+        for item in items
+        if item["summary"][
+            "interiorWinnerStateChangedSampleCount"
+        ] > 0
     ]
     endpoint_only_items = [
         item
-        for item in group.get("items") or []
-        if (
-            item.get("available")
-            and item["summary"][
-                "winnerStateChangesOnlyAtEndpoints"
-            ]
-        )
+        for item in items
+        if item["summary"][
+            "winnerStateChangesOnlyAtEndpoints"
+        ]
+    ]
+    no_change_items = [
+        item
+        for item in items
+        if item["summary"]["winnerStateChangedSampleCount"] == 0
     ]
 
-    if interior_items:
-        lines.append(
-            (
-                f"- Interior sampled {kind}-weight changes can alter "
-                "the semantic winner state for "
-                f"{_bold_names(interior_items, key=name_key)}."
-            )
-        )
-    elif endpoint_only_items:
-        lines.append(
-            (
-                f"- No interior sampled {kind}-weight change alters "
-                "the semantic winner state for the endpoint-only cases "
-                f"{_bold_names(endpoint_only_items, key=name_key)}."
-            )
-        )
-    elif not changing:
-        lines.append(
-            (
-                f"- No sampled {kind}-weight change in [0, 1] alters "
-                "the semantic winner state."
-            )
-        )
-
-    if nearest is not None:
-        labels, distance = nearest
-        formatted = [f"**{_escape(label)}**" for label in labels]
-        lines.append(
-            (
-                "- Nearest interior sampled winner-state change to a "
-                f"configured baseline occurs for {', '.join(formatted)}, "
-                f"after an absolute weight move of "
-                f"**{_number(distance)}**."
-            )
-        )
+    endpoint_one_only: list[dict[str, Any]] = []
+    endpoint_zero_only: list[dict[str, Any]] = []
+    endpoint_both: list[dict[str, Any]] = []
 
     for item in endpoint_only_items:
         endpoints = {
@@ -742,35 +755,87 @@ def _sensitivity_group_text(
                 "endpointWinnerStateChanges"
             ]
         }
-        label = _escape(item.get(name_key) or "")
-
         if endpoints == {"one"}:
-            lines.append(
-                (
-                    f"- For **{label}**, the winner state changes only "
-                    "at **w = 1.0**: the target receives all importance "
-                    "and every other importance weight becomes zero."
-                )
-            )
+            endpoint_one_only.append(item)
         elif endpoints == {"zero"}:
-            lines.append(
-                (
-                    f"- For **{label}**, the winner state changes only "
-                    "at **w = 0.0**: the target receives zero importance "
-                    "and the remaining importance weights are redistributed "
-                    "proportionally."
-                )
-            )
+            endpoint_zero_only.append(item)
         elif endpoints == {"zero", "one"}:
-            lines.append(
-                (
-                    f"- For **{label}**, winner-state changes are observed "
-                    "only at both endpoints: **w = 0.0** removes the target "
-                    "and redistributes the remaining weights proportionally, "
-                    "while **w = 1.0** gives the target all importance and "
-                    "sets every other weight to zero."
-                )
+            endpoint_both.append(item)
+
+    lines: list[str] = []
+
+    if interior_items:
+        lines.append(
+            (
+                f"- **{len(interior_items)} {noun}** show an interior sampled "
+                "sensitivity of the semantic winner: "
+                f"{_bold_names(interior_items, key=name_key)}."
             )
+        )
+    else:
+        lines.append(
+            (
+                f"- No interior sampled {kind}-weight change alters the "
+                "semantic winner state."
+            )
+        )
+
+    identity_key = "expertKey" if kind == "evaluator" else "criterionId"
+    nearest = _nearest_weight_change(
+        group,
+        identity_key=identity_key,
+        label_key=name_key,
+    )
+    if nearest is not None:
+        labels, distance = nearest
+        formatted = [f"**{_escape(label)}**" for label in labels]
+        lines.append(
+            (
+                "- The closest observed interior winner-state change to a "
+                f"configured baseline occurs for {', '.join(formatted)}, "
+                f"after an absolute weight move of **{_number(distance)}**."
+            )
+        )
+
+    if endpoint_one_only:
+        lines.append(
+            (
+                f"- **{len(endpoint_one_only)} {noun}** change the winner state "
+                "only at the extreme endpoint **w = 1.0**, where the target "
+                "receives all importance and every other importance weight "
+                "becomes zero. These are extreme endpoint scenarios rather "
+                "than ordinary local sensitivity."
+            )
+        )
+
+    if endpoint_zero_only:
+        lines.append(
+            (
+                f"- {_named_group(endpoint_zero_only, key=name_key, noun=noun)} "
+                "change the winner state only at **w = 0.0**, where the target "
+                "is assigned zero importance and the remaining importance "
+                "weights are redistributed proportionally."
+            )
+        )
+
+    if endpoint_both:
+        lines.append(
+            (
+                f"- {_named_group(endpoint_both, key=name_key, noun=noun)} "
+                "change the winner state at **both endpoints**: w = 0.0 "
+                "removes the target from the weighted aggregation, whereas "
+                "w = 1.0 makes it the only weighted argument."
+            )
+        )
+
+    if no_change_items:
+        lines.append(
+            (
+                f"- {_named_group(no_change_items, key=name_key, noun=noun)} "
+                "show no sampled winner-state change across the tested "
+                "weight range."
+            )
+        )
 
     return lines
 
@@ -779,26 +844,29 @@ def _sensitivity_interpretation(
     facts: dict[str, Any],
 ) -> str:
     sensitivity = facts["sensitivity"]
+    evaluator_count = facts["counts"]["evaluators"]
 
     lines = [
         "### Weight sensitivity",
         "",
         (
-            "- Sensitivity is sampled in 0.05 steps plus each exact "
-            "configured baseline. It identifies **observed sampled "
-            "changes**, not exact mathematical breakpoints."
+            "- Sensitivity is evaluated on a sampled 0–1 grid in steps of "
+            "0.05, plus each exact configured baseline weight. It identifies "
+            "**observed sampled changes**, not exact mathematical breakpoints."
         ),
     ]
     lines.extend(
         _sensitivity_group_text(
             sensitivity["criterionWeights"],
             kind="criterion",
+            evaluator_count=evaluator_count,
         )
     )
     lines.extend(
         _sensitivity_group_text(
             sensitivity["expertWeights"],
             kind="evaluator",
+            evaluator_count=evaluator_count,
         )
     )
 
@@ -820,9 +888,9 @@ def _limits_interpretation(
         "### Interpretation limits",
         "",
         (
-            "- Final **β** values are positions on the common "
-            "linguistic scale. They are not probabilities, "
-            "percentages, or confidence scores."
+            "- Final **β** values are positions on the common linguistic "
+            "scale. They are not probabilities, percentages, confidence "
+            "values, or normalized performance scores."
         ),
         (
             "- **α** is symbolic translation around the selected "
