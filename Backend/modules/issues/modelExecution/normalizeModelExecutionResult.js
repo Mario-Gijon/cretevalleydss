@@ -20,6 +20,8 @@ const DEFAULT_MESSAGES = {
     "Each ranked alternative requires a positive integer rank",
   rankedAlternativeClassificationInvalid:
     "Each ranked alternative classification must be a non-empty string",
+  rankedAlternativeResultLabelInvalid:
+    "Each ranked alternative resultLabel must be a non-empty string",
   rankedAlternativesRankOrderInvalid:
     "rankedAlternatives must be ordered from best to worst by rank",
   collectiveEvaluationsRequired:
@@ -131,12 +133,24 @@ export const normalizeModelExecutionResult = ({
       }
     }
 
+    let resultLabel;
+    if (Object.hasOwn(entry, "resultLabel")) {
+      resultLabel = normalizeNonEmptyString(entry.resultLabel);
+      if (!resultLabel) {
+        throwInvalid(
+          resolvedMessages.rankedAlternativeResultLabelInvalid,
+          `result.rankedAlternatives[${index}].resultLabel`
+        );
+      }
+    }
+
     return {
       alternativeId: entry.alternativeId,
       name,
       score,
       rank,
       ...(classification ? { classification } : {}),
+      ...(resultLabel ? { resultLabel } : {}),
     };
   });
 

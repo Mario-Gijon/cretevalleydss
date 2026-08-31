@@ -37,6 +37,7 @@ const normalizeRanking = ({ payload, execution }) => {
     .map((entry, index) => {
       const alternative = alternatives.get(entry?.alternativeId);
       const classificationId = nonEmptyString(entry?.classification);
+      const resultLabel = nonEmptyString(entry?.resultLabel);
       return {
         id: entry?.alternativeId || `ranking-${index}`,
         name: alternative?.name || entry?.name || "—",
@@ -49,6 +50,7 @@ const normalizeRanking = ({ payload, execution }) => {
           classificationId,
           modelParameters: execution?.modelParameters,
         }),
+        resultLabel,
       };
     })
     .sort((left, right) => left.position - right.position);

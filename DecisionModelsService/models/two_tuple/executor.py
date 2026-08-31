@@ -199,6 +199,21 @@ def _serialize_two_tuple(
     }
 
 
+def _format_alpha(alpha: float) -> str:
+    normalized = 0.0 if abs(alpha) < 0.00005 else alpha
+    formatted = f"{normalized:.4f}".rstrip("0").rstrip(".")
+    return formatted or "0"
+
+
+def _result_label(
+    value: TwoTuple,
+    *,
+    labels: list[dict[str, Any]],
+) -> str:
+    label = labels[value.label_index]["label"]
+    return f"{label} (α = {_format_alpha(float(value.alpha))})"
+
+
 def _expert_metadata(
     *,
     evaluations: list[dict[str, Any]],
@@ -482,6 +497,10 @@ def _output(
                 "name": alternative_names[alternative_index],
                 "score": float(collective_scores[alternative_index]),
                 "rank": rank,
+                "resultLabel": _result_label(
+                    collective_values[alternative_index],
+                    labels=labels,
+                ),
             }
         )
 

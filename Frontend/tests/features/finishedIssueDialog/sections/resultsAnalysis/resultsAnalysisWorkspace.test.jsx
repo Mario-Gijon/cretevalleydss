@@ -393,6 +393,20 @@ describe("Results analysis workspace", () => {
     expect(screen.getByText("Alpha")).toBeInTheDocument();
   });
 
+  it("preserves and renders resultLabel independently of classification", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].resultLabel = "High (α = 0.1465)";
+    payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].classification = "high";
+    payload.models.base.effectiveParameters = { profiles: [{ id: "high", label: "Highly suitable" }] };
+
+    const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+    expect(data.single.ranking[0]).toMatchObject({ resultLabel: "High (α = 0.1465)", classificationLabel: "Highly suitable" });
+
+    render(<ThemeProvider theme={createTheme()}><RankingList ranking={data.single.ranking} /></ThemeProvider>);
+    expect(screen.getByText("High (α = 0.1465)")).toBeInTheDocument();
+    expect(screen.getByText("Highly suitable")).toBeInTheDocument();
+  });
+
   it("resolves a Base classification through the Base effective profiles and renders its label after the score", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.models.base.effectiveParameters = {

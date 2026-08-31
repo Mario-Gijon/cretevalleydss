@@ -343,12 +343,21 @@ def _aggregation_interpretation(
             )
         )
 
-    lines.append(
-        (
-            f"- Collective criterion assessments were then combined using "
-            f"**{_method_text(criteria)}**."
+    if criteria["method"] == "weighted_average":
+        lines.append(
+            (
+                "- Collective criterion assessments were then combined using "
+                "a **2-tuple weighted average with the configured "
+                "criterion-importance weights**."
+            )
         )
-    )
+    else:
+        lines.append(
+            (
+                f"- Collective criterion assessments were then combined using "
+                f"**{_method_text(criteria)}**."
+            )
+        )
 
     if expert["method"] == "l2towa" and len(evaluators) > 1:
         lines.append(
@@ -797,45 +806,106 @@ def _sensitivity_group_text(
             )
         )
 
+    noun_singular = (
+        "evaluator"
+        if kind == "evaluator"
+        else "criterion"
+    )
+    noun_plural = (
+        "evaluators"
+        if kind == "evaluator"
+        else "criteria"
+    )
+    weight_label = (
+        "evaluator"
+        if kind == "evaluator"
+        else "criterion"
+    )
+
     if endpoint_one_only:
-        lines.append(
-            (
-                f"- **{len(endpoint_one_only)} {noun}** change the winner state "
-                "only at the extreme endpoint **w = 1.0**, where the target "
-                "receives all importance and every other importance weight "
-                "becomes zero. These are extreme endpoint scenarios rather "
-                "than ordinary local sensitivity."
+        if len(endpoint_one_only) == 1:
+            lines.append(
+                (
+                    f"- {_bold_names(endpoint_one_only, key=name_key)} "
+                    "changes the winner state only at the extreme endpoint "
+                    f"**w = 1.0**, where that {weight_label} receives all "
+                    f"importance and every other {weight_label} weight "
+                    "becomes zero. This is an extreme endpoint scenario "
+                    "rather than ordinary local sensitivity."
+                )
             )
-        )
+        else:
+            lines.append(
+                (
+                    f"- **{len(endpoint_one_only)} {noun_plural}** change the "
+                    "winner state only at the extreme endpoint **w = 1.0**. "
+                    f"In each such scenario, the selected {weight_label} "
+                    f"receives all importance and every other {weight_label} "
+                    "weight becomes zero. These are extreme endpoint scenarios "
+                    "rather than ordinary local sensitivity."
+                )
+            )
 
     if endpoint_zero_only:
-        lines.append(
-            (
-                f"- {_named_group(endpoint_zero_only, key=name_key, noun=noun)} "
-                "change the winner state only at **w = 0.0**, where the target "
-                "is assigned zero importance and the remaining importance "
-                "weights are redistributed proportionally."
+        if len(endpoint_zero_only) == 1:
+            lines.append(
+                (
+                    f"- {_bold_names(endpoint_zero_only, key=name_key)} "
+                    "changes the winner state only at **w = 0.0**, where that "
+                    f"{weight_label} is assigned zero importance and the "
+                    f"remaining {noun_plural} weights are redistributed "
+                    "proportionally."
+                )
             )
-        )
+        else:
+            lines.append(
+                (
+                    f"- {_named_group(endpoint_zero_only, key=name_key, noun=noun_plural)} "
+                    "change the winner state only at **w = 0.0**. In each such "
+                    f"scenario, the selected {weight_label} is assigned zero "
+                    f"importance and the remaining {noun_plural} weights are "
+                    "redistributed proportionally."
+                )
+            )
 
     if endpoint_both:
-        lines.append(
-            (
-                f"- {_named_group(endpoint_both, key=name_key, noun=noun)} "
-                "change the winner state at **both endpoints**: w = 0.0 "
-                "removes the target from the weighted aggregation, whereas "
-                "w = 1.0 makes it the only weighted argument."
+        if len(endpoint_both) == 1:
+            lines.append(
+                (
+                    f"- {_bold_names(endpoint_both, key=name_key)} changes "
+                    "the winner state at **both endpoints**: **w = 0.0** "
+                    f"removes that {weight_label} from the weighted "
+                    f"aggregation, whereas **w = 1.0** makes it the only "
+                    f"{weight_label} with non-zero weight."
+                )
             )
-        )
+        else:
+            lines.append(
+                (
+                    f"- {_named_group(endpoint_both, key=name_key, noun=noun_plural)} "
+                    "change the winner state at **both endpoints**. At "
+                    f"**w = 0.0** the selected {weight_label} is removed from "
+                    "the weighted aggregation; at **w = 1.0** it becomes the "
+                    f"only {weight_label} with non-zero weight."
+                )
+            )
 
     if no_change_items:
-        lines.append(
-            (
-                f"- {_named_group(no_change_items, key=name_key, noun=noun)} "
-                "show no sampled winner-state change across the tested "
-                "weight range."
+        if len(no_change_items) == 1:
+            lines.append(
+                (
+                    f"- {_bold_names(no_change_items, key=name_key)} shows no "
+                    "sampled winner-state change across the tested weight range."
+                )
             )
-        )
+        else:
+            lines.append(
+                (
+                    f"- {_named_group(no_change_items, key=name_key, noun=noun_plural)} "
+                    "show no sampled winner-state change across the tested "
+                    "weight range."
+                )
+            )
 
     return lines
 

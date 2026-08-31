@@ -31,6 +31,10 @@ const serializeRanking = ({ rankedAlternatives, alternativesById, alternativeIds
       typeof entry?.classification === "string" && entry.classification.trim()
         ? entry.classification.trim()
         : null;
+    const resultLabel =
+      typeof entry?.resultLabel === "string" && entry.resultLabel.trim()
+        ? entry.resultLabel.trim()
+        : null;
 
     return {
       alternativeId: resolvedId,
@@ -38,6 +42,7 @@ const serializeRanking = ({ rankedAlternatives, alternativesById, alternativeIds
       score: entry?.score ?? null,
       rank: entry?.rank ?? null,
       ...(classification ? { classification } : {}),
+      ...(resultLabel ? { resultLabel } : {}),
     };
   });
 };

@@ -113,6 +113,13 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                 >
                   {entry.formattedScore}
                 </Typography>
+                {entry.resultLabel ? (
+                  <Chip
+                    label={entry.resultLabel}
+                    size="small"
+                    variant="outlined"
+                  />
+                ) : null}
                 {entry.classificationLabel ? (
                   <Chip
                     label={entry.classificationLabel}

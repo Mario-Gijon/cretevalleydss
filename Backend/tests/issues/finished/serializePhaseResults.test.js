@@ -47,4 +47,16 @@ describe("Finished Issue phase-result ranking serialization", () => {
       rank: 1,
     }).rankedAlternatives[0]).not.toHaveProperty("classification");
   });
+
+  it("preserves an optional result label", () => {
+    expect(serialize({
+      alternativeId: "alternative-1",
+      name: "Alternative A",
+      score: 3.1465,
+      rank: 1,
+      resultLabel: "High (α = 0.1465)",
+    }).rankedAlternatives[0]).toMatchObject({
+      resultLabel: "High (α = 0.1465)",
+    });
+  });
 });

@@ -56,6 +56,25 @@ describe("standardized ranked-alternative normalization", () => {
     }
   );
 
+  it("preserves a non-empty result label", () => {
+    const normalized = normalizeModelExecutionResult({
+      result: result([rankedAlternative({ resultLabel: "  High (α = 0)  " })]),
+    });
+
+    expect(normalized.rankedAlternatives[0].resultLabel).toBe("High (α = 0)");
+  });
+
+  it.each(["", "   ", null, 1, {}])(
+    "rejects invalid resultLabel %j",
+    (resultLabel) => {
+      expect(() => normalizeModelExecutionResult({
+        result: result([rankedAlternative({ resultLabel })]),
+      })).toThrow(expect.objectContaining({
+        field: "result.rankedAlternatives[0].resultLabel",
+      }));
+    }
+  );
+
   it("preserves the canonical classification in scenario standardized output", () => {
     const normalized = normalizeModelExecutionResult({
       result: result([rankedAlternative({ classification: "medium" })]),
