@@ -10,6 +10,7 @@ import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Participation } from "../../../models/Participations.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
 import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
+import { serializePhaseResults } from "../../../modules/issues/finished/finishedPayload/serializers/serializePhaseResults.js";
 import {
   createConfirmedUser,
   createIssueAlternativesFixture,
@@ -102,6 +103,7 @@ const buildCriteriaWeightingServiceResult = ({
 const buildAlternativeServiceResult = ({
   alternatives,
   leafCriteria,
+  rankedAlternativeResultLabels = null,
   consensusMeasure = null,
   collectiveEvaluations = buildAlternativeMatrixPayload({
     alternatives,
@@ -121,6 +123,9 @@ const buildAlternativeServiceResult = ({
     name: alternative.name,
     score: alternatives.length - index,
     rank: index + 1,
+    ...(rankedAlternativeResultLabels?.[index]
+      ? { resultLabel: rankedAlternativeResultLabels[index] }
+      : {}),
   })),
   collectiveEvaluations,
   plotsGraphic,
@@ -861,6 +866,10 @@ describe("alternative compute orchestration", () => {
         buildAlternativeServiceResult({
           alternatives,
           leafCriteria,
+          rankedAlternativeResultLabels: [
+            "High (α = 0.1465)",
+            "High (α = -0.3388)",
+          ],
           collectiveEvaluations: {
             [String(alternatives[0]._id)]: {
               [String(leafCriteria[0]._id)]: 7,
@@ -961,7 +970,21 @@ describe("alternative compute orchestration", () => {
         },
       },
     });
-    expect(stageResult.result.standardResult.rankedAlternatives).toHaveLength(2);
+    expect(stageResult.result.standardResult.rankedAlternatives).toEqual([
+      expect.objectContaining({ resultLabel: "High (α = 0.1465)" }),
+      expect.objectContaining({ resultLabel: "High (α = -0.3388)" }),
+    ]);
+    const serializedPhase = serializePhaseResults({
+      phaseResults: [stageResult],
+      alternatives: alternatives.map((alternative) => ({
+        id: String(alternative._id),
+        name: alternative.name,
+      })),
+    })[0];
+    expect(serializedPhase.standardizedOutput.rankedAlternatives).toEqual([
+      expect.objectContaining({ resultLabel: "High (α = 0.1465)" }),
+      expect.objectContaining({ resultLabel: "High (α = -0.3388)" }),
+    ]);
     expect(stageResult.result.standardResult).not.toHaveProperty("weightsByCriterion");
     expect(stageResult.result.modelExecution).toMatchObject({
       kind: "decisionModelsService",
