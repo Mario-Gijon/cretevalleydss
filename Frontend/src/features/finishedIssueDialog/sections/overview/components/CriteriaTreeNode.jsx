@@ -13,6 +13,7 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 
 import {
+  overviewCriterionChildrenSx,
   overviewCriterionRowSx,
   overviewCriterionSurfaceSx,
 } from "../overview.styles";
@@ -178,7 +179,7 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
 
       {hasChildren ? (
         <Collapse in={open} timeout="auto">
-          <Box sx={{ pt: 0.65 }}>
+          <Box className="criterion-children" sx={overviewCriterionChildrenSx(depth + 1)}>
             {children.map((child) => (
               <CriteriaTreeNode
                 key={child.id}

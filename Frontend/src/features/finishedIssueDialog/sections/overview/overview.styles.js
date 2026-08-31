@@ -236,18 +236,6 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
   minWidth: "max-content",
   ml: depth * 2.15,
   mb: 0.65,
-  "&::before":
-    depth > 0
-      ? {
-          content: '""',
-          position: "absolute",
-          left: -15,
-          top: -10,
-          bottom: -10,
-          width: "1px",
-          bgcolor: "rgba(76, 201, 211, 0.20)",
-        }
-      : undefined,
   "&::after":
     depth > 0
       ? {
@@ -267,6 +255,23 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
         },
       }
     : {}),
+});
+
+export const overviewCriterionChildrenSx = (depth) => ({
+  position: "relative",
+  width: "100%",
+  "&::before":
+    depth > 0
+      ? {
+          content: '""',
+          position: "absolute",
+          left: `calc(${depth * 2.15}rem - 15px)`,
+          top: -10,
+          bottom: -10,
+          width: "1px",
+          bgcolor: "rgba(76, 201, 211, 0.20)",
+        }
+      : undefined,
 });
 
 export const overviewCriterionSurfaceSx = {
