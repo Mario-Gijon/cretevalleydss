@@ -6,9 +6,14 @@ from .aggregation import build_aggregation_facts
 from .core import build_core_facts_from_evidence
 from .evidence import extract_two_tuple_evidence
 from .experts import build_evaluator_facts
+from .interpretation import build_interpretation
 from .linguistic import build_linguistic_facts
 from .robustness import build_robustness_facts
 from .sensitivity import build_sensitivity_facts
+from .visualizations import (
+    build_visualization_sections,
+    build_visualizations,
+)
 
 
 def analyze_issue(
@@ -36,9 +41,9 @@ def analyze_issue(
 
     return {
         "facts": facts,
-        "interpretation": "",
-        "visualizations": [],
-        "sections": [],
+        "interpretation": build_interpretation(facts),
+        "visualizations": build_visualizations(facts),
+        "sections": build_visualization_sections(facts),
     }
 
 
