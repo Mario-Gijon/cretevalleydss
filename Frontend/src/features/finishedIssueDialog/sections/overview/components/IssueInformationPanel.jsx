@@ -171,12 +171,6 @@ const IssueInformationPanel = ({ data }) => {
             />
           </Box>
 
-          {weightingLevel === "Parent criteria" ? (
-            <Typography variant="caption" color="text.secondary">
-              Parent weights are distributed equally among their direct leaf criteria.
-            </Typography>
-          ) : null}
-
           <Box
             sx={{
               pt: 1,

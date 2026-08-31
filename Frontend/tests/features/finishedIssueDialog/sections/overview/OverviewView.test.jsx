@@ -170,7 +170,6 @@ describe("OverviewView", () => {
     payload.configuration.criteriaWeighting = { required: true, level: "parent" };
     renderView(buildOverviewData(payload));
     expect(screen.getByText("Parent criteria")).toBeInTheDocument();
-    expect(screen.getByText("Parent weights are distributed equally among their direct leaf criteria.")).toBeInTheDocument();
   });
 
   it("uses the latest stored alternative-evaluation result and handles zero accepted participants", () => {
