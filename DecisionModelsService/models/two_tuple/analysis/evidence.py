@@ -702,7 +702,7 @@ def _expert_traces(
         result.append(
             [
                 _trace(
-                    raw_trace,
+                    raw_trace=raw_trace,
                     stage=stage,
                     expected_output_beta=collective_beta_matrix[
                         alternative_index
@@ -740,7 +740,7 @@ def _criteria_traces(
 
     return [
         _trace(
-            raw_trace,
+            raw_trace=raw_trace,
             stage=stage,
             expected_output_beta=collective_scores[alternative_index],
             label_count=label_count,
