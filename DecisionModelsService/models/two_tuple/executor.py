@@ -27,8 +27,6 @@ from .aggregation.core import TwoTuple, delta_inverse
 from .run import run_two_tuple
 
 
-PROJECTION_TOLERANCE = 1e-12
-
 
 def _expert_key(expert: dict[str, Any], index: int) -> str:
     for field in ("id", "email", "name"):
@@ -301,38 +299,6 @@ def _beta_matrix(
     ]
 
 
-def _profiles_have_variation(
-    profiles: list[list[list[float]]],
-) -> bool:
-    if len(profiles) < 2:
-        return False
-
-    flattened = [
-        [
-            float(value)
-            for row in matrix
-            for value in row
-        ]
-        for matrix in profiles
-    ]
-
-    first = flattened[0]
-    if not first:
-        return False
-
-    for current in flattened[1:]:
-        if len(current) != len(first):
-            raise ValueError("analytical projection matrices must share one shape")
-
-        if any(
-            abs(left - right) > PROJECTION_TOLERANCE
-            for left, right in zip(first, current, strict=True)
-        ):
-            return True
-
-    return False
-
-
 def _plots_graphic(
     *,
     matrices: dict[str, list[list[TwoTuple]]],
@@ -347,10 +313,6 @@ def _plots_graphic(
     This projection never participates in the linguistic aggregation or ranking.
     """
 
-    if len(expert_keys) < 2:
-        return {
-            "reason": "insufficient_points_for_projection",
-        }
 
     expert_beta_matrices = [
         _beta_matrix(
@@ -360,12 +322,6 @@ def _plots_graphic(
         for expert_key in expert_keys
     ]
 
-    if not _profiles_have_variation(
-        [*expert_beta_matrices, collective_beta_matrix]
-    ):
-        return {
-            "reason": "insufficient_variation_for_projection",
-        }
 
     projection = get_plots_graphics_from_matrices(
         expert_beta_matrices,

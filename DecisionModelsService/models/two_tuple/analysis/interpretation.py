@@ -593,7 +593,7 @@ def _nearest_weight_change(
         if not item.get("available"):
             continue
         nearest = item["summary"][
-            "nearestObservedWinnerStateChange"
+            "nearestObservedInteriorWinnerStateChange"
         ]
         if not nearest.get("available"):
             continue
@@ -676,17 +676,46 @@ def _sensitivity_group_text(
         )
         name_key = "name"
 
-    lines = []
+    lines: list[str] = []
 
-    if changing:
+    interior_items = [
+        item
+        for item in group.get("items") or []
+        if (
+            item.get("available")
+            and item["summary"][
+                "interiorWinnerStateChangedSampleCount"
+            ] > 0
+        )
+    ]
+    endpoint_only_items = [
+        item
+        for item in group.get("items") or []
+        if (
+            item.get("available")
+            and item["summary"][
+                "winnerStateChangesOnlyAtEndpoints"
+            ]
+        )
+    ]
+
+    if interior_items:
         lines.append(
             (
-                f"- Sampled {kind}-weight changes can alter the "
-                f"semantic winner state for "
-                f"{_bold_names(changing, key=name_key)}."
+                f"- Interior sampled {kind}-weight changes can alter "
+                "the semantic winner state for "
+                f"{_bold_names(interior_items, key=name_key)}."
             )
         )
-    else:
+    elif endpoint_only_items:
+        lines.append(
+            (
+                f"- No interior sampled {kind}-weight change alters "
+                "the semantic winner state for the endpoint-only cases "
+                f"{_bold_names(endpoint_only_items, key=name_key)}."
+            )
+        )
+    elif not changing:
         lines.append(
             (
                 f"- No sampled {kind}-weight change in [0, 1] alters "
@@ -699,12 +728,49 @@ def _sensitivity_group_text(
         formatted = [f"**{_escape(label)}**" for label in labels]
         lines.append(
             (
-                "- Nearest sampled winner-state change to a configured "
-                f"baseline occurs for {', '.join(formatted)}, "
+                "- Nearest interior sampled winner-state change to a "
+                f"configured baseline occurs for {', '.join(formatted)}, "
                 f"after an absolute weight move of "
                 f"**{_number(distance)}**."
             )
         )
+
+    for item in endpoint_only_items:
+        endpoints = {
+            change["endpoint"]
+            for change in item["summary"][
+                "endpointWinnerStateChanges"
+            ]
+        }
+        label = _escape(item.get(name_key) or "")
+
+        if endpoints == {"one"}:
+            lines.append(
+                (
+                    f"- For **{label}**, the winner state changes only "
+                    "at **w = 1.0**: the target receives all importance "
+                    "and every other importance weight becomes zero."
+                )
+            )
+        elif endpoints == {"zero"}:
+            lines.append(
+                (
+                    f"- For **{label}**, the winner state changes only "
+                    "at **w = 0.0**: the target receives zero importance "
+                    "and the remaining importance weights are redistributed "
+                    "proportionally."
+                )
+            )
+        elif endpoints == {"zero", "one"}:
+            lines.append(
+                (
+                    f"- For **{label}**, winner-state changes are observed "
+                    "only at both endpoints: **w = 0.0** removes the target "
+                    "and redistributes the remaining weights proportionally, "
+                    "while **w = 1.0** gives the target all importance and "
+                    "sets every other weight to zero."
+                )
+            )
 
     return lines
 

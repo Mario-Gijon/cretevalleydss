@@ -18,6 +18,56 @@ from .robustness import _baseline_result, _impact, _semantic_result
 SENSITIVITY_STEP = 0.05
 
 
+def _is_endpoint_weight(value: float) -> bool:
+    return (
+        abs(value) <= EVIDENCE_TOLERANCE
+        or abs(value - 1.0) <= EVIDENCE_TOLERANCE
+    )
+
+
+def _is_interior_weight(value: float) -> bool:
+    return not _is_endpoint_weight(value)
+
+
+def _endpoint_winner_state_changes(
+    points: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    changes: list[dict[str, Any]] = []
+
+    for point in points:
+        weight = float(point["variedWeight"])
+        if (
+            not _is_endpoint_weight(weight)
+            or not point["changesFromBaseline"]["winnerStateChanged"]
+        ):
+            continue
+
+        is_zero = abs(weight) <= EVIDENCE_TOLERANCE
+        changes.append(
+            {
+                "variedWeight": weight,
+                "endpoint": "zero" if is_zero else "one",
+                "targetImportance": "zero" if is_zero else "all",
+                "otherImportance": (
+                    "redistributed_proportionally"
+                    if is_zero
+                    else "zero"
+                ),
+                "technicalRanking": [
+                    item["alternativeId"]
+                    for item in point["result"]["technicalRanking"]
+                ],
+                "leadingGroup": [
+                    item["alternativeId"]
+                    for item in point["result"]["leadingGroup"]
+                ],
+                "winner": point["result"]["winner"],
+            }
+        )
+
+    return changes
+
+
 def _sample_weights(configured_weight: float) -> list[float]:
     steps = round(1.0 / SENSITIVITY_STEP)
     values = [
@@ -227,11 +277,18 @@ def _nearest_observed_change(
     points: list[dict[str, Any]],
     configured_weight: float,
     change_key: str,
+    interior_only: bool = False,
 ) -> dict[str, Any]:
     changed = [
         point
         for point in points
-        if point["changesFromBaseline"][change_key]
+        if (
+            point["changesFromBaseline"][change_key]
+            and (
+                not interior_only
+                or _is_interior_weight(float(point["variedWeight"]))
+            )
+        )
     ]
     if not changed:
         return availability(
@@ -307,6 +364,16 @@ def _item_summary(
             "winnerStateChanged"
         ]
     ]
+    interior_winner_changes = [
+        point
+        for point in changed_winner
+        if _is_interior_weight(
+            float(point["variedWeight"])
+        )
+    ]
+    endpoint_winner_changes = _endpoint_winner_state_changes(
+        points
+    )
 
     return {
         "sampleCount": len(points),
@@ -319,6 +386,18 @@ def _item_summary(
         "winnerStateChangedSampleCount": len(
             changed_winner
         ),
+        "interiorWinnerStateChangedSampleCount": len(
+            interior_winner_changes
+        ),
+        "endpointWinnerStateChangedSampleCount": len(
+            endpoint_winner_changes
+        ),
+        "winnerStateChangesOnlyAtEndpoints": (
+            bool(changed_winner)
+            and not interior_winner_changes
+            and bool(endpoint_winner_changes)
+        ),
+        "endpointWinnerStateChanges": endpoint_winner_changes,
         "stableTechnicalRankingAcrossSampledPoints": (
             not changed_rank
         ),
@@ -359,6 +438,14 @@ def _item_summary(
                 points=points,
                 configured_weight=configured_weight,
                 change_key="winnerStateChanged",
+            )
+        ),
+        "nearestObservedInteriorWinnerStateChange": (
+            _nearest_observed_change(
+                points=points,
+                configured_weight=configured_weight,
+                change_key="winnerStateChanged",
+                interior_only=True,
             )
         ),
         "transitions": _transition_records(points),

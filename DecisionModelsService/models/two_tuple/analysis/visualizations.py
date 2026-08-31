@@ -935,15 +935,56 @@ def _sensitivity_lines(
         if max(flattened) - min(flattened) <= 1e-12:
             continue
 
-        nearest = item["summary"][
-            "nearestObservedWinnerStateChange"
+        summary = item["summary"]
+        nearest_interior = summary[
+            "nearestObservedInteriorWinnerStateChange"
         ]
-        if nearest.get("available"):
+        endpoint_changes = summary[
+            "endpointWinnerStateChanges"
+        ]
+
+        if nearest_interior.get("available"):
             insight = (
-                "Nearest sampled winner-state change occurs "
-                f"{_display(nearest['absoluteWeightChange'], 4)} "
+                "Nearest interior sampled winner-state change occurs "
+                f"{_display(nearest_interior['absoluteWeightChange'], 4)} "
                 "weight units from the configured baseline."
             )
+        elif endpoint_changes:
+            endpoint_weights = [
+                float(change["variedWeight"])
+                for change in endpoint_changes
+            ]
+            has_zero = any(
+                abs(weight) <= 1e-12
+                for weight in endpoint_weights
+            )
+            has_one = any(
+                abs(weight - 1.0) <= 1e-12
+                for weight in endpoint_weights
+            )
+
+            if has_zero and has_one:
+                insight = (
+                    "No interior sampled winner-state change was observed. "
+                    "The winner state changes only at the endpoints: at w=0.0 "
+                    "the target receives zero importance and the remaining "
+                    "weights are redistributed proportionally; at w=1.0 the "
+                    "target receives all importance and every other weight "
+                    "becomes zero."
+                )
+            elif has_one:
+                insight = (
+                    "No interior sampled winner-state change was observed. "
+                    "The winner state changes only at w=1.0, where the target "
+                    "receives all importance and every other weight becomes zero."
+                )
+            else:
+                insight = (
+                    "No interior sampled winner-state change was observed. "
+                    "The winner state changes only at w=0.0, where the target "
+                    "receives zero importance and the remaining weights are "
+                    "redistributed proportionally."
+                )
         else:
             insight = (
                 "No sampled weight in [0, 1] changes the semantic winner state."
@@ -1112,7 +1153,9 @@ def build_visualization_sections(
                 "two-tuple-collective-profile",
                 "two-tuple-criterion-separation",
             ),
-            {},
+            {
+                "layout": "stacked",
+            },
         ),
         (
             "two-tuple-symbolic-translation",
