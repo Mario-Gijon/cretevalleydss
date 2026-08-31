@@ -57,7 +57,7 @@ const IssueOverviewCard = ({ overview, onViewMore }) => (
           <Stack spacing={0.55}>
             <MetadataRow icon={<TimelineRoundedIcon sx={{ fontSize: 16 }} />} label="Consensus" value={overview.consensusEnabled ? "Enabled" : "Disabled"} />
             <MetadataRow icon={<FlagRoundedIcon sx={{ fontSize: 16 }} />} label="Stage" value={overview.lifecycleStage || "—"} />
-            <MetadataRow icon={<GroupsRoundedIcon sx={{ fontSize: 16 }} />} label="Participants" value={overview.participantSummaryLabel || `${overview.acceptedParticipantsCount || 0} participated`} />
+            <MetadataRow icon={<GroupsRoundedIcon sx={{ fontSize: 16 }} />} label="Experts" value={overview.participantSummaryLabel || `${overview.acceptedParticipantsCount || 0} participated`} />
           </Stack>
         </Box>
       </DashboardInnerPanel>

@@ -28,4 +28,20 @@ describe("buildEvaluationsPreview", () => {
     }));
     expect(preview).not.toHaveProperty("matrix");
   });
+
+  it("counts only completed individual evaluations as submissions", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.evaluations.individual.push({
+      id: "draft-evaluation",
+      expertId: "expert-2",
+      stage: "alternativeEvaluation",
+      phase: 5,
+      completed: false,
+      submittedAt: null,
+    });
+
+    const preview = buildEvaluationsPreview(buildEvaluationsData({ payload }));
+
+    expect(preview.evaluationsCount).toBe(2);
+  });
 });

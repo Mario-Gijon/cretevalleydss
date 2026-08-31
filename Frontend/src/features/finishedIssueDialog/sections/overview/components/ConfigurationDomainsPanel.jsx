@@ -45,6 +45,9 @@ const ConfigurationDomainsPanel = ({ configuration }) => {
       configuration.criteriaWeighting.sourceLabel ||
       configuration.criteriaWeighting.structureLabel
     : "Not required";
+  const weightingLevel = configuration.criteriaWeighting.required
+    ? ({ parent: "Parent criteria", leaf: "Leaf criteria" }[configuration.criteriaWeighting.level] || null)
+    : null;
 
   return (
     <OverviewPanel
@@ -77,11 +80,11 @@ const ConfigurationDomainsPanel = ({ configuration }) => {
             label="Criteria weighting"
             value={weightingValue || "—"}
           />
-          {configuration.criteriaWeighting.level ? (
+          {weightingLevel ? (
             <ConfigRow
               icon={<AccountTreeRoundedIcon fontSize="small" />}
               label="Weighting level"
-              value={configuration.criteriaWeighting.level}
+              value={weightingLevel}
             />
           ) : null}
           <ConfigRow
@@ -90,9 +93,9 @@ const ConfigurationDomainsPanel = ({ configuration }) => {
             value={`${configuration.assignedDomainCriteriaCount} criteria`}
           />
         </Box>
-        {configuration.criteriaWeighting.level === "parent" ? (
+        {weightingLevel === "Parent criteria" ? (
           <Typography variant="caption" color="text.secondary">
-            Parent-level weights are distributed to their descendant leaf criteria.
+            Parent weights are distributed equally among their direct leaf criteria.
           </Typography>
         ) : null}
 

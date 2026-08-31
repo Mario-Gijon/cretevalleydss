@@ -94,11 +94,76 @@ describe("OverviewView", () => {
 
     expect(data.criteria.map((criterion) => criterion.id)).toEqual(["a", "orphan"]);
     expect(data.participation).toMatchObject({ accepted: 1, completed: 0, pending: 1, declined: 1, completionPercentage: 0 });
-    expect(buildOverviewPreview(data)).toMatchObject({ acceptedParticipantsCount: 0, completedAlternativeEvaluationsCount: 0 });
+    expect(buildOverviewPreview(data)).toMatchObject({ acceptedParticipantsCount: 0, completedAlternativeEvaluationsCount: 1 });
     renderView(data);
     expect(screen.getAllByText("Accepted").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Declined").length).toBeGreaterThan(0);
+  });
+
+  it("classifies non-current historical experts only from their latest terminal audit event", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const historical = (id) => ({ expert: { id, name: id }, participated: true, participationKey: "participated" });
+    payload.participantHistory = {
+      records: ["e1", "e2", "e3", "e4", "e5"].map(historical),
+      summary: { total: 5, participated: 5, notParticipated: 0, participatedPercentage: 100 },
+    };
+    payload.participants = [{ id: "p1", expert: { id: "e1", name: "e1" }, invitationStatus: "accepted", evaluationCompleted: true }];
+    payload.evaluations.participation = {
+      experts: [
+        { expertId: "e2", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
+        { expertId: "e3", participationEvents: [{ type: "left", occurredAt: "2026-01-01" }, { type: "removed", occurredAt: "2026-01-02" }] },
+        { expertId: "e4", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
+        { expertId: "e5", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
+      ],
+    };
+
+    expect(buildOverviewData(payload).participation).toMatchObject({
+      currentCount: 1,
+      removedCount: 4,
+      leftCount: 0,
+    });
+
+    payload.participantHistory.records = ["e1", "e2", "e3", "e4"].map(historical);
+    payload.participantHistory.summary.total = 4;
+    payload.participantHistory.summary.participated = 4;
+    payload.participants = ["e1", "e2"].map((id) => ({ id: `p-${id}`, expert: { id, name: id }, invitationStatus: "accepted", evaluationCompleted: true }));
+    payload.evaluations.participation.experts = [
+      { expertId: "e3", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
+      { expertId: "e4", participationEvents: [{ type: "left", occurredAt: "2026-01-01" }] },
+    ];
+
+    expect(buildOverviewData(payload).participation).toMatchObject({
+      currentCount: 2,
+      removedCount: 1,
+      leftCount: 1,
+    });
+
+    payload.participantHistory.records = ["e1", "e2"].map(historical);
+    payload.participantHistory.summary.total = 2;
+    payload.participantHistory.summary.participated = 1;
+    payload.participants = [{ id: "p-e1", expert: { id: "e1", name: "e1" }, invitationStatus: "accepted", evaluationCompleted: true }];
+    payload.evaluations.participation.experts = [
+      { expertId: "e2", participationEvents: [{ type: "invitationDeclined", occurredAt: "2026-01-01" }] },
+    ];
+
+    expect(buildOverviewData(payload).participation).toMatchObject({
+      currentCount: 1,
+      removedCount: 0,
+      leftCount: 0,
+    });
+  });
+
+  it("shows a humanized weighting level only when criteria weighting is required", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.configuration.criteriaWeighting = { required: false, level: "leaf" };
+    renderView(buildOverviewData(payload));
+    expect(screen.queryByText("Weighting level")).not.toBeInTheDocument();
+
+    payload.configuration.criteriaWeighting = { required: true, level: "parent" };
+    renderView(buildOverviewData(payload));
+    expect(screen.getByText("Parent criteria")).toBeInTheDocument();
+    expect(screen.getByText("Parent weights are distributed equally among their direct leaf criteria.")).toBeInTheDocument();
   });
 
   it("uses the latest stored alternative-evaluation result and handles zero accepted participants", () => {

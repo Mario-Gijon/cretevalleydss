@@ -103,7 +103,9 @@ export const buildEvaluationsData = ({
     asArray(payload?.phaseResults).find(
       (entry) => entry?.stage === stage && entry?.phase === phase
     ) || null;
-  const totalIndividualSubmissions = asArray(payload?.evaluations?.individual).length;
+  const totalIndividualSubmissions = asArray(payload?.evaluations?.individual)
+    .filter((entry) => entry?.completed === true)
+    .length;
 
   return {
     availableStages: stages,

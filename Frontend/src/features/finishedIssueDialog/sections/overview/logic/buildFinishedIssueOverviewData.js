@@ -146,28 +146,62 @@ const buildDomainSummaries = (domains, criteriaNodes) => {
   }));
 };
 
-const buildParticipantSummary = (participants, participantHistory, usesExpertWeights) => {
+const latestTerminalParticipationEvent = (events) =>
+  asArray(events).reduce((latest, event) => {
+    if (event?.type !== "removed" && event?.type !== "left") return latest;
+    if (!latest || dateTimestamp(event?.occurredAt) >= dateTimestamp(latest?.occurredAt)) {
+      return event;
+    }
+    return latest;
+  }, null);
+
+const terminalParticipationByExpertId = (participationAudit) => {
+  const terminalByExpertId = new Map();
+  asArray(participationAudit?.experts).forEach((expert) => {
+    const expertId = safeIdentifier(expert?.expertId ?? expert?.id);
+    if (!expertId) return;
+    terminalByExpertId.set(
+      expertId,
+      latestTerminalParticipationEvent(expert?.participationEvents)
+    );
+  });
+  return terminalByExpertId;
+};
+
+const buildParticipantSummary = (
+  participants,
+  participantHistory,
+  participationAudit,
+  usesExpertWeights
+) => {
   const currentByExpertId = new Map(
     asArray(participants).map((participant) => [safeIdentifier(participant?.expert?.id), participant])
   );
+  const terminalByExpertId = terminalParticipationByExpertId(participationAudit);
   const historyRecords = asArray(participantHistory?.records);
   const historySummary = participantHistory?.summary;
   if (historyRecords.length || historySummary) {
-    const records = historyRecords.map((record) => ({
-      id: safeIdentifier(record?.expert?.id),
-      expertId: safeIdentifier(record?.expert?.id),
-      name: safeText(record?.expert?.name, "Unknown participant"),
-      email: isNonEmptyString(record?.expert?.email) ? record.expert.email : null,
-      university: isNonEmptyString(record?.expert?.university) ? record.expert.university : null,
-      participated: record?.participated === true,
-      participationKey: record?.participationKey === "participated" ? "participated" : "notParticipated",
-      current: currentByExpertId.has(safeIdentifier(record?.expert?.id)),
-      weight: currentByExpertId.has(safeIdentifier(record?.expert?.id))
-        ? (Number.isFinite(currentByExpertId.get(safeIdentifier(record?.expert?.id))?.currentWeight)
-          ? currentByExpertId.get(safeIdentifier(record?.expert?.id)).currentWeight
-          : null)
-        : null,
-    }));
+    const records = historyRecords.map((record) => {
+      const expertId = safeIdentifier(record?.expert?.id);
+      const current = currentByExpertId.has(expertId);
+      const terminalEvent = current ? null : terminalByExpertId.get(expertId);
+      return {
+        id: expertId,
+        expertId,
+        name: safeText(record?.expert?.name, "Unknown participant"),
+        email: isNonEmptyString(record?.expert?.email) ? record.expert.email : null,
+        university: isNonEmptyString(record?.expert?.university) ? record.expert.university : null,
+        participated: record?.participated === true,
+        participationKey: record?.participationKey === "participated" ? "participated" : "notParticipated",
+        current,
+        terminalParticipationState: terminalEvent?.type || null,
+        weight: current
+          ? (Number.isFinite(currentByExpertId.get(expertId)?.currentWeight)
+            ? currentByExpertId.get(expertId).currentWeight
+            : null)
+          : null,
+      };
+    });
     const total = Number.isInteger(historySummary?.total) ? historySummary.total : records.length;
     const participated = Number.isInteger(historySummary?.participated) ? historySummary.participated : records.filter((record) => record.participated).length;
     const notParticipated = Number.isInteger(historySummary?.notParticipated) ? historySummary.notParticipated : total - participated;
@@ -177,7 +211,8 @@ const buildParticipantSummary = (participants, participantHistory, usesExpertWei
       usesExpertWeights,
       chart: { participated, notParticipated, total },
       currentCount: records.filter((record) => record.current).length,
-      removedCount: records.filter((record) => !record.current).length,
+      removedCount: records.filter((record) => record.terminalParticipationState === "removed").length,
+      leftCount: records.filter((record) => record.terminalParticipationState === "left").length,
     };
   }
   const records = asArray(participants).map((participant) => {
@@ -246,6 +281,7 @@ const buildParticipantSummary = (participants, participantHistory, usesExpertWei
     },
     currentCount: records.length,
     removedCount: 0,
+    leftCount: 0,
   };
 };
 
@@ -259,7 +295,12 @@ export const buildOverviewData = (payload) => {
     criteria?.finalWeights || { source: null, byCriterionId: {} };
   const expressionDomains = asArray(payload?.expressionDomains);
   const usesExpertWeights = payload?.models?.base?.capabilities?.usesExpertWeights === true;
-  const participation = buildParticipantSummary(participants, payload?.participantHistory, usesExpertWeights);
+  const participation = buildParticipantSummary(
+    participants,
+    payload?.participantHistory,
+    payload?.evaluations?.participation,
+    usesExpertWeights
+  );
   const criteriaTree = buildCriteriaTree({
     nodes: criteriaNodes,
     rootIds: criteria.rootIds,
@@ -274,6 +315,9 @@ export const buildOverviewData = (payload) => {
     .filter((result) => result?.stage === "alternativeEvaluation")
     .sort(sortPhaseResults);
   const latestAlternativeResult = alternativeResults[0] || null;
+  const completedAlternativeEvaluationsCount = asArray(payload?.evaluations?.individual)
+    .filter((entry) => entry?.stage === "alternativeEvaluation" && entry?.completed === true)
+    .length;
   const baseModel = payload?.models?.base || null;
   const weightingModel = payload?.models?.criteriaWeighting || null;
   const configuration = payload?.configuration || {};
@@ -371,6 +415,7 @@ export const buildOverviewData = (payload) => {
     domainSummaries,
     participants: participation.records,
     participation,
+    completedAlternativeEvaluationsCount,
     experts: {
       total: participants.length,
       participated: participation.records.filter((participant) => participant.participated).map(participantLabel),
@@ -431,8 +476,13 @@ export const buildOverviewPreview = (data) => ({
   criteriaCount: data.counts.criteria,
   participantsCount: data.counts.participants,
   acceptedParticipantsCount: data.participation.participated,
-  participantSummaryLabel: `${data.participation.participated} participated · ${data.participation.currentCount} current${data.participation.removedCount ? ` · ${data.participation.removedCount} removed` : ""}`,
-  completedAlternativeEvaluationsCount: data.participation.participated,
+  participantSummaryLabel: [
+    `${data.participation.participated} participated`,
+    `${data.participation.currentCount} current`,
+    data.participation.removedCount ? `${data.participation.removedCount} removed` : null,
+    data.participation.leftCount ? `${data.participation.leftCount} left` : null,
+  ].filter(Boolean).join(" · "),
+  completedAlternativeEvaluationsCount: data.completedAlternativeEvaluationsCount,
   alternatives: data.alternatives.map(({ id, name }) => ({ id, name })),
   leafCriteria: (() => {
     const leaves = [];
