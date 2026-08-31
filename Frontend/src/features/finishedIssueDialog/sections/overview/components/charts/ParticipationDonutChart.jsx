@@ -97,13 +97,8 @@ const ParticipationDonutChart = ({ participation }) => {
               fontWeight: 700,
             }}
           >
-            {`${participation.participated} / ${participation.total} participated`}
+            {`${participation.total} ${participation.total === 1 ? "expert" : "experts"}`}
           </Typography>
-          {participation.removedCount > 0 || participation.leftCount > 0 ? <Typography sx={{ color: "text.secondary", fontSize: 9.5 }}>{[
-            `${participation.currentCount} current`,
-            participation.removedCount ? `${participation.removedCount} removed` : null,
-            participation.leftCount ? `${participation.leftCount} left` : null,
-          ].filter(Boolean).join(" · ")}</Typography> : null}
         </Box>
       </Box>
     </Box>

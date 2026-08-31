@@ -11,7 +11,7 @@ import { buildOverviewData, buildOverviewPreview } from "../../../../../src/feat
 import {
   overviewCriteriaViewportSx,
   overviewCriterionRowSx,
-  overviewDomainListSx,
+  overviewCriterionSurfaceSx,
   overviewParticipationListSx,
   overviewScrollableListSx,
 } from "../../../../../src/features/finishedIssueDialog/sections/overview/overview.styles.js";
@@ -28,6 +28,8 @@ describe("OverviewView", () => {
     expect(nested["&::after"]).toMatchObject({ height: "1px", left: -15, top: 23, width: 12, bgcolor: "rgba(76, 201, 211, 0.30)" });
     expect(overviewCriterionRowSx(0, false)["&::before"]).toBeUndefined();
     expect(overviewCriterionRowSx(0, false)["&::after"]).toBeUndefined();
+    expect(overviewCriterionRowSx(2, false)).toMatchObject({ width: "calc(100% - 4.3rem)", minWidth: 0 });
+    expect(overviewCriterionSurfaceSx).toMatchObject({ width: "100%", minWidth: 0 });
     expect(overviewCriteriaViewportSx.overflow).toBe("auto");
   });
 
@@ -38,14 +40,19 @@ describe("OverviewView", () => {
     expect(screen.getByRole("heading", { name: "Alternatives" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Criteria structure" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Experts & participation" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Configuration & domains" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Configuration & domains" })).not.toBeInTheDocument();
+    ["Model", "Consensus", "Alternative evaluation", "Criteria weighting", "Domain assignments"].forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
     expect(screen.getByText("Finished issue")).toBeInTheDocument();
     expect(screen.getByText("Canonical fixture")).toBeInTheDocument();
     expect(screen.getByLabelText("Participated")).toBeInTheDocument();
     expect(screen.getByLabelText("Did not participate")).toBeInTheDocument();
     expect(screen.getByTestId("participation-chart")).toHaveTextContent("1,1");
+    expect(screen.getByText("2 experts")).toBeInTheDocument();
+    expect(screen.queryByText("1 / 2 participated")).not.toBeInTheDocument();
 
-    ["Issue information", "Alternatives", "Criteria structure", "Experts & participation", "Configuration & domains"].forEach((title) => {
+    ["Issue information", "Alternatives", "Criteria structure", "Experts & participation"].forEach((title) => {
       const heading = screen.getByRole("heading", { name: title });
       expect(heading.previousElementSibling?.previousElementSibling).toBeNull();
     });
@@ -181,7 +188,7 @@ describe("OverviewView", () => {
     expect(screen.getByRole("button", { name: "Copy result ID" })).toBeEnabled();
   });
 
-  it("renders unbounded alternatives, participants, domains and deep criteria in internal viewports", () => {
+  it("renders unbounded alternatives, participants and deep criteria in internal viewports", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.alternatives = Array.from({ length: 12 }, (_, index) => ({
       id: `alternative-${index + 1}`,
@@ -216,18 +223,13 @@ describe("OverviewView", () => {
       expect(screen.getByText(`Alternative ${index}`)).toBeInTheDocument();
       expect(screen.getByText(`Participant ${index}`)).toBeInTheDocument();
     }
-    for (let index = 1; index <= 10; index += 1) {
-      expect(screen.getAllByText(`Domain ${index}`).length).toBeGreaterThan(0);
-    }
     expect(screen.getAllByText("Level 6").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Alternatives" }).parentElement).toHaveTextContent("12");
     expect(screen.getByRole("heading", { name: "Experts & participation" }).parentElement).toHaveTextContent("12");
     expect(screen.getByTestId("overview-participant-list")).not.toContainElement(screen.getByTestId("overview-participation-chart"));
-    expect(screen.getByTestId("overview-domain-list")).not.toContainElement(screen.getByText("Model", { exact: true }));
 
     expect(overviewScrollableListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 360, md: 390, xl: 430 } });
     expect(overviewParticipationListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 260, md: 218, xl: 250 } });
-    expect(overviewDomainListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 220, md: 250, xl: 290 } });
-    expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", maxWidth: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
+    expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", width: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
   });
 });

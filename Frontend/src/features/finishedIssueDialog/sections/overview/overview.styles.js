@@ -18,13 +18,11 @@ export const overviewBottomGridSx = {
   display: "grid",
   gridTemplateColumns: {
     xs: "minmax(0, 1fr)",
-    md: "repeat(2, minmax(0, 1fr))",
-    xl: "1.05fr 1fr 1.1fr",
+    md: "minmax(0, 1.18fr) minmax(300px, 0.82fr)",
   },
   gridTemplateAreas: {
-    xs: `"criteria" "participation" "configuration"`,
-    md: `"criteria participation" "configuration configuration"`,
-    xl: `"criteria participation configuration"`,
+    xs: `"criteria" "participation"`,
+    md: `"criteria participation"`,
   },
   gap: { xs: 1.5, md: 1.75 },
   alignItems: "stretch",
@@ -208,7 +206,7 @@ export const overviewScrollableListSx = {
 export const overviewCriteriaViewportSx = {
   ...overviewScrollableSurfaceSx,
   minHeight: 0,
-  maxWidth: "100%",
+  width: "100%",
   maxHeight: { xs: 420, md: 460, xl: 520 },
   overflow: "auto",
   pr: 0.4,
@@ -235,7 +233,8 @@ export const overviewDomainListSx = {
 
 export const overviewCriterionRowSx = (depth, hasChildren) => ({
   position: "relative",
-  minWidth: "max-content",
+  width: `calc(100% - ${depth * 2.15}rem)`,
+  minWidth: 0,
   ml: depth * 2.15,
   mb: 0.65,
   "&::before":
@@ -272,8 +271,10 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
 });
 
 export const overviewCriterionSurfaceSx = {
-  minWidth: 260,
-  display: "flex",
+  width: "100%",
+  minWidth: 0,
+  display: "grid",
+  gridTemplateColumns: "25px minmax(0, 1fr) auto",
   alignItems: "center",
   gap: 0.7,
   px: 0.85,

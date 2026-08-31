@@ -1,17 +1,18 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedInRounded";
+import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
+import HubRoundedIcon from "@mui/icons-material/HubRounded";
 import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import SubjectRoundedIcon from "@mui/icons-material/SubjectRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
 import {
-  overviewHeroSx,
   overviewInformationIconSx,
   overviewInformationRowSx,
-  overviewIssueGridSx,
   overviewIssueRowsSx,
 } from "../overview.styles";
 import OverviewPanel from "./OverviewPanel";
@@ -75,57 +76,22 @@ const InformationRow = ({
   </Box>
 );
 
-const IssueIllustration = () => (
-  <Box sx={overviewHeroSx} aria-hidden="true">
-    <Box
-      sx={{
-        position: "relative",
-        width: 116,
-        height: 136,
-        display: "grid",
-        placeItems: "center",
-        borderRadius: 3,
-        color: "secondary.light",
-        bgcolor: "rgba(21, 112, 150, 0.30)",
-        border: "1px solid rgba(86, 219, 225, 0.42)",
-        boxShadow:
-          "0 18px 42px rgba(0, 170, 215, 0.17), inset 0 1px 0 rgba(255,255,255,0.12)",
-        transform: "perspective(500px) rotateY(-12deg) rotateX(4deg)",
-      }}
-    >
-      <DescriptionRoundedIcon sx={{ fontSize: 65, opacity: 0.85 }} />
-      <Box
-        sx={{
-          position: "absolute",
-          right: -23,
-          bottom: 12,
-          width: 58,
-          height: 58,
-          display: "grid",
-          placeItems: "center",
-          borderRadius: "50%",
-          color: "success.light",
-          bgcolor: "rgba(10, 63, 75, 0.94)",
-          border: "2px solid rgba(79, 213, 157, 0.72)",
-          boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
-        }}
-      >
-        <AssignmentTurnedInRoundedIcon sx={{ fontSize: 31 }} />
-      </Box>
-    </Box>
-  </Box>
-);
-
 const IssueInformationPanel = ({ data }) => {
   const finished = data.issue.lifecycle?.active === false;
+  const weighting = data.configuration.criteriaWeighting;
+  const weightingValue = weighting.required
+    ? weighting.modelName || weighting.sourceLabel || weighting.structureLabel || "—"
+    : "Not required";
+  const weightingLevel = weighting.required
+    ? ({ parent: "Parent criteria", leaf: "Leaf criteria" }[weighting.level] || null)
+    : null;
 
   return (
     <OverviewPanel
       title="Issue information"
       icon={<DescriptionRoundedIcon fontSize="small" />}
     >
-      <Box sx={overviewIssueGridSx}>
-        <Stack spacing={1}>
+      <Stack spacing={1}>
           <Box sx={overviewIssueRowsSx}>
             <InformationRow
               icon={<SubjectRoundedIcon fontSize="small" />}
@@ -144,8 +110,35 @@ const IssueInformationPanel = ({ data }) => {
             />
             <InformationRow
               icon={<LayersRoundedIcon fontSize="small" />}
-              label="Base model"
+              label="Model"
               value={data.configuration.baseModel.name || "—"}
+            />
+            <InformationRow
+              icon={<AssignmentTurnedInRoundedIcon fontSize="small" />}
+              label="Consensus"
+              value={data.configuration.consensus.enabled ? "Enabled" : "Disabled"}
+            />
+            <InformationRow
+              icon={<HubRoundedIcon fontSize="small" />}
+              label="Alternative evaluation"
+              value={data.configuration.alternativeEvaluation.structureLabel || "—"}
+            />
+            <InformationRow
+              icon={<TuneRoundedIcon fontSize="small" />}
+              label="Criteria weighting"
+              value={weightingValue}
+            />
+            {weightingLevel ? (
+              <InformationRow
+                icon={<AccountTreeRoundedIcon fontSize="small" />}
+                label="Weighting level"
+                value={weightingLevel}
+              />
+            ) : null}
+            <InformationRow
+              icon={<AccountTreeRoundedIcon fontSize="small" />}
+              label="Domain assignments"
+              value={`${data.configuration.assignedDomainCriteriaCount} criteria`}
             />
             <InformationRow
               icon={<CalendarMonthRoundedIcon fontSize="small" />}
@@ -177,6 +170,12 @@ const IssueInformationPanel = ({ data }) => {
               }
             />
           </Box>
+
+          {weightingLevel === "Parent criteria" ? (
+            <Typography variant="caption" color="text.secondary">
+              Parent weights are distributed equally among their direct leaf criteria.
+            </Typography>
+          ) : null}
 
           <Box
             sx={{
@@ -213,10 +212,7 @@ const IssueInformationPanel = ({ data }) => {
               </Box>
             </Stack>
           </Box>
-        </Stack>
-
-        <IssueIllustration />
-      </Box>
+      </Stack>
     </OverviewPanel>
   );
 };
