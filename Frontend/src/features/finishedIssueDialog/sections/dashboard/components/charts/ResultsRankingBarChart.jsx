@@ -9,6 +9,10 @@ import { PERFORMANCE_BAR_TOKENS } from "../../../../shared/logic/chartVisualToke
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 const formatScore = (value) => typeof value === "number" && Number.isFinite(value) ? Number(value.toFixed(4)).toString() : "—";
+const truncateLabel = (value, max = 22) => {
+  const text = String(value || "");
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+};
 
 const valueLabelsPlugin = {
   id: "dashboardValueLabels",
@@ -35,7 +39,7 @@ const ResultsRankingBarChart = ({ ranking = [] }) => {
   const theme = useTheme();
   const items = useMemo(() => ranking.slice(0, 3).filter((item) => typeof item?.score === "number" && Number.isFinite(item.score)), [ranking]);
   const data = useMemo(() => ({
-    labels: items.map((item) => item.name),
+    labels: items.map((item) => truncateLabel(item.name)),
     datasets: [{
       data: items.map((item) => item.score),
       backgroundColor: items.map((_, index) => index === 0 ? PERFORMANCE_BAR_TOKENS.winnerFill : PERFORMANCE_BAR_TOKENS.standardFill),
@@ -53,7 +57,10 @@ const ResultsRankingBarChart = ({ ranking = [] }) => {
     layout: { padding: { top: 22, right: 6, bottom: 0, left: 0 } },
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: (context) => ` ${formatScore(context.raw)}` } },
+      tooltip: { callbacks: {
+        title: (contexts) => contexts[0] ? items[contexts[0].dataIndex]?.name || "" : "",
+        label: (context) => ` ${formatScore(context.raw)}`,
+      } },
       dashboardValueLabels: { color: theme.palette.text.primary },
     },
     scales: {
@@ -66,7 +73,7 @@ const ResultsRankingBarChart = ({ ranking = [] }) => {
         ticks: { color: theme.palette.text.secondary, font: { size: 10 }, maxTicksLimit: 5, callback: (value) => formatScore(Number(value)) },
       },
     },
-  }), [theme]);
+  }), [items, theme]);
   if (!items.length) return null;
   return <Box sx={dashboardChartSx}><Bar data={data} options={options} plugins={[valueLabelsPlugin]} /></Box>;
 };

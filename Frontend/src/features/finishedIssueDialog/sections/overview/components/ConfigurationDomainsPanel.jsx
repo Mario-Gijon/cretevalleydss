@@ -77,12 +77,24 @@ const ConfigurationDomainsPanel = ({ configuration }) => {
             label="Criteria weighting"
             value={weightingValue || "—"}
           />
+          {configuration.criteriaWeighting.level ? (
+            <ConfigRow
+              icon={<AccountTreeRoundedIcon fontSize="small" />}
+              label="Weighting level"
+              value={configuration.criteriaWeighting.level}
+            />
+          ) : null}
           <ConfigRow
             icon={<AccountTreeRoundedIcon fontSize="small" />}
             label="Domain assignments"
             value={`${configuration.assignedDomainCriteriaCount} criteria`}
           />
         </Box>
+        {configuration.criteriaWeighting.level === "parent" ? (
+          <Typography variant="caption" color="text.secondary">
+            Parent-level weights are distributed to their descendant leaf criteria.
+          </Typography>
+        ) : null}
 
         {configuration.domains.length ? (
           <Stack data-testid="overview-domain-list" spacing={0.65} sx={overviewDomainListSx}>

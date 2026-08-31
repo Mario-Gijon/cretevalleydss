@@ -97,8 +97,9 @@ const ParticipationDonutChart = ({ participation }) => {
               fontWeight: 700,
             }}
           >
-            participation
+            {`${participation.participated} / ${participation.total} participated`}
           </Typography>
+          {participation.removedCount > 0 ? <Typography sx={{ color: "text.secondary", fontSize: 9.5 }}>{`${participation.currentCount} current · ${participation.removedCount} removed`}</Typography> : null}
         </Box>
       </Box>
     </Box>

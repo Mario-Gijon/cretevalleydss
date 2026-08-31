@@ -284,13 +284,8 @@ export const overviewCriterionSurfaceSx = {
 };
 
 export const overviewParticipationGridSx = {
-  display: "grid",
-  gridTemplateColumns: {
-    xs: "minmax(0, 1fr)",
-    sm: "minmax(0, 1.05fr) minmax(150px, 0.75fr)",
-    md: "minmax(0, 1fr)",
-    lg: "minmax(0, 1.05fr) minmax(150px, 0.75fr)",
-  },
+  display: "flex",
+  flexDirection: "column",
   gap: 1.1,
   alignItems: "stretch",
 };

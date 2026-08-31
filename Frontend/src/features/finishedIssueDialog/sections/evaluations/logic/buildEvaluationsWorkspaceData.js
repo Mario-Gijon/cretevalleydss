@@ -1,5 +1,6 @@
 import { getExpressionDomainDisplayMeta } from "../../../../../utils/expressionDomains";
 import { formatParticipationLabel } from "./formatParticipationLabel";
+import { resolveFinishedExpertIdentity } from "./resolveFinishedExpertIdentity";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -51,7 +52,7 @@ const contextFor = ({ payload, stage, phase, individual, collective }) => {
 
 const participantFor = (payload, expertId) =>
   asArray(payload?.participants).find(
-    (participant) => participant?.expert?.id === expertId
+    (participant) => String(participant?.expert?.id) === String(expertId)
   ) || null;
 
 const expertOptionsFor = ({ payload, criteriaPhase, alternativePhase }) => {
@@ -69,9 +70,9 @@ const expertOptionsFor = ({ payload, criteriaPhase, alternativePhase }) => {
 
   return unique(records.map((entry) => entry?.expertId).filter(Boolean))
     .map((id) => {
-      const participant = participantFor(payload, id);
-      const name = participant?.expert?.name || "Unknown participant";
-      const email = participant?.expert?.email || null;
+      const identity = resolveFinishedExpertIdentity(payload, id);
+      const name = identity.name;
+      const email = identity.email;
 
       return {
         id,
@@ -213,8 +214,7 @@ const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
 
       return {
         expertId,
-        name: participant?.expert?.name || "Unknown participant",
-        email: participant?.expert?.email || null,
+        ...resolveFinishedExpertIdentity(payload, expertId),
         invitation: participant
           ? { status: participant.invitationStatus || "pending" }
           : null,

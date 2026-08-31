@@ -17,7 +17,7 @@ const AlternativesPanel = ({ alternatives }) => (
   >
     {alternatives.length ? (
       <Stack data-testid="overview-alternatives-list" spacing={0.75} sx={overviewScrollableListSx}>
-        {alternatives.map((alternative, index) => (
+        {alternatives.map((alternative) => (
           <Box key={alternative.id} sx={overviewAlternativeRowSx}>
             <Box sx={overviewInformationIconSx()}>
               <ViewInArRoundedIcon fontSize="small" />
@@ -49,15 +49,6 @@ const AlternativesPanel = ({ alternatives }) => (
                 </Typography>
               ) : null}
             </Box>
-            <Typography
-              variant="caption"
-              sx={{
-                color: "text.secondary",
-                fontWeight: "fontWeightBold",
-              }}
-            >
-              {alternative.position ?? index + 1}
-            </Typography>
           </Box>
         ))}
       </Stack>

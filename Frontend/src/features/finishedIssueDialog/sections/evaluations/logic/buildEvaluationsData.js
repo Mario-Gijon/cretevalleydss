@@ -1,3 +1,5 @@
+import { resolveFinishedExpertIdentity } from "./resolveFinishedExpertIdentity";
+
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
 const byPhase = (items, stage, phase) =>
@@ -9,11 +11,9 @@ const payloadFor = (entry) =>
   entry?.displayPayload ?? entry?.rawPayload ?? null;
 
 const expertOptionFor = (payload, entry) => {
-  const participant = asArray(payload?.participants).find(
-    (item) => item?.expert?.id === entry?.expertId
-  );
-  const name = participant?.expert?.name || "Unknown participant";
-  const email = participant?.expert?.email || null;
+  const identity = resolveFinishedExpertIdentity(payload, entry?.expertId);
+  const name = identity.name;
+  const email = identity.email;
 
   return {
     id: entry?.expertId,
@@ -103,6 +103,7 @@ export const buildEvaluationsData = ({
     asArray(payload?.phaseResults).find(
       (entry) => entry?.stage === stage && entry?.phase === phase
     ) || null;
+  const totalIndividualSubmissions = asArray(payload?.evaluations?.individual).length;
 
   return {
     availableStages: stages,
@@ -111,10 +112,9 @@ export const buildEvaluationsData = ({
     selectedPhase: phase,
     expertOptions,
     selectedExpertId: expertId,
-    selectedParticipant:
-      asArray(payload?.participants).find(
-        (item) => item?.expert?.id === expertId
-      ) || null,
+    selectedParticipant: expertId
+      ? resolveFinishedExpertIdentity(payload, expertId)
+      : null,
     individual: individual
       ? { ...individual, payload: payloadFor(individual) }
       : null,
@@ -128,6 +128,7 @@ export const buildEvaluationsData = ({
     structureKey:
       context?.structureKey || individual?.structureKey || null,
     expertWeightSnapshot: phaseResult?.expertWeightSnapshot || [],
+    totalIndividualSubmissions,
     showCollective: showCollective === true,
     canShowCollective: Boolean(collective),
     renderer:
@@ -160,7 +161,7 @@ export const buildEvaluationsPreview = (data) => ({
     data.selectedPhase === null ? "—" : `Phase ${data.selectedPhase}`,
   expertsCount: data.expertOptions.length,
   completedExpertsCount: data.completedExpertCount,
-  evaluationsCount: data.expertOptions.length,
+  evaluationsCount: data.totalIndividualSubmissions ?? data.expertOptions.length,
   hasCollective: data.canShowCollective === true,
   showCollective: data.showCollective === true,
   renderer: data.renderer

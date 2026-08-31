@@ -27,7 +27,16 @@ export const serializeEvaluationParticipation = ({ participations = [], evaluati
       const entries = events.filter((event) => event.type === "entered");
       return {
         expertId: entry.expertId, name: entry.name, email: entry.email, university: entry.university,
-        invitation: { status: entry.participation?.invitationStatus ?? "pending", respondedAt: response ? toIsoOrNull(response.occurredAt) : null },
+        invitation: {
+          status: ["pending", "accepted", "declined"].includes(entry.participation?.invitationStatus)
+            ? entry.participation.invitationStatus
+            : response?.eventType === "invitation.accepted"
+              ? "accepted"
+              : response?.eventType === "invitation.declined"
+                ? "declined"
+                : "pending",
+          respondedAt: response ? toIsoOrNull(response.occurredAt) : null,
+        },
         entry: entries[0] ? { stage: entries[0].stage, phase: entries[0].phase, occurredAt: entries[0].occurredAt } : null,
         criteriaWeighting: { submissions: evaluations.filter((evaluation) => id(evaluation.expert) === entry.expertId && evaluation.stage === "criteriaWeighting").map(submission) },
         alternativeEvaluation: { submissions: evaluations.filter((evaluation) => id(evaluation.expert) === entry.expertId && evaluation.stage === "alternativeEvaluation").map(submission) },

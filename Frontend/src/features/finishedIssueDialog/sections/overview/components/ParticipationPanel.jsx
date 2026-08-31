@@ -25,7 +25,7 @@ const ParticipationPanel = ({ participation }) => (
         <Stack data-testid="overview-participant-list" spacing={0.7} sx={overviewParticipationListSx}>
           {participation.records.map((participant) => {
             const participated = participant.participated === true;
-            const hasWeight = participation.usesExpertWeights && participated && Number.isFinite(participant.weight);
+            const hasWeight = participation.usesExpertWeights && participant.current === true && Number.isFinite(participant.weight);
 
             return (
               <Box key={participant.id} sx={overviewParticipantRowSx}>

@@ -33,7 +33,7 @@ const OverviewList = ({ title, items = [] }) => (
   <DashboardInnerPanel sx={{ minWidth: 0, p: 1 }}>
     <Typography variant="subtitle2" sx={{ mb: 0.6, color: "text.secondary" }}>{title}</Typography>
     <Stack spacing={0.45} sx={dashboardBoundedListSx}>
-      {items.map((item, index) => <Typography variant="body2" key={item.id || index} title={item.name} sx={{ minWidth: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35 }}>{item.name}</Typography>)}
+      {items.map((item, index) => <Typography variant="body2" noWrap key={item.id || index} title={item.name} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>{item.name}</Typography>)}
       {!items.length ? <Typography variant="body2" color="text.secondary">None available.</Typography> : null}
     </Stack>
   </DashboardInnerPanel>
@@ -57,7 +57,7 @@ const IssueOverviewCard = ({ overview, onViewMore }) => (
           <Stack spacing={0.55}>
             <MetadataRow icon={<TimelineRoundedIcon sx={{ fontSize: 16 }} />} label="Consensus" value={overview.consensusEnabled ? "Enabled" : "Disabled"} />
             <MetadataRow icon={<FlagRoundedIcon sx={{ fontSize: 16 }} />} label="Stage" value={overview.lifecycleStage || "—"} />
-            <MetadataRow icon={<GroupsRoundedIcon sx={{ fontSize: 16 }} />} label="Participants" value={`${overview.acceptedParticipantsCount || 0} accepted`} />
+            <MetadataRow icon={<GroupsRoundedIcon sx={{ fontSize: 16 }} />} label="Participants" value={overview.participantSummaryLabel || `${overview.acceptedParticipantsCount || 0} participated`} />
           </Stack>
         </Box>
       </DashboardInnerPanel>

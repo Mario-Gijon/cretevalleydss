@@ -9,15 +9,18 @@ export const resolveCriteria = ({ decisionContext }) => {
     );
   }
 
-  if (!Array.isArray(decisionContext.leafCriteria)) {
+  const criteria = Array.isArray(decisionContext.criteriaWeightingCriteria)
+    ? decisionContext.criteriaWeightingCriteria
+    : decisionContext.leafCriteria;
+  if (!Array.isArray(criteria)) {
     throw new Error(
-      "criteriaPreferenceOrder decisionContext.leafCriteria must be an array."
+      "criteriaPreferenceOrder decisionContext criteria must be an array."
     );
   }
 
   const seenCriterionIds = new Set();
 
-  return decisionContext.leafCriteria.map((criterion, index) => {
+  return criteria.map((criterion, index) => {
     const criterionId =
       typeof criterion?.id === "string"
         ? criterion.id.trim()
@@ -25,14 +28,12 @@ export const resolveCriteria = ({ decisionContext }) => {
 
     if (!criterionId) {
       throw new Error(
-        `criteriaPreferenceOrder leaf criterion at index ${index} has an invalid id.`
+        `criteriaPreferenceOrder criterion at index ${index} has an invalid id.`
       );
     }
 
     if (seenCriterionIds.has(criterionId)) {
-      throw new Error(
-        `criteriaPreferenceOrder leaf criterion id "${criterionId}" is duplicated.`
-      );
+      throw new Error(`criteriaPreferenceOrder criterion id "${criterionId}" is duplicated.`);
     }
 
     seenCriterionIds.add(criterionId);

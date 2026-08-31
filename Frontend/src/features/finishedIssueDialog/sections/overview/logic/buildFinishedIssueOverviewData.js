@@ -147,6 +147,9 @@ const buildDomainSummaries = (domains, criteriaNodes) => {
 };
 
 const buildParticipantSummary = (participants, participantHistory, usesExpertWeights) => {
+  const currentByExpertId = new Map(
+    asArray(participants).map((participant) => [safeIdentifier(participant?.expert?.id), participant])
+  );
   const historyRecords = asArray(participantHistory?.records);
   const historySummary = participantHistory?.summary;
   if (historyRecords.length || historySummary) {
@@ -158,7 +161,12 @@ const buildParticipantSummary = (participants, participantHistory, usesExpertWei
       university: isNonEmptyString(record?.expert?.university) ? record.expert.university : null,
       participated: record?.participated === true,
       participationKey: record?.participationKey === "participated" ? "participated" : "notParticipated",
-      weight: Number.isFinite(record?.weight) ? record.weight : null,
+      current: currentByExpertId.has(safeIdentifier(record?.expert?.id)),
+      weight: currentByExpertId.has(safeIdentifier(record?.expert?.id))
+        ? (Number.isFinite(currentByExpertId.get(safeIdentifier(record?.expert?.id))?.currentWeight)
+          ? currentByExpertId.get(safeIdentifier(record?.expert?.id)).currentWeight
+          : null)
+        : null,
     }));
     const total = Number.isInteger(historySummary?.total) ? historySummary.total : records.length;
     const participated = Number.isInteger(historySummary?.participated) ? historySummary.participated : records.filter((record) => record.participated).length;
@@ -168,6 +176,8 @@ const buildParticipantSummary = (participants, participantHistory, usesExpertWei
       participatedPercentage: Number.isInteger(historySummary?.participatedPercentage) ? historySummary.participatedPercentage : total ? Math.round((participated / total) * 100) : null,
       usesExpertWeights,
       chart: { participated, notParticipated, total },
+      currentCount: records.filter((record) => record.current).length,
+      removedCount: records.filter((record) => !record.current).length,
     };
   }
   const records = asArray(participants).map((participant) => {
@@ -180,6 +190,7 @@ const buildParticipantSummary = (participants, participantHistory, usesExpertWei
     return {
       id: safeIdentifier(participant?.id) || safeIdentifier(participant?.expert?.id),
       expertId: safeIdentifier(participant?.expert?.id),
+      current: true,
       name: safeText(participant?.expert?.name, "Unknown participant"),
       email: isNonEmptyString(participant?.expert?.email) ? participant.expert.email : null,
       university: isNonEmptyString(participant?.expert?.university) ? participant.expert.university : null,
@@ -233,6 +244,8 @@ const buildParticipantSummary = (participants, participantHistory, usesExpertWei
       notParticipated: records.length - completedAccepted.length,
       total: records.length,
     },
+    currentCount: records.length,
+    removedCount: 0,
   };
 };
 
@@ -321,6 +334,7 @@ export const buildOverviewData = (payload) => {
         safeIdentifier(configuration?.criteriaWeighting?.modelId) ||
         safeIdentifier(weightingModel?.id),
       modelName: isNonEmptyString(weightingModel?.name) ? weightingModel.name : null,
+      level: configuration?.criteriaWeighting?.level || null,
     },
     domainCount: expressionDomains.length,
     assignedDomainCriteriaCount: criteriaNodes.filter(
@@ -417,6 +431,7 @@ export const buildOverviewPreview = (data) => ({
   criteriaCount: data.counts.criteria,
   participantsCount: data.counts.participants,
   acceptedParticipantsCount: data.participation.participated,
+  participantSummaryLabel: `${data.participation.participated} participated · ${data.participation.currentCount} current${data.participation.removedCount ? ` · ${data.participation.removedCount} removed` : ""}`,
   completedAlternativeEvaluationsCount: data.participation.participated,
   alternatives: data.alternatives.map(({ id, name }) => ({ id, name })),
   leafCriteria: (() => {

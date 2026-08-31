@@ -9,7 +9,7 @@ import DashboardPreviewCard from "../DashboardPreviewCard";
 const EvaluationsOverviewCard = ({ evaluations, onViewEvaluations }) => {
   const renderer = evaluations.renderer || null;
   const count = evaluations.evaluationsCount || 0;
-  const countLabel = `${count} ${count === 1 ? "evaluation" : "evaluations"}`;
+  const countLabel = `${count} ${count === 1 ? "submission" : "submissions"}`;
   return <DashboardPreviewCard icon={<GroupsRoundedIcon fontSize="small" />} title="Evaluations" headerRight={<Typography variant="body2" data-testid="evaluations-count" sx={{ color: "secondary.light", fontWeight: "fontWeightBold", whiteSpace: "nowrap" }}>{countLabel}</Typography>} actionLabel="View evaluations" onAction={onViewEvaluations}>
     <Stack spacing={0.65}>
       <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>Preview</Typography>
