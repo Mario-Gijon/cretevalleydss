@@ -1,6 +1,9 @@
 import { Box, Chip, Stack } from "@mui/material";
 
-import { ExpressionDomainEvaluationInput } from "../../../../../expressionDomains";
+import {
+  ExpressionDomainEvaluationInput,
+  shouldExpressionDomainRenderCollectiveValue,
+} from "../../../../../expressionDomains";
 import { PAIRWISE_MAX_DECIMAL_PLACES } from "../operations/numericPrecision";
 import { cellSx } from "../styles/Cell.styles";
 import { formatCollectiveValue } from "../operations/formatCollectiveValue";
@@ -26,6 +29,11 @@ const Cell = ({
           collectiveValue,
           expressionDomain,
         });
+  const domainRendersCollectiveValue = shouldExpressionDomainRenderCollectiveValue({
+    expressionDomain,
+    collectiveValue,
+    disabled: !permitEdit,
+  });
   return (
     <Stack direction="row" alignItems="center" sx={cellSx.container}>
       <Box sx={cellSx.value}>
@@ -37,6 +45,7 @@ const Cell = ({
           <ExpressionDomainEvaluationInput
             expressionDomain={expressionDomain}
             value={value}
+            collectiveValue={collectiveValue}
             onChange={(nextValue) => {
               if (permitEdit) {
                 onChange(nextValue);
@@ -48,7 +57,7 @@ const Cell = ({
           />
         </Box>
       </Box>
-      {collectivePresentation ? (
+      {collectivePresentation && !domainRendersCollectiveValue ? (
         <Chip
           label={collectivePresentation.label}
           title={collectivePresentation.title}

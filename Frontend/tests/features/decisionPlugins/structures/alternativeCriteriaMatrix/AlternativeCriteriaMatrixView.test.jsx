@@ -164,7 +164,30 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("renders a linguistic 2-tuple collective with its human label and alpha", () => {
+  it("preserves individual and collective numeric values in read-only mode", () => {
+    renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        decisionContext={buildDecisionContext([
+          { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
+        ])}
+        evaluation={{
+          "alt-a": { "criterion-1": 7.5 },
+          "alt-b": { "criterion-1": 6.5 },
+        }}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={{
+          "alt-a": { "criterion-1": 7.2 },
+          "alt-b": { "criterion-1": 6.2 },
+        }}
+        readOnly
+      />
+    );
+
+    expect(screen.getByDisplayValue("7.5")).toBeDisabled();
+    expect(screen.getByText("7.2")).toBeInTheDocument();
+  });
+
+  it("renders only a linguistic 2-tuple collective in read-only mode", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
         decisionContext={buildDecisionContext([
@@ -179,12 +202,14 @@ describe("AlternativeCriteriaMatrixView", () => {
           "alt-a": { "criterion-1": { labelKey: "high", alpha: -0.5 } },
           "alt-b": { "criterion-1": { labelKey: "high", alpha: 0 } },
         }}
-        readOnly={false}
+        readOnly
       />
     );
 
     expect(screen.getByText("Medium (α = -0.5)")).toBeInTheDocument();
     expect(screen.getByText("Medium (α = 0)")).toBeInTheDocument();
+    expect(screen.queryByText("Low")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

@@ -33,6 +33,16 @@ const linguisticOrdinalDomain = {
   },
 };
 
+const linguistic2TupleDomain = {
+  typeKey: "linguistic2Tuple",
+  definition: {
+    labels: [
+      { key: "low", label: "Low", index: 0 },
+      { key: "high", label: "High", index: 1 },
+    ],
+  },
+};
+
 describe("validateExpressionDomainEvaluation", () => {
   it("normalizes numericContinuous values", () => {
     expect(
@@ -107,5 +117,20 @@ describe("ExpressionDomainEvaluationInput", () => {
 
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByText("Value must be between 0 and 10.")).not.toBeInTheDocument();
+  });
+
+  it("forwards an optional collective value to the registered input", () => {
+    renderWithProviders(
+      <ExpressionDomainEvaluationInput
+        expressionDomain={linguistic2TupleDomain}
+        value={{ labelKey: "low", alpha: 0 }}
+        collectiveValue={{ labelKey: "high", alpha: 0 }}
+        onChange={vi.fn()}
+        disabled
+      />
+    );
+
+    expect(screen.getByText("High (α = 0)")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,6 @@
-import { MenuItem, TextField } from "@mui/material";
+import { MenuItem, TextField, Typography } from "@mui/material";
+
+import { formatLinguistic2TupleEvaluation } from "./evaluation";
 
 export const Linguistic2TupleEvaluationInput = ({
   expressionDomain,
@@ -8,11 +10,26 @@ export const Linguistic2TupleEvaluationInput = ({
   error = false,
   helperText = "",
   showHelperText = true,
+  collectiveValue,
 }) => {
   const labels = Array.isArray(expressionDomain?.definition?.labels)
     ? expressionDomain.definition.labels
     : [];
   const labelKey = typeof value?.labelKey === "string" ? value.labelKey : "";
+  const collectivePresentation = disabled
+    ? formatLinguistic2TupleEvaluation({
+        value: collectiveValue,
+        expressionDomain,
+      })
+    : null;
+
+  if (collectivePresentation) {
+    return (
+      <Typography variant="body2" noWrap title={collectivePresentation}>
+        {collectivePresentation}
+      </Typography>
+    );
+  }
 
   return (
     <TextField

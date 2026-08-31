@@ -55,3 +55,30 @@ export const validateLinguistic2TupleEvaluation = ({
 
   return { labelKey, alpha: value.alpha };
 };
+
+export const formatLinguistic2TupleEvaluation = ({
+  value,
+  expressionDomain,
+} = {}) => {
+  try {
+    const normalizedValue = validateLinguistic2TupleEvaluation({
+      value,
+      expressionDomain,
+    });
+    const label = getEvaluationLabels(expressionDomain).find(
+      (item) => item.key === normalizedValue.labelKey
+    )?.label;
+
+    if (!label) {
+      return null;
+    }
+
+    const alpha = new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 3,
+    }).format(Object.is(normalizedValue.alpha, -0) ? 0 : normalizedValue.alpha);
+
+    return `${label} (α = ${alpha})`;
+  } catch {
+    return null;
+  }
+};

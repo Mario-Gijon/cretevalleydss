@@ -11,6 +11,7 @@ export {
   listExpressionDomainTypeMetadata,
 } from "./expressionDomainTypeMetadataCatalog.js";
 export { default as ExpressionDomainEvaluationInput } from "./ExpressionDomainEvaluationInput.jsx";
+export { shouldExpressionDomainRenderCollectiveValue } from "./collectiveDisplay.js";
 export { validateExpressionDomainEvaluation } from "./validateExpressionDomainEvaluation";
 export {
   assertPairwiseReflectionCompatible,

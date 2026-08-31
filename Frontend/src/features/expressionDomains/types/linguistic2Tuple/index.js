@@ -7,5 +7,6 @@ export const linguistic2TupleExpressionDomainType = Object.freeze({
   ...getExpressionDomainTypeMetadataOrThrow("linguistic2Tuple"),
   CreationForm: Linguistic2TupleCreationForm,
   EvaluationInput: Linguistic2TupleEvaluationInput,
+  collectiveValueDisplay: "replaceReadOnly",
   validateEvaluation: validateLinguistic2TupleEvaluation,
 });

@@ -76,6 +76,9 @@ describe("alternativePairwiseByCriterion operations", () => {
     const renderCell = vi.fn((cell) => cell);
     const columns = buildColumns({ alternatives, renderCell });
 
+    expect(columns[0]).toMatchObject({ minWidth: 180, flex: 1 });
+    expect(columns[1]).toMatchObject({ minWidth: 180, flex: 1 });
+
     expect(
       columns[2].renderCell({
         row: { id: "alt-a", "alt-b": 2 },

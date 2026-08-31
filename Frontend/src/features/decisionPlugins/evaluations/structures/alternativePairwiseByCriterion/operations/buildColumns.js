@@ -1,16 +1,21 @@
+import {
+  ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
+  EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
+} from "../../../shared/evaluationMatrixSizing.js";
+
 export const buildColumns = ({ alternatives, renderCell }) => {
   return [
     {
       field: "alternativeLabel",
       headerName: "Alternatives",
-      minWidth: 150,
+      minWidth: ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
       flex: 1,
       sortable: false,
     },
     ...alternatives.map((columnAlternative) => ({
       field: columnAlternative.id,
       headerName: columnAlternative.name,
-      minWidth: 150,
+      minWidth: EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
       flex: 1,
       sortable: false,
       renderCell: (params) => {

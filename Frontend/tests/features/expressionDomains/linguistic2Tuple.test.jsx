@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import Linguistic2TupleCreationForm from "../../../src/features/expressionDomains/types/linguistic2Tuple/Linguistic2TupleCreationForm.jsx";
 import Linguistic2TupleEvaluationInput from "../../../src/features/expressionDomains/types/linguistic2Tuple/Linguistic2TupleEvaluationInput.jsx";
-import { validateLinguistic2TupleEvaluation } from "../../../src/features/expressionDomains/types/linguistic2Tuple/evaluation.js";
+import {
+  formatLinguistic2TupleEvaluation,
+  validateLinguistic2TupleEvaluation,
+} from "../../../src/features/expressionDomains/types/linguistic2Tuple/evaluation.js";
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 const domain = {
@@ -95,6 +98,57 @@ describe("Linguistic2TupleEvaluationInput", () => {
     await user.click(screen.getByRole("option", { name: "Low" }));
 
     expect(onChange).toHaveBeenCalledWith({ labelKey: "low", alpha: 0 });
+  });
+
+  it("keeps the individual value visible in read-only mode without a collective value", () => {
+    renderWithProviders(
+      <Linguistic2TupleEvaluationInput
+        expressionDomain={domain}
+        value={{ labelKey: "low", alpha: 0 }}
+        onChange={vi.fn()}
+        disabled
+      />
+    );
+
+    expect(screen.getByDisplayValue("low")).toBeInTheDocument();
+  });
+
+  it("replaces a read-only individual value with a valid collective value", () => {
+    renderWithProviders(
+      <Linguistic2TupleEvaluationInput
+        expressionDomain={domain}
+        value={{ labelKey: "low", alpha: 0 }}
+        collectiveValue={{ labelKey: "high", alpha: -0.25 }}
+        onChange={vi.fn()}
+        disabled
+      />
+    );
+
+    expect(screen.getByText("High (α = -0.25)")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("keeps the individual editor available when editable", () => {
+    renderWithProviders(
+      <Linguistic2TupleEvaluationInput
+        expressionDomain={domain}
+        value={{ labelKey: "low", alpha: 0 }}
+        collectiveValue={{ labelKey: "high", alpha: -0.25 }}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByDisplayValue("low")).toBeInTheDocument();
+    expect(screen.queryByText("High (α = -0.25)")).not.toBeInTheDocument();
+  });
+
+  it("formats valid 2-tuple values in the expression-domain module", () => {
+    expect(
+      formatLinguistic2TupleEvaluation({
+        value: { labelKey: "high", alpha: -0.5 },
+        expressionDomain: domain,
+      })
+    ).toBe("High (α = -0.5)");
   });
 });
 

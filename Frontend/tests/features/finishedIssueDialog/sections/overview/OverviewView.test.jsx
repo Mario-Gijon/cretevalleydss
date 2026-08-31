@@ -10,7 +10,6 @@ import OverviewView from "../../../../../src/features/finishedIssueDialog/sectio
 import { buildOverviewData, buildOverviewPreview } from "../../../../../src/features/finishedIssueDialog/sections/overview/logic/buildFinishedIssueOverviewData.js";
 import {
   overviewCriteriaViewportSx,
-  overviewCriterionChildrenSx,
   overviewCriterionRowSx,
   overviewCriterionSurfaceSx,
   overviewParticipationListSx,
@@ -25,13 +24,12 @@ const renderView = (data) => render(
 describe("OverviewView", () => {
   it("keeps criteria connectors at one CSS pixel instead of MUI ratio sizing", () => {
     const nested = overviewCriterionRowSx(1, false);
+    expect(nested["&::before"]).toMatchObject({ width: "1px", left: -15, top: -10, bottom: -10, bgcolor: "rgba(76, 201, 211, 0.20)" });
     expect(nested["&::after"]).toMatchObject({ height: "1px", left: -15, top: 23, width: 12, bgcolor: "rgba(76, 201, 211, 0.30)" });
     expect(overviewCriterionRowSx(0, false)["&::before"]).toBeUndefined();
     expect(overviewCriterionRowSx(0, false)["&::after"]).toBeUndefined();
-    expect(overviewCriterionRowSx(2, false)).toMatchObject({ minWidth: "max-content", ml: 4.3 });
-    expect(overviewCriterionChildrenSx(1)).toMatchObject({ width: "100%" });
-    expect(overviewCriterionChildrenSx(1)["&::before"]).toMatchObject({ width: "1px", left: "calc(2.15rem - 15px)", top: -10, bottom: -10, bgcolor: "rgba(76, 201, 211, 0.20)" });
-    expect(overviewCriterionSurfaceSx).toMatchObject({ minWidth: 260, display: "flex" });
+    expect(overviewCriterionRowSx(2, false)).toMatchObject({ width: "calc(100% - 4.3rem)", minWidth: 0 });
+    expect(overviewCriterionSurfaceSx).toMatchObject({ width: "100%", minWidth: 0 });
     expect(overviewCriteriaViewportSx.overflow).toBe("auto");
   });
 
@@ -231,6 +229,6 @@ describe("OverviewView", () => {
 
     expect(overviewScrollableListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 360, md: 390, xl: 430 } });
     expect(overviewParticipationListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 260, md: 218, xl: 250 } });
-    expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", maxWidth: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
+    expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", width: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
   });
 });
