@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from math import isfinite
 from typing import Any
 
 from fastapi.responses import JSONResponse
@@ -20,8 +21,13 @@ from models.shared_expression_domains import (
 from schemas.model_requests import GenericModelExecutionRequest
 from services.criteria_weights import ordered_numeric_weights
 from services.model_executors.responses import error_response, success_response
-from .aggregation.core import TwoTuple
+from utils.get_plots_graphics_from_matrices import get_plots_graphics_from_matrices
+
+from .aggregation.core import TwoTuple, delta_inverse
 from .run import run_two_tuple
+
+
+PROJECTION_TOLERANCE = 1e-12
 
 
 def _expert_key(expert: dict[str, Any], index: int) -> str:
@@ -34,77 +40,204 @@ def _expert_key(expert: dict[str, Any], index: int) -> str:
     return f"expert_{index + 1}"
 
 
-def _aggregation_config(value: Any, *, field: str) -> tuple[dict[str, Any], str]:
+def _expert_label(expert: dict[str, Any], index: int) -> str:
+    for field in ("name", "email", "id"):
+        value = expert.get(field)
+        if value is not None:
+            normalized = str(value).strip()
+            if normalized:
+                return normalized
+    return f"Expert {index + 1}"
+
+
+def _optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _aggregation_config(
+    value: Any,
+    *,
+    field: str,
+) -> tuple[dict[str, Any], str]:
     if not isinstance(value, dict):
         raise ValueError(f"{field} must be an object")
+
     method = value.get("method")
     if not isinstance(method, str) or not method.strip():
         raise ValueError(f"{field}.method is required")
-    if not isinstance(value.get("options", {}), dict):
+
+    options = value.get("options", {})
+    if options is None:
+        options = {}
+    if not isinstance(options, dict):
         raise ValueError(f"{field}.options must be an object")
-    return value, method.strip()
+
+    return {
+        "method": method.strip(),
+        "options": dict(options),
+    }, method.strip()
 
 
-def _evaluation_value(value: Any, criterion: dict[str, Any], field: str) -> TwoTuple:
+def _evaluation_value(
+    value: Any,
+    criterion: dict[str, Any],
+    field: str,
+) -> TwoTuple:
     expression_domain = criterion["expressionDomain"]
+
     if expression_domain_type_key(expression_domain) != "linguistic2Tuple":
-        raise ValueError(f"{field}.expressionDomain.typeKey must be 'linguistic2Tuple'")
+        raise ValueError(
+            f"{field}.expressionDomain.typeKey must be 'linguistic2Tuple'"
+        )
+
     resolved = resolve_linguistic_2tuple_value(
         value=value,
         expression_domain=expression_domain,
         field=field,
     )
-    return TwoTuple(label_index=resolved["labelIndex"], alpha=resolved["alpha"])
+
+    return TwoTuple(
+        label_index=resolved["labelIndex"],
+        alpha=resolved["alpha"],
+    )
 
 
-def _ordered_labels(criterion: dict[str, Any]) -> list[dict[str, str]]:
+def _ordered_labels(
+    criterion: dict[str, Any],
+) -> list[dict[str, Any]]:
     criterion_id = criterion["id"]
     expression_domain = criterion["expressionDomain"]
+
     if expression_domain_type_key(expression_domain) != "linguistic2Tuple":
-        raise ValueError(f"Criterion '{criterion_id}' must use a linguistic2Tuple expression domain")
+        raise ValueError(
+            f"Criterion '{criterion_id}' must use a linguistic2Tuple expression domain"
+        )
+
     labels = expression_domain_definition(expression_domain).get("labels")
     if not isinstance(labels, list) or not labels:
-        raise ValueError(f"Criterion '{criterion_id}' linguistic2Tuple domain must contain labels")
+        raise ValueError(
+            f"Criterion '{criterion_id}' linguistic2Tuple domain must contain labels"
+        )
 
-    normalized: list[dict[str, str]] = []
+    normalized: list[dict[str, Any]] = []
     seen_keys: set[str] = set()
+
     for index, label_definition in enumerate(labels):
         if not isinstance(label_definition, dict):
-            raise ValueError(f"Criterion '{criterion_id}' label at index {index} must be an object")
+            raise ValueError(
+                f"Criterion '{criterion_id}' label at index {index} must be an object"
+            )
+
         key = str(label_definition.get("key") or "").strip()
+        label = str(label_definition.get("label") or "").strip()
+
         if not key:
-            raise ValueError(f"Criterion '{criterion_id}' label at index {index} requires a key")
+            raise ValueError(
+                f"Criterion '{criterion_id}' label at index {index} requires a key"
+            )
+        if not label:
+            raise ValueError(
+                f"Criterion '{criterion_id}' label at index {index} requires a label"
+            )
         if key in seen_keys:
-            raise ValueError(f"Criterion '{criterion_id}' contains duplicate label key '{key}'")
+            raise ValueError(
+                f"Criterion '{criterion_id}' contains duplicate label key '{key}'"
+            )
+
         seen_keys.add(key)
-        normalized.append({"key": key, "label": str(label_definition.get("label") or "").strip()})
+        normalized.append(
+            {
+                "key": key,
+                "label": label,
+                "index": index,
+            }
+        )
+
     return normalized
 
 
-def _common_labels(criteria: list[dict[str, Any]]) -> list[dict[str, str]]:
+def _common_labels(
+    criteria: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     if not criteria:
         raise ValueError("context.criteria is required")
+
     common_labels = _ordered_labels(criteria[0])
-    signature = [(item["key"], item["label"]) for item in common_labels]
+    signature = [
+        (item["key"], item["label"], item["index"])
+        for item in common_labels
+    ]
+
     for criterion in criteria[1:]:
         current = _ordered_labels(criterion)
-        if [(item["key"], item["label"]) for item in current] != signature:
-            raise ValueError("All criteria must use the same ordered linguistic2Tuple labels")
+        if [
+            (item["key"], item["label"], item["index"])
+            for item in current
+        ] != signature:
+            raise ValueError(
+                "All criteria must use the same ordered linguistic2Tuple labels"
+            )
+
     return common_labels
 
 
-def _serialize_two_tuple(value: TwoTuple, *, labels: list[dict[str, str]]) -> dict[str, Any]:
+def _serialize_two_tuple(
+    value: TwoTuple,
+    *,
+    labels: list[dict[str, Any]],
+) -> dict[str, Any]:
     if not isinstance(value, TwoTuple):
         raise ValueError("two-tuple result must be a TwoTuple")
+
     if value.label_index < 0 or value.label_index >= len(labels):
         raise ValueError("two-tuple result contains an out-of-range label index")
-    return {"labelKey": labels[value.label_index]["key"], "alpha": float(value.alpha)}
+
+    return {
+        "labelKey": labels[value.label_index]["key"],
+        "alpha": float(value.alpha),
+    }
 
 
-def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
+def _expert_metadata(
+    *,
+    evaluations: list[dict[str, Any]],
+    expert_keys: list[str],
+) -> dict[str, list[Any]]:
+    if len(evaluations) != len(expert_keys):
+        raise ValueError("expert metadata does not match extracted expert matrices")
+
+    labels: list[str] = []
+    ids: list[str | None] = []
+    emails: list[str | None] = []
+
+    for index, evaluation in enumerate(evaluations):
+        expert = evaluation.get("expert") or {}
+        if not isinstance(expert, dict):
+            raise ValueError(f"evaluations[{index}].expert must be an object")
+
+        labels.append(_expert_label(expert, index))
+        ids.append(_optional_text(expert.get("id")))
+        emails.append(_optional_text(expert.get("email")))
+
+    return {
+        "expert_keys": list(expert_keys),
+        "expert_labels": labels,
+        "expert_ids": ids,
+        "expert_emails": emails,
+    }
+
+
+def _input(
+    payload: GenericModelExecutionRequest,
+) -> dict[str, Any]:
     model_parameters = payload.modelParameters
+
     if not isinstance(model_parameters, dict):
         raise ValueError("modelParameters must be an object")
+
     expert_aggregation, expert_method = _aggregation_config(
         model_parameters.get("expertAggregation"),
         field="modelParameters.expertAggregation",
@@ -113,13 +246,16 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
         model_parameters.get("criteriaAggregation"),
         field="modelParameters.criteriaAggregation",
     )
+
     extracted = extract_id_keyed_alternative_criteria_input(
         payload=payload,
         expert_key_fn=_expert_key,
         evaluation_value_fn=_evaluation_value,
         require_expert_weights=expert_method == "weighted_average",
     )
+
     labels = _common_labels(extracted["criterion_items"])
+
     criterion_weights = None
     if criteria_method == "weighted_average":
         criterion_weights = ordered_numeric_weights(
@@ -128,9 +264,20 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
             error_label="criteria weights",
         )
         if len(criterion_weights) != len(extracted["criterion_items"]):
-            raise ValueError("criteria weights length must match the number of criteria")
+            raise ValueError(
+                "criteria weights length must match the number of criteria"
+            )
+
+    expert_keys = list(extracted["matrices"].keys())
+    evaluations = list(payload.evaluations or [])
+    metadata = _expert_metadata(
+        evaluations=evaluations,
+        expert_keys=expert_keys,
+    )
+
     return {
         **extracted,
+        **metadata,
         "label_count": len(labels),
         "labels": labels,
         "expert_aggregation": expert_aggregation,
@@ -140,57 +287,319 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     }
 
 
+def _beta_matrix(
+    matrix: list[list[TwoTuple]],
+    *,
+    label_count: int,
+) -> list[list[float]]:
+    return [
+        [
+            delta_inverse(value, label_count=label_count)
+            for value in row
+        ]
+        for row in matrix
+    ]
+
+
+def _profiles_have_variation(
+    profiles: list[list[list[float]]],
+) -> bool:
+    if len(profiles) < 2:
+        return False
+
+    flattened = [
+        [
+            float(value)
+            for row in matrix
+            for value in row
+        ]
+        for matrix in profiles
+    ]
+
+    first = flattened[0]
+    if not first:
+        return False
+
+    for current in flattened[1:]:
+        if len(current) != len(first):
+            raise ValueError("analytical projection matrices must share one shape")
+
+        if any(
+            abs(left - right) > PROJECTION_TOLERANCE
+            for left, right in zip(first, current, strict=True)
+        ):
+            return True
+
+    return False
+
+
+def _plots_graphic(
+    *,
+    matrices: dict[str, list[list[TwoTuple]]],
+    collective_beta_matrix: list[list[float]],
+    label_count: int,
+    expert_keys: list[str],
+    expert_labels: list[str],
+    expert_emails: list[str | None],
+) -> dict[str, Any]:
+    """Build presentation-only expert/collective MDS evidence.
+
+    This projection never participates in the linguistic aggregation or ranking.
+    """
+
+    if len(expert_keys) < 2:
+        return {
+            "reason": "insufficient_points_for_projection",
+        }
+
+    expert_beta_matrices = [
+        _beta_matrix(
+            matrices[expert_key],
+            label_count=label_count,
+        )
+        for expert_key in expert_keys
+    ]
+
+    if not _profiles_have_variation(
+        [*expert_beta_matrices, collective_beta_matrix]
+    ):
+        return {
+            "reason": "insufficient_variation_for_projection",
+        }
+
+    projection = get_plots_graphics_from_matrices(
+        expert_beta_matrices,
+        collective_beta_matrix,
+        method="MDS",
+    )
+
+    if not isinstance(projection, dict):
+        return {
+            "reason": "projection_failed",
+        }
+
+    if projection.get("reason"):
+        return {
+            "reason": str(projection["reason"]),
+        }
+
+    expert_points = projection.get("expert_points")
+    collective_point = projection.get("collective_point")
+
+    if (
+        not isinstance(expert_points, list)
+        or len(expert_points) != len(expert_keys)
+        or not isinstance(collective_point, list)
+        or len(collective_point) != 2
+    ):
+        return {
+            "reason": "projection_failed",
+        }
+
+    return {
+        **projection,
+        # `expert_ids` intentionally uses the disambiguated execution keys so
+        # every plotted expert has one non-empty stable identity in this result.
+        "expert_ids": list(expert_keys),
+        "expert_labels": list(expert_labels),
+        "expert_emails": list(expert_emails),
+    }
+
+
+def _validate_run_result(
+    *,
+    run_result: dict[str, Any],
+    alternative_count: int,
+    criterion_count: int,
+) -> None:
+    ranking = run_result.get("collective_ranking")
+    scores = run_result.get("collective_scores")
+    matrix = run_result.get("collective_matrix")
+    beta_matrix = run_result.get("collective_beta_matrix")
+    values = run_result.get("collective_values")
+
+    if not isinstance(ranking, list) or not ranking:
+        raise ValueError("two-tuple output is missing collective_ranking")
+    if not isinstance(scores, list):
+        raise ValueError("two-tuple output is missing collective_scores")
+    if not isinstance(matrix, list):
+        raise ValueError("two-tuple output is missing collective_matrix")
+    if not isinstance(beta_matrix, list):
+        raise ValueError("two-tuple output is missing collective_beta_matrix")
+    if not isinstance(values, list):
+        raise ValueError("two-tuple output is missing collective_values")
+
+    if len(ranking) != alternative_count:
+        raise ValueError("collective_ranking length must match alternatives")
+    if len(scores) != alternative_count:
+        raise ValueError("collective_scores length must match alternatives")
+    if len(values) != alternative_count:
+        raise ValueError("collective_values length must match alternatives")
+    if len(matrix) != alternative_count:
+        raise ValueError("collective_matrix length must match alternatives")
+    if len(beta_matrix) != alternative_count:
+        raise ValueError(
+            "collective_beta_matrix length must match alternatives"
+        )
+
+    for row_index, (tuple_row, beta_row) in enumerate(
+        zip(matrix, beta_matrix, strict=True)
+    ):
+        if (
+            not isinstance(tuple_row, list)
+            or len(tuple_row) != criterion_count
+        ):
+            raise ValueError(
+                f"collective_matrix[{row_index}] must match criteria"
+            )
+        if (
+            not isinstance(beta_row, list)
+            or len(beta_row) != criterion_count
+        ):
+            raise ValueError(
+                f"collective_beta_matrix[{row_index}] must match criteria"
+            )
+
+        for criterion_index, beta in enumerate(beta_row):
+            if (
+                isinstance(beta, bool)
+                or not isinstance(beta, (int, float))
+                or not isfinite(float(beta))
+            ):
+                raise ValueError(
+                    "collective_beta_matrix contains a non-finite value at "
+                    f"[{row_index}][{criterion_index}]"
+                )
+
+
 def _output(
     *,
     run_result: dict[str, Any],
-    alternative_ids: list[str],
-    alternative_names: list[str],
-    criterion_ids: list[str],
-    labels: list[dict[str, str]],
-    expert_aggregation: dict[str, Any],
-    criteria_aggregation: dict[str, Any],
+    execution_input: dict[str, Any],
 ) -> dict[str, Any]:
-    ranking_indexes = run_result.get("collective_ranking")
-    collective_scores = run_result.get("collective_scores")
-    collective_matrix = run_result.get("collective_matrix")
-    collective_values = run_result.get("collective_values")
-    if not isinstance(ranking_indexes, list) or not ranking_indexes:
-        raise ValueError("two-tuple output is missing collective_ranking")
-    if not isinstance(collective_scores, list):
-        raise ValueError("two-tuple output is missing collective_scores")
-    if not isinstance(collective_matrix, list) or not isinstance(collective_values, list):
-        raise ValueError("two-tuple output is missing collective values")
-    if len(ranking_indexes) != len(alternative_ids):
-        raise ValueError("collective_ranking length must match alternatives")
-    if len(collective_scores) != len(alternative_ids):
-        raise ValueError("collective_scores length must match alternatives")
-    if len(collective_values) != len(alternative_ids):
-        raise ValueError("collective_values length must match alternatives")
+    alternative_ids = execution_input["alternative_ids"]
+    alternative_names = execution_input["alternative_names"]
+    criterion_ids = execution_input["criterion_ids"]
+    criterion_names = execution_input["criterion_names"]
+    labels = execution_input["labels"]
+
+    _validate_run_result(
+        run_result=run_result,
+        alternative_count=len(alternative_ids),
+        criterion_count=len(criterion_ids),
+    )
+
+    ranking_indexes = run_result["collective_ranking"]
+    collective_scores = run_result["collective_scores"]
+    collective_matrix = run_result["collective_matrix"]
+    collective_beta_matrix = run_result["collective_beta_matrix"]
+    collective_values = run_result["collective_values"]
 
     serialized_matrix = [
-        [_serialize_two_tuple(value, labels=labels) for value in row]
+        [
+            _serialize_two_tuple(value, labels=labels)
+            for value in row
+        ]
         for row in collective_matrix
     ]
     serialized_values = [
-        _serialize_two_tuple(value, labels=labels) for value in collective_values
+        _serialize_two_tuple(value, labels=labels)
+        for value in collective_values
     ]
+
     ranked_alternatives = []
     seen_indexes: set[int] = set()
+
     for rank, ranking_index in enumerate(ranking_indexes, start=1):
         alternative_index = int(ranking_index)
+
         if alternative_index < 0 or alternative_index >= len(alternative_ids):
             raise ValueError("collective_ranking contains an out-of-range index")
         if alternative_index in seen_indexes:
             raise ValueError("collective_ranking contains duplicate indexes")
+
         seen_indexes.add(alternative_index)
-        if alternative_index >= len(collective_scores):
-            raise ValueError("collective_scores does not match alternatives")
-        ranked_alternatives.append({
-            "alternativeId": alternative_ids[alternative_index],
-            "name": alternative_names[alternative_index],
-            "score": float(collective_scores[alternative_index]),
-            "rank": rank,
-        })
+
+        ranked_alternatives.append(
+            {
+                "alternativeId": alternative_ids[alternative_index],
+                "name": alternative_names[alternative_index],
+                "score": float(collective_scores[alternative_index]),
+                "rank": rank,
+            }
+        )
+
+    expert_stage = run_result["expert_aggregation_evidence"]
+    criteria_stage = run_result["criteria_aggregation_evidence"]
+
+    plots_graphic = _plots_graphic(
+        matrices=execution_input["matrices"],
+        collective_beta_matrix=collective_beta_matrix,
+        label_count=execution_input["label_count"],
+        expert_keys=execution_input["expert_keys"],
+        expert_labels=execution_input["expert_labels"],
+        expert_emails=execution_input["expert_emails"],
+    )
+
+    raw_output = {
+        # Stable semantic directory for strict Results Analysis evidence checks.
+        "alternative_ids": list(alternative_ids),
+        "alternative_names": list(alternative_names),
+        "criterion_ids": list(criterion_ids),
+        "criterion_names": list(criterion_names),
+        "expert_keys": list(execution_input["expert_keys"]),
+        "expert_ids": list(execution_input["expert_ids"]),
+        "expert_labels": list(execution_input["expert_labels"]),
+        "expert_emails": list(execution_input["expert_emails"]),
+        "labels": [dict(item) for item in labels],
+        "label_count": execution_input["label_count"],
+
+        # Executed collective 2-tuple result in both linguistic and beta forms.
+        "collective_matrix": serialized_matrix,
+        "collective_beta_matrix": [
+            [float(value) for value in row]
+            for row in collective_beta_matrix
+        ],
+        "collective_values": serialized_values,
+        "collective_scores": [
+            float(score)
+            for score in collective_scores
+        ],
+        "collective_ranking": [
+            int(index)
+            for index in ranking_indexes
+        ],
+
+        # Original selected configuration plus resolved mathematical evidence.
+        "expert_aggregation": dict(execution_input["expert_aggregation"]),
+        "criteria_aggregation": dict(execution_input["criteria_aggregation"]),
+        "expert_aggregation_evidence": expert_stage,
+        "criteria_aggregation_evidence": criteria_stage,
+
+        # Effective argument-importance weights are exposed here only when the
+        # selected operator is weighted_average. L2TOWA positional weights stay
+        # inside the stage evidence and are never mislabeled as expert/criterion
+        # importance weights.
+        "expert_weights": (
+            list(expert_stage["effective_weights"])
+            if expert_stage["weight_semantics"] == "argument_importance"
+            else None
+        ),
+        "criterion_weights": (
+            list(criteria_stage["effective_weights"])
+            if criteria_stage["weight_semantics"] == "argument_importance"
+            else None
+        ),
+
+        # Source indexes refer to expert_keys for the expert stage and
+        # criterion_ids for the criteria stage.
+        "expert_aggregation_traces": run_result[
+            "expert_aggregation_traces"
+        ],
+        "criteria_aggregation_traces": run_result[
+            "criteria_aggregation_traces"
+        ],
+    }
 
     return {
         "rankedAlternatives": ranked_alternatives,
@@ -199,16 +608,9 @@ def _output(
             alternative_ids=alternative_ids,
             criterion_ids=criterion_ids,
         ),
-        "plotsGraphic": {},
+        "plotsGraphic": plots_graphic,
         "consensusMeasure": None,
-        "rawOutput": {
-            "collective_matrix": serialized_matrix,
-            "collective_values": serialized_values,
-            "collective_scores": [float(score) for score in collective_scores],
-            "collective_ranking": [int(index) for index in ranking_indexes],
-            "expert_aggregation": expert_aggregation,
-            "criteria_aggregation": criteria_aggregation,
-        },
+        "rawOutput": raw_output,
     }
 
 
@@ -217,6 +619,7 @@ def execute_two_tuple(
 ) -> dict[str, Any] | JSONResponse:
     try:
         execution_input = _input(request)
+
         results = run_two_tuple(
             execution_input["matrices"],
             label_count=execution_input["label_count"],
@@ -225,18 +628,15 @@ def execute_two_tuple(
             expert_weights=execution_input["expert_weights"],
             criterion_weights=execution_input["criterion_weights"],
         )
+
         return success_response(
             "2-Tuple Linguistic Model executed successfully",
             _output(
                 run_result=results,
-                alternative_ids=execution_input["alternative_ids"],
-                alternative_names=execution_input["alternative_names"],
-                criterion_ids=execution_input["criterion_ids"],
-                labels=execution_input["labels"],
-                expert_aggregation=execution_input["expert_aggregation"],
-                criteria_aggregation=execution_input["criteria_aggregation"],
+                execution_input=execution_input,
             ),
         )
+
     except Exception as error:
         return error_response(
             f"Error executing 2-Tuple Linguistic Model: {error}",

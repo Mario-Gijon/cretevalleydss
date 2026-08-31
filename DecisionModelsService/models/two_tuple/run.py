@@ -1,23 +1,31 @@
 """Pure solving flow for the homogeneous 2-tuple linguistic model.
 
 The solving process implemented here follows the two-stage aggregation scheme
-used in the supplied 2-tuple reference:
+described by the supplied 2-tuple reference:
 
 1. Aggregate the experts' 2-tuple assessments for every alternative/criterion.
-2. Aggregate the resulting criterion values for every alternative.
+2. Aggregate the resulting collective criterion values for every alternative.
 3. Rank alternatives by their final 2-tuple collective value.
 
-Request parsing, expression-domain label resolution, and public response mapping
-belong to ``executor.py`` and are intentionally kept out of this module.
+Besides the mathematical result, this module emits compact deterministic
+execution evidence (beta matrices and aggregation traces) that Results Analysis
+can validate and interpret later. User-facing interpretation and visualization
+do not belong here.
 """
 
 from __future__ import annotations
 
+from math import isfinite
 from numbers import Real
 from typing import Any, Sequence
 
 from .aggregation.core import TwoTuple, delta_inverse
-from .aggregation.registry import aggregate
+from .aggregation.definitions import AGGREGATION_METHODS
+from .aggregation.operators import generate_owa_weights
+from .aggregation.registry import aggregate, resolve_l2towa_quantifier
+
+
+TRACE_TOLERANCE = 1e-9
 
 
 def _aggregation_config(
@@ -38,7 +46,7 @@ def _aggregation_config(
     if not isinstance(options, dict):
         raise ValueError(f"{field}.options must be an object")
 
-    return method.strip(), options
+    return method.strip(), dict(options)
 
 
 def _matrix_shape(
@@ -102,12 +110,29 @@ def _validate_matrices(
     return expert_keys, alternatives_count, criteria_count
 
 
+def _finite_non_negative(
+    value: Real,
+    *,
+    field: str,
+) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise ValueError(f"{field} must be a finite number")
+
+    normalized = float(value)
+    if not isfinite(normalized):
+        raise ValueError(f"{field} must be a finite number")
+    if normalized < 0:
+        raise ValueError(f"{field} must be non-negative")
+
+    return normalized
+
+
 def _validate_weight_vector(
     weights: Sequence[Real] | None,
     *,
     expected_length: int,
     field: str,
-) -> list[Real] | None:
+) -> list[float] | None:
     if weights is None:
         return None
 
@@ -118,7 +143,159 @@ def _validate_weight_vector(
             f"received {len(normalized)}"
         )
 
-    return normalized
+    return [
+        _finite_non_negative(weight, field=f"{field}[{index}]")
+        for index, weight in enumerate(normalized)
+    ]
+
+
+def _method_definition(method: str) -> dict[str, Any]:
+    definition = next(
+        (
+            item
+            for item in AGGREGATION_METHODS
+            if isinstance(item, dict) and item.get("key") == method
+        ),
+        None,
+    )
+    if definition is None:
+        raise ValueError(f"unsupported two-tuple aggregation method: {method}")
+    return definition
+
+
+def _aggregation_stage_evidence(
+    *,
+    method: str,
+    options: dict[str, Any],
+    argument_count: int,
+    argument_weights: Sequence[Real] | None,
+    field: str,
+) -> dict[str, Any]:
+    """Describe the exact coefficients/semantics used by one aggregation stage."""
+
+    if argument_count < 1:
+        raise ValueError(f"{field} requires at least one aggregation argument")
+
+    if method == "arithmetic_mean":
+        effective_weights = [1.0 / argument_count for _ in range(argument_count)]
+        return {
+            "method": method,
+            "options": dict(options),
+            "argument_count": argument_count,
+            "weight_semantics": "equal_arguments",
+            "configured_argument_weights": None,
+            "effective_weights": effective_weights,
+            "l2towa": None,
+        }
+
+    if method == "weighted_average":
+        normalized = _validate_weight_vector(
+            argument_weights,
+            expected_length=argument_count,
+            field=f"{field}.weights",
+        )
+        if normalized is None:
+            raise ValueError(f"{field} weighted_average requires argument weights")
+
+        total = sum(normalized)
+        if total <= 0:
+            raise ValueError(f"{field}.weights must contain at least one positive value")
+
+        effective_weights = [weight / total for weight in normalized]
+        return {
+            "method": method,
+            "options": dict(options),
+            "argument_count": argument_count,
+            "weight_semantics": "argument_importance",
+            "configured_argument_weights": normalized,
+            "effective_weights": effective_weights,
+            "l2towa": None,
+        }
+
+    if method == "l2towa":
+        definition = _method_definition(method)
+        a, b = resolve_l2towa_quantifier(
+            method_definition=definition,
+            options=options,
+        )
+        positional_weights = generate_owa_weights(
+            argument_count,
+            a=a,
+            b=b,
+        )
+        return {
+            "method": method,
+            "options": dict(options),
+            "argument_count": argument_count,
+            "weight_semantics": "ordered_positions_descending_beta",
+            "configured_argument_weights": None,
+            "effective_weights": positional_weights,
+            "l2towa": {
+                "quantifier": options.get("quantifier"),
+                "a": a,
+                "b": b,
+                "positional_weights": positional_weights,
+                "ordering": "descending_beta",
+            },
+        }
+
+    raise ValueError(f"unsupported two-tuple aggregation method: {method}")
+
+
+def _aggregation_trace(
+    *,
+    values: Sequence[TwoTuple],
+    result: TwoTuple,
+    label_count: int,
+    stage_evidence: dict[str, Any],
+) -> dict[str, Any]:
+    """Create a compact trace that exactly reproduces one aggregation result."""
+
+    betas = [
+        delta_inverse(value, label_count=label_count)
+        for value in values
+    ]
+    method = stage_evidence["method"]
+    effective_weights = list(stage_evidence["effective_weights"])
+
+    if len(effective_weights) != len(betas):
+        raise ValueError("aggregation evidence weights do not match aggregation inputs")
+
+    if method == "l2towa":
+        ordered = sorted(
+            enumerate(betas),
+            key=lambda item: (-item[1], item[0]),
+        )
+        source_indexes = [index for index, _ in ordered]
+        aggregation_betas = [beta for _, beta in ordered]
+    else:
+        source_indexes = list(range(len(betas)))
+        aggregation_betas = list(betas)
+
+    contributions = [
+        beta * weight
+        for beta, weight in zip(
+            aggregation_betas,
+            effective_weights,
+            strict=True,
+        )
+    ]
+    traced_beta = sum(contributions)
+    result_beta = delta_inverse(result, label_count=label_count)
+
+    if abs(traced_beta - result_beta) > TRACE_TOLERANCE:
+        raise ValueError(
+            "aggregation trace is inconsistent with the executed aggregation result"
+        )
+
+    return {
+        "input_betas": betas,
+        "source_indexes_in_aggregation_order": source_indexes,
+        "aggregation_betas": aggregation_betas,
+        "effective_weights": effective_weights,
+        "contributions": contributions,
+        "aggregated_beta": result_beta,
+    }
 
 
 def _aggregate_experts(
@@ -131,13 +308,16 @@ def _aggregate_experts(
     method: str,
     options: dict[str, Any],
     expert_weights: Sequence[Real] | None,
-) -> list[list[TwoTuple]]:
+    stage_evidence: dict[str, Any],
+) -> tuple[list[list[TwoTuple]], list[list[dict[str, Any]]]]:
     """Aggregate experts for each alternative/criterion cell."""
 
     collective_matrix: list[list[TwoTuple]] = []
+    traces: list[list[dict[str, Any]]] = []
 
     for alternative_index in range(alternatives_count):
         collective_row: list[TwoTuple] = []
+        trace_row: list[dict[str, Any]] = []
 
         for criterion_index in range(criteria_count):
             values = [
@@ -145,19 +325,27 @@ def _aggregate_experts(
                 for expert_key in expert_keys
             ]
 
-            collective_row.append(
-                aggregate(
-                    method,
-                    values,
+            result = aggregate(
+                method,
+                values,
+                label_count=label_count,
+                weights=expert_weights,
+                options=options,
+            )
+            collective_row.append(result)
+            trace_row.append(
+                _aggregation_trace(
+                    values=values,
+                    result=result,
                     label_count=label_count,
-                    weights=expert_weights,
-                    options=options,
+                    stage_evidence=stage_evidence,
                 )
             )
 
         collective_matrix.append(collective_row)
+        traces.append(trace_row)
 
-    return collective_matrix
+    return collective_matrix, traces
 
 
 def _aggregate_criteria(
@@ -167,18 +355,45 @@ def _aggregate_criteria(
     method: str,
     options: dict[str, Any],
     criterion_weights: Sequence[Real] | None,
-) -> list[TwoTuple]:
-    """Aggregate the collective criterion values for each alternative."""
+    stage_evidence: dict[str, Any],
+) -> tuple[list[TwoTuple], list[dict[str, Any]]]:
+    """Aggregate the collective criterion values for every alternative."""
 
-    return [
-        aggregate(
+    collective_values: list[TwoTuple] = []
+    traces: list[dict[str, Any]] = []
+
+    for row in collective_matrix:
+        result = aggregate(
             method,
             row,
             label_count=label_count,
             weights=criterion_weights,
             options=options,
         )
-        for row in collective_matrix
+        collective_values.append(result)
+        traces.append(
+            _aggregation_trace(
+                values=row,
+                result=result,
+                label_count=label_count,
+                stage_evidence=stage_evidence,
+            )
+        )
+
+    return collective_values, traces
+
+
+def _beta_matrix(
+    matrix: list[list[TwoTuple]],
+    *,
+    label_count: int,
+) -> list[list[float]]:
+    return [
+        [
+            delta_inverse(value, label_count=label_count)
+            for value in row
+        ]
+        for row in matrix
     ]
 
 
@@ -187,12 +402,7 @@ def _ranking(
     *,
     label_count: int,
 ) -> tuple[list[float], list[int]]:
-    """Return beta scores and a descending ranking of alternative indexes.
-
-    In one homogeneous linguistic term set, Delta^-1(s_i, alpha) = i + alpha
-    preserves the lexicographic order of 2-tuples, so descending beta order is
-    equivalent to descending 2-tuple order.
-    """
+    """Return beta scores and a descending ranking of alternative indexes."""
 
     collective_scores = [
         delta_inverse(value, label_count=label_count)
@@ -216,18 +426,14 @@ def run_two_tuple(
     expert_weights: Sequence[Real] | None = None,
     criterion_weights: Sequence[Real] | None = None,
 ) -> dict[str, Any]:
-    """Execute the homogeneous 2-tuple decision model.
-
-    ``matrices`` contains one alternative x criterion matrix per expert. Every
-    matrix cell must already be resolved to the internal ``TwoTuple`` type and
-    all cells must belong to the same linguistic expression domain.
-
-    The selected aggregation method determines whether the provided expert or
-    criterion weights participate in each stage. The aggregation registry is
-    responsible for those method-specific semantics.
-    """
+    """Execute the homogeneous 2-tuple decision model."""
 
     expert_keys, alternatives_count, criteria_count = _validate_matrices(matrices)
+
+    if isinstance(label_count, bool) or not isinstance(label_count, int):
+        raise ValueError("label_count must be an integer")
+    if label_count < 1:
+        raise ValueError("label_count must be at least 1")
 
     expert_method, expert_options = _aggregation_config(
         expert_aggregation,
@@ -257,7 +463,22 @@ def run_two_tuple(
         else None
     )
 
-    collective_matrix = _aggregate_experts(
+    expert_stage_evidence = _aggregation_stage_evidence(
+        method=expert_method,
+        options=expert_options,
+        argument_count=len(expert_keys),
+        argument_weights=expert_weights_for_aggregation,
+        field="expert_aggregation",
+    )
+    criteria_stage_evidence = _aggregation_stage_evidence(
+        method=criteria_method,
+        options=criteria_options,
+        argument_count=criteria_count,
+        argument_weights=criterion_weights_for_aggregation,
+        field="criteria_aggregation",
+    )
+
+    collective_matrix, expert_aggregation_traces = _aggregate_experts(
         matrices=matrices,
         expert_keys=expert_keys,
         alternatives_count=alternatives_count,
@@ -266,14 +487,21 @@ def run_two_tuple(
         method=expert_method,
         options=expert_options,
         expert_weights=expert_weights_for_aggregation,
+        stage_evidence=expert_stage_evidence,
     )
 
-    collective_values = _aggregate_criteria(
+    collective_beta_matrix = _beta_matrix(
+        collective_matrix,
+        label_count=label_count,
+    )
+
+    collective_values, criteria_aggregation_traces = _aggregate_criteria(
         collective_matrix=collective_matrix,
         label_count=label_count,
         method=criteria_method,
         options=criteria_options,
         criterion_weights=criterion_weights_for_aggregation,
+        stage_evidence=criteria_stage_evidence,
     )
 
     collective_scores, collective_ranking = _ranking(
@@ -283,7 +511,12 @@ def run_two_tuple(
 
     return {
         "collective_matrix": collective_matrix,
+        "collective_beta_matrix": collective_beta_matrix,
         "collective_values": collective_values,
         "collective_scores": collective_scores,
         "collective_ranking": collective_ranking,
+        "expert_aggregation_evidence": expert_stage_evidence,
+        "criteria_aggregation_evidence": criteria_stage_evidence,
+        "expert_aggregation_traces": expert_aggregation_traces,
+        "criteria_aggregation_traces": criteria_aggregation_traces,
     }
