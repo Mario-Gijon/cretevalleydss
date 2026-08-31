@@ -5,24 +5,34 @@ from typing import Any
 from .aggregation import build_aggregation_facts
 from .core import build_core_facts_from_evidence
 from .evidence import extract_two_tuple_evidence
+from .experts import build_evaluator_facts
 from .linguistic import build_linguistic_facts
+from .robustness import build_robustness_facts
+from .sensitivity import build_sensitivity_facts
 
 
 def analyze_issue(
     context: dict[str, Any],
 ) -> dict[str, Any]:
-    """Build deterministic issue-level Results Analysis for the 2-Tuple model.
-
-    Delivery 1 intentionally exposes facts only. Natural-language
-    interpretation, visualizations, evaluator diagnostics, robustness and
-    sensitivity are added by later analysis modules without changing this
-    evidence contract.
-    """
+    """Build deterministic issue-level Results Analysis for the 2-Tuple model."""
 
     evidence = extract_two_tuple_evidence(context)
+
     facts = build_core_facts_from_evidence(evidence)
     facts["linguistic2Tuple"] = build_linguistic_facts(evidence)
     facts["aggregation"] = build_aggregation_facts(evidence)
+    facts["evaluators"] = build_evaluator_facts(
+        evidence,
+        context,
+    )
+    facts["robustness"] = build_robustness_facts(
+        evidence,
+        context,
+    )
+    facts["sensitivity"] = build_sensitivity_facts(
+        evidence,
+        context,
+    )
 
     return {
         "facts": facts,
