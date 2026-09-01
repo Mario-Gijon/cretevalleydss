@@ -160,6 +160,8 @@ const CriteriaPreferenceOrderRow = ({
 
 const CriteriaPreferenceOrderList = ({ criteria, onChange, onMove, onRemove, readOnly = false }) => {
   const theme = useTheme();
+  const listRef = useRef(null);
+  const previousRowRects = useRef(new Map());
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -189,8 +191,61 @@ const CriteriaPreferenceOrderList = ({ criteria, onChange, onMove, onRemove, rea
     />
   ));
 
+  useLayoutEffect(() => {
+    const rowElements = listRef.current?.querySelectorAll("[data-testid^='criteria-preference-row-']");
+    if (!rowElements) return undefined;
+
+    const currentRowRects = new Map(
+      [...rowElements].map((element) => [element.dataset.testid, element.getBoundingClientRect()])
+    );
+    const oldRects = previousRowRects.current;
+    previousRowRects.current = currentRowRects;
+
+    if (oldRects.size === 0 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      return undefined;
+    }
+
+    const animatedElements = [];
+    currentRowRects.forEach((newRect, rowId) => {
+      const oldRect = oldRects.get(rowId);
+      const element = listRef.current?.querySelector(`[data-testid="${rowId}"]`);
+      const offsetY = oldRect && newRect ? oldRect.top - newRect.top : 0;
+
+      if (!element || !offsetY) return;
+
+      element.style.transform = `translate3d(0, ${offsetY}px, 0)`;
+      element.style.transition = "none";
+      animatedElements.push(element);
+    });
+
+    if (animatedElements.length === 0) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
+      animatedElements.forEach((element) => {
+        element.style.transition = "transform 160ms cubic-bezier(0.2, 0, 0, 1)";
+        element.style.transform = "translate3d(0, 0, 0)";
+
+        const clearAnimation = () => {
+          element.style.transition = "";
+          element.style.transform = "";
+          element.removeEventListener("transitionend", clearAnimation);
+        };
+
+        element.addEventListener("transitionend", clearAnimation, { once: true });
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      animatedElements.forEach((element) => {
+        element.style.transition = "";
+        element.style.transform = "";
+      });
+    };
+  }, [criteria]);
+
   const list = (
-    <Box role="list" aria-label="Ranked criteria" sx={{ overflow: "hidden", border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: alpha(theme.palette.background.paper, 0.32) }}>
+    <Box ref={listRef} role="list" aria-label="Ranked criteria" sx={{ overflow: "hidden", border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: alpha(theme.palette.background.paper, 0.32) }}>
       {rows}
     </Box>
   );
@@ -207,3 +262,4 @@ const CriteriaPreferenceOrderList = ({ criteria, onChange, onMove, onRemove, rea
 };
 
 export default CriteriaPreferenceOrderList;
+import { useLayoutEffect, useRef } from "react";
