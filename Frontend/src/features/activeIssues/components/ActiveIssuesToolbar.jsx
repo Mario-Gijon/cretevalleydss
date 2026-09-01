@@ -84,9 +84,21 @@ const ActiveIssuesToolbar = ({
         height: isLgUp ? resolvedHeight : "auto",
         overflow: "hidden",
         position: "relative",
-        bgcolor: "#0b1c28",
-        borderBottom: "1px solid rgba(76,201,211,0.18)",
+        background: "transparent",
+        backgroundColor: "transparent",
+        backgroundImage: "none",
+        border: "none",
+        borderBottom: "none",
+        color: "#F1F4F6",
         boxShadow: "none",
+        backdropFilter: "none",
+        "& .MuiOutlinedInput-root": {
+          bgcolor: "#111923",
+          color: "#F1F4F6",
+          "& fieldset": { borderColor: "#2A3743" },
+          "&:hover fieldset": { borderColor: "#2A3743" },
+          "&.Mui-focused fieldset": { borderColor: "secondary.main" },
+        },
         ...(paperSx || {}),
       }}
     >
@@ -160,6 +172,7 @@ const ActiveIssuesToolbar = ({
               size="small"
               color="secondary"
               variant="outlined"
+              sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#111923", color: "#F1F4F6", "& fieldset": { borderColor: "#2A3743" } }, "& .MuiInputBase-input::placeholder": { color: "#8F9BA5", opacity: 1 } }}
               placeholder="Search..."
               fullWidth
               InputProps={{

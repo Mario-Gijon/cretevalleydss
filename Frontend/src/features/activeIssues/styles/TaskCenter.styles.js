@@ -16,9 +16,9 @@ export const getTaskCenterBorderSx = () => ({
  * @returns {Object}
  */
 export const getTaskCenterGlassSx = () => ({
-  bgcolor: "#0b1c28",
+  bgcolor: "#111923",
   boxShadow: "none",
-  border: "1px solid rgba(255,255,255,0.10)",
+  border: "1px solid #2A3743",
 });
 
 /**

@@ -4,21 +4,21 @@ import Paper from "@mui/material/Paper";
 /**
  * Tarjeta base del grid de issues.
  */
-export const IssuesGridCard = styled(Paper)(({ theme }) => ({
+export const IssuesGridCard = styled(Paper)(() => ({
   borderRadius: 10,
   height: "100%",
   transition:
     "transform 160ms ease, box-shadow 160ms ease, background 220ms ease, border-color 220ms ease",
-  background: "#0d202d",
-  color: theme.palette.common.white,
+  background: "#151E29",
+  color: "#F1F4F6",
   boxShadow: "none",
-  border: "1px solid rgba(255,255,255,0.10)",
+  border: "1px solid #293743",
   overflow: "hidden",
   "&:hover": {
     transform: "translateY(-1px)",
     boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
-    background: "#102838",
-    borderColor: "rgba(76,201,211,0.28)",
+    background: "#18232F",
+    borderColor: "#293743",
   },
 }));
 

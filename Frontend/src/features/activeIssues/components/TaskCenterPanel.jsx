@@ -169,9 +169,9 @@ const TaskCenterPanel = ({
                     sx={{
                       borderRadius: 4,
                       overflow: "hidden",
-                      bgcolor: "rgba(255,255,255,0.025)",
+                      bgcolor: "#171F2A",
                       boxShadow: "none",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      border: "1px solid #2A3743",
                     }}
                   >
                     <Box
@@ -236,7 +236,7 @@ const TaskCenterPanel = ({
                               mx: 0.75,
                               mt: 1,
                               borderRadius: 3,
-                              bgcolor: alpha(theme.palette.text.primary, 0.02),
+                              bgcolor: "#171F2A",
                               "&:hover": {
                                 bgcolor: alpha(theme.palette.secondary.main, 0.08),
                               },
