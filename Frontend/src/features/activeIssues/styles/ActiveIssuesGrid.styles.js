@@ -9,16 +9,16 @@ export const IssuesGridCard = styled(Paper)(() => ({
   height: "100%",
   transition:
     "transform 160ms ease, box-shadow 160ms ease, background 220ms ease, border-color 220ms ease",
-  background: "#171F28",
+  background: "#111923",
   color: "#F1F4F6",
   boxShadow: "none",
-  border: "1px solid #293743",
+  border: "1px solid #2A3743",
   overflow: "hidden",
   "&:hover": {
     transform: "translateY(-1px)",
     boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
-    background: "#1A2430",
-    borderColor: "#293743",
+    background: "#141E29",
+    borderColor: "#2A3743",
   },
 }));
 

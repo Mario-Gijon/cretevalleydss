@@ -48,7 +48,7 @@ const ActiveIssuesDesktopView = ({
           lg: "minmax(0, 3fr) minmax(280px, 1fr)",
         },
         gap: 2,
-        alignItems: "start",
+        alignItems: "stretch",
       }}
     >
       <Box component="main" className="active-issues-main-column" sx={{ minWidth: 0 }}>
@@ -72,18 +72,23 @@ const ActiveIssuesDesktopView = ({
         <ActiveIssuesGrid
           issues={filteredIssues}
           onOpenIssue={openDetails}
-          sx={{ mt: 1.5 }}
+          sx={{ mt: 1 }}
         />
       </Box>
 
       <Box
         component="aside"
         className="active-issues-sidebar"
-        sx={{ minWidth: 0, pt: { lg: 0 }, pl: { lg: 2 }, borderLeft: { lg: "1px solid rgba(76,201,211,0.14)" } }}
+        sx={{
+          minWidth: 0,
+          pl: { lg: 2 },
+          borderLeft: { lg: "1px solid rgba(76,201,211,0.14)" },
+          display: "flex",
+        }}
       >
         <TaskCenter
           variant="panel"
-          height="auto"
+          height="100%"
           minHeight={132}
           tasksCount={tasksCount}
           taskCenter={taskCenter}
@@ -94,12 +99,14 @@ const ActiveIssuesDesktopView = ({
             {
               key: "waiting-on-others",
               title: "Waiting on others",
+              tone: "warning",
               items: waitingIssues,
               detail: (issue) => issue.ui.statusLabel || "Waiting for experts",
             },
             {
               key: "upcoming-deadlines",
               title: "Upcoming deadlines",
+              tone: "info",
               items: deadlineIssues,
               detail: (issue) => issue.ui.deadline.iso || "Deadline",
             },

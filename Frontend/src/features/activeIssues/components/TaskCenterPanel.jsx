@@ -245,14 +245,12 @@ const TaskCenterPanel = ({
                             sx={{
                               px: 1,
                               py: 0.8,
+                              mb: itemIndex < group.items.length - 1 ? 0.5 : 0,
                               borderRadius: 2,
-                              bgcolor: "transparent",
-                              borderBottom:
-                                itemIndex < group.items.length - 1
-                                  ? "1px solid rgba(150, 170, 185, 0.12)"
-                                  : "none",
+                              bgcolor: "rgba(255,255,255,0.025)",
+                              border: "1px solid rgba(150, 170, 185, 0.10)",
                               "&:hover": {
-                                bgcolor: alpha(theme.palette.secondary.main, 0.06),
+                                bgcolor: "rgba(255,255,255,0.045)",
                               },
                             }}
                           >
@@ -315,13 +313,49 @@ const TaskCenterPanel = ({
                 component="section"
                 sx={{ pt: 1.2, borderTop: "1px solid rgba(150, 170, 185, 0.12)" }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{ px: 0.25, pb: 0.65, fontWeight: 900 }}
+                <Box
+                  sx={{
+                    px: 0.25,
+                    pb: 0.65,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                  }}
                 >
-                  {section.title}
-                </Typography>
-                <List disablePadding>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: "center", minWidth: 0 }}
+                  >
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 999,
+                        bgcolor: alpha(
+                          resolveActiveIssuesToneColor(section.tone || "info").dot,
+                          0.55
+                        ),
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 950,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {section.title}
+                    </Typography>
+                  </Stack>
+                  <ActiveIssuesPill tone={section.tone || "info"}>
+                    {section.items.length}
+                  </ActiveIssuesPill>
+                </Box>
+                <List disablePadding sx={{ py: 0.15 }}>
                   {section.items.map((issue, itemIndex) => (
                     <ListItemButton
                       key={issue.id}
@@ -329,14 +363,12 @@ const TaskCenterPanel = ({
                       sx={{
                         px: 1,
                         py: 0.8,
+                        mb: itemIndex < section.items.length - 1 ? 0.5 : 0,
                         borderRadius: 2,
-                        bgcolor: "transparent",
-                        borderBottom:
-                          itemIndex < section.items.length - 1
-                            ? "1px solid rgba(150, 170, 185, 0.12)"
-                            : "none",
+                        bgcolor: "rgba(255,255,255,0.025)",
+                        border: "1px solid rgba(150, 170, 185, 0.10)",
                         "&:hover": {
-                          bgcolor: alpha(theme.palette.secondary.main, 0.06),
+                          bgcolor: "rgba(255,255,255,0.045)",
                         },
                       }}
                     >

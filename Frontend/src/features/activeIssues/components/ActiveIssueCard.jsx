@@ -33,7 +33,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
   const successBorder = alpha(theme.palette.success.main, 0.9);
 
   return (
-    <Box sx={{ width: "89%", mx: "auto", py: 0.65, overflow: "visible" }}>
+    <Box sx={{ width: "84%", mx: "auto", py: 0.65, overflow: "visible" }}>
       <Box
         sx={{
           display: "flex",
@@ -291,20 +291,18 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
               <ActiveIssuesPill tone={tone}>{meta?.title || "—"}</ActiveIssuesPill>
             </Box>
 
-            <Divider
-              sx={{
-                opacity: 0.14,
-                my: 0.7,
-                borderColor: alpha("#fff", 0.12),
-              }}
-            />
-
             <ActiveIssueStageStepper issue={issue} tone={tone} />
 
             <Box sx={{ flex: 1 }} />
           </Stack>
 
           <Box sx={{ position: "relative", zIndex: 1 }}>
+            <Divider
+              sx={{
+                borderColor: "rgba(150, 170, 185, 0.12)",
+                mb: 0.2,
+              }}
+            />
             <ActiveIssueFooterMetadata issue={issue} />
           </Box>
         </Box>

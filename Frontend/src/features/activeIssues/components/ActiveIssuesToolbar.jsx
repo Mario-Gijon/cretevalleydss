@@ -5,7 +5,6 @@ import {
   Grid,
   Paper,
   Tooltip,
-  IconButton,
   TextField,
   FormControl,
   InputLabel,
@@ -13,6 +12,7 @@ import {
   MenuItem,
   Divider,
   Avatar,
+  Button,
   CircularProgress,
   InputAdornment,
 } from "@mui/material";
@@ -68,15 +68,15 @@ const ActiveIssuesToolbar = ({
     return isLgUp
       ? {
           search: { xs: 12, md: 5, lg: 5 },
-          model: { xs: 12, md: 3, lg: 3 },
-          sort: { xs: 12, md: 3, lg: 3 },
-          refresh: { xs: 12, md: 1, lg: 1 },
+          model: { xs: 12, md: 2, lg: 2 },
+          sort: { xs: 12, md: 2, lg: 2 },
+          refresh: { xs: 12, md: 3, lg: 3 },
         }
       : {
           search: { xs: 12, md: 5 },
-          model: { xs: 12, md: 3 },
-          sort: { xs: 12, md: 3 },
-          refresh: { xs: 12, md: 1 },
+          model: { xs: 12, md: 2 },
+          sort: { xs: 12, md: 2 },
+          refresh: { xs: 12, md: 3 },
         };
   }, [isLgUp]);
 
@@ -96,7 +96,8 @@ const ActiveIssuesToolbar = ({
       elevation={0}
       sx={{
         borderRadius: 0,
-        p: { xs: 1.25, md: 1.5 },
+        py: { xs: 1.25, md: 1.5 },
+        px: 0,
         height: isLgUp ? resolvedHeight : "auto",
         overflow: "hidden",
         position: "relative",
@@ -235,26 +236,32 @@ const ActiveIssuesToolbar = ({
           <Grid
             item
             {...gridConfig.refresh}
-            sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}
+            sx={{ display: "flex", alignItems: "stretch" }}
           >
             <Tooltip title="Refresh issues">
-              <span>
-                <IconButton
+              <span style={{ width: "100%" }}>
+                <Button
+                  fullWidth
                   onClick={onRefresh}
                   disabled={refreshing}
                   aria-label="Refresh issues"
+                  startIcon={
+                    refreshing ? <CircularProgress size={16} color="secondary" /> : <RefreshIcon />
+                  }
                   sx={{
+                    height: "100%",
+                    minHeight: 40,
+                    color: "#F1F4F6",
                     bgcolor: "#111923",
                     border: "1px solid #2A3743",
-                    "&:hover": { bgcolor: "#18232F" },
+                    borderRadius: 1,
+                    textTransform: "none",
+                    fontWeight: 700,
+                    "&:hover": { bgcolor: "#141E29", borderColor: "#2A3743" },
                   }}
                 >
-                  {refreshing ? (
-                    <CircularProgress size={18} color="secondary" />
-                  ) : (
-                    <RefreshIcon />
-                  )}
-                </IconButton>
+                  Refresh issues
+                </Button>
               </span>
             </Tooltip>
           </Grid>

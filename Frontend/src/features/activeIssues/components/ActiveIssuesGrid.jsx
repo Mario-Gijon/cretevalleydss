@@ -13,7 +13,7 @@ import ActiveIssueCard from "./ActiveIssueCard";
  */
 const ActiveIssuesGrid = ({ issues = [], onOpenIssue, sx }) => {
   return (
-    <Grid container spacing={1.5} sx={sx}>
+    <Grid container spacing={2} sx={sx}>
       {(issues || []).map((issue) => (
         <ActiveIssueCard
           key={issue.id}
