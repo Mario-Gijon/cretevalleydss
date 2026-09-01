@@ -22,7 +22,9 @@ def interpret_two_tuple_result(
     alpha = float(value.alpha)
     magnitude = abs(alpha)
 
-    if not math.isfinite(alpha) or magnitude < 0.10:
+    if not math.isfinite(alpha) or (
+        magnitude < 0.025 and not math.isclose(magnitude, 0.025, abs_tol=1e-12)
+    ):
         return base_label
 
     direction = 1 if alpha > 0 else -1
@@ -33,6 +35,9 @@ def interpret_two_tuple_result(
         return base_label
 
     neighbor_label = str(labels[neighbor_index]["label"])
+    if magnitude < 0.10:
+        return f"{base_label}, very slightly leaning toward {neighbor_label}"
+
     if magnitude < 0.25:
         return f"{base_label}, slightly leaning toward {neighbor_label}"
 

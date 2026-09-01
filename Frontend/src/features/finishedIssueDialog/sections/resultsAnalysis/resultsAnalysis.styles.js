@@ -51,7 +51,11 @@ export const rankingListViewportSx = (compact) => ({
 
 export const rankingRowSx = (winner, compact) => ({
   minWidth: 0,
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: {
+    xs: `${compact ? 34 : 42}px minmax(0, 1fr) minmax(120px, 48%)`,
+    sm: `${compact ? 34 : 42}px minmax(0, 1fr) ${compact ? 220 : 300}px`,
+  },
   alignItems: "center",
   gap: compact ? 0.8 : 1.1,
   px: compact ? 0.8 : 1.1,

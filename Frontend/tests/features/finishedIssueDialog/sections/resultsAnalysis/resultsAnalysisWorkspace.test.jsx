@@ -18,7 +18,7 @@ import { getScoreOverviewChartHeight } from "../../../../../src/features/finishe
 import { buildScoreOverviewSeries } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildScoreOverviewSeries.js";
 import { normalizeRankingScores } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/normalizeRankingScores.js";
 import { buildConsensusEvolutionData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildConsensusEvolutionData.js";
-import { comparisonDetailPanelSx, comparisonOutcomeGridSx, correlationCellSx, correlationMatrixSx, correlationMatrixViewportSx, movementChartViewportSx, rankingListViewportSx, rankingScoreTrackSx, scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx, singleOutcomeGridSx } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
+import { comparisonDetailPanelSx, comparisonOutcomeGridSx, correlationCellSx, correlationMatrixSx, correlationMatrixViewportSx, movementChartViewportSx, rankingListViewportSx, rankingRowSx, rankingScoreTrackSx, scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx, singleOutcomeGridSx } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
 const completeScenario = (id, ranks) => ({
@@ -68,6 +68,17 @@ describe("Results analysis workspace", () => {
       { id: "b", score: -2, formattedScore: "-2" },
       { id: "c", formattedScore: "—" },
     ]).map((entry) => [entry.score, entry.formattedScore])).toEqual([[1, "1"], [1, "1"], [null, "—"]]);
+  });
+
+  it("reserves a consistent result column for every ranking row", () => {
+    expect(rankingRowSx(false, false).gridTemplateColumns).toEqual({
+      xs: "42px minmax(0, 1fr) minmax(120px, 48%)",
+      sm: "42px minmax(0, 1fr) 300px",
+    });
+    expect(rankingRowSx(false, true).gridTemplateColumns).toEqual({
+      xs: "34px minmax(0, 1fr) minmax(120px, 48%)",
+      sm: "34px minmax(0, 1fr) 220px",
+    });
   });
 
   it("keeps comparison scores original by default and normalizes each execution independently when enabled", () => {
@@ -403,7 +414,9 @@ describe("Results analysis workspace", () => {
     expect(data.single.ranking[0]).toMatchObject({ resultLabel: "High, slightly leaning toward Very High", classificationLabel: "Highly suitable" });
 
     render(<ThemeProvider theme={createTheme()}><RankingList ranking={data.single.ranking} /></ThemeProvider>);
-    expect(screen.getByText("High, slightly leaning toward Very High")).toBeInTheDocument();
+    const resultLabel = screen.getByText("High, slightly leaning toward Very High");
+    expect(resultLabel).toBeInTheDocument();
+    expect(resultLabel).not.toHaveClass("MuiChip-label");
     expect(screen.getByText("Highly suitable")).toBeInTheDocument();
   });
 

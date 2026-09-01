@@ -99,10 +99,13 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                 </Box>
               </Box>
               <Stack
-                direction="row"
-                spacing={0.75}
-                alignItems="center"
-                sx={{ flex: "0 0 auto" }}
+                spacing={0.2}
+                alignItems="flex-end"
+                sx={{
+                  width: "100%",
+                  minWidth: 0,
+                  textAlign: "right",
+                }}
               >
                 <Typography
                   variant="body2"
@@ -114,11 +117,22 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                   {entry.formattedScore}
                 </Typography>
                 {entry.resultLabel ? (
-                  <Chip
-                    label={entry.resultLabel}
-                    size="small"
-                    variant="outlined"
-                  />
+                  <Typography
+                    variant="caption"
+                    title={entry.resultLabel}
+                    sx={{
+                      color: winner ? "success.light" : "secondary.light",
+                      lineHeight: 1.25,
+                      maxWidth: "100%",
+                      minWidth: 0,
+                      whiteSpace: "normal",
+                      overflowWrap: "anywhere",
+                      fontSize: compact ? "0.76rem" : "0.8rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {entry.resultLabel}
+                  </Typography>
                 ) : null}
                 {entry.classificationLabel ? (
                   <Chip

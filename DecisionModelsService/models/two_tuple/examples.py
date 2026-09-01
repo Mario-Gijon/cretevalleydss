@@ -125,7 +125,7 @@ TWO_TUPLE_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
                         "name": "Alternative A",
                         "score": 3.025,
                         "rank": 1,
-                        "resultLabel": "High",
+                        "resultLabel": "High, very slightly leaning toward Very High",
                     },
                     {
                         "alternativeId": "alt-b",

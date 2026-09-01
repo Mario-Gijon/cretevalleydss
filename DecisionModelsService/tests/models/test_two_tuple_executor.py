@@ -19,7 +19,12 @@ LABELS = [
     ("label_index", "alpha", "expected"),
     [
         (3, 0.0, "High"),
-        (3, 0.099999, "High"),
+        (3, 0.024999, "High"),
+        (3, -0.024999, "High"),
+        (3, 0.025, "High, very slightly leaning toward Very High"),
+        (3, -0.025, "High, very slightly leaning toward Medium"),
+        (3, 0.099999, "High, very slightly leaning toward Very High"),
+        (3, -0.099999, "High, very slightly leaning toward Medium"),
         (3, 0.10, "High, slightly leaning toward Very High"),
         (3, -0.10, "High, slightly leaning toward Medium"),
         (3, 0.25, "High, leaning toward Very High"),
@@ -72,7 +77,7 @@ def test_two_tuple_executor_emits_natural_language_result_labels() -> None:
     assert response["success"] is True
     ranked = response["data"]["rankedAlternatives"]
     assert [entry["resultLabel"] for entry in ranked] == [
-        "High",
+        "High, very slightly leaning toward Very High",
         "Between Low and Medium, closer to Medium",
     ]
     assert all("beta" not in entry["resultLabel"].lower() for entry in ranked)
