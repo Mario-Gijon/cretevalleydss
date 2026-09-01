@@ -31,6 +31,9 @@ const ActiveIssuesMobileView = ({
   setQuery,
   searchBy,
   setSearchBy,
+  modelFilter,
+  modelOptions,
+  setModelFilter,
   sortBy,
   setSortBy,
   taskCenter,
@@ -53,6 +56,9 @@ const ActiveIssuesMobileView = ({
         setQuery={setQuery}
         searchBy={searchBy}
         setSearchBy={setSearchBy}
+        modelFilter={modelFilter}
+        modelOptions={modelOptions}
+        setModelFilter={setModelFilter}
         sortBy={sortBy}
         setSortBy={setSortBy}
         height="auto"

@@ -60,6 +60,8 @@ const ActiveIssuesView = () => {
   const {
     query,
     searchBy,
+    modelFilter,
+    modelOptions,
     sortBy,
     taskType,
     filteredIssues,
@@ -67,6 +69,7 @@ const ActiveIssuesView = () => {
     overview,
     setQuery,
     setSearchBy,
+    setModelFilter,
     setSortBy,
     setTaskType,
   } = useActiveIssuesListing({
@@ -143,6 +146,9 @@ const ActiveIssuesView = () => {
             setQuery={setQuery}
             searchBy={searchBy}
             setSearchBy={setSearchBy}
+            modelFilter={modelFilter}
+            modelOptions={modelOptions}
+            setModelFilter={setModelFilter}
             sortBy={sortBy}
             setSortBy={setSortBy}
             taskCenter={taskCenter}
@@ -163,6 +169,9 @@ const ActiveIssuesView = () => {
             setQuery={setQuery}
             searchBy={searchBy}
             setSearchBy={setSearchBy}
+            modelFilter={modelFilter}
+            modelOptions={modelOptions}
+            setModelFilter={setModelFilter}
             sortBy={sortBy}
             setSortBy={setSortBy}
             taskCenter={taskCenter}

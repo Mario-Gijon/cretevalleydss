@@ -23,6 +23,7 @@ export const useActiveIssuesListing = ({
 }) => {
   const [query, setQuery] = useState("");
   const [searchBy, setSearchBy] = useState("all");
+  const [modelFilter, setModelFilter] = useState("all");
   const [sortBy, setSortBy] = useState("creationDate");
   const [taskType, setTaskType] = useState("all");
 
@@ -36,9 +37,18 @@ export const useActiveIssuesListing = ({
       activeIssues,
       query,
       searchBy,
+      modelFilter,
       sortBy,
     });
-  }, [activeIssues, query, searchBy, sortBy]);
+  }, [activeIssues, query, searchBy, modelFilter, sortBy]);
+
+  const modelOptions = useMemo(() => {
+    const models = activeIssues
+      .map((issue) => issue?.model?.name)
+      .filter((name) => typeof name === "string" && name.trim());
+
+    return ["all", ...Array.from(new Set(models)).sort((a, b) => a.localeCompare(b))];
+  }, [activeIssues]);
 
   /**
    * Número total de tareas visible en la pantalla.
@@ -64,6 +74,8 @@ export const useActiveIssuesListing = ({
   return {
     query,
     searchBy,
+    modelFilter,
+    modelOptions,
     sortBy,
     taskType,
     filteredIssues,
@@ -71,6 +83,7 @@ export const useActiveIssuesListing = ({
     overview,
     setQuery,
     setSearchBy,
+    setModelFilter,
     setSortBy,
     setTaskType,
   };

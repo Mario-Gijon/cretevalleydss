@@ -42,6 +42,18 @@ describe("active issues listing logic", () => {
     expect(result.map((issue) => issue.name)).toEqual(["Campus Labs"]);
   });
 
+  it("filters by the selected model while preserving the requested sort", () => {
+    const result = buildFilteredActiveIssues({
+      activeIssues: activeIssuesDashboardFixture,
+      query: "",
+      searchBy: "all",
+      modelFilter: "AHP",
+      sortBy: "creationDate",
+    });
+
+    expect(result.map((issue) => issue.name)).toEqual(["Budget Planning"]);
+  });
+
   it("searches by owner", () => {
     const result = buildFilteredActiveIssues({
       activeIssues: activeIssuesDashboardFixture,
@@ -185,6 +197,8 @@ describe("useActiveIssuesListing", () => {
 
     expect(result.current.query).toBe("");
     expect(result.current.searchBy).toBe("all");
+    expect(result.current.modelFilter).toBe("all");
+    expect(result.current.modelOptions).toEqual(["all", "AHP", "PROMETHEE", "TOPSIS"]);
     expect(result.current.sortBy).toBe("creationDate");
     expect(result.current.taskType).toBe("all");
     expect(result.current.tasksCount).toBe(5);
@@ -224,6 +238,23 @@ describe("useActiveIssuesListing", () => {
       "Budget Planning",
       "Campus Labs",
       "Dorm Upgrade",
+    ]);
+  });
+
+  it("updates filtered issues when the model filter changes", () => {
+    const { result } = renderHook(() =>
+      useActiveIssuesListing({
+        activeIssues: activeIssuesDashboardFixture,
+        taskCenter: { total: 5 },
+      })
+    );
+
+    act(() => {
+      result.current.setModelFilter("TOPSIS");
+    });
+
+    expect(result.current.filteredIssues.map((issue) => issue.name)).toEqual([
+      "Campus Labs",
     ]);
   });
 

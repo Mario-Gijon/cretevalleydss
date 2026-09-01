@@ -1,7 +1,9 @@
 import { Box, Divider, Grid, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import AltRouteIcon from "@mui/icons-material/AltRoute";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 
 import {
   getNextActionMeta,
@@ -128,9 +130,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
     : Math.max(0, steps.findIndex((step) => step.key === currentKey));
 
   const accent = resolveActiveIssuesToneColor(tone).dot;
-  const lineWidth = "clamp(18px, 2.4vw, 34px)";
-  const lineHeight = 2;
-  const currentLabel = doneAll ? "Finished" : steps[currentIndex]?.label;
+  const lineWidth = "clamp(12px, 1.5vw, 26px)";
   const successDot = alpha(theme.palette.success.main, 0.78);
   const successBorder = alpha(theme.palette.success.main, 0.9);
 
@@ -152,7 +152,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
           display: "inline-flex",
           alignItems: "center",
           flexWrap: "nowrap",
-          whiteSpace: "nowrap",
+          minWidth: "max-content",
         }}
       >
         {steps.map((step, index) => {
@@ -172,82 +172,67 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
               ? alpha(accent, 0.95)
               : alpha(theme.palette.common.white, 0.16);
 
-          const dotShadow = isActive
-            ? `0 0 0 2px ${alpha(accent, 0.14)}`
-            : "none";
+          const labelColor = isDone
+            ? alpha(theme.palette.success.main, 0.9)
+            : isActive
+              ? accent
+              : alpha(theme.palette.common.white, 0.56);
 
           return (
             <Box
               key={step.key}
-              sx={{ display: "inline-flex", alignItems: "center" }}
+              sx={{ display: "inline-flex", alignItems: "flex-start" }}
             >
               <Tooltip title={tooltip} placement="top" arrow>
-                {isActive ? (
+                <Stack
+                  spacing={0.45}
+                  sx={{ width: 62, alignItems: "center", minWidth: 0 }}
+                >
                   <Box
                     sx={{
-                      minHeight: 28,
-                      px: 0.35,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      flexDirection: "column",
-                      gap: 0.35,
-                      boxShadow: dotShadow,
-                      transition: "all 160ms ease",
-                      maxWidth: 260,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 11,
-                        height: 11,
-                        borderRadius: 999,
-                        bgcolor: alpha(accent, 0.9),
-                        border: `1px solid ${alpha(theme.palette.common.white, 0.16)}`,
-                        flex: "0 0 auto",
-                      }}
-                    />
-
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontWeight: 700,
-                        color: accent,
-                        whiteSpace: "normal",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        maxWidth: 92,
-                        textAlign: "center",
-                      }}
-                      title={currentLabel}
-                    >
-                      {currentLabel}
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box
-                    sx={{
-                      width: isDone ? 12 : 11,
-                      height: isDone ? 12 : 11,
+                      width: isActive ? 14 : 12,
+                      height: isActive ? 14 : 12,
                       borderRadius: 999,
                       bgcolor: dotBackground,
                       border: `1px solid ${dotBorder}`,
+                      boxShadow: isActive
+                        ? `0 0 0 2px ${alpha(accent, 0.13)}`
+                        : "none",
                       transition: "all 160ms ease",
                     }}
                   />
-                )}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: labelColor,
+                      fontWeight: isActive ? 800 : 650,
+                      fontSize: "0.66rem",
+                      lineHeight: 1.15,
+                      textAlign: "center",
+                      whiteSpace: "normal",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {step.label}
+                  </Typography>
+                </Stack>
               </Tooltip>
 
               {index !== steps.length - 1 ? (
                 <Box
                   sx={{
                     width: lineWidth,
-                    height: lineHeight,
-                    mx: 1.15,
+                    height: "1px",
+                    mt: 0.75,
+                    mx: 0.35,
                     borderRadius: 999,
                     bgcolor: isDone
-                      ? alpha(theme.palette.success.main, 0.26)
-                      : alpha(theme.palette.common.white, 0.10),
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+                      ? alpha(theme.palette.success.main, 0.5)
+                      : alpha(theme.palette.common.white, 0.18),
                   }}
                 />
               ) : null}
@@ -256,6 +241,42 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
         })}
       </Box>
     </Box>
+  );
+};
+
+const ActiveIssueFooterMetadata = ({ issue }) => {
+  const alternativesCount = Array.isArray(issue?.alternatives)
+    ? issue.alternatives.length
+    : null;
+  const expertsCount = Number.isFinite(issue?.totalExperts)
+    ? issue.totalExperts
+    : null;
+
+  if (alternativesCount === null && expertsCount === null) return null;
+
+  return (
+    <Stack
+      direction="row"
+      spacing={1.5}
+      sx={{ alignItems: "center", mt: 0.95, color: "#77848E" }}
+    >
+      {alternativesCount !== null ? (
+        <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
+          <AltRouteIcon sx={{ fontSize: 15 }} />
+          <Typography variant="caption" sx={{ fontWeight: 700 }}>
+            {alternativesCount} alternatives
+          </Typography>
+        </Stack>
+      ) : null}
+      {expertsCount !== null ? (
+        <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
+          <GroupsOutlinedIcon sx={{ fontSize: 16 }} />
+          <Typography variant="caption" sx={{ fontWeight: 700 }}>
+            {expertsCount} experts
+          </Typography>
+        </Stack>
+      ) : null}
+    </Stack>
   );
 };
 
@@ -377,6 +398,7 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
           </Stack>
 
           <Box sx={{ position: "relative", zIndex: 1 }}>
+            <ActiveIssueFooterMetadata issue={issue} />
             <ActiveIssueDeadlineBar issue={issue} />
           </Box>
         </Box>

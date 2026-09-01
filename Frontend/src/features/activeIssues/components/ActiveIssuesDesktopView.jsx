@@ -14,6 +14,9 @@ const ActiveIssuesDesktopView = ({
   setQuery,
   searchBy,
   setSearchBy,
+  modelFilter,
+  modelOptions,
+  setModelFilter,
   sortBy,
   setSortBy,
   taskCenter,
@@ -85,6 +88,9 @@ const ActiveIssuesDesktopView = ({
           setQuery={setQuery}
           searchBy={searchBy}
           setSearchBy={setSearchBy}
+          modelFilter={modelFilter}
+          modelOptions={modelOptions}
+          setModelFilter={setModelFilter}
           sortBy={sortBy}
           setSortBy={setSortBy}
           height="auto"

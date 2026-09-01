@@ -75,6 +75,7 @@ const sortActiveIssues = (issues, sortBy) => {
  * @param {Array} params.activeIssues Lista de issues activos.
  * @param {string} params.query Texto de busqueda.
  * @param {string} params.searchBy Campo de busqueda.
+ * @param {string} params.modelFilter Modelo seleccionado.
  * @param {string} params.sortBy Criterio de ordenacion.
  * @returns {Array}
  */
@@ -82,13 +83,18 @@ export const buildFilteredActiveIssues = ({
   activeIssues,
   query,
   searchBy,
+  modelFilter = "all",
   sortBy,
 }) => {
   const safeIssues = Array.isArray(activeIssues) ? activeIssues : [];
 
-  const filteredIssues = safeIssues.filter((issue) =>
-    issueMatchesSearch(issue, query, searchBy)
-  );
+  const filteredIssues = safeIssues.filter((issue) => {
+    const matchesSearch = issueMatchesSearch(issue, query, searchBy);
+    const matchesModel =
+      modelFilter === "all" || issue?.model?.name === modelFilter;
+
+    return matchesSearch && matchesModel;
+  });
 
   return sortActiveIssues(filteredIssues, sortBy);
 };

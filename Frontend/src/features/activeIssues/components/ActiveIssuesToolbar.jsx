@@ -37,6 +37,9 @@ import SearchIcon from "@mui/icons-material/Search";
  * @param {Function} props.setQuery Setter de búsqueda.
  * @param {string} props.searchBy Campo activo de búsqueda.
  * @param {Function} props.setSearchBy Setter del campo de búsqueda.
+ * @param {string} props.modelFilter Modelo seleccionado.
+ * @param {Array<string>} props.modelOptions Modelos disponibles.
+ * @param {Function} props.setModelFilter Setter del modelo.
  * @param {string} props.sortBy Orden activo.
  * @param {Function} props.setSortBy Setter del orden.
  * @param {number|string} props.height Altura deseada del panel.
@@ -51,6 +54,9 @@ const ActiveIssuesToolbar = ({
   setQuery,
   searchBy,
   setSearchBy,
+  modelFilter,
+  modelOptions = [],
+  setModelFilter,
   sortBy,
   setSortBy,
   height = 350,
@@ -60,8 +66,16 @@ const ActiveIssuesToolbar = ({
 
   const gridConfig = useMemo(() => {
     return isLgUp
-      ? { search: { xs: 12, md: 8, lg: 8 }, sort: { xs: 12, md: 4, lg: 4 } }
-      : { search: { xs: 12, md: 8 }, sort: { xs: 12, md: 4 } };
+      ? {
+          search: { xs: 12, md: 6, lg: 6 },
+          model: { xs: 12, md: 3, lg: 3 },
+          sort: { xs: 12, md: 3, lg: 3 },
+        }
+      : {
+          search: { xs: 12, md: 6 },
+          model: { xs: 12, md: 3 },
+          sort: { xs: 12, md: 3 },
+        };
   }, [isLgUp]);
 
   const sortOptions = useMemo(
@@ -209,6 +223,24 @@ const ActiveIssuesToolbar = ({
                 ),
               }}
             />
+          </Grid>
+
+          <Grid item {...gridConfig.model}>
+            <FormControl size="small" fullWidth>
+              <InputLabel color="secondary">Model</InputLabel>
+              <Select
+                value={modelFilter}
+                label="Model"
+                color="secondary"
+                onChange={(event) => setModelFilter(event.target.value)}
+              >
+                {modelOptions.map((model) => (
+                  <MenuItem key={model} value={model}>
+                    {model === "all" ? "All models" : model}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
 
           <Grid item {...gridConfig.sort}>

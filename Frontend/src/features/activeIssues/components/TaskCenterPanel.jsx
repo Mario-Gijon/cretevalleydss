@@ -8,7 +8,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Divider,
   List,
   ListItemButton,
   ListItemText,
@@ -117,7 +116,18 @@ const TaskCenterPanel = ({
         </ActiveIssuesPill>
       </Stack>
 
-      <FormControl size="small" sx={{ mb: 1.1, mt: 0.25 }}>
+      <FormControl
+        size="small"
+        sx={{
+          mb: 1.1,
+          mt: 0.25,
+          "& .MuiOutlinedInput-root": {
+            bgcolor: "#101720",
+            "& fieldset": { borderColor: "#2A3743" },
+            "&:hover fieldset": { borderColor: "#2A3743" },
+          },
+        }}
+      >
         <InputLabel color="secondary">Task type</InputLabel>
         <Select
           value={taskType}
@@ -138,7 +148,6 @@ const TaskCenterPanel = ({
           position: "relative",
           flex: 1,
           minHeight: 0,
-          borderRadius: 4,
           overflow: "hidden",
         }}
       >
@@ -156,7 +165,7 @@ const TaskCenterPanel = ({
             </Box>
           ) : (
             <Stack spacing={1.05} sx={{ pb: 0.5 }}>
-              {groupsFiltered.map((group) => {
+              {groupsFiltered.map((group, groupIndex) => {
                 const tone = group.tone;
                 const accent = alpha(
                   resolveActiveIssuesToneColor(tone).dot,
@@ -167,17 +176,16 @@ const TaskCenterPanel = ({
                   <Box
                     key={group.key}
                     sx={{
-                      borderRadius: 4,
-                      overflow: "hidden",
-                      bgcolor: "#171F2A",
-                      boxShadow: "none",
-                      border: "1px solid #2A3743",
+                      borderTop:
+                        groupIndex > 0
+                          ? "1px solid rgba(150, 170, 185, 0.12)"
+                          : "none",
                     }}
                   >
                     <Box
                       sx={{
-                        px: 1.25,
-                        py: 0.85,
+                        px: 0.25,
+                        py: 0.8,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
@@ -216,10 +224,8 @@ const TaskCenterPanel = ({
                       </ActiveIssuesPill>
                     </Box>
 
-                    <Divider sx={{ opacity: 0.18 }} />
-
-                    <List disablePadding sx={{ py: 0.5 }}>
-                      {group.items.map((item) => {
+                    <List disablePadding sx={{ py: 0.15 }}>
+                      {group.items.map((item, itemIndex) => {
                         const issueId = item.issueId;
                         const issueName = item.issueName;
                         const stage = item.stage;
@@ -233,12 +239,16 @@ const TaskCenterPanel = ({
                             key={issueId}
                             onClick={() => openItem(issueId)}
                             sx={{
-                              mx: 0.75,
-                              mt: 1,
-                              borderRadius: 3,
-                              bgcolor: "#171F2A",
+                              px: 1,
+                              py: 0.8,
+                              borderRadius: 2,
+                              bgcolor: "transparent",
+                              borderBottom:
+                                itemIndex < group.items.length - 1
+                                  ? "1px solid rgba(150, 170, 185, 0.12)"
+                                  : "none",
                               "&:hover": {
-                                bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                                bgcolor: alpha(theme.palette.secondary.main, 0.06),
                               },
                             }}
                           >
