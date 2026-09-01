@@ -33,7 +33,7 @@ const OverviewList = ({ title, items = [] }) => (
   <DashboardInnerPanel sx={{ minWidth: 0, p: 1 }}>
     <Typography variant="subtitle2" sx={{ mb: 0.6, color: "text.secondary" }}>{title}</Typography>
     <Stack spacing={0.45} sx={dashboardBoundedListSx}>
-      {items.map((item, index) => <Typography variant="body2" noWrap key={item.id || index} title={item.name} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>{item.name}</Typography>)}
+      {items.map((item, index) => <Typography variant="body2" noWrap key={item.id || index} title={item.name} sx={{ minWidth: 0, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>{item.name}</Typography>)}
       {!items.length ? <Typography variant="body2" color="text.secondary">None available.</Typography> : null}
     </Stack>
   </DashboardInnerPanel>

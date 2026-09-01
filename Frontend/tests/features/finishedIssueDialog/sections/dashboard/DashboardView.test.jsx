@@ -52,6 +52,7 @@ describe("DashboardView", () => {
     expect(screen.getByText("Alternatives")).toBeInTheDocument();
     expect(screen.getByText("Leaf criteria")).toBeInTheDocument();
     expect(screen.getByText("Cost")).toBeInTheDocument();
+    expect(screen.getByText("Cost")).toHaveStyle({ flexShrink: "0" });
     expect(screen.getByText("Owner")).toBeInTheDocument();
     expect(screen.getByText("Test owner")).toBeInTheDocument();
     expect(screen.getByText("Finished")).toBeInTheDocument();

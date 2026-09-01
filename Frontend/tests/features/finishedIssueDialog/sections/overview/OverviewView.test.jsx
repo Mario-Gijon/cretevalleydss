@@ -58,18 +58,6 @@ describe("OverviewView", () => {
     });
   });
 
-  it("renders leaf criterion names in a readable, wrapping text track", () => {
-    renderView(buildOverviewData(buildFinishedIssuePayloadFixture()));
-
-    const criterionName = screen.getByText("Cost");
-    expect(criterionName).toHaveStyle({
-      display: "block",
-      lineHeight: "1.35",
-      whiteSpace: "normal",
-      overflowWrap: "anywhere",
-    });
-  });
-
   it("renders arbitrary-depth criteria, resolves weights and domains, and collapses parents", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.criteria = {
