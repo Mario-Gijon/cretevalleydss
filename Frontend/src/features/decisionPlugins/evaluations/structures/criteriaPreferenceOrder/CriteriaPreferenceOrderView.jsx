@@ -5,12 +5,14 @@
 import {
   Alert,
   Box,
-  Button,
   Divider,
+  IconButton,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 
 import CriteriaPreferenceOrderList from "./CriteriaPreferenceOrderList";
 import { resolveCriteria } from "./operations/resolveCriteria";
@@ -228,20 +230,19 @@ const CriteriaPreferenceOrderView = ({
                       </Typography>
 
                       {permitEdit ? (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="info"
-                          aria-label={`Add ${criterionName} to ranking`}
-                          onClick={() => {
-                            handleAdd(criterion.id);
-                          }}
-                          sx={{
-                            flexShrink: 0,
-                          }}
-                        >
-                          Add
-                        </Button>
+                        <Tooltip title="Add criterion">
+                          <IconButton
+                            size="small"
+                            color="secondary"
+                            aria-label={`Add ${criterionName} to ranking`}
+                            onClick={() => {
+                              handleAdd(criterion.id);
+                            }}
+                            sx={{ flexShrink: 0 }}
+                          >
+                            <AddIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                     </Stack>
                   </Paper>

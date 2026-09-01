@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef } from "react";
+
 import {
   DndContext,
   KeyboardSensor,
@@ -262,4 +264,3 @@ const CriteriaPreferenceOrderList = ({ criteria, onChange, onMove, onRemove, rea
 };
 
 export default CriteriaPreferenceOrderList;
-import { useLayoutEffect, useRef } from "react";
