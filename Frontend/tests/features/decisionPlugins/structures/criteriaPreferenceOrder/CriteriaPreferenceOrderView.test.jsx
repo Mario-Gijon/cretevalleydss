@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import CriteriaPreferenceOrderView from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/CriteriaPreferenceOrderView.jsx";
@@ -132,6 +132,29 @@ describe("CriteriaPreferenceOrderView", () => {
     expect(JSON.stringify(setEvaluation.mock.calls.at(-1)[0])).not.toContain("Cost");
   });
 
+  it("updates rank and endpoint labels from the reordered criterion array", () => {
+    const { rerender } = renderView({
+      evaluation: { criterionOrder: ["cost", "quality", "delivery"] },
+    });
+
+    rerender(
+      <CriteriaPreferenceOrderView
+        decisionContext={decisionContext}
+        evaluation={{ criterionOrder: ["quality", "cost", "delivery"] }}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
+        readOnly={false}
+      />
+    );
+
+    const rows = screen.getAllByRole("listitem");
+    expect(within(rows[0]).getByText("Quality")).toBeInTheDocument();
+    expect(within(rows[0]).getByLabelText("Rank 1")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("Most important")).toBeInTheDocument();
+    expect(within(rows.at(-1)).getByText("Delivery")).toBeInTheDocument();
+    expect(within(rows.at(-1)).getByText("Least important")).toBeInTheDocument();
+  });
+
   it("prevents every editing action in read-only mode", () => {
     const setEvaluation = vi.fn();
     renderView({
@@ -143,6 +166,7 @@ describe("CriteriaPreferenceOrderView", () => {
     expect(screen.queryByRole("button", { name: /Add .* to ranking/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Remove .* from ranking/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Move .* (up|down)/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Drag .* to reorder/ })).not.toBeInTheDocument();
     expect(setEvaluation).not.toHaveBeenCalled();
   });
 

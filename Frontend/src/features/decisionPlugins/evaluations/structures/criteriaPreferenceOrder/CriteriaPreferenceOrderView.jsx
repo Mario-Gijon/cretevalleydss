@@ -7,13 +7,12 @@ import {
   Box,
   Button,
   Divider,
-  IconButton,
   Paper,
   Stack,
-  Tooltip,
   Typography,
 } from "@mui/material";
 
+import CriteriaPreferenceOrderList from "./CriteriaPreferenceOrderList";
 import { resolveCriteria } from "./operations/resolveCriteria";
 import { resolvePreferenceOrder } from "./operations/resolvePreferenceOrder";
 
@@ -164,192 +163,15 @@ const CriteriaPreferenceOrderView = ({
                 begin establishing the preference order.
               </Alert>
             ) : (
-              <Stack spacing={0.75}>
-                {rankedCriteria.map((criterion, index) => {
-                  const displayRank = index + 1;
-                  const isFirst = index === 0;
-                  const isLast = index === rankedCriteria.length - 1;
-                  const criterionName = criterion.name || criterion.id;
-
-                  return (
-                    <Paper
-                      key={criterion.id}
-                      variant="outlined"
-                      sx={{
-                        p: 1,
-                        borderRadius: 2,
-                        borderColor: "divider",
-                        bgcolor: "background.paper",
-                      }}
-                    >
-                      <Stack
-                        direction={{
-                          xs: "column",
-                          sm: "row",
-                        }}
-                        spacing={1}
-                        alignItems={{
-                          xs: "stretch",
-                          sm: "center",
-                        }}
-                      >
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          sx={{
-                            flex: 1,
-                            minWidth: 0,
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              width: 30,
-                              height: 30,
-                              flexShrink: 0,
-                              border: 1,
-                              borderColor: "info.main",
-                              borderRadius: 1.5,
-                              color: "info.main",
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              fontWeight="bold"
-                            >
-                              {displayRank}
-                            </Typography>
-                          </Box>
-
-                          <Box
-                            sx={{
-                              minWidth: 0,
-                              flex: 1,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                overflowWrap: "anywhere",
-                              }}
-                            >
-                              {criterionName}
-                            </Typography>
-
-                            {isFirst ? (
-                              <Typography
-                                variant="caption"
-                                color="info.main"
-                              >
-                                Most important
-                              </Typography>
-                            ) : null}
-
-                            {isLast && rankedCriteria.length > 1 ? (
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                Least important
-                              </Typography>
-                            ) : null}
-                          </Box>
-                        </Stack>
-
-                        {permitEdit ? (
-                          <Stack
-                            direction="row"
-                            spacing={0.25}
-                            justifyContent={{
-                              xs: "flex-end",
-                              sm: "initial",
-                            }}
-                            flexShrink={0}
-                          >
-                            <Tooltip
-                              title={`Move ${criterionName} up`}
-                            >
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  disabled={isFirst}
-                                  aria-label={`Move ${criterionName} up`}
-                                  onClick={() => {
-                                    handleMove(index, -1);
-                                  }}
-                                >
-                                  <Box
-                                    component="span"
-                                    aria-hidden="true"
-                                    sx={{
-                                      fontSize: "1.1rem",
-                                      lineHeight: 1,
-                                    }}
-                                  >
-                                    ↑
-                                  </Box>
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-
-                            <Tooltip
-                              title={`Move ${criterionName} down`}
-                            >
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  disabled={isLast}
-                                  aria-label={`Move ${criterionName} down`}
-                                  onClick={() => {
-                                    handleMove(index, 1);
-                                  }}
-                                >
-                                  <Box
-                                    component="span"
-                                    aria-hidden="true"
-                                    sx={{
-                                      fontSize: "1.1rem",
-                                      lineHeight: 1,
-                                    }}
-                                  >
-                                    ↓
-                                  </Box>
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-
-                            <Tooltip
-                              title={`Remove ${criterionName} from ranking`}
-                            >
-                              <IconButton
-                                size="small"
-                                aria-label={`Remove ${criterionName} from ranking`}
-                                onClick={() => {
-                                  handleRemove(criterion.id);
-                                }}
-                              >
-                                <Box
-                                  component="span"
-                                  aria-hidden="true"
-                                  sx={{
-                                    fontSize: "1.1rem",
-                                    lineHeight: 1,
-                                  }}
-                                >
-                                  ×
-                                </Box>
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
-                        ) : null}
-                      </Stack>
-                    </Paper>
-                  );
-                })}
-              </Stack>
+              <CriteriaPreferenceOrderList
+                criteria={rankedCriteria}
+                readOnly={!permitEdit}
+                onChange={(nextCriteria) => {
+                  emitCriterionOrder(nextCriteria.map((criterion) => criterion.id));
+                }}
+                onMove={handleMove}
+                onRemove={handleRemove}
+              />
             )}
           </Stack>
         </Box>
