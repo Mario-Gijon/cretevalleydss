@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 
 import ActiveIssuesToolbar from "./ActiveIssuesToolbar";
 import TaskCenter from "./TaskCenter";
@@ -37,33 +37,6 @@ const ActiveIssuesDesktopView = ({
         (b.ui.deadline.daysLeft ?? Number.POSITIVE_INFINITY)
     )
     .slice(0, 3);
-
-  const SidebarSection = ({ title, issues, detail }) =>
-    issues.length ? (
-      <Box component="section" sx={{ mt: 2 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.75 }}>
-          {title}
-        </Typography>
-        <Stack>
-          {issues.map((issue) => (
-            <Box
-              key={issue.id}
-              onClick={() => openDetails(issue)}
-              sx={{
-                py: 1,
-                borderTop: "1px solid rgba(255,255,255,0.1)",
-                cursor: "pointer",
-              }}
-            >
-              <Typography variant="body2">{issue.name}</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {detail(issue)}
-              </Typography>
-            </Box>
-          ))}
-        </Stack>
-      </Box>
-    ) : null;
 
   return (
     <Box
@@ -117,9 +90,21 @@ const ActiveIssuesDesktopView = ({
           taskType={taskType}
           setTaskType={setTaskType}
           onOpenIssueId={openDetailsById}
+          supplementalSections={[
+            {
+              key: "waiting-on-others",
+              title: "Waiting on others",
+              items: waitingIssues,
+              detail: (issue) => issue.ui.statusLabel || "Waiting for experts",
+            },
+            {
+              key: "upcoming-deadlines",
+              title: "Upcoming deadlines",
+              items: deadlineIssues,
+              detail: (issue) => issue.ui.deadline.iso || "Deadline",
+            },
+          ]}
         />
-        <SidebarSection title="Waiting on others" issues={waitingIssues} detail={(issue) => issue.ui.statusLabel || "Waiting for experts"} />
-        <SidebarSection title="Upcoming deadlines" issues={deadlineIssues} detail={(issue) => issue.ui.deadline.iso || "Deadline"} />
       </Box>
     </Box>
   );

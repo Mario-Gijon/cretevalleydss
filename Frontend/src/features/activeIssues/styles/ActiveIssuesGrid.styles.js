@@ -25,7 +25,7 @@ export const IssuesGridCard = styled(Paper)(() => ({
 /**
  * Altura fija usada por las cards del grid.
  */
-export const ISSUES_GRID_CARD_HEIGHT = 262;
+export const ISSUES_GRID_CARD_HEIGHT = 310;
 
 /**
  * Devuelve el color de la barra de deadline según el progreso.

@@ -27,6 +27,7 @@ import TaskCenterPanel from "./TaskCenterPanel";
  * @param {number|string} props.height Altura del panel.
  * @param {number} props.minHeight Altura mínima del panel.
  * @param {string} props.variant Variante visual del componente.
+ * @param {Array} props.supplementalSections Secciones operativas del sidebar.
  * @returns {JSX.Element}
  */
 const TaskCenter = ({
@@ -38,6 +39,7 @@ const TaskCenter = ({
   height = 350,
   minHeight = 260,
   variant = "panel",
+  supplementalSections = [],
 }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
@@ -160,6 +162,7 @@ const TaskCenter = ({
       options={options}
       groupsFiltered={groupsFiltered}
       openItem={openItem}
+      supplementalSections={supplementalSections}
     />
   );
 };

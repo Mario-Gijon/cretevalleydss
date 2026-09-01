@@ -67,14 +67,16 @@ const ActiveIssuesToolbar = ({
   const gridConfig = useMemo(() => {
     return isLgUp
       ? {
-          search: { xs: 12, md: 6, lg: 6 },
+          search: { xs: 12, md: 5, lg: 5 },
           model: { xs: 12, md: 3, lg: 3 },
           sort: { xs: 12, md: 3, lg: 3 },
+          refresh: { xs: 12, md: 1, lg: 1 },
         }
       : {
-          search: { xs: 12, md: 6 },
+          search: { xs: 12, md: 5 },
           model: { xs: 12, md: 3 },
           sort: { xs: 12, md: 3 },
+          refresh: { xs: 12, md: 1 },
         };
   }, [isLgUp]);
 
@@ -117,15 +119,7 @@ const ActiveIssuesToolbar = ({
       }}
     >
       <Stack spacing={1.25} sx={{ position: "relative", zIndex: 1 }} alignItems="center">
-        <Stack
-          direction="row"
-          spacing={1.25}
-          width="100%"
-          sx={{
-            alignItems: { xs: "stretch", md: "flex-start" },
-            justifyContent: "space-between",
-          }}
-        >
+        <Stack direction="row" spacing={1.25} width="100%">
           <Stack spacing={1} sx={{ minWidth: 0 }}>
             <Stack direction="row" spacing={1.1}>
               <Avatar
@@ -153,29 +147,6 @@ const ActiveIssuesToolbar = ({
             </Stack>
           </Stack>
 
-          <Stack direction="row" spacing={12} sx={{ gap: 1 }}>
-            <Tooltip title="Refresh issues">
-              <span>
-                <IconButton
-                  onClick={onRefresh}
-                  disabled={refreshing}
-                  sx={{
-                    bgcolor: alpha(theme.palette.secondary.main, 0.10),
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    "&:hover": {
-                      bgcolor: alpha(theme.palette.secondary.main, 0.14),
-                    },
-                  }}
-                >
-                  {refreshing ? (
-                    <CircularProgress size={18} color="secondary" />
-                  ) : (
-                    <RefreshIcon />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
         </Stack>
 
         <Grid container spacing={1} alignItems="stretch" sx={{ rowGap: 0.5 }}>
@@ -259,6 +230,33 @@ const ActiveIssuesToolbar = ({
                 ))}
               </Select>
             </FormControl>
+          </Grid>
+
+          <Grid
+            item
+            {...gridConfig.refresh}
+            sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}
+          >
+            <Tooltip title="Refresh issues">
+              <span>
+                <IconButton
+                  onClick={onRefresh}
+                  disabled={refreshing}
+                  aria-label="Refresh issues"
+                  sx={{
+                    bgcolor: "#111923",
+                    border: "1px solid #2A3743",
+                    "&:hover": { bgcolor: "#18232F" },
+                  }}
+                >
+                  {refreshing ? (
+                    <CircularProgress size={18} color="secondary" />
+                  ) : (
+                    <RefreshIcon />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
           </Grid>
         </Grid>
       </Stack>

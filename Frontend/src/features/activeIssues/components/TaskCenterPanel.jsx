@@ -58,9 +58,13 @@ const TaskCenterPanel = ({
   options,
   groupsFiltered,
   openItem,
+  supplementalSections = [],
 }) => {
   const theme = useTheme();
   const scrollbarSx = getTaskCenterScrollbarSx(theme);
+  const visibleSupplementalSections = supplementalSections.filter(
+    (section) => Array.isArray(section?.items) && section.items.length > 0
+  );
 
   return (
     <Paper
@@ -152,20 +156,20 @@ const TaskCenterPanel = ({
         }}
       >
         <Box sx={{ height: "100%", overflowY: "auto", pr: 0.5, ...scrollbarSx }}>
-          {groupsFiltered.length === 0 ? (
-            <Box sx={{ p: 1 }}>
-              <Typography
-                variant="body2"
-                sx={{ color: "text.secondary", fontWeight: 850 }}
-              >
-                {total
-                  ? "No tasks for this filter."
-                  : "All good. Nothing to do here."}
-              </Typography>
-            </Box>
-          ) : (
-            <Stack spacing={1.05} sx={{ pb: 0.5 }}>
-              {groupsFiltered.map((group, groupIndex) => {
+          <Stack spacing={1.05} sx={{ pb: 0.5 }}>
+            {groupsFiltered.length === 0 ? (
+              <Box sx={{ px: 0.25, py: 0.75 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "text.secondary", fontWeight: 850 }}
+                >
+                  {total
+                    ? "No tasks for this filter."
+                    : "All good. Nothing to do here."}
+                </Typography>
+              </Box>
+            ) : (
+              groupsFiltered.map((group, groupIndex) => {
                 const tone = group.tone;
                 const accent = alpha(
                   resolveActiveIssuesToneColor(tone).dot,
@@ -302,9 +306,61 @@ const TaskCenterPanel = ({
                     </List>
                   </Box>
                 );
-              })}
-            </Stack>
-          )}
+              })
+            )}
+
+            {visibleSupplementalSections.map((section) => (
+              <Box
+                key={section.key}
+                component="section"
+                sx={{ pt: 1.2, borderTop: "1px solid rgba(150, 170, 185, 0.12)" }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{ px: 0.25, pb: 0.65, fontWeight: 900 }}
+                >
+                  {section.title}
+                </Typography>
+                <List disablePadding>
+                  {section.items.map((issue, itemIndex) => (
+                    <ListItemButton
+                      key={issue.id}
+                      onClick={() => openItem(issue.id)}
+                      sx={{
+                        px: 1,
+                        py: 0.8,
+                        borderRadius: 2,
+                        bgcolor: "transparent",
+                        borderBottom:
+                          itemIndex < section.items.length - 1
+                            ? "1px solid rgba(150, 170, 185, 0.12)"
+                            : "none",
+                        "&:hover": {
+                          bgcolor: alpha(theme.palette.secondary.main, 0.06),
+                        },
+                      }}
+                    >
+                      <ListItemText
+                        primary={
+                          <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                            {issue.name}
+                          </Typography>
+                        }
+                        secondary={
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "text.secondary", fontWeight: 700 }}
+                          >
+                            {section.detail?.(issue)}
+                          </Typography>
+                        }
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Box>
+            ))}
+          </Stack>
         </Box>
       </Box>
     </Paper>

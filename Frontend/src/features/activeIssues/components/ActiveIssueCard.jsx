@@ -15,108 +15,7 @@ import {
   buildIssueWorkflowSteps,
   resolveIssueCurrentStepKey,
 } from "../logic/activeIssueWorkflow";
-import {
-  ISSUES_GRID_CARD_HEIGHT,
-  IssuesGridCard,
-  getIssueDeadlineColorByProgress,
-  issuesGridHideScrollbarSx,
-} from "../styles/ActiveIssuesGrid.styles";
-
-const ActiveIssueDeadlineBar = ({ issue }) => {
-  const theme = useTheme();
-
-  const hasServerDeadline = issue.ui.deadline.hasDeadline;
-
-  if (!hasServerDeadline) {
-    return (
-      <Box
-        sx={{
-          mt: 0.9,
-          display: "flex",
-          alignItems: "center",
-          gap: 0.8,
-          color: alpha(theme.palette.common.white, 0.7),
-        }}
-      >
-        <CalendarMonthIcon sx={{ fontSize: 16, opacity: 0.75 }} />
-        <Typography variant="caption" sx={{ fontWeight: 950 }}>
-          No deadline
-        </Typography>
-      </Box>
-    );
-  }
-
-  const data = computeIssueDeadlineProgress(issue);
-  const progress = data?.progress ?? 0;
-  const daysLeft = data?.daysLeft;
-  const label = data?.label || issue.closureDate;
-  const barColor = getIssueDeadlineColorByProgress(theme, progress);
-
-  const tooltip =
-    typeof daysLeft === "number"
-      ? `${label} • ${daysLeft <= 0 ? "Expired" : `${daysLeft} day(s) left`}`
-      : String(label);
-
-  return (
-    <Tooltip title={tooltip} placement="top" arrow>
-      <Box sx={{ mt: 0.9 }}>
-        <Stack
-          direction="row"
-          spacing={0.8}
-          sx={{ alignItems: "center", mb: 0.6 }}
-        >
-          <CalendarMonthIcon
-            sx={{ fontSize: 16, color: alpha(theme.palette.common.white, 0.72) }}
-          />
-
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 950,
-              color: alpha(theme.palette.common.white, 0.82),
-            }}
-          >
-            {label}
-          </Typography>
-
-          <Box sx={{ flex: 1 }} />
-
-          {typeof daysLeft === "number" ? (
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 950,
-                color: alpha(theme.palette.common.white, 0.72),
-              }}
-            >
-              {daysLeft <= 0 ? "Expired" : `${daysLeft}d`}
-            </Typography>
-          ) : null}
-        </Stack>
-
-        <Box
-          sx={{
-            height: 9,
-            borderRadius: 999,
-            bgcolor: alpha(theme.palette.common.white, 0.08),
-            border: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
-            overflow: "hidden",
-          }}
-        >
-          <Box
-            sx={{
-              height: "100%",
-              width: `${Math.round(progress * 100)}%`,
-              bgcolor: barColor,
-              boxShadow: "none",
-              transition: "width 220ms ease, background 220ms ease",
-            }}
-          />
-        </Box>
-      </Box>
-    </Tooltip>
-  );
-};
+import { ISSUES_GRID_CARD_HEIGHT, IssuesGridCard } from "../styles/ActiveIssuesGrid.styles";
 
 const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
   const theme = useTheme();
@@ -130,29 +29,17 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
     : Math.max(0, steps.findIndex((step) => step.key === currentKey));
 
   const accent = resolveActiveIssuesToneColor(tone).dot;
-  const lineWidth = "clamp(12px, 1.5vw, 26px)";
   const successDot = alpha(theme.palette.success.main, 0.78);
   const successBorder = alpha(theme.palette.success.main, 0.9);
 
   return (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignSelf: "flex-start",
-        maxWidth: "100%",
-        px: 0.2,
-        py: 0.65,
-        overflowX: "auto",
-        overflowY: "hidden",
-        ...issuesGridHideScrollbarSx,
-      }}
-    >
+    <Box sx={{ width: "89%", mx: "auto", py: 0.65, overflow: "visible" }}>
       <Box
         sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          flexWrap: "nowrap",
-          minWidth: "max-content",
+          display: "flex",
+          alignItems: "flex-start",
+          width: "100%",
+          minWidth: 0,
         }}
       >
         {steps.map((step, index) => {
@@ -181,12 +68,18 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
           return (
             <Box
               key={step.key}
-              sx={{ display: "inline-flex", alignItems: "flex-start" }}
+              sx={{
+                position: "relative",
+                display: "flex",
+                flex: "1 1 0",
+                minWidth: 0,
+                justifyContent: "center",
+              }}
             >
               <Tooltip title={tooltip} placement="top" arrow>
                 <Stack
                   spacing={0.45}
-                  sx={{ width: 62, alignItems: "center", minWidth: 0 }}
+                  sx={{ width: "100%", alignItems: "center", minWidth: 0 }}
                 >
                   <Box
                     sx={{
@@ -206,7 +99,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
                     sx={{
                       color: labelColor,
                       fontWeight: isActive ? 800 : 650,
-                      fontSize: "0.66rem",
+                      fontSize: "0.68rem",
                       lineHeight: 1.15,
                       textAlign: "center",
                       whiteSpace: "normal",
@@ -225,10 +118,11 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
               {index !== steps.length - 1 ? (
                 <Box
                   sx={{
-                    width: lineWidth,
                     height: "1px",
-                    mt: 0.75,
-                    mx: 0.35,
+                    position: "absolute",
+                    top: 6,
+                    left: "calc(50% + 8px)",
+                    right: "calc(-50% + 8px)",
                     borderRadius: 999,
                     bgcolor: isDone
                       ? alpha(theme.palette.success.main, 0.5)
@@ -251,14 +145,21 @@ const ActiveIssueFooterMetadata = ({ issue }) => {
   const expertsCount = Number.isFinite(issue?.totalExperts)
     ? issue.totalExperts
     : null;
-
-  if (alternativesCount === null && expertsCount === null) return null;
+  const deadline = issue?.ui?.deadline?.hasDeadline
+    ? computeIssueDeadlineProgress(issue)?.label || issue?.closureDate
+    : "No deadline";
 
   return (
     <Stack
       direction="row"
       spacing={1.5}
-      sx={{ alignItems: "center", mt: 0.95, color: "#77848E" }}
+      sx={{
+        alignItems: "center",
+        mt: 1.15,
+        color: "#77848E",
+        flexWrap: "wrap",
+        rowGap: 0.65,
+      }}
     >
       {alternativesCount !== null ? (
         <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
@@ -276,6 +177,12 @@ const ActiveIssueFooterMetadata = ({ issue }) => {
           </Typography>
         </Stack>
       ) : null}
+      <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
+        <CalendarMonthIcon sx={{ fontSize: 15 }} />
+        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+          {deadline}
+        </Typography>
+      </Stack>
     </Stack>
   );
 };
@@ -305,8 +212,8 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
             height: "100%",
             position: "relative",
             overflow: "hidden",
-            p: 2,
-            pl: 2.35,
+            p: 2.4,
+            pl: 2.6,
             display: "flex",
             flexDirection: "column",
           }}
@@ -399,7 +306,6 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
 
           <Box sx={{ position: "relative", zIndex: 1 }}>
             <ActiveIssueFooterMetadata issue={issue} />
-            <ActiveIssueDeadlineBar issue={issue} />
           </Box>
         </Box>
       </IssuesGridCard>

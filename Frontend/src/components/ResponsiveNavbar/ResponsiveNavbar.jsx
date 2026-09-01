@@ -173,8 +173,6 @@ export const ResponsiveNavbar = (props) => {
               position: "absolute",
               inset: 0,
               pointerEvents: "none",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 35%, transparent 70%)",
               opacity: 0.35,
             },
           }}
