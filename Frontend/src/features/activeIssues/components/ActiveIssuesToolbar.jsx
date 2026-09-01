@@ -68,15 +68,15 @@ const ActiveIssuesToolbar = ({
     return isLgUp
       ? {
           search: { xs: 12, md: 5, lg: 5 },
-          model: { xs: 12, md: 3, lg: 3 },
+          model: { xs: 12, md: 2, lg: 2 },
           sort: { xs: 12, md: 3, lg: 3 },
-          refresh: { xs: 12, md: "auto", lg: "auto" },
+          refresh: { xs: 12, md: 2, lg: 2 },
         }
       : {
           search: { xs: 12, md: 5 },
-          model: { xs: 12, md: 3 },
+          model: { xs: 12, md: 2 },
           sort: { xs: 12, md: 3 },
-          refresh: { xs: 12, md: "auto" },
+          refresh: { xs: 12, md: 2 },
         };
   }, [isLgUp]);
 

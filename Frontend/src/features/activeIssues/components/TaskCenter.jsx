@@ -29,6 +29,7 @@ import TaskCenterPanel from "./TaskCenterPanel";
  * @param {string} props.variant Variante visual del componente.
  * @param {Array} props.supplementalSections Secciones operativas del sidebar.
  * @param {boolean} props.flat Usa el tratamiento ligero del sidebar de escritorio.
+ * @param {boolean} props.showTaskTypeFilter Muestra el filtro de tipo de tarea.
  * @returns {JSX.Element}
  */
 const TaskCenter = ({
@@ -42,6 +43,7 @@ const TaskCenter = ({
   variant = "panel",
   supplementalSections = [],
   flat = false,
+  showTaskTypeFilter = true,
 }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
@@ -166,6 +168,7 @@ const TaskCenter = ({
       openItem={openItem}
       supplementalSections={supplementalSections}
       flat={flat}
+      showTaskTypeFilter={showTaskTypeFilter}
     />
   );
 };

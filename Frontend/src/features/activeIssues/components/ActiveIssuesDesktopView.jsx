@@ -81,8 +81,6 @@ const ActiveIssuesDesktopView = ({
         className="active-issues-sidebar"
         sx={{
           minWidth: 0,
-          pl: { lg: 2 },
-          borderLeft: { lg: "1px solid rgba(76,201,211,0.14)" },
           display: "flex",
         }}
       >
@@ -96,6 +94,7 @@ const ActiveIssuesDesktopView = ({
           setTaskType={setTaskType}
           onOpenIssueId={openDetailsById}
           flat
+          showTaskTypeFilter={false}
           supplementalSections={[
             {
               key: "waiting-on-others",

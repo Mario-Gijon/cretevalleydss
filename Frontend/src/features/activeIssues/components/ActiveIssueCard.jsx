@@ -1,6 +1,6 @@
 import { Box, Divider, Grid, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import AltRouteIcon from "@mui/icons-material/AltRoute";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
@@ -10,12 +10,30 @@ import {
   resolveActiveIssuesToneColor,
 } from "../logic/activeIssuesMeta";
 import { computeIssueDeadlineProgress } from "../logic/activeIssueDeadline";
-import ActiveIssuesPill from "./ActiveIssuesPill";
 import {
   buildIssueWorkflowSteps,
   resolveIssueCurrentStepKey,
 } from "../logic/activeIssueWorkflow";
 import { ISSUES_GRID_CARD_HEIGHT, IssuesGridCard } from "../styles/ActiveIssuesGrid.styles";
+
+const countLeafCriteria = (criteria = []) => {
+  const nodes = Array.isArray(criteria) ? [...criteria] : [];
+  let count = 0;
+
+  while (nodes.length > 0) {
+    const node = nodes.pop();
+    const children = Array.isArray(node?.children) ? node.children : [];
+
+    if (children.length === 0) {
+      count += 1;
+      continue;
+    }
+
+    nodes.push(...children);
+  }
+
+  return count;
+};
 
 const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
   const theme = useTheme();
@@ -33,7 +51,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
   const successBorder = alpha(theme.palette.success.main, 0.9);
 
   return (
-    <Box sx={{ width: "90%", mx: "auto", py: 0.65, overflow: "visible" }}>
+    <Box sx={{ width: "92%", mx: "auto", py: 0.65, overflow: "visible" }}>
       <Box
         sx={{
           display: "flex",
@@ -145,15 +163,10 @@ const ActiveIssueFooterMetadata = ({ issue }) => {
   const expertsCount = Number.isFinite(issue?.totalExperts)
     ? issue.totalExperts
     : null;
+  const criteriaCount = countLeafCriteria(issue?.criteria);
   const deadline = issue?.ui?.deadline?.hasDeadline
     ? computeIssueDeadlineProgress(issue)?.label || issue?.closureDate
     : "No deadline";
-  const ownerLabel = issue?.isIssueOwner
-    ? "Owner"
-    : typeof issue?.owner === "string" && issue.owner.trim()
-      ? issue.owner
-      : null;
-
   return (
     <Stack
       direction="row"
@@ -164,6 +177,8 @@ const ActiveIssueFooterMetadata = ({ issue }) => {
         color: "#77848E",
         flexWrap: "wrap",
         rowGap: 0.65,
+        width: "100%",
+        justifyContent: "space-between",
       }}
     >
       {alternativesCount !== null ? (
@@ -174,19 +189,17 @@ const ActiveIssueFooterMetadata = ({ issue }) => {
           </Typography>
         </Stack>
       ) : null}
+      <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
+        <AccountTreeIcon sx={{ fontSize: 15 }} />
+        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+          {criteriaCount} criteria
+        </Typography>
+      </Stack>
       {expertsCount !== null ? (
         <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
           <GroupsOutlinedIcon sx={{ fontSize: 16 }} />
           <Typography variant="caption" sx={{ fontWeight: 700 }}>
             {expertsCount} experts
-          </Typography>
-        </Stack>
-      ) : null}
-      {ownerLabel ? (
-        <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
-          <AdminPanelSettingsIcon sx={{ fontSize: 15 }} />
-          <Typography variant="caption" sx={{ fontWeight: 700 }}>
-            {ownerLabel}
           </Typography>
         </Stack>
       ) : null}
@@ -214,6 +227,11 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
   const meta = getNextActionMeta(issue);
   const tone = meta?.tone || "info";
   const accent = alpha(resolveActiveIssuesToneColor(tone).dot, 0.9);
+  const ownerLabel = issue?.isIssueOwner
+    ? "You are the owner"
+    : typeof issue?.owner === "string" && issue.owner.trim()
+      ? issue.owner
+      : null;
 
   return (
     <Grid item xs={12} md={6} xl={4} key={issue.id}>
@@ -246,44 +264,32 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
             spacing={1.05}
             sx={{ position: "relative", zIndex: 1, minHeight: 0, flex: 1 }}
           >
-            <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                  lineHeight: 1.12,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "normal",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  flex: 1,
-                  minWidth: 0,
-                }}
-                title={issue?.name || ""}
-              >
-                {issue?.name || "—"}
-              </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1.12,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "normal",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                minWidth: 0,
+              }}
+              title={issue?.name || ""}
+            >
+              {issue?.name || "—"}
+            </Typography>
 
-              {issue?.isIssueOwner ? (
-                <Tooltip title="You are the owner" placement="top" arrow>
-                  <Box
-                    sx={{
-                      mt: 0.25,
-                      color: alpha(theme.palette.common.white, 0.78),
-                      bgcolor: alpha(theme.palette.common.white, 0.06),
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      borderRadius: 2,
-                      p: 0.55,
-                      lineHeight: 0,
-                    }}
-                  >
-                    <AdminPanelSettingsIcon sx={{ fontSize: 18 }} />
-                  </Box>
-                </Tooltip>
-              ) : null}
-            </Stack>
+            {ownerLabel ? (
+              <Typography
+                variant="body2"
+                sx={{ color: alpha(theme.palette.common.white, 0.62), fontWeight: 500 }}
+              >
+                {ownerLabel}
+              </Typography>
+            ) : null}
 
             <Typography
               variant="body2"
@@ -299,10 +305,6 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
             >
               {issue?.description || "—"}
             </Typography>
-
-            <Box sx={{ mt: 0.2 }}>
-              <ActiveIssuesPill tone={tone}>{meta?.title || "—"}</ActiveIssuesPill>
-            </Box>
 
             <ActiveIssueStageStepper issue={issue} tone={tone} />
 

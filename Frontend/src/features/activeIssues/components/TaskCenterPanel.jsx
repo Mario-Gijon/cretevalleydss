@@ -60,6 +60,7 @@ const TaskCenterPanel = ({
   openItem,
   supplementalSections = [],
   flat = false,
+  showTaskTypeFilter = true,
 }) => {
   const theme = useTheme();
   const scrollbarSx = getTaskCenterScrollbarSx(theme);
@@ -77,7 +78,8 @@ const TaskCenterPanel = ({
           ? {
               bgcolor: "transparent",
               boxShadow: "none",
-              border: "1px solid rgba(150, 170, 185, 0.12)",
+              border: "none",
+              borderRadius: 0,
             }
           : getTaskCenterGlassSx(theme)),
         height: resolvedHeight,
@@ -127,32 +129,34 @@ const TaskCenterPanel = ({
         </ActiveIssuesPill>
       </Stack>
 
-      <FormControl
-        size="small"
-        sx={{
-          mb: 1.1,
-          mt: 0.25,
-          "& .MuiOutlinedInput-root": {
-            bgcolor: "#101720",
-            "& fieldset": { borderColor: "#2A3743" },
-            "&:hover fieldset": { borderColor: "#2A3743" },
-          },
-        }}
-      >
-        <InputLabel color="secondary">Task type</InputLabel>
-        <Select
-          value={taskType}
-          label="Task type"
-          color="secondary"
-          onChange={(event) => setTaskType(event.target.value)}
+      {showTaskTypeFilter ? (
+        <FormControl
+          size="small"
+          sx={{
+            mb: 1.1,
+            mt: 0.25,
+            "& .MuiOutlinedInput-root": {
+              bgcolor: "#101720",
+              "& fieldset": { borderColor: "#2A3743" },
+              "&:hover fieldset": { borderColor: "#2A3743" },
+            },
+          }}
         >
-          {options.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+          <InputLabel color="secondary">Task type</InputLabel>
+          <Select
+            value={taskType}
+            label="Task type"
+            color="secondary"
+            onChange={(event) => setTaskType(event.target.value)}
+          >
+            {options.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      ) : null}
 
       <Box
         sx={{
