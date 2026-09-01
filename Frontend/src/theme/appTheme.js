@@ -52,6 +52,20 @@ let theme = extendTheme({
       fontWeight: "normal",
     },
   },
+  components: {
+    // Keep MUI's native focus, label, and validation color behavior while
+    // making secondary the default for editable controls.
+    MuiTextField: {
+      defaultProps: {
+        color: "secondary",
+      },
+    },
+    MuiFormControl: {
+      defaultProps: {
+        color: "secondary",
+      },
+    },
+  },
   colorSchemes: {
     light: {
       palette: {
