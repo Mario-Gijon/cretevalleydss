@@ -92,7 +92,7 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
           />
         )}
 
-        <Box sx={{ minWidth: 120, flex: 1 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
           <Stack direction="row" spacing={0.55} alignItems="center">
             {hasChildren ? (
               <AccountTreeRoundedIcon
@@ -101,10 +101,13 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
             ) : null}
             <Typography
               variant="body2"
-              noWrap
               title={criterion.name}
               sx={{
                 minWidth: 0,
+                display: "block",
+                lineHeight: 1.35,
+                whiteSpace: "normal",
+                overflowWrap: "anywhere",
                 fontWeight: hasChildren ? "fontWeightBold" : "fontWeightMedium",
               }}
             >
