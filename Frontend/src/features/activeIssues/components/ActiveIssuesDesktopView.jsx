@@ -43,6 +43,8 @@ const ActiveIssuesDesktopView = ({
       className="active-issues-desktop-layout"
       sx={{
         display: "grid",
+        width: "100%",
+        boxSizing: "border-box",
         gridTemplateColumns: {
           xs: "minmax(0, 1fr)",
           lg: "minmax(0, 3fr) minmax(280px, 1fr)",
@@ -81,6 +83,9 @@ const ActiveIssuesDesktopView = ({
         className="active-issues-sidebar"
         sx={{
           minWidth: 0,
+          width: "100%",
+          pl: { lg: 2 },
+          borderLeft: { lg: "1px solid rgba(120, 145, 165, 0.14)" },
           display: "flex",
         }}
       >

@@ -73,6 +73,7 @@ const TaskCenterPanel = ({
       elevation={0}
       sx={{
         borderRadius: 5,
+        width: "100%",
         p: isSmDown ? 1.35 : 1.75,
         ...(flat
           ? {

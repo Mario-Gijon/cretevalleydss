@@ -133,7 +133,13 @@ const ActiveIssuesView = () => {
 
   return (
     <>
-      <Box px={{ xs: 1, sm: 0, lg: 3, xl: 4 }}>
+      <Box
+        sx={{
+          width: "100%",
+          boxSizing: "border-box",
+          px: { xs: 1, sm: 0, lg: 3, xl: 4 },
+        }}
+      >
         {isLgUp ? (
           <ActiveIssuesDesktopView
             filteredIssues={filteredIssues}
