@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { FinishedIssuesView } from "../../../features/finishedIssues";
 
 /**
@@ -6,6 +7,11 @@ import { FinishedIssuesView } from "../../../features/finishedIssues";
  * @returns {JSX.Element}
  */
 const FinishedIssuesPage = () => {
+  useEffect(() => {
+    document.body.classList.add("finished-issue-route");
+    return () => document.body.classList.remove("finished-issue-route");
+  }, []);
+
   return <FinishedIssuesView />;
 };
 

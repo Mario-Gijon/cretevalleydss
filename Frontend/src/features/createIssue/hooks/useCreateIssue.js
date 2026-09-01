@@ -455,9 +455,6 @@ export const useCreateIssue = () => {
       setIssueCreated(result);
       /* localStorage.removeItem(LOCAL_STORAGE_KEY); */
       navigate("/dashboard", { replace: true });
-      window.requestAnimationFrame(() => {
-        setLoading(false);
-      });
       return;
     }
 

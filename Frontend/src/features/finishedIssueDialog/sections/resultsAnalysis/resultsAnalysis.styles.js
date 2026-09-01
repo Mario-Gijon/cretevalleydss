@@ -1,10 +1,6 @@
-export const finishedIssueScrollbarSx = {
-  scrollbarWidth: "thin",
-  scrollbarColor: "rgba(72,189,205,0.48) rgba(5,13,21,0.15)",
-  "&::-webkit-scrollbar": { width: 7, height: 7 },
-  "&::-webkit-scrollbar-track": { bgcolor: "rgba(5,13,21,0.15)", borderRadius: 99 },
-  "&::-webkit-scrollbar-thumb": { bgcolor: "rgba(72,189,205,0.38)", borderRadius: 99 },
-};
+import { finishedIssueScrollbarSx } from "../../shared/styles/finishedIssueScrollbar.styles.js";
+
+export { finishedIssueScrollbarSx };
 
 export const executionSelectionToolbarSx = {
   display: "flex",

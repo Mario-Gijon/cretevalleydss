@@ -8,6 +8,7 @@ import { useFinishedIssueDialogContext } from "./context/finishedIssueDialog.con
 import FinishedIssueDialogHeader from "./shell/FinishedIssueDialogHeader";
 import FinishedIssueDialogLayout from "./shell/FinishedIssueDialogLayout";
 import { finishedIssueContentFrameSx } from "./shell/finishedIssueShell.styles";
+import { finishedIssueScrollbarSx } from "./shared/styles/finishedIssueScrollbar.styles.js";
 
 /**
  * Contenido interno del dialogo de finished issue.
@@ -26,9 +27,11 @@ const FinishedIssueDialogBody = () => {
       open={openFinishedIssueDialog}
       onClose={handleCloseFinishedIssueDialog}
       fullScreen
-      PaperProps={{
+        PaperProps={{
         elevation: 0,
         sx: {
+          ...finishedIssueScrollbarSx,
+          "& *": finishedIssueScrollbarSx,
           bgcolor: alpha("#070B10", 0.72),
           backdropFilter: "blur(10px)",
         },

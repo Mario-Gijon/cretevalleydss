@@ -1,3 +1,5 @@
+import { finishedIssueScrollbarSx } from "../features/finishedIssueDialog/shared/styles/finishedIssueScrollbar.styles.js";
+
 export const appGlobalStyles = {
   "html, body, #root": {
     height: "100%",
@@ -33,6 +35,7 @@ export const appGlobalStyles = {
     flexDirection: "column",
     background: "transparent",
   },
+  "body.finished-issue-route, body.finished-issue-route *": finishedIssueScrollbarSx,
   ".MuiTableContainer-root, .MuiStack-root": {
     "&::-webkit-scrollbar": {
       width: "8px",

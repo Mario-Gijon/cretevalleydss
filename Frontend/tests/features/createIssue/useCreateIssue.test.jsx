@@ -381,7 +381,7 @@ describe("useCreateIssue", () => {
     );
   });
 
-  it("creates the issue successfully and clears loading after requestAnimationFrame", async () => {
+  it("keeps the create flow loading while navigating after successful creation", async () => {
     const setLoading = vi.fn();
     const setIssueCreated = vi.fn();
     createIssue.mockResolvedValue({
@@ -418,7 +418,8 @@ describe("useCreateIssue", () => {
       });
       expect(mockNavigate).toHaveBeenCalledWith("/dashboard", { replace: true });
       expect(setLoading).toHaveBeenCalledWith(true);
-      expect(setLoading).toHaveBeenCalledWith(false);
+      expect(setLoading).not.toHaveBeenCalledWith(false);
+      expect(window.requestAnimationFrame).not.toHaveBeenCalled();
     });
   });
 
