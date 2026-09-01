@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCreateIssueParameterDefaults,
+  pruneCreateIssueParameterValues,
   updateCreateIssueParameterValues,
 } from "../../../src/features/modelParameters/logic/modelParameterValueState";
 
@@ -55,5 +56,62 @@ describe("model parameter value state", () => {
     expect(next.pluginMap).toHaveProperty("stale", 3);
     expect(next).not.toHaveProperty("withoutValue");
     expect(next).not.toHaveProperty("staleTopLevel");
+  });
+
+  it("canonicalizes parameterless two-tuple aggregation options", () => {
+    const model = {
+      parameters: [
+        {
+          key: "criteriaAggregation",
+          parameterStructureKey: "twoTupleAggregation",
+          default: { method: "weighted_average" },
+          restrictions: {
+            methods: [
+              { key: "arithmetic_mean", subparameters: [] },
+              { key: "weighted_average", subparameters: [] },
+              { key: "l2towa", subparameters: [{ key: "quantifier" }] },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(buildCreateIssueParameterDefaults({ selectedModel: model })).toEqual({
+      criteriaAggregation: { method: "weighted_average", options: {} },
+    });
+    expect(
+      pruneCreateIssueParameterValues({
+        selectedModel: model,
+        values: {
+          criteriaAggregation: { method: "arithmetic_mean", options: null },
+        },
+      })
+    ).toEqual({
+      criteriaAggregation: { method: "arithmetic_mean", options: {} },
+    });
+  });
+
+  it("retains options for configurable aggregation methods", () => {
+    const model = {
+      parameters: [
+        {
+          key: "aggregation",
+          parameterStructureKey: "twoTupleAggregation",
+          restrictions: {
+            methods: [
+              { key: "l2towa", subparameters: [{ key: "quantifier" }] },
+            ],
+          },
+        },
+      ],
+    };
+    const options = { quantifier: "most" };
+
+    expect(
+      pruneCreateIssueParameterValues({
+        selectedModel: model,
+        values: { aggregation: { method: "l2towa", options } },
+      })
+    ).toEqual({ aggregation: { method: "l2towa", options } });
   });
 });
