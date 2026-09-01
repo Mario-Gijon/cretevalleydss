@@ -74,7 +74,13 @@ export const getActiveIssuesPanelGlassSx = (theme, strength = 0.14) => ({
  * @returns {Object}
  */
 export const getActiveIssuesPageHeaderAuroraBg = (theme) => ({
-  backgroundImage: `radial-gradient(1680px 520px at 5% 10%, ${alpha(theme.palette.info.main, 0.25)}, transparent 62%)`,
+  backgroundImage: `linear-gradient(
+    90deg,
+    ${alpha(theme.palette.info.main, 0.10)} 0%,
+    ${alpha(theme.palette.info.main, 0.045)} 38%,
+    ${alpha(theme.palette.info.main, 0.015)} 68%,
+    transparent 100%
+  )`,
 });
 
 /**

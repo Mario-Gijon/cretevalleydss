@@ -5,22 +5,20 @@ import Paper from "@mui/material/Paper";
  * Tarjeta base del grid de issues.
  */
 export const IssuesGridCard = styled(Paper)(({ theme }) => ({
-  borderRadius: 20,
+  borderRadius: 10,
   height: "100%",
   transition:
     "transform 160ms ease, box-shadow 160ms ease, background 220ms ease, border-color 220ms ease",
-  background: "rgba(21, 30, 38, 0.18)",
+  background: "#0d202d",
   color: theme.palette.common.white,
-  boxShadow: "0 12px 34px rgba(29, 82, 81, 0.18)",
-  backdropFilter: "blur(14px)",
-  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "none",
   border: "1px solid rgba(255,255,255,0.10)",
   overflow: "hidden",
   "&:hover": {
-    transform: "translateY(-2px)",
-    boxShadow: "0 18px 46px rgba(21, 60, 59, 0.30)",
-    background: "rgba(60, 119, 121, 0.1)",
-    borderColor: "rgba(255,255,255,0.14)",
+    transform: "translateY(-1px)",
+    boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
+    background: "#102838",
+    borderColor: "rgba(76,201,211,0.28)",
   },
 }));
 

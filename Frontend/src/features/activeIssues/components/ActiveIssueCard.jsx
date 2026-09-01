@@ -106,7 +106,7 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
               height: "100%",
               width: `${Math.round(progress * 100)}%`,
               bgcolor: barColor,
-              boxShadow: `0 0 18px ${alpha(barColor, 0.25)}`,
+              boxShadow: "none",
               transition: "width 220ms ease, background 220ms ease",
             }}
           />
@@ -129,7 +129,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
 
   const accent = resolveActiveIssuesToneColor(tone).dot;
   const lineWidth = "clamp(18px, 2.4vw, 34px)";
-  const lineHeight = 4;
+  const lineHeight = 2;
   const currentLabel = doneAll ? "Finished" : steps[currentIndex]?.label;
   const successDot = alpha(theme.palette.success.main, 0.78);
   const successBorder = alpha(theme.palette.success.main, 0.9);
@@ -140,11 +140,8 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
         display: "inline-flex",
         alignSelf: "flex-start",
         maxWidth: "100%",
-        px: 1,
-        py: 0.85,
-        borderRadius: 3,
-        bgcolor: alpha(accent, 0.08),
-        border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+        px: 0.2,
+        py: 0.65,
         overflowX: "auto",
         overflowY: "hidden",
         ...issuesGridHideScrollbarSx,
@@ -176,7 +173,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
               : alpha(theme.palette.common.white, 0.16);
 
           const dotShadow = isActive
-            ? `0 0 0 4px ${alpha(accent, 0.16)}`
+            ? `0 0 0 2px ${alpha(accent, 0.14)}`
             : "none";
 
           return (
@@ -188,14 +185,12 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
                 {isActive ? (
                   <Box
                     sx={{
-                      height: 28,
-                      px: 1.15,
-                      borderRadius: 999,
+                      minHeight: 28,
+                      px: 0.35,
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 0.85,
-                      bgcolor: alpha(accent, 0.18),
-                      border: `1px solid ${alpha(accent, 0.55)}`,
+                      flexDirection: "column",
+                      gap: 0.35,
                       boxShadow: dotShadow,
                       transition: "all 160ms ease",
                       maxWidth: 260,
@@ -215,12 +210,13 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
                     <Typography
                       variant="caption"
                       sx={{
-                        fontWeight: 980,
-                        color: alpha(theme.palette.common.white, 0.92),
-                        whiteSpace: "nowrap",
+                        fontWeight: 700,
+                        color: accent,
+                        whiteSpace: "normal",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        maxWidth: 200,
+                        maxWidth: 92,
+                        textAlign: "center",
                       }}
                       title={currentLabel}
                     >
@@ -305,18 +301,6 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
             }}
           />
 
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              background: `
-                radial-gradient(560px 240px at 0% 0%, ${alpha(accent, 0.14)}, transparent 52%),
-                radial-gradient(520px 220px at 0% 0%, ${alpha(theme.palette.secondary.main, 0.05)}, transparent 58%)
-              `,
-            }}
-          />
-
           <Stack
             spacing={1.05}
             sx={{ position: "relative", zIndex: 1, minHeight: 0, flex: 1 }}
@@ -325,11 +309,14 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
               <Typography
                 variant="h6"
                 sx={{
-                  fontWeight: 980,
+                  fontWeight: 700,
                   lineHeight: 1.12,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  whiteSpace: "normal",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
                   flex: 1,
                   minWidth: 0,
                 }}
@@ -366,7 +353,7 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
                 WebkitLineClamp: 2,
                 overflow: "hidden",
                 minHeight: 42,
-                fontWeight: 850,
+                fontWeight: 500,
               }}
             >
               {issue?.description || "—"}

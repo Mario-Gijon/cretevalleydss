@@ -15,11 +15,10 @@ export const getTaskCenterBorderSx = () => ({
  * @param {Object} theme Tema actual.
  * @returns {Object}
  */
-export const getTaskCenterGlassSx = (theme) => ({
-  bgcolor: "transparent",
-  backdropFilter: "blur(12px)",
-  boxShadow: `0 18px 50px ${alpha(theme.palette.common.black, 0.10)}`,
-  ...getTaskCenterBorderSx(),
+export const getTaskCenterGlassSx = () => ({
+  bgcolor: "#0b1c28",
+  boxShadow: "none",
+  border: "1px solid rgba(255,255,255,0.10)",
 });
 
 /**

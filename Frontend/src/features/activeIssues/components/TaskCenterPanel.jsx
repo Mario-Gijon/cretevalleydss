@@ -169,11 +169,8 @@ const TaskCenterPanel = ({
                     sx={{
                       borderRadius: 4,
                       overflow: "hidden",
-                      bgcolor: alpha(theme.palette.background.paper, 0.10),
-                      boxShadow: `0 14px 34px ${alpha(
-                        theme.palette.common.black,
-                        0.06
-                      )}`,
+                      bgcolor: "rgba(255,255,255,0.025)",
+                      boxShadow: "none",
                       border: "1px solid rgba(255,255,255,0.1)",
                     }}
                   >
@@ -198,7 +195,7 @@ const TaskCenterPanel = ({
                             height: 10,
                             borderRadius: 999,
                             bgcolor: accent,
-                            boxShadow: `0 0 0 3px ${alpha(accent, 0.12)}`,
+                            boxShadow: "none",
                           }}
                         />
                         <Typography

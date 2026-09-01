@@ -21,10 +21,6 @@ import { alpha, useTheme } from "@mui/material/styles";
 import DashboardCustomizeIcon from "@mui/icons-material/DashboardCustomize";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
-import {
-  getActiveIssuesPageHeaderAuroraBg,
-  getActiveIssuesPageHeaderGlassSx,
-} from "../styles/activeIssues.styles";
 
 /**
  * Cabecera de la pantalla de issues activos.
@@ -83,25 +79,18 @@ const ActiveIssuesToolbar = ({
     <Paper
       elevation={0}
       sx={{
-        borderRadius: 5,
-        p: { xs: 1.6, md: 2.0 },
+        borderRadius: 0,
+        p: { xs: 1.25, md: 1.5 },
         height: isLgUp ? resolvedHeight : "auto",
         overflow: "hidden",
         position: "relative",
-        ...getActiveIssuesPageHeaderGlassSx(theme, 0.16),
-        ...getActiveIssuesPageHeaderAuroraBg(theme),
-        "&:after": {
-          content: '""',
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 45%)`,
-          opacity: 0.22,
-        },
+        bgcolor: "#0b1c28",
+        borderBottom: "1px solid rgba(76,201,211,0.18)",
+        boxShadow: "none",
         ...(paperSx || {}),
       }}
     >
-      <Stack spacing={2} sx={{ position: "relative", zIndex: 1 }} alignItems="center">
+      <Stack spacing={1.25} sx={{ position: "relative", zIndex: 1 }} alignItems="center">
         <Stack
           direction="row"
           spacing={1.25}

@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import { resolveActiveIssuesToneColor } from "../logic/activeIssuesMeta";
 
 /**
@@ -35,7 +35,6 @@ const PillDot = ({ tone = "info" }) => {
  * @returns {JSX.Element}
  */
 const ActiveIssuesPill = ({ tone = "info", children }) => {
-  const theme = useTheme();
   const colors = resolveActiveIssuesToneColor(tone);
 
   return (
@@ -52,7 +51,7 @@ const ActiveIssuesPill = ({ tone = "info", children }) => {
         typography: "caption",
         fontWeight: "fontWeightBold",
         width: "fit-content",
-        boxShadow: `0 10px 26px ${alpha(theme.palette.common.black, 0.06)}`,
+        boxShadow: "none",
         border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
