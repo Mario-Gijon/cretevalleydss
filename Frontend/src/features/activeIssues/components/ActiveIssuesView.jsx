@@ -134,6 +134,7 @@ const ActiveIssuesView = () => {
         {isLgUp ? (
           <ActiveIssuesDesktopView
             filteredIssues={filteredIssues}
+            activeIssues={activeIssues}
             totalIssues={activeIssues.length}
             overview={overview}
             refreshing={refreshing}

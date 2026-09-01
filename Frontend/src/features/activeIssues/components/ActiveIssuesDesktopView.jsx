@@ -1,4 +1,4 @@
-import { Box, Paper, Stack } from "@mui/material";
+import { Box, Paper, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ActiveIssuesToolbar from "./ActiveIssuesToolbar";
 import { getActiveIssuesPageHeaderAuroraBg, getActiveIssuesPageHeaderGlassSx } from "../styles/activeIssues.styles";
@@ -12,6 +12,7 @@ import ActiveIssuesGrid from "./ActiveIssuesGrid";
  */
 const ActiveIssuesDesktopView = ({
   filteredIssues,
+  activeIssues = [],
   overview,
   refreshing,
   handleRefresh,
@@ -39,7 +40,7 @@ const ActiveIssuesDesktopView = ({
           ...getActiveIssuesPageHeaderAuroraBg(theme),
           borderRadius: 3,
           p: { xs: 1.6, md: 2.0 },
-          height: 235,
+          height: "auto",
           overflow: "hidden",
           position: "relative",
           mb: 1,
@@ -90,13 +91,17 @@ const ActiveIssuesDesktopView = ({
                 "&:after": { display: "none" },
               }}
             />
+            {[
+              { title: "Waiting on others", items: activeIssues.filter((issue) => ["waitingExperts", "pendingInvitations"].includes(issue?.ui?.statusKey)), detail: (issue) => issue.ui.statusLabel || "Waiting for experts" },
+              { title: "Upcoming deadlines", items: activeIssues.filter((issue) => issue?.ui?.deadline?.hasDeadline).sort((a, b) => (a.ui.deadline.daysLeft ?? Infinity) - (b.ui.deadline.daysLeft ?? Infinity)).slice(0, 3), detail: (issue) => issue.ui.deadline.iso || "Deadline" },
+            ].map((section) => section.items.length ? <Box component="section" key={section.title} sx={{ mt: 2 }}><Typography variant="subtitle1">{section.title}</Typography>{section.items.map((issue) => <Box key={issue.id} onClick={() => openDetails(issue)} sx={{ py: 1, borderTop: "1px solid rgba(255,255,255,0.1)" }}><Typography variant="body2">{issue.name}</Typography><Typography variant="caption" color="text.secondary">{section.detail(issue)}</Typography></Box>)}</Box> : null)}
           </Box>
 
           <Box sx={{ minWidth: 0, height: "100%" }}>
             <TaskCenter
-              variant="rail"
-              height="100%"
-              minHeight="100%"
+              variant="panel"
+              height="auto"
+              minHeight={132}
               tasksCount={tasksCount}
               taskCenter={taskCenter}
               taskType={taskType}

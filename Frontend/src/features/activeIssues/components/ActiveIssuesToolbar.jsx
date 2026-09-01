@@ -21,14 +21,10 @@ import { alpha, useTheme } from "@mui/material/styles";
 import DashboardCustomizeIcon from "@mui/icons-material/DashboardCustomize";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
-import CalculateIcon from "@mui/icons-material/Calculate";
-import GavelIcon from "@mui/icons-material/Gavel";
-import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import {
   getActiveIssuesPageHeaderAuroraBg,
   getActiveIssuesPageHeaderGlassSx,
 } from "../styles/activeIssues.styles";
-import ActiveIssuesTinyStat from "./ActiveIssuesTinyStat";
 
 /**
  * Cabecera de la pantalla de issues activos.
@@ -53,7 +49,6 @@ import ActiveIssuesTinyStat from "./ActiveIssuesTinyStat";
  */
 const ActiveIssuesToolbar = ({
   isLgUp,
-  overview,
   refreshing,
   onRefresh,
   query,
@@ -167,44 +162,6 @@ const ActiveIssuesToolbar = ({
             </Tooltip>
           </Stack>
         </Stack>
-
-        <Grid container spacing={1} pr={0}>
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<DashboardCustomizeIcon fontSize="small" />}
-              label="Issues"
-              value={overview.total}
-              tone="success"
-            />
-          </Grid>
-
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<AssignmentTurnedInIcon fontSize="small" />}
-              label="Tasks"
-              value={overview.tasks}
-              tone="info"
-            />
-          </Grid>
-
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<CalculateIcon fontSize="small" />}
-              label="Owner"
-              value={overview.owner}
-              tone="success"
-            />
-          </Grid>
-
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<GavelIcon fontSize="small" />}
-              label="Ready to resolve"
-              value={overview.readyResolve}
-              tone="warning"
-            />
-          </Grid>
-        </Grid>
 
         <Grid container spacing={1} alignItems="stretch" sx={{ rowGap: 0.5 }}>
           <Grid item {...gridConfig.search}>
