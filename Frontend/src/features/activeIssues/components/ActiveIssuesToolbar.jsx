@@ -68,15 +68,15 @@ const ActiveIssuesToolbar = ({
     return isLgUp
       ? {
           search: { xs: 12, md: 5, lg: 5 },
-          model: { xs: 12, md: 2, lg: 2 },
-          sort: { xs: 12, md: 2, lg: 2 },
-          refresh: { xs: 12, md: 3, lg: 3 },
+          model: { xs: 12, md: 3, lg: 3 },
+          sort: { xs: 12, md: 3, lg: 3 },
+          refresh: { xs: 12, md: "auto", lg: "auto" },
         }
       : {
           search: { xs: 12, md: 5 },
-          model: { xs: 12, md: 2 },
-          sort: { xs: 12, md: 2 },
-          refresh: { xs: 12, md: 3 },
+          model: { xs: 12, md: 3 },
+          sort: { xs: 12, md: 3 },
+          refresh: { xs: 12, md: "auto" },
         };
   }, [isLgUp]);
 
@@ -96,7 +96,7 @@ const ActiveIssuesToolbar = ({
       elevation={0}
       sx={{
         borderRadius: 0,
-        py: { xs: 1.25, md: 1.5 },
+        py: { xs: 1, md: 1.1 },
         px: 0,
         height: isLgUp ? resolvedHeight : "auto",
         overflow: "hidden",
@@ -119,7 +119,7 @@ const ActiveIssuesToolbar = ({
         ...(paperSx || {}),
       }}
     >
-      <Stack spacing={1.25} sx={{ position: "relative", zIndex: 1 }} alignItems="center">
+      <Stack spacing={0.8} sx={{ position: "relative", zIndex: 1 }} alignItems="center">
         <Stack direction="row" spacing={1.25} width="100%">
           <Stack spacing={1} sx={{ minWidth: 0 }}>
             <Stack direction="row" spacing={1.1}>
@@ -239,9 +239,8 @@ const ActiveIssuesToolbar = ({
             sx={{ display: "flex", alignItems: "stretch" }}
           >
             <Tooltip title="Refresh issues">
-              <span style={{ width: "100%" }}>
+              <span>
                 <Button
-                  fullWidth
                   onClick={onRefresh}
                   disabled={refreshing}
                   aria-label="Refresh issues"

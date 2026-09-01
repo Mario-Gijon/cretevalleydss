@@ -9,7 +9,7 @@ export const IssuesGridCard = styled(Paper)(() => ({
   height: "100%",
   transition:
     "transform 160ms ease, box-shadow 160ms ease, background 220ms ease, border-color 220ms ease",
-  background: "#111923",
+  background: "#121A24",
   color: "#F1F4F6",
   boxShadow: "none",
   border: "1px solid #2A3743",
@@ -17,7 +17,7 @@ export const IssuesGridCard = styled(Paper)(() => ({
   "&:hover": {
     transform: "translateY(-1px)",
     boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
-    background: "#141E29",
+    background: "#151E29",
     borderColor: "#2A3743",
   },
 }));

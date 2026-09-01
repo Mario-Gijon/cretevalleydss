@@ -95,6 +95,7 @@ const ActiveIssuesDesktopView = ({
           taskType={taskType}
           setTaskType={setTaskType}
           onOpenIssueId={openDetailsById}
+          flat
           supplementalSections={[
             {
               key: "waiting-on-others",

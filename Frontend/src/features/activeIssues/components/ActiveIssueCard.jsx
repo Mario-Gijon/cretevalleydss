@@ -33,7 +33,7 @@ const ActiveIssueStageStepper = ({ issue, tone = "info" }) => {
   const successBorder = alpha(theme.palette.success.main, 0.9);
 
   return (
-    <Box sx={{ width: "84%", mx: "auto", py: 0.65, overflow: "visible" }}>
+    <Box sx={{ width: "90%", mx: "auto", py: 0.65, overflow: "visible" }}>
       <Box
         sx={{
           display: "flex",
@@ -148,6 +148,11 @@ const ActiveIssueFooterMetadata = ({ issue }) => {
   const deadline = issue?.ui?.deadline?.hasDeadline
     ? computeIssueDeadlineProgress(issue)?.label || issue?.closureDate
     : "No deadline";
+  const ownerLabel = issue?.isIssueOwner
+    ? "Owner"
+    : typeof issue?.owner === "string" && issue.owner.trim()
+      ? issue.owner
+      : null;
 
   return (
     <Stack
@@ -174,6 +179,14 @@ const ActiveIssueFooterMetadata = ({ issue }) => {
           <GroupsOutlinedIcon sx={{ fontSize: 16 }} />
           <Typography variant="caption" sx={{ fontWeight: 700 }}>
             {expertsCount} experts
+          </Typography>
+        </Stack>
+      ) : null}
+      {ownerLabel ? (
+        <Stack direction="row" spacing={0.55} sx={{ alignItems: "center" }}>
+          <AdminPanelSettingsIcon sx={{ fontSize: 15 }} />
+          <Typography variant="caption" sx={{ fontWeight: 700 }}>
+            {ownerLabel}
           </Typography>
         </Stack>
       ) : null}

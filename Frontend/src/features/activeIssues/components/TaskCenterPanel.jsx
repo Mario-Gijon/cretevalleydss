@@ -59,6 +59,7 @@ const TaskCenterPanel = ({
   groupsFiltered,
   openItem,
   supplementalSections = [],
+  flat = false,
 }) => {
   const theme = useTheme();
   const scrollbarSx = getTaskCenterScrollbarSx(theme);
@@ -72,7 +73,13 @@ const TaskCenterPanel = ({
       sx={{
         borderRadius: 5,
         p: isSmDown ? 1.35 : 1.75,
-        ...getTaskCenterGlassSx(theme),
+        ...(flat
+          ? {
+              bgcolor: "transparent",
+              boxShadow: "none",
+              border: "1px solid rgba(150, 170, 185, 0.12)",
+            }
+          : getTaskCenterGlassSx(theme)),
         height: resolvedHeight,
         maxHeight: resolvedMaxHeight,
         minHeight,
@@ -247,10 +254,16 @@ const TaskCenterPanel = ({
                               py: 0.8,
                               mb: itemIndex < group.items.length - 1 ? 0.5 : 0,
                               borderRadius: 2,
-                              bgcolor: "rgba(255,255,255,0.025)",
-                              border: "1px solid rgba(150, 170, 185, 0.10)",
+                              bgcolor: flat
+                                ? "rgba(255,255,255,0.012)"
+                                : "rgba(255,255,255,0.025)",
+                              border: flat
+                                ? "1px solid rgba(150, 170, 185, 0.08)"
+                                : "1px solid rgba(150, 170, 185, 0.10)",
                               "&:hover": {
-                                bgcolor: "rgba(255,255,255,0.045)",
+                                bgcolor: flat
+                                  ? "rgba(255,255,255,0.032)"
+                                  : "rgba(255,255,255,0.045)",
                               },
                             }}
                           >
@@ -365,10 +378,16 @@ const TaskCenterPanel = ({
                         py: 0.8,
                         mb: itemIndex < section.items.length - 1 ? 0.5 : 0,
                         borderRadius: 2,
-                        bgcolor: "rgba(255,255,255,0.025)",
-                        border: "1px solid rgba(150, 170, 185, 0.10)",
+                        bgcolor: flat
+                          ? "rgba(255,255,255,0.012)"
+                          : "rgba(255,255,255,0.025)",
+                        border: flat
+                          ? "1px solid rgba(150, 170, 185, 0.08)"
+                          : "1px solid rgba(150, 170, 185, 0.10)",
                         "&:hover": {
-                          bgcolor: "rgba(255,255,255,0.045)",
+                          bgcolor: flat
+                            ? "rgba(255,255,255,0.032)"
+                            : "rgba(255,255,255,0.045)",
                         },
                       }}
                     >
