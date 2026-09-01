@@ -25,7 +25,7 @@ from utils.get_plots_graphics_from_matrices import get_plots_graphics_from_matri
 
 from .aggregation.core import TwoTuple, delta_inverse
 from .run import run_two_tuple
-
+from .result_labels import interpret_two_tuple_result
 
 
 def _expert_key(expert: dict[str, Any], index: int) -> str:
@@ -197,21 +197,6 @@ def _serialize_two_tuple(
         "labelKey": labels[value.label_index]["key"],
         "alpha": float(value.alpha),
     }
-
-
-def _format_alpha(alpha: float) -> str:
-    normalized = 0.0 if abs(alpha) < 0.00005 else alpha
-    formatted = f"{normalized:.4f}".rstrip("0").rstrip(".")
-    return formatted or "0"
-
-
-def _result_label(
-    value: TwoTuple,
-    *,
-    labels: list[dict[str, Any]],
-) -> str:
-    label = labels[value.label_index]["label"]
-    return f"{label} (α = {_format_alpha(float(value.alpha))})"
 
 
 def _expert_metadata(
@@ -497,7 +482,7 @@ def _output(
                 "name": alternative_names[alternative_index],
                 "score": float(collective_scores[alternative_index]),
                 "rank": rank,
-                "resultLabel": _result_label(
+                "resultLabel": interpret_two_tuple_result(
                     collective_values[alternative_index],
                     labels=labels,
                 ),

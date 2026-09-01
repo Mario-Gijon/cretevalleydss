@@ -867,8 +867,8 @@ describe("alternative compute orchestration", () => {
           alternatives,
           leafCriteria,
           rankedAlternativeResultLabels: [
-            "High (α = 0.1465)",
-            "High (α = -0.3388)",
+            "High, slightly leaning toward Very High",
+            "High, leaning toward Medium",
           ],
           collectiveEvaluations: {
             [String(alternatives[0]._id)]: {
@@ -971,8 +971,8 @@ describe("alternative compute orchestration", () => {
       },
     });
     expect(stageResult.result.standardResult.rankedAlternatives).toEqual([
-      expect.objectContaining({ resultLabel: "High (α = 0.1465)" }),
-      expect.objectContaining({ resultLabel: "High (α = -0.3388)" }),
+      expect.objectContaining({ resultLabel: "High, slightly leaning toward Very High" }),
+      expect.objectContaining({ resultLabel: "High, leaning toward Medium" }),
     ]);
     const serializedPhase = serializePhaseResults({
       phaseResults: [stageResult],
@@ -982,8 +982,8 @@ describe("alternative compute orchestration", () => {
       })),
     })[0];
     expect(serializedPhase.standardizedOutput.rankedAlternatives).toEqual([
-      expect.objectContaining({ resultLabel: "High (α = 0.1465)" }),
-      expect.objectContaining({ resultLabel: "High (α = -0.3388)" }),
+      expect.objectContaining({ resultLabel: "High, slightly leaning toward Very High" }),
+      expect.objectContaining({ resultLabel: "High, leaning toward Medium" }),
     ]);
     expect(stageResult.result.standardResult).not.toHaveProperty("weightsByCriterion");
     expect(stageResult.result.modelExecution).toMatchObject({

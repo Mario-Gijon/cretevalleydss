@@ -58,10 +58,10 @@ describe("standardized ranked-alternative normalization", () => {
 
   it("preserves a non-empty result label", () => {
     const normalized = normalizeModelExecutionResult({
-      result: result([rankedAlternative({ resultLabel: "  High (α = 0)  " })]),
+      result: result([rankedAlternative({ resultLabel: "  High  " })]),
     });
 
-    expect(normalized.rankedAlternatives[0].resultLabel).toBe("High (α = 0)");
+    expect(normalized.rankedAlternatives[0].resultLabel).toBe("High");
   });
 
   it.each(["", "   ", null, 1, {}])(

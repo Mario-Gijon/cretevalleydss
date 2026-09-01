@@ -395,15 +395,15 @@ describe("Results analysis workspace", () => {
 
   it("preserves and renders resultLabel independently of classification", () => {
     const payload = buildFinishedIssuePayloadFixture();
-    payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].resultLabel = "High (α = 0.1465)";
+    payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].resultLabel = "High, slightly leaning toward Very High";
     payload.phaseResults[2].standardizedOutput.rankedAlternatives[0].classification = "high";
     payload.models.base.effectiveParameters = { profiles: [{ id: "high", label: "Highly suitable" }] };
 
     const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
-    expect(data.single.ranking[0]).toMatchObject({ resultLabel: "High (α = 0.1465)", classificationLabel: "Highly suitable" });
+    expect(data.single.ranking[0]).toMatchObject({ resultLabel: "High, slightly leaning toward Very High", classificationLabel: "Highly suitable" });
 
     render(<ThemeProvider theme={createTheme()}><RankingList ranking={data.single.ranking} /></ThemeProvider>);
-    expect(screen.getByText("High (α = 0.1465)")).toBeInTheDocument();
+    expect(screen.getByText("High, slightly leaning toward Very High")).toBeInTheDocument();
     expect(screen.getByText("Highly suitable")).toBeInTheDocument();
   });
 
