@@ -59,31 +59,3 @@ export const finishedIssueHeaderTabsSx = {
     textTransform: "none",
   },
 };
-
-export const finishedIssueNavigationSx = {
-  minHeight: 47,
-  pb: 0.375,
-  "& .MuiTabs-indicator": {
-    display: "block",
-    opacity: 1,
-    height: 3,
-    backgroundColor: "secondary.main",
-  },
-  "& .MuiTab-root": {
-    minHeight: 44,
-    px: { xs: 1.1, md: 1.55 },
-    gap: 0.65,
-    textTransform: "none",
-  },
-};
-
-export const finishedIssueResultsTabsSx = {
-  minHeight: 47,
-  pb: 0.375,
-  "& .MuiTabs-indicator": {
-    display: "block",
-    opacity: 1,
-    height: 3,
-    backgroundColor: "secondary.main",
-  },
-};

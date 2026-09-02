@@ -5,8 +5,6 @@ import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 
-import { finishedIssueNavigationSx } from "./finishedIssueShell.styles";
-
 const TAB_LABELS = {
   dashboard: "Summary",
   overview: "Overview",
@@ -24,8 +22,8 @@ const TAB_ICONS = {
 };
 
 const FinishedIssueNavigation = ({ navigation }) => (
-  <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.selectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={finishedIssueNavigationSx}>
-    {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} icon={TAB_ICONS[tab]} iconPosition="start" label={TAB_LABELS[tab]} />)}
+  <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.selectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile textColor="secondary" indicatorColor="secondary">
+    {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} icon={TAB_ICONS[tab]} iconPosition="start" label={TAB_LABELS[tab]} sx={{ textTransform: "none" }} />)}
   </Tabs>
 );
 
