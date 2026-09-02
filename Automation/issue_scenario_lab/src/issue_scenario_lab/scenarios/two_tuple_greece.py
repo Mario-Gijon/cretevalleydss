@@ -405,7 +405,8 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
     ):
         raise ScenarioLabError("two-tuple-greece requires configured distinct aliases: owner, expert_a, expert_b, expert_c, expert_d, expert_e")
     generation_id, issue_id = secrets.token_hex(5), None
-    issue_name = f"[AUTO:{generation_id}] {data['issue']['name']}"
+    #issue_name = f"[AUTO:{generation_id}] {data['issue']['name']}"
+    issue_name = f"{data['issue']['name']}"
     try:
         for alias in aliases:
             sessions.login(alias)
