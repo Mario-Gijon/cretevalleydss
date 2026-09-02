@@ -527,8 +527,17 @@ export const CriteriaWeightingPanel = ({
         flexWrap="wrap"
         useFlexGap
       >
-        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
-          <ToggleButtonGroup
+        <Stack
+          direction="row"
+          spacing={0.75}
+          useFlexGap
+          flexWrap="wrap"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ width: "100%" }}
+        >
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
+            <ToggleButtonGroup
             exclusive
             size="small"
             color="info"
@@ -572,18 +581,20 @@ export const CriteriaWeightingPanel = ({
                 </ToggleButton>
               </span>
             </Tooltip>
-          </ToggleButtonGroup>
-          {mccActionAvailable ? (
-            <CriteriaWeightingMccAction
-              selectedModel={selectedModel}
-              criteria={criteria}
-              criteriaWeightingConfig={criteriaWeightingConfig}
-              setCriteriaWeightingConfig={setCriteriaWeightingConfig}
-              setDefaultModelParams={setDefaultModelParams}
-            />
-          ) : null}
-          {equalWeightsActionAvailable ? (
-            <ToggleButton
+            </ToggleButtonGroup>
+          </Stack>
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
+            {mccActionAvailable ? (
+              <CriteriaWeightingMccAction
+                selectedModel={selectedModel}
+                criteria={criteria}
+                criteriaWeightingConfig={criteriaWeightingConfig}
+                setCriteriaWeightingConfig={setCriteriaWeightingConfig}
+                setDefaultModelParams={setDefaultModelParams}
+              />
+            ) : null}
+            {equalWeightsActionAvailable ? (
+              <ToggleButton
               value="equalWeights"
               selected={equalWeightsActive}
               onClick={() =>
@@ -609,7 +620,8 @@ export const CriteriaWeightingPanel = ({
             >
               Equal weights
             </ToggleButton>
-          ) : null}
+              ) : null}
+          </Stack>
         </Stack>
       </Stack>
 
