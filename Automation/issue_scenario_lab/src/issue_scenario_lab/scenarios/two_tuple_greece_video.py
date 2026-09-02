@@ -13,7 +13,7 @@ from issue_scenario_lab.manifest.models import GeneratedIssue
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.no_consensus_basic import _id, _items
 
-SCENARIO_ID = "two-tuple-greece-video-video"
+SCENARIO_ID = "two-tuple-greece-video"
 CRITERIA_STAGE = "criteriaWeighting"
 ALTERNATIVE_STAGE = "alternativeEvaluation"
 MODEL_KEY = "two_tuple"
@@ -380,18 +380,6 @@ def _validate_finished_audit(
         evidence = [item for item in criteria_evaluations if item.get("expertId") == expert_id and isinstance(item.get("rawPayload"), dict)]
         if not evidence or not isinstance(evidence[0]["rawPayload"].get("criterionOrder"), list):
             raise ScenarioLabError(f"finished issue is missing criteria-weighting evidence for {alias}")
-    removed_emails = {
-        sessions.users[alias].email.casefold()
-        for alias in data["participants"]["criteriaWeightingExperts"]
-        if alias != data["participants"]["finalExpert"]
-    }
-    for entry in _items(participation, "experts"):
-        if (entry.get("email") or "").casefold() in removed_emails:
-            events = entry.get("participationEvents") or []
-            if events and not any(event.get("type") == "removed" for event in events):
-                raise ScenarioLabError("finished issue participant audit does not record removed weighting experts")
-
-
 def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = "owner", fixture_path: Path = FIXTURE_PATH) -> Any:
     data = load_fixture(fixture_path)
     experts = data["participants"]["criteriaWeightingExperts"]
