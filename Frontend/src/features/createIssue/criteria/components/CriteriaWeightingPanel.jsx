@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
-  IconButton,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
@@ -18,7 +16,6 @@ import {
   buildApiCriteriaWeightingConfig,
   buildConfigByMode,
   isManualCriteriaWeightingApiModel,
-  isExpertCriteriaWeightingMode,
   normalizeCriteriaWeightingLevel,
   normalizeMode,
   resolveCriteriaWeightingLevel,
@@ -120,15 +117,11 @@ export const CriteriaWeightingPanel = ({
   const requestedLevel = normalizeCriteriaWeightingLevel(
     criteriaWeightingConfig?.level
   );
-  const hasExpertWeightingSource =
-    criteriaWeightingConfig?.source === "experts" ||
-    (!criteriaWeightingConfig?.source && isExpertCriteriaWeightingMode(mode));
   const parentHierarchyAvailable = useMemo(
     () => isParentCriteriaWeightingAvailable(criteria),
     [criteria]
   );
-  const parentLevelAvailable =
-    hasExpertWeightingSource && parentHierarchyAvailable;
+  const parentLevelAvailable = parentHierarchyAvailable;
   const availableCriteriaWeightingModels = useMemo(
     () =>
       (Array.isArray(criteriaWeightingModels) ? criteriaWeightingModels : []).filter(
@@ -240,6 +233,7 @@ export const CriteriaWeightingPanel = ({
       mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
       leafCriteria,
       criteriaWeightingModel: criteriaModel,
+      level: requestedLevel,
     });
 
     return {
@@ -533,40 +527,7 @@ export const CriteriaWeightingPanel = ({
         flexWrap="wrap"
         useFlexGap
       >
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={0.8}
-          alignItems={{ xs: "flex-start", sm: "baseline" }}
-        >
-          <Typography variant="body1" sx={{ fontWeight: 950 }}>
-            Criteria weighting
-          </Typography>
-          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-            Choose how criterion weights are produced.
-          </Typography>
-        </Stack>
-        <Stack
-          direction="row"
-          spacing={0.75}
-          useFlexGap
-          flexWrap="wrap"
-          justifyContent="flex-end"
-          alignItems="center"
-        >
-          <Stack direction="row" spacing={0.35} alignItems="center">
-            <Typography variant="caption" sx={{ fontWeight: 900 }}>
-              Criteria weighting level
-            </Typography>
-            <Tooltip title="Leaf: experts weight the criteria used directly to evaluate alternatives. Parent: experts weight the parent criteria; each parent weight is distributed equally among its direct leaf criteria. Alternatives are still evaluated using the leaf criteria.">
-              <IconButton
-                aria-label="About criteria weighting levels"
-                size="small"
-                sx={{ p: 0.25, color: "text.secondary" }}
-              >
-                <InfoOutlinedIcon fontSize="inherit" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
+        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
           <ToggleButtonGroup
             exclusive
             size="small"
@@ -580,91 +541,75 @@ export const CriteriaWeightingPanel = ({
                 return;
               }
               updateConfig(
-                {
-                  ...safeConfig,
-                  level: "leaf",
-                },
+                { ...safeConfig, level: "leaf" },
                 { markDirty: true }
               );
             }}
+            sx={{
+              "& .MuiToggleButton-root": {
+                px: 1.1,
+                py: 0.45,
+                fontWeight: "fontWeightBold",
+                typography: "caption",
+                letterSpacing: 0.25,
+                textTransform: "uppercase",
+              },
+            }}
           >
-            <ToggleButton value="leaf" aria-label="Leaf criteria weighting">
-              Leaf criteria
-            </ToggleButton>
-            <ToggleButton
-              value="parent"
-              aria-label="Parent criteria weighting"
-              disabled={!parentLevelAvailable}
-            >
-              Parent criteria
-            </ToggleButton>
-          </ToggleButtonGroup>
-          {!parentLevelAvailable ? (
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              {hasExpertWeightingSource
-                ? "Parent criteria weighting requires a compatible parent hierarchy."
-                : "Parent criteria weighting currently requires expert criteria weighting."}
-            </Typography>
-          ) : null}
-          <Stack
-            direction="row"
-            spacing={0.75}
-            useFlexGap
-            flexWrap="wrap"
-            justifyContent="flex-end"
-          >
-            {equalWeightsActionAvailable ? (
-              <ToggleButton
-                value="equalWeights"
-                selected={equalWeightsActive}
-                onClick={() =>
-                  updateConfig(
-                    {
-                      ...(criteriaWeightingConfig || {}),
-                      payload: {
-                        ...(criteriaWeightingConfig?.payload || {}),
-                        weightsByCriterion:
-                          buildCreateIssueEqualManualWeights(leafCriterionItems),
-                      },
-                    },
-                    { markDirty: true }
-                  )
-                }
-                size="small"
-                color="info"
-                sx={{
-                  px: 1.4,
-                  py: 0.55,
-                  borderColor: equalWeightsActive
-                    ? "rgba(75, 210, 207, 0.72)"
-                    : "rgba(255,255,255,0.16)",
-                  color: equalWeightsActive ? "info.main" : "text.secondary",
-                  fontWeight: "fontWeightBold",
-                  typography: "caption",
-                  letterSpacing: 0.25,
-                  textTransform: "uppercase",
-                  "&.Mui-selected": {
-                    color: "info.main",
-                    backgroundColor: "rgba(75, 210, 207, 0.10)",
-                  },
-                  "&.Mui-selected:hover": {
-                    backgroundColor: "rgba(75, 210, 207, 0.14)",
-                  },
-                }}
-              >
-                Equal weights
+            <Tooltip title="Weight the criteria used directly to evaluate alternatives.">
+              <ToggleButton value="leaf" aria-label="Leaf criteria weighting">
+                Leaf criteria
               </ToggleButton>
-            ) : null}
-            {mccActionAvailable ? (
-              <CriteriaWeightingMccAction
-                selectedModel={selectedModel}
-                criteria={criteria}
-                criteriaWeightingConfig={criteriaWeightingConfig}
-                setCriteriaWeightingConfig={setCriteriaWeightingConfig}
-                setDefaultModelParams={setDefaultModelParams}
-              />
-            ) : null}
-          </Stack>
+            </Tooltip>
+            <Tooltip title="Weight the parent criteria; each parent weight is distributed equally among its direct leaf criteria.">
+              <span>
+                <ToggleButton
+                  value="parent"
+                  aria-label="Parent criteria weighting"
+                  disabled={!parentLevelAvailable}
+                >
+                  Parent criteria
+                </ToggleButton>
+              </span>
+            </Tooltip>
+          </ToggleButtonGroup>
+          {mccActionAvailable ? (
+            <CriteriaWeightingMccAction
+              selectedModel={selectedModel}
+              criteria={criteria}
+              criteriaWeightingConfig={criteriaWeightingConfig}
+              setCriteriaWeightingConfig={setCriteriaWeightingConfig}
+              setDefaultModelParams={setDefaultModelParams}
+            />
+          ) : null}
+          {equalWeightsActionAvailable ? (
+            <ToggleButton
+              value="equalWeights"
+              selected={equalWeightsActive}
+              onClick={() =>
+                updateConfig(
+                  {
+                    ...(criteriaWeightingConfig || {}),
+                    payload: {
+                      ...(criteriaWeightingConfig?.payload || {}),
+                      weightsByCriterion:
+                        buildCreateIssueEqualManualWeights(leafCriterionItems),
+                    },
+                  },
+                  { markDirty: true }
+                )
+              }
+              size="small"
+              color="info"
+              sx={{
+                px: 1.4, py: 0.55, borderColor: equalWeightsActive ? "rgba(75, 210, 207, 0.72)" : "rgba(255,255,255,0.16)", color: equalWeightsActive ? "info.main" : "text.secondary", fontWeight: "fontWeightBold", typography: "caption", letterSpacing: 0.25, textTransform: "uppercase",
+                "&.Mui-selected": { color: "info.main", backgroundColor: "rgba(75, 210, 207, 0.10)" },
+                "&.Mui-selected:hover": { backgroundColor: "rgba(75, 210, 207, 0.14)" },
+              }}
+            >
+              Equal weights
+            </ToggleButton>
+          ) : null}
         </Stack>
       </Stack>
 
@@ -712,6 +657,7 @@ export const CriteriaWeightingPanel = ({
                 buildConfigByMode({
                   mode: CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL,
                   leafCriteria,
+                  level: requestedLevel,
                 }),
                 { markDirty: true }
               )
@@ -843,7 +789,7 @@ export const CriteriaWeightingPanel = ({
         onClose={() => setParentConfirmationOpen(false)}
         tone="info"
         title="Use parent criteria weighting?"
-        subtitle="Experts will evaluate the parent criteria instead of the leaf criteria. Each resulting parent weight will be distributed equally among its direct leaf criteria. Alternative evaluations will continue to use the leaf criteria."
+        subtitle="Weights will be produced for the parent criteria instead of the leaf criteria. Each resulting parent weight will be distributed equally among its direct leaf criteria. Alternative evaluations will continue to use the leaf criteria."
         actions={[
           {
             label: "Cancel",

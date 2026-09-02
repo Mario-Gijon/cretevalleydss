@@ -7,11 +7,11 @@ import {
   Box,
   Divider,
   IconButton,
-  Paper,
   Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 
 import CriteriaPreferenceOrderList from "./CriteriaPreferenceOrderList";
@@ -26,6 +26,7 @@ const CriteriaPreferenceOrderView = ({
   readOnly,
 }) => {
   void collectiveEvaluation;
+  const theme = useTheme();
 
   let criteria;
 
@@ -199,55 +200,70 @@ const CriteriaPreferenceOrderView = ({
                 </Typography>
               </Box>
 
-              {unrankedCriteria.map((criterion) => {
-                const criterionName = criterion.name || criterion.id;
+              <Box
+                role="list"
+                aria-label={
+                  permitEdit ? "Available criteria" : "Not ranked criteria"
+                }
+                sx={{
+                  overflow: "hidden",
+                  border: 1,
+                  borderColor: "divider",
+                  borderRadius: 1.5,
+                  bgcolor: alpha(theme.palette.background.paper, 0.32),
+                }}
+              >
+                {unrankedCriteria.map((criterion, index) => {
+                  const criterionName = criterion.name || criterion.id;
 
-                return (
-                  <Paper
-                    key={criterion.id}
-                    variant="outlined"
-                    sx={{
-                      p: 1,
-                      borderRadius: 2,
-                      borderColor: "divider",
-                      bgcolor: "background.paper",
-                    }}
-                  >
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      alignItems="center"
-                      justifyContent="space-between"
+                  return (
+                    <Box
+                      key={criterion.id}
+                      role="listitem"
+                      sx={{
+                        px: 0.75,
+                        py: 0.65,
+                        borderBottom: index < unrankedCriteria.length - 1 ? 1 : 0,
+                        borderColor: "divider",
+                      }}
                     >
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          minWidth: 0,
-                          overflowWrap: "anywhere",
-                        }}
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        justifyContent="space-between"
                       >
-                        {criterionName}
-                      </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            minWidth: 0,
+                            overflowWrap: "anywhere",
+                            fontWeight: "fontWeightMedium",
+                          }}
+                        >
+                          {criterionName}
+                        </Typography>
 
-                      {permitEdit ? (
-                        <Tooltip title="Add criterion">
-                          <IconButton
-                            size="small"
-                            color="secondary"
-                            aria-label={`Add ${criterionName} to ranking`}
-                            onClick={() => {
-                              handleAdd(criterion.id);
-                            }}
-                            sx={{ flexShrink: 0 }}
-                          >
-                            <AddIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      ) : null}
-                    </Stack>
-                  </Paper>
-                );
-              })}
+                        {permitEdit ? (
+                          <Tooltip title="Add criterion">
+                            <IconButton
+                              size="small"
+                              color="secondary"
+                              aria-label={`Add ${criterionName} to ranking`}
+                              onClick={() => {
+                                handleAdd(criterion.id);
+                              }}
+                              sx={{ flexShrink: 0 }}
+                            >
+                              <AddIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Box>
             </Stack>
             </Box>
           </>

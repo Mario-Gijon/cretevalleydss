@@ -27,10 +27,8 @@ export const isExpertCriteriaWeightingMode = (mode) => {
   );
 };
 
-export const resolveCriteriaWeightingLevel = ({ level, mode, source } = {}) =>
-  source === "creator" || !isExpertCriteriaWeightingMode(mode)
-    ? "leaf"
-    : normalizeCriteriaWeightingLevel(level);
+export const resolveCriteriaWeightingLevel = ({ level } = {}) =>
+  normalizeCriteriaWeightingLevel(level);
 
 export const buildConfigByMode = ({ mode, leafCriteria, level }) => {
   const resolvedMode = normalizeMode(mode);
@@ -41,7 +39,7 @@ export const buildConfigByMode = ({ mode, leafCriteria, level }) => {
       source: "creator",
       method: "fuzzy",
       structureKey: null,
-      level: "leaf",
+      level: resolveCriteriaWeightingLevel({ level }),
       payload: {},
     };
   }
@@ -52,7 +50,7 @@ export const buildConfigByMode = ({ mode, leafCriteria, level }) => {
       source: "creator",
       method: "manual",
       structureKey: "manualCriteriaWeights",
-      level: "leaf",
+      level: resolveCriteriaWeightingLevel({ level }),
       payload: {
         weightsByCriterion: buildEqualWeightsByCriterion(leafCriteria),
       },

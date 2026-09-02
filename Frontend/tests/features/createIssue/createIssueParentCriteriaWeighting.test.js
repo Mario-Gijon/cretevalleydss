@@ -50,7 +50,7 @@ describe("createIssueParentCriteriaWeighting", () => {
     ).toBe(false);
   });
 
-  it("preserves parent only for expert-side configurations", () => {
+  it("preserves parent for creator- and expert-side configurations", () => {
     expect(
       buildConfigByMode({
         mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
@@ -64,7 +64,15 @@ describe("createIssueParentCriteriaWeighting", () => {
         leafCriteria: [],
         level: "parent",
       }).level
-    ).toBe("leaf");
+    ).toBe("parent");
+    expect(
+      buildApiCriteriaWeightingConfig({
+        mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
+        leafCriteria: [],
+        criteriaWeightingModel: { apiModelKey: "creator-test" },
+        level: "parent",
+      }).level
+    ).toBe("parent");
     expect(
       buildApiCriteriaWeightingConfig({
         mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
@@ -82,7 +90,7 @@ describe("createIssueParentCriteriaWeighting", () => {
         leafCriteria: [],
         level: "parent",
       }).level
-    ).toBe("leaf");
+    ).toBe("parent");
     expect(
       buildConfigByMode({
         mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
