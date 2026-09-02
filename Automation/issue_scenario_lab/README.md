@@ -49,6 +49,7 @@ python -m issue_scenario_lab generate consensus-first-round
 python -m issue_scenario_lab generate consensus-later-round
 python -m issue_scenario_lab generate consensus-max-rounds
 python -m issue_scenario_lab generate topsis-2tuple-greece
+python -m issue_scenario_lab generate two-tuple-greece-video
 python -m issue_scenario_lab delete GENERATION_ID
 python -m issue_scenario_lab delete-all
 python -m issue_scenario_lab delete-active ISSUE_ID

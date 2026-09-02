@@ -30,6 +30,8 @@ from issue_scenario_lab.scenarios.topsis_2tuple_greece import SCENARIO_ID as TOP
 from issue_scenario_lab.scenarios.topsis_2tuple_greece import generate as generate_topsis_2tuple_greece
 from issue_scenario_lab.scenarios.two_tuple_greece import SCENARIO_ID as TWO_TUPLE_GREECE_SCENARIO_ID
 from issue_scenario_lab.scenarios.two_tuple_greece import generate as generate_two_tuple_greece
+from issue_scenario_lab.scenarios.two_tuple_greece_video import SCENARIO_ID as TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID
+from issue_scenario_lab.scenarios.two_tuple_greece_video import generate as generate_two_tuple_greece_video
 
 app = typer.Typer(add_completion=False, help="Local HTTP foundation for CreteValleyDSS issue variants.")
 console = Console()
@@ -299,6 +301,10 @@ def generate(
                 "alternatives": 5,
             },
         ),
+        TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID: (
+            generate_two_tuple_greece_video,
+            {"model": "2-Tuple Linguistic Model", "criteriaWeightingModel": "Preference Order Criteria Weights", "experts": 5},
+        ),
     }
     selected = generators.get(scenario_id)
     if selected is None:
@@ -309,7 +315,7 @@ def generate(
         with SessionPool.from_settings(settings) as sessions:
             kwargs = (
                 {"owner_alias": "owner"}
-                if scenario_id in {TOPSIS_2TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_SCENARIO_ID}
+                if scenario_id in {TOPSIS_2TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID}
                 else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
             )
             result = selected[0](sessions, ManifestStore(settings.manifest_file), **kwargs)
