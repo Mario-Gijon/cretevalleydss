@@ -38,7 +38,19 @@ export const finishedIssueHeaderTitleSx = {
   letterSpacing: "-0.035em",
 };
 
+export const finishedIssueTabsAccentSx = {
+  "& .MuiTabs-indicator": {
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: "secondary.main",
+  },
+  "& .MuiTab-root.Mui-selected": {
+    color: "secondary.main",
+  },
+};
+
 export const finishedIssueHeaderTabsSx = {
+  ...finishedIssueTabsAccentSx,
   minHeight: 38,
   "& .MuiTab-root": {
     minHeight: 38,
@@ -49,11 +61,29 @@ export const finishedIssueHeaderTabsSx = {
 };
 
 export const finishedIssueNavigationSx = {
-  minHeight: 44,
+  minHeight: 47,
+  pb: 0.375,
+  "& .MuiTabs-indicator": {
+    display: "block",
+    opacity: 1,
+    height: 3,
+    backgroundColor: "secondary.main",
+  },
   "& .MuiTab-root": {
     minHeight: 44,
     px: { xs: 1.1, md: 1.55 },
     gap: 0.65,
     textTransform: "none",
+  },
+};
+
+export const finishedIssueResultsTabsSx = {
+  minHeight: 47,
+  pb: 0.375,
+  "& .MuiTabs-indicator": {
+    display: "block",
+    opacity: 1,
+    height: 3,
+    backgroundColor: "secondary.main",
   },
 };
