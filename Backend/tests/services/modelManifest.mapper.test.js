@@ -19,6 +19,7 @@ const buildManifest = (parameters) => ({
   usesFuzzyCriteriaWeights: false,
   usesCriterionTypes: false,
   supportsConsensusSimulation: false,
+  requiresHomogeneousExpressionDomains: false,
   parameters,
 });
 

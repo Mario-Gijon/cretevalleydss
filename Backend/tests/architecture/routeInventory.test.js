@@ -68,6 +68,7 @@ describe("public API route inventory", () => {
         "GET /api/issues/expression-domains",
         "GET /api/issues/finished",
         "GET /api/issues/finished/:id",
+        "GET /api/issues/finished/:id/global-analysis",
         "GET /api/issues/models",
         "GET /api/issues/notifications",
         "GET /api/issues/scenarios/:scenarioId",
@@ -83,6 +84,7 @@ describe("public API route inventory", () => {
         "POST /api/issues/:id/scenarios",
         "POST /api/issues/expression-domains",
         "POST /api/issues/notifications/read-all",
+        "POST /api/issues/finished/:id/results-analysis/reload",
       ].sort()
     );
   });

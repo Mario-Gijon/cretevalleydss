@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createIssueWorkflow } from "../../../modules/issues/creation/index.js";
 import { editIssueExpertsWorkflow } from "../../../modules/issues/participants/index.js";
+import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
 
 const createSession = (events) => ({
   withTransaction: vi.fn(async (operation) => {
@@ -115,6 +116,9 @@ describe("issue workflow transaction and side-effect ordering", () => {
       }),
     };
     const sendInvitationEmail = vi.fn();
+    vi.spyOn(IssueExecutionAttempt, "findOne").mockReturnValue({
+      sort: vi.fn().mockResolvedValue(null),
+    });
 
     await expect(
       createIssueWorkflow({

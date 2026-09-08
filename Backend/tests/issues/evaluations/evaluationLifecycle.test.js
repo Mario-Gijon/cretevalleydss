@@ -699,12 +699,14 @@ describe("get evaluation payload behavior", () => {
     );
     expect(result.decisionContext.criteriaWeights).toEqual({});
     expect(result.decisionContext.expertWeights).toEqual({});
+    expect(result.decisionContext.criteriaWeightingCriteria).toEqual([]);
     expect(Object.keys(result.decisionContext)).toEqual([
       "issue",
       "structure",
       "model",
       "modelParameters",
       "criteriaWeightingParameters",
+      "criteriaWeightingCriteria",
       "alternatives",
       "criteriaTree",
       "leafCriteria",
