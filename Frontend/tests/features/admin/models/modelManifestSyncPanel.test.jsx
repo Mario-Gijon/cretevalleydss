@@ -259,7 +259,7 @@ describe("ModelManifestSyncPanel", () => {
       await screen.findByRole("heading", { name: "Synchronize model catalog?" })
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Cancel catalog synchronization" }));
     await waitFor(() =>
       expect(
         screen.queryByRole("heading", { name: "Synchronize model catalog?" })

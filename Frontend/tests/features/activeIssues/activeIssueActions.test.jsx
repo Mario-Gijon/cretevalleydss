@@ -262,7 +262,8 @@ describe("ActiveIssuesView smoke", () => {
       },
     });
 
-    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Loading issues" })).toBeInTheDocument();
+    expect(screen.getByTestId("issue-list-skeleton")).toBeInTheDocument();
   });
 
   it('renders "No active issues" when the list is empty', () => {
