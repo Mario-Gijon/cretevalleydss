@@ -1,5 +1,6 @@
 import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseIssuesDataContext = vi.hoisted(() => vi.fn());
@@ -56,6 +57,7 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
     criteriaWeightingModelId: weightingModel._id,
     criteriaWeightingModelKey: weightingModel.apiModelKey,
     criteriaWeightingParameters: {},
+    level: "leaf",
     payload: { previous: true },
     initializationIdentity: JSON.stringify([
       "weighting-model",
@@ -101,6 +103,37 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
         expressionDomainConfig={{ mode: "global", globalDomainId: "" }}
       />
     );
+
+  const renderControlledPanel = ({
+    config = initialConfig,
+    criteria = defaultCriteria,
+  } = {}) => {
+    let currentConfig = config;
+
+    const ControlledPanel = () => {
+      const [controlledConfig, setControlledConfig] = useState(config);
+      currentConfig = controlledConfig;
+
+      return (
+        <CriteriaWeightingPanel
+          selectedModel={criteriaWeightModelFixture}
+          criteria={criteria}
+          criteriaWeightingConfig={controlledConfig}
+          setCriteriaWeightingConfig={(nextConfig) => {
+            setCriteriaWeightingConfig(nextConfig);
+            setControlledConfig(nextConfig);
+          }}
+          setDefaultModelParams={vi.fn()}
+          expressionDomainConfig={{ mode: "global", globalDomainId: "" }}
+        />
+      );
+    };
+
+    return {
+      ...renderWithProviders(<ControlledPanel />),
+      getConfig: () => currentConfig,
+    };
+  };
 
   it("accepts a complete object and replaces the creation payload completely", () => {
     renderPanel();
@@ -223,12 +256,14 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
   });
 
   it("initializes creator mode before mounting and leaves expert mode uninitialized", async () => {
-    renderPanel({
-      ...initialConfig,
-      mode: "expertApiModel",
-      source: "experts",
-      payload: {},
-      initializationIdentity: undefined,
+    const controlled = renderControlledPanel({
+      config: {
+        ...initialConfig,
+        mode: "expertApiModel",
+        source: "experts",
+        payload: {},
+        initializationIdentity: undefined,
+      },
     });
 
     await userEvent.click(
@@ -236,18 +271,16 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
     );
 
     expect(mockBuildInitialEvaluation).toHaveBeenCalledTimes(1);
-    expect(setCriteriaWeightingConfig).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        mode: "creatorApiModel",
-        source: "creator",
-        payload: { initialized: true },
-        initializationIdentity: JSON.stringify([
-          "weighting-model",
-          "mockCriteriaWeighting",
-          ["criterion-a", "criterion-b"],
-        ]),
-      })
-    );
+    expect(controlled.getConfig()).toMatchObject({
+      mode: "creatorApiModel",
+      source: "creator",
+      payload: { initialized: true },
+      initializationIdentity: JSON.stringify([
+        "weighting-model",
+        "mockCriteriaWeighting",
+        ["criterion-a", "criterion-b"],
+      ]),
+    });
 
     mockBuildInitialEvaluation.mockClear();
     await userEvent.click(
@@ -255,13 +288,11 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
     );
 
     expect(mockBuildInitialEvaluation).not.toHaveBeenCalled();
-    expect(setCriteriaWeightingConfig).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        mode: "expertApiModel",
-        source: "experts",
-        payload: {},
-      })
-    );
+    expect(controlled.getConfig()).toMatchObject({
+      mode: "expertApiModel",
+      source: "experts",
+      payload: {},
+    });
   });
 
   it("reinitializes on leaf-id changes but preserves payload on a rename", () => {
@@ -271,19 +302,20 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
       children: [],
     };
 
-    renderPanel(initialConfig, [...defaultCriteria, addedCriterion]);
+    const changedCriteria = renderControlledPanel({
+      criteria: [...defaultCriteria, addedCriterion],
+    });
 
     expect(mockBuildInitialEvaluation).toHaveBeenCalledTimes(1);
-    expect(setCriteriaWeightingConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payload: { initialized: true },
-        initializationIdentity: JSON.stringify([
-          "weighting-model",
-          "mockCriteriaWeighting",
-          ["criterion-a", "criterion-b", "criterion-c"],
-        ]),
-      })
-    );
+    expect(changedCriteria.getConfig()).toMatchObject({
+      payload: { initialized: true },
+      initializationIdentity: JSON.stringify([
+        "weighting-model",
+        "mockCriteriaWeighting",
+        ["criterion-a", "criterion-b", "criterion-c"],
+      ]),
+    });
+    changedCriteria.unmount();
 
     vi.clearAllMocks();
     mockUseIssuesDataContext.mockReturnValue({
@@ -291,13 +323,16 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
       expressionDomains: [],
       criteriaWeightingModels: [weightingModel],
     });
-    renderPanel(initialConfig, [
-      { ...defaultCriteria[0], name: "Renamed A" },
-      defaultCriteria[1],
-    ]);
+    const renamedCriteria = renderControlledPanel({
+      criteria: [
+        { ...defaultCriteria[0], name: "Renamed A" },
+        defaultCriteria[1],
+      ],
+    });
 
     expect(mockBuildInitialEvaluation).not.toHaveBeenCalled();
     expect(setCriteriaWeightingConfig).not.toHaveBeenCalled();
+    expect(renamedCriteria.getConfig()).toEqual(initialConfig);
   });
 
   it("reinitializes after a criterion is removed from a larger identity", () => {

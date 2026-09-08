@@ -20,9 +20,9 @@ describe("AdminModelForgeSection expression-domain restrictions", () => {
       route: "/dashboard/admin/model-forge?tab=generate",
     });
 
-    expect(await screen.findByText("Compatibility restrictions")).toBeInTheDocument();
-    expect(screen.getByLabelText("Minimum")).toBeInTheDocument();
-    expect(screen.getByLabelText("Maximum")).toBeInTheDocument();
+    expect(await screen.findAllByText("Compatibility restrictions")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Minimum")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Maximum")).toHaveLength(2);
     expect(screen.queryByLabelText("Constraints JSON")).not.toBeInTheDocument();
     expect(screen.queryByText("Constraint template")).not.toBeInTheDocument();
   });

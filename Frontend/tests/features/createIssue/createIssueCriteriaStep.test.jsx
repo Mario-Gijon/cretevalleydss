@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const mockUseCreateIssueContext = vi.hoisted(() => vi.fn());
@@ -44,10 +45,49 @@ import {
 import { criteriaWeightModelFixture } from "../../mocks/fixtures/createIssue.fixtures.js";
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
+const renderControlledCriteriaStep = ({
+  criteria,
+  criteriaWeightingModels,
+  initialCriteriaWeightingConfig,
+}) => {
+  let currentConfig = initialCriteriaWeightingConfig;
+  const setDefaultModelParams = vi.fn();
+
+  const ControlledCriteriaStep = () => {
+    const [criteriaWeightingConfig, setCriteriaWeightingConfig] = useState(
+      initialCriteriaWeightingConfig
+    );
+    currentConfig = criteriaWeightingConfig;
+
+    mockUseCreateIssueContext.mockReturnValue({
+      criteria,
+      setCriteria: vi.fn(),
+      selectedModel: criteriaWeightModelFixture,
+      criteriaWeightingConfig,
+      setCriteriaWeightingConfig,
+      setDefaultModelParams,
+      expressionDomainConfig: { mode: "global", globalDomainId: "" },
+    });
+
+    return <CriteriaStep />;
+  };
+
+  mockUseSnackbarAlertContext.mockReturnValue({ showSnackbarAlert: vi.fn() });
+  mockUseIssuesDataContext.mockReturnValue({
+    globalDomains: [],
+    expressionDomains: [],
+    criteriaWeightingModels,
+  });
+
+  return {
+    ...renderWithProviders(<ControlledCriteriaStep />),
+    getConfig: () => currentConfig,
+    setDefaultModelParams,
+  };
+};
+
 describe("CriteriaStep manual equal weights", () => {
   it("maps Manual MCC experts consensus to its canonical expert weighting config", async () => {
-    const setCriteriaWeightingConfig = vi.fn();
-    const setDefaultModelParams = vi.fn();
     const criteria = [
       {
         id: "criterion-root",
@@ -59,10 +99,8 @@ describe("CriteriaStep manual equal weights", () => {
       },
     ];
 
-    mockUseSnackbarAlertContext.mockReturnValue({ showSnackbarAlert: vi.fn() });
-    mockUseIssuesDataContext.mockReturnValue({
-      globalDomains: [],
-      expressionDomains: [],
+    const controlled = renderControlledCriteriaStep({
+      criteria,
       criteriaWeightingModels: [
         {
           _id: "manual-criteria-weighting-model",
@@ -71,24 +109,15 @@ describe("CriteriaStep manual equal weights", () => {
           supportsExpertCriteriaWeighting: true,
         },
       ],
-    });
-    mockUseCreateIssueContext.mockReturnValue({
-      criteria,
-      setCriteria: vi.fn(),
-      selectedModel: criteriaWeightModelFixture,
-      criteriaWeightingConfig: {
+      initialCriteriaWeightingConfig: {
         mode: "creatorManual",
         source: "creator",
         method: "manual",
         structureKey: "manualCriteriaWeights",
+        level: "leaf",
         payload: { weightsByCriterion: {} },
       },
-      setCriteriaWeightingConfig,
-      setDefaultModelParams,
-      expressionDomainConfig: { mode: "global", globalDomainId: "" },
     });
-
-    renderWithProviders(<CriteriaStep />);
 
     expect(screen.getAllByRole("button", { name: /^Manual/ })).toHaveLength(1);
     expect(screen.queryByText("Manual by experts")).not.toBeInTheDocument();
@@ -97,49 +126,37 @@ describe("CriteriaStep manual equal weights", () => {
       screen.getByRole("button", { name: "MCC EXPERTS CONSENSUS" })
     );
 
-    expect(setDefaultModelParams).toHaveBeenCalledWith(false);
-    expect(setCriteriaWeightingConfig).toHaveBeenCalledWith({
+    expect(controlled.setDefaultModelParams).toHaveBeenCalledWith(false);
+    expect(controlled.getConfig()).toEqual({
       mode: "expertManual",
       source: "experts",
       method: "manual",
       structureKey: "manualCriteriaWeights",
       criteriaWeightingModelKey: "manual_criteria_weights",
+      level: "leaf",
       payload: {},
     });
   });
 
   it("stores internal equal weights for six criteria without rounding them to 0.167", async () => {
-    const setCriteriaWeightingConfig = vi.fn();
-    const setDefaultModelParams = vi.fn();
     const criteria = Array.from({ length: 6 }, (_, index) => ({
       id: `criterion-${index + 1}`,
       name: `Criterion ${index + 1}`,
       children: [],
     }));
 
-    mockUseSnackbarAlertContext.mockReturnValue({ showSnackbarAlert: vi.fn() });
-    mockUseIssuesDataContext.mockReturnValue({
-      globalDomains: [],
-      expressionDomains: [],
-      criteriaWeightingModels: [],
-    });
-    mockUseCreateIssueContext.mockReturnValue({
+    const controlled = renderControlledCriteriaStep({
       criteria,
-      setCriteria: vi.fn(),
-      selectedModel: criteriaWeightModelFixture,
-      criteriaWeightingConfig: {
+      criteriaWeightingModels: [],
+      initialCriteriaWeightingConfig: {
         mode: "creatorManual",
         source: "creator",
         method: "manual",
         structureKey: "manualCriteriaWeights",
+        level: "leaf",
         payload: { weightsByCriterion: {} },
       },
-      setCriteriaWeightingConfig,
-      setDefaultModelParams,
-      expressionDomainConfig: { mode: "global", globalDomainId: "" },
     });
-
-    renderWithProviders(<CriteriaStep />);
 
     expect(screen.getByRole("button", { name: "Equal weights" })).toBeInTheDocument();
     expect(
@@ -150,17 +167,13 @@ describe("CriteriaStep manual equal weights", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Equal weights" }));
 
-    expect(setDefaultModelParams).toHaveBeenCalledWith(false);
-    expect(setCriteriaWeightingConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payload: {
-          weightsByCriterion: buildCreateIssueEqualManualWeights(criteria),
-        },
-      })
-    );
+    expect(controlled.setDefaultModelParams).toHaveBeenCalledWith(false);
 
     const weightsByCriterion =
-      setCriteriaWeightingConfig.mock.calls[0][0].payload.weightsByCriterion;
+      controlled.getConfig().payload.weightsByCriterion;
+    expect(weightsByCriterion).toEqual(
+      buildCreateIssueEqualManualWeights(criteria)
+    );
     expect(
       validateCreateIssueManualCriteriaWeighting({
         criteriaWeightingConfig: {

@@ -61,7 +61,7 @@ describe("DashboardView", () => {
     expect(screen.getByText("Ranking")).toBeInTheDocument();
     expect(screen.getByText("Performance overview")).toBeInTheDocument();
     expect(screen.getByText("Runs generated")).toBeInTheDocument();
-    expect(screen.getByText("1 evaluation")).toBeInTheDocument();
+    expect(screen.getByText("1 submission")).toBeInTheDocument();
     expect(screen.getAllByTestId("summary-card-icon")).toHaveLength(4);
     expect(screen.getAllByTestId("overview-metadata-icon")).toHaveLength(7);
     expect(screen.queryByText("Best option")).not.toBeInTheDocument();
@@ -114,7 +114,7 @@ describe("DashboardView", () => {
       actions: { openOverview: vi.fn(), openModels: vi.fn(), openResultsAnalysis: vi.fn(), openEvaluations: vi.fn() },
     });
 
-    expect(screen.getByTestId("evaluations-count")).toHaveTextContent("2 evaluations");
+    expect(screen.getByTestId("evaluations-count")).toHaveTextContent("2 submissions");
     expect(screen.queryByText("1/1 completed")).not.toBeInTheDocument();
   });
 
