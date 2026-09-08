@@ -121,7 +121,14 @@ const ActiveIssuesView = () => {
   }
 
   if (!activeIssues || activeIssues.length === 0) {
-    return <EmptyState icon={<AssignmentOutlinedIcon fontSize="large" />} title="No active issues" description="Issues that require your attention will appear here." />;
+    return (
+      <EmptyState
+        icon={<AssignmentOutlinedIcon fontSize="large" />}
+        title="No active issues"
+        description="Issues that require your attention will appear here."
+        sx={{ minHeight: { xs: "34vh", sm: "46vh", md: "54vh", lg: "60vh" }, mt: { xs: 2, sm: 3 } }}
+      />
+    );
   }
 
   return (

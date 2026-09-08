@@ -8,7 +8,12 @@ import EmptyState from "../../../components/StyledComponents/EmptyState";
  */
 const FinishedIssuesEmptyState = () => {
   return (
-    <EmptyState icon={<TaskAltOutlinedIcon fontSize="large" />} title="No finished issues" description="Resolved issues will appear here." sx={{ mt: 2 }} />
+    <EmptyState
+      icon={<TaskAltOutlinedIcon fontSize="large" />}
+      title="No finished issues"
+      description="Resolved issues will appear here."
+      sx={{ minHeight: { xs: "34vh", sm: "46vh", md: "54vh", lg: "60vh" }, mt: { xs: 2, sm: 3 } }}
+    />
   );
 };
 
