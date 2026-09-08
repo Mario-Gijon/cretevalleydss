@@ -1,7 +1,7 @@
-import { Chip } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 
-import { getAdminExpertPillSx } from "../styles/adminExperts.styles";
+import AppStatusChip from "../../../../components/StyledComponents/AppStatusChip";
 
 /**
  * Chip de estado de confirmacion para una fila de experto.
@@ -11,14 +11,11 @@ import { getAdminExpertPillSx } from "../styles/adminExperts.styles";
  * @returns {JSX.Element}
  */
 const AdminStatusPill = ({ confirmed }) => {
-  const theme = useTheme();
-
   return (
-    <Chip
+    <AppStatusChip
       label={confirmed ? "Confirmed" : "Pending"}
-      size="small"
-      variant="outlined"
-      sx={getAdminExpertPillSx(theme, confirmed ? "success" : "warning")}
+      tone={confirmed ? "success" : "warning"}
+      icon={confirmed ? <CheckCircleOutlineIcon /> : <ScheduleOutlinedIcon />}
     />
   );
 };

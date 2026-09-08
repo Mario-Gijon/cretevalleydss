@@ -78,6 +78,7 @@ export default function ModelDetailDialog({ row, open, onClose }) {
               <StatusChip
                 label={syncState}
                 severity={getModelManifestSyncSeverity(syncState)}
+                semantic
               />
             </Stack>
           </Stack>

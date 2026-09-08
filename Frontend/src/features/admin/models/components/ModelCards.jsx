@@ -52,6 +52,7 @@ export default function ModelCards({
                   <StatusChip
                     label={toModelManifestTitle(row.implementationStatus)}
                     severity={row.implementationStatus === "scaffold" ? "warning" : "success"}
+                    semantic
                   />
                   <StatusChip label={toModelManifestTitle(row.lifecycleKind)} />
                   <StatusChip
@@ -59,15 +60,18 @@ export default function ModelCards({
                     severity={getModelManifestSyncSeverity(
                       getModelManifestSyncState(row)
                     )}
+                    semantic
                   />
                   <StatusChip
                     label={getModelAdminEnabledLabel(row)}
                     severity={visible ? "success" : "error"}
+                    semantic
                   />
                   {isProtectedHistoricalModel && (
                     <StatusChip
                       label="Protected"
                       severity="warning"
+                      semantic
                     />
                   )}
                 </Stack>

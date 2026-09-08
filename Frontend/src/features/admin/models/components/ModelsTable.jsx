@@ -110,13 +110,15 @@ export default function ModelsTable({
                       <StatusChip
                         label={getModelAdminEnabledLabel(row)}
                         severity={visible ? "success" : "error"}
+                        semantic
                       />
                       <StatusChip
                         label={toModelManifestTitle(row.implementationStatus)}
                         severity={row.implementationStatus === "scaffold" ? "warning" : "success"}
+                        semantic
                       />
                       {isProtectedHistoricalModel && (
-                        <StatusChip label="Protected" severity="warning" />
+                        <StatusChip label="Protected" severity="warning" semantic />
                       )}
                     </Stack>
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
@@ -161,6 +163,7 @@ export default function ModelsTable({
                   <StatusChip
                     label={syncState}
                     severity={getModelManifestSyncSeverity(syncState)}
+                    semantic
                   />
                 </TableCell>
 
