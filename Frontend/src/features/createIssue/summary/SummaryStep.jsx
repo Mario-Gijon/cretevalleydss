@@ -63,10 +63,14 @@ dayjs.extend(duration);
 dayjs.extend(customParseFormat);
 
 const KVRow = ({ k, v }) => (
-  <Stack direction="row" spacing={1} sx={{ alignItems: "baseline" }}>
+  <Stack
+    direction={{ xs: "column", sm: "row" }}
+    spacing={{ xs: 0.2, sm: 1 }}
+    sx={{ alignItems: { xs: "stretch", sm: "baseline" } }}
+  >
     <Typography
       variant="caption"
-      sx={{ color: "text.secondary", fontWeight: 950, minWidth: 150 }}
+      sx={{ color: "text.secondary", fontWeight: 950, minWidth: { sm: 150 } }}
     >
       {k}
     </Typography>

@@ -45,6 +45,8 @@ export default function AdminIssuesToolbar({
             direction={{ xs: "column", md: "row" }}
             spacing={1}
             alignItems={{ xs: "stretch", md: "center" }}
+            useFlexGap
+            flexWrap={{ md: "wrap" }}
           >
             <TextField
               size="small"
