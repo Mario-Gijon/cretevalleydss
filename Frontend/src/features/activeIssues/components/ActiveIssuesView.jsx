@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Box, Stack, Typography, useMediaQuery } from "@mui/material";
+import { Box, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import EmptyState from "../../../components/StyledComponents/EmptyState";
 import { useActiveIssueDrawer } from "../hooks/useActiveIssueDrawer";
 import { useActiveIssuesListing } from "../hooks/useActiveIssuesListing";
 import { useActiveIssueActions } from "../hooks/useActiveIssueActions";
@@ -119,13 +121,7 @@ const ActiveIssuesView = () => {
   }
 
   if (!activeIssues || activeIssues.length === 0) {
-    return (
-      <Stack sx={{ mt: 6 }} spacing={1} alignItems="center">
-        <Typography variant="h4" sx={{ textAlign: "center", fontWeight: 950 }}>
-          No active issues
-        </Typography>
-      </Stack>
-    );
+    return <EmptyState icon={<AssignmentOutlinedIcon fontSize="large" />} title="No active issues" description="Issues that require your attention will appear here." />;
   }
 
   return (

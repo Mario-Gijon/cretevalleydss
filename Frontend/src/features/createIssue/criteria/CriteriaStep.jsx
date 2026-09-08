@@ -12,12 +12,12 @@ import {
   Select,
   MenuItem,
   Typography,
-  Box,
 } from "@mui/material";
 import { TransitionGroup } from "react-transition-group";
 import AddIcon from "@mui/icons-material/Add";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import { useTheme } from "@mui/material/styles";
 
 import {
@@ -30,6 +30,7 @@ import { CriteriaItem } from "./components/CriteriaItem";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
+import EmptyState from "../../../components/StyledComponents/EmptyState";
 import { useCreateIssueContext } from "../context/createIssue.context";
 import {
   createIssueStepContainerSx,
@@ -529,11 +530,7 @@ export const CriteriaStep = () => {
       </Stack>
 
       {criteria.length === 0 ? (
-        <Box sx={getCreateIssueStepEmptyStateSx(theme)}>
-          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-            No criteria yet. Add at least 1 leaf criterion.
-          </Typography>
-        </Box>
+        <EmptyState icon={<AccountTreeOutlinedIcon fontSize="large" />} title="No criteria yet" description="Add at least one leaf criterion to continue." sx={getCreateIssueStepEmptyStateSx(theme)} />
       ) : (
         <List
           disablePadding

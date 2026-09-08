@@ -14,9 +14,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 
 import { formatNotificationDate } from "../logic/notificationDisplay";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
+import EmptyState from "../../../components/StyledComponents/EmptyState";
 
 /**
  * Renderiza el panel lateral de notificaciones y el dialogo de eliminacion.
@@ -104,9 +106,7 @@ export const NotificationsDrawer = ({
           </Stack>
 
           {notifications.length === 0 ? (
-            <Typography variant="body1" color="gray" sx={{ textAlign: "center", p: 4 }}>
-              You have no notifications
-            </Typography>
+            <EmptyState icon={<NotificationsNoneOutlinedIcon fontSize="large" />} title="No notifications" description="Updates and invitations will appear here." sx={{ py: 4 }} />
           ) : (
             <List sx={{ maxWidth: 620, display: "flex", flexDirection: "column", gap: 1, px: 2, pb: 2 }}>
               {notifications.map((notification) => {

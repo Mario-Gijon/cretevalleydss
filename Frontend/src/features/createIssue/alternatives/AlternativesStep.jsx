@@ -7,12 +7,12 @@ import {
   Divider,
   Collapse,
   Typography,
-  Box,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
 import { TransitionGroup } from "react-transition-group";
 
 import {
@@ -22,6 +22,7 @@ import {
 } from "../logic/createIssueAlternatives";
 import { AlternativeItem } from "./components/AlternativeItem.jsx";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
+import EmptyState from "../../../components/StyledComponents/EmptyState";
 import { useCreateIssueContext } from "../context/createIssue.context";
 import {
   createIssueStepContainerSx,
@@ -158,11 +159,7 @@ export const AlternativesStep = () => {
       </Stack>
 
       {alternatives.length === 0 ? (
-        <Box sx={getCreateIssueStepEmptyStateSx(theme)}>
-          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-            No alternatives yet. Add at least 2 to compare properly.
-          </Typography>
-        </Box>
+        <EmptyState icon={<InboxOutlinedIcon fontSize="large" />} title="No alternatives yet" description="Add at least two alternatives to compare them." sx={getCreateIssueStepEmptyStateSx(theme)} />
       ) : (
         <List
           disablePadding
