@@ -205,6 +205,7 @@ describe("useCreateIssue", () => {
         source: "experts",
         method: "manual",
         structureKey: "manualCriteriaWeights",
+        level: "leaf",
         payload: {},
       });
       expect(result.current.expertWeights).toEqual({
