@@ -1,5 +1,45 @@
 import { AppError, isAppError } from "../../utils/common/errors.js";
 
+const cloneOptional = (value) => {
+  try {
+    return value === undefined ? null : JSON.parse(JSON.stringify(value));
+  } catch {
+    return null;
+  }
+};
+
+const sanitizeModelApiHeaders = (headers) =>
+  Object.fromEntries(
+    Object.entries(headers || {}).filter(
+      ([key]) =>
+        !["authorization", "cookie", "set-cookie"].includes(
+          key.toLowerCase()
+        )
+    )
+  );
+
+export const buildModelApiResponseEvidence = (response) => ({
+  httpStatus: response?.status ?? null,
+  headers: sanitizeModelApiHeaders(response?.headers),
+  rawBody: cloneOptional(response?.data),
+  unwrappedBody: null,
+});
+
+export const serializeModelApiError = (error) => ({
+  name: error?.name || "Error",
+  message: error?.message || String(error),
+  code: error?.code ?? null,
+  status: error?.status ?? error?.statusCode ?? error?.response?.status ?? null,
+  field: error?.field ?? null,
+  details: cloneOptional(error?.details),
+  responseBody: cloneOptional(error?.response?.data),
+});
+
+export const buildModelApiTransportFailureEvidence = (error) => ({
+  response: error?.response ? buildModelApiResponseEvidence(error.response) : null,
+  error: serializeModelApiError(error),
+});
+
 export const unwrapModelApiResponse = (
   response,
   fallbackMessage = "Model execution failed"
