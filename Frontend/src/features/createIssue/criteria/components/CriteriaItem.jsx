@@ -8,7 +8,6 @@ import {
   Select,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { Fragment } from "react";
@@ -19,6 +18,7 @@ import ExpandMore from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import AppIconButton from "../../../../components/StyledComponents/AppIconButton";
 
 import { CriterionWeightField } from "./CriterionWeightField";
 
@@ -185,16 +185,12 @@ export const CriteriaItem = ({
 
               {isEditing ? (
                 <>
-                  <Tooltip title="Save changes">
-                    <IconButton aria-label="Save changes" onClick={handleSaveCriterionEdit} size="medium" color="success">
-                      <CheckRoundedIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Cancel editing">
-                    <IconButton aria-label="Cancel editing" onClick={handleCancelCriterionEdit} size="medium" color="warning">
-                      <CloseRoundedIcon />
-                    </IconButton>
-                  </Tooltip>
+                  <AppIconButton label="Save changes" onClick={handleSaveCriterionEdit} size="medium" color="success">
+                    <CheckRoundedIcon />
+                  </AppIconButton>
+                  <AppIconButton label="Cancel editing" onClick={handleCancelCriterionEdit} size="medium" color="warning">
+                    <CloseRoundedIcon />
+                  </AppIconButton>
                 </>
               ) : (
                 hierarchyActions

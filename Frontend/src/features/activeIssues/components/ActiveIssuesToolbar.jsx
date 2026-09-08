@@ -4,8 +4,6 @@ import {
   Typography,
   Grid,
   Paper,
-  Tooltip,
-  IconButton,
   TextField,
   FormControl,
   InputLabel,
@@ -29,6 +27,7 @@ import {
   getActiveIssuesPageHeaderGlassSx,
 } from "../styles/activeIssues.styles";
 import ActiveIssuesTinyStat from "./ActiveIssuesTinyStat";
+import AppIconButton from "../../../components/StyledComponents/AppIconButton";
 
 /**
  * Cabecera de la pantalla de issues activos.
@@ -144,27 +143,24 @@ const ActiveIssuesToolbar = ({
           </Stack>
 
           <Stack direction="row" spacing={12} sx={{ gap: 1 }}>
-            <Tooltip title="Refresh issues">
-              <span>
-                <IconButton
-                  onClick={onRefresh}
-                  disabled={refreshing}
-                  sx={{
-                    bgcolor: alpha(theme.palette.secondary.main, 0.10),
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    "&:hover": {
-                      bgcolor: alpha(theme.palette.secondary.main, 0.14),
-                    },
-                  }}
-                >
-                  {refreshing ? (
-                    <CircularProgress size={18} color="secondary" />
-                  ) : (
-                    <RefreshIcon />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
+            <AppIconButton
+              label="Refresh issues"
+              onClick={onRefresh}
+              disabled={refreshing}
+              sx={{
+                bgcolor: alpha(theme.palette.secondary.main, 0.10),
+                border: "1px solid rgba(255,255,255,0.10)",
+                "&:hover": {
+                  bgcolor: alpha(theme.palette.secondary.main, 0.14),
+                },
+              }}
+            >
+              {refreshing ? (
+                <CircularProgress size={18} color="secondary" />
+              ) : (
+                <RefreshIcon />
+              )}
+            </AppIconButton>
           </Stack>
         </Stack>
 
