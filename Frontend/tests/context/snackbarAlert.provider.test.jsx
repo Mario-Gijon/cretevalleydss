@@ -26,11 +26,16 @@ describe("SnackbarAlertProvider", () => {
     expect(screen.getByText("provider child")).toBeInTheDocument();
   });
 
-  it("shows a snackbar message with the requested severity", async () => {
+  it.each([
+    ["success", "success"],
+    ["warning", "warning"],
+    ["error", "error"],
+    ["info", "secondary"],
+  ])("renders the %s visual treatment", async (severity, tone) => {
     const user = userEvent.setup();
     render(
       <SnackbarAlertProvider>
-        <Trigger message="Saved successfully" severity="success" />
+        <Trigger message="Saved successfully" severity={severity} />
       </SnackbarAlertProvider>
     );
 
@@ -38,7 +43,8 @@ describe("SnackbarAlertProvider", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Saved successfully");
-    expect(alert.className).toContain("MuiAlert-colorSuccess");
+    expect(alert).toHaveAttribute("data-snackbar-tone", tone);
+    expect(screen.getByRole("button", { name: "Close notification" })).toBeInTheDocument();
   });
 
   it("uses the default info severity and can be closed", async () => {
@@ -53,9 +59,9 @@ describe("SnackbarAlertProvider", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Default severity");
-    expect(alert.className).toContain("MuiAlert-colorInfo");
+    expect(alert).toHaveAttribute("data-snackbar-tone", "secondary");
 
-    await user.click(screen.getAllByRole("button")[1]);
+    await user.click(screen.getByRole("button", { name: "Close notification" }));
 
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   });
