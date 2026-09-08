@@ -44,8 +44,10 @@ import {
 import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
 import { CriteriaWeightingMccAction } from "./CriteriaWeightingMccAction";
 import { resolveCriteriaWeightingMccAvailability } from "../../logic/createIssueCriteriaWeightingMcc";
-import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
-import { getEvaluationStructureEntryForStage } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry";
+import {
+  EVALUATION_STAGES,
+  getEvaluationStructureEntryForStage,
+} from "../../../decisionPlugins/evaluations/registry";
 import { requireCompleteEvaluationObject } from "../../../issueEvaluation/logic/requireCompleteEvaluationObject";
 import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 

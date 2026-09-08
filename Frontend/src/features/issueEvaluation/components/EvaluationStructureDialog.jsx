@@ -5,8 +5,10 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages";
-import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
+import {
+  EVALUATION_STAGES,
+  getEvaluationStructureEntryForStage,
+} from "../../decisionPlugins/evaluations/registry";
 import { buildDecisionContext } from "../logic/buildDecisionContext";
 import {
   fetchIssueEvaluation,

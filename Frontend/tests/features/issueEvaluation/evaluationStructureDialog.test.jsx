@@ -53,7 +53,7 @@ const MockEvaluationView = (props) => {
 MockEvaluationView.displayName = "MockEvaluationView";
 
 vi.mock(
-  "../../../src/features/decisionPlugins/evaluations/evaluationStructureRegistry",
+  "../../../src/features/decisionPlugins/evaluations/registry",
   async (importOriginal) => {
     const actual = await importOriginal();
 

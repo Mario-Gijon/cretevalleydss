@@ -23,7 +23,7 @@ vi.mock(
 );
 
 vi.mock(
-  "../../../src/features/decisionPlugins/evaluations/evaluationStructureRegistry",
+  "../../../src/features/decisionPlugins/evaluations/registry",
   async (importOriginal) => {
     const actual = await importOriginal();
 

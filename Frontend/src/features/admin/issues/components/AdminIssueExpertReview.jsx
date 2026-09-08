@@ -21,7 +21,7 @@ import {
   EvaluationStructureRenderer,
   ExpressionDomainSummaryButton,
 } from "../../../issueEvaluation/rendering";
-import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
+import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/registry";
 import AdminIssueInfoRow from "./AdminIssueInfoRow";
 import AdminIssueMetaChip from "./AdminIssueMetaChip";
 import AdminIssueReadOnlyWeights from "./AdminIssueReadOnlyWeights";

@@ -16,8 +16,10 @@ import {
   buildCreatorCriteriaWeightingInitialization,
 } from "../../logic/createIssueCriteriaWeightingInitialization";
 import { resolveCriteriaWeightingMccAvailability } from "../../logic/createIssueCriteriaWeightingMcc";
-import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
-import { getEvaluationStructureEntryForStage } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry";
+import {
+  EVALUATION_STAGES,
+  getEvaluationStructureEntryForStage,
+} from "../../../decisionPlugins/evaluations/registry";
 
 const actionSx = {
   px: 1.4,

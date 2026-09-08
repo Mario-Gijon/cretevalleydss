@@ -11,6 +11,8 @@ import {
 } from "../../src/features/activeIssues/shared";
 
 const FEATURES_ROOT = join(cwd(), "src/features");
+const SOURCE_ROOT = join(cwd(), "src");
+const DECISION_PLUGINS_ROOT = join(FEATURES_ROOT, "decisionPlugins");
 
 const listSourceFiles = (directory) =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -32,11 +34,38 @@ const PRIVATE_CROSS_FEATURE_PATHS = [
 ];
 
 const EAGER_BROAD_ENTRY_IMPORTS = [
-  /from\s+["'][^"']*\/decisionPlugins\/evaluations["']/,
   /from\s+["'][^"']*\/issueEvaluation["']/,
   /from\s+["'][^"']*\/issueExperts["']/,
   /from\s+["'](?![^"']*decisionPlugins\/modelParameters)[^"']*\/modelParameters["']/,
 ];
+
+const DECISION_PLUGIN_PUBLIC_IMPORT_SUFFIXES = [
+  "/decisionPlugins/evaluations/registry",
+  "/decisionPlugins/modelParameters",
+];
+
+const EXTERNAL_DECISION_PLUGIN_IMPORT_PATTERN =
+  /(?:from\s+|import\s*\()\s*["']([^"']*\/decisionPlugins(?:\/[^"']*)?)["']/g;
+
+const listExternalDecisionPluginImports = () =>
+  listSourceFiles(SOURCE_ROOT)
+    .filter((filePath) => !filePath.startsWith(DECISION_PLUGINS_ROOT))
+    .flatMap((filePath) => {
+      const source = readFileSync(filePath, "utf8");
+      const imports = Array.from(source.matchAll(EXTERNAL_DECISION_PLUGIN_IMPORT_PATTERN))
+        .map((match) => match[1])
+        .filter(
+          (importPath) =>
+            !DECISION_PLUGIN_PUBLIC_IMPORT_SUFFIXES.some((suffix) =>
+              importPath.endsWith(suffix)
+            )
+        );
+
+      return imports.map((importPath) => ({
+        file: filePath.slice(SOURCE_ROOT.length + 1),
+        importPath,
+      }));
+    });
 
 describe("feature public API boundaries", () => {
   it("exposes shared active-issue visuals without the full feature entry", () => {
@@ -74,5 +103,9 @@ describe("feature public API boundaries", () => {
     });
 
     expect(violations).toEqual([]);
+  });
+
+  it("keeps external Decision Plugin consumers on focused public contracts", () => {
+    expect(listExternalDecisionPluginImports()).toEqual([]);
   });
 });
