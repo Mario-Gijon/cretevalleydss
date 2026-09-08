@@ -1,5 +1,5 @@
 import { isPlainObject } from "../../../utils/common/objects";
-import { getExpressionDomainTypeMetadataOrThrow } from "../../expressionDomains/expressionDomainTypeMetadataCatalog.js";
+import { getExpressionDomainTypeMetadataOrThrow } from "../../expressionDomains";
 
 export const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 export const PARAMETER_STRUCTURE_MODES = Object.freeze({
