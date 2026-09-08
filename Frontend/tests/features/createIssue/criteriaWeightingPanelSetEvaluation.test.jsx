@@ -179,6 +179,49 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
     ).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("uses creator mode when creator initialization is available", async () => {
+    renderPanel();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /BWM Compute now/ })
+    );
+
+    expect(mockBuildInitialEvaluation).toHaveBeenCalledTimes(1);
+    expect(setCriteriaWeightingConfig).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        mode: "creatorApiModel",
+        source: "creator",
+        payload: { initialized: true },
+      })
+    );
+  });
+
+  it("falls back to expert mode when creator initialization is unavailable", async () => {
+    mockGetEvaluationStructureEntryForStage.mockReturnValue({
+      key: "mockCriteriaWeighting",
+      stage: "criteriaWeighting",
+      View: () => <div>Uninitializable view</div>,
+    });
+
+    renderPanel();
+
+    const card = screen.getByRole("button", {
+      name: /BWM Experts evaluate later/,
+    });
+    expect(card).toHaveAttribute("aria-disabled", "false");
+
+    await userEvent.click(card);
+
+    expect(mockBuildInitialEvaluation).not.toHaveBeenCalled();
+    expect(setCriteriaWeightingConfig).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        mode: "expertApiModel",
+        source: "experts",
+        payload: {},
+      })
+    );
+  });
+
   it("initializes creator mode before mounting and leaves expert mode uninitialized", async () => {
     renderPanel({
       ...initialConfig,
@@ -279,21 +322,28 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
     );
   });
 
-  it("disables creator mode and warns when initialization is unavailable", () => {
+  it("disables a creator-only model when initialization is unavailable", () => {
     mockGetEvaluationStructureEntryForStage.mockReturnValue({
       key: "mockCriteriaWeighting",
       stage: "criteriaWeighting",
       View: () => <div>Uninitializable view</div>,
     });
+    mockUseIssuesDataContext.mockReturnValue({
+      globalDomains: [],
+      expressionDomains: [],
+      criteriaWeightingModels: [
+        { ...weightingModel, supportsExpertCriteriaWeighting: false },
+      ],
+    });
 
     renderPanel();
 
     expect(
-      screen.getByRole("button", { name: /BWM Compute now/ })
+      screen.getByRole("button", { name: /BWM Unavailable/ })
     ).toHaveAttribute("aria-disabled", "true");
     expect(
       screen.getByText(
-        /BWM cannot be computed during issue creation because its evaluation structure does not expose both/
+        /BWM creator-side computation is unavailable during issue creation because its evaluation structure does not expose both/
       )
     ).toBeInTheDocument();
     expect(mockViewState.lastProps).toBeNull();

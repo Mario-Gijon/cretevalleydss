@@ -691,21 +691,25 @@ export const CriteriaWeightingPanel = ({
               criteriaModel?.supportsCreatorCriteriaWeighting === true;
             const supportsExperts =
               criteriaModel?.supportsExpertCriteriaWeighting === true;
-            const canSelect =
-              supportsExperts || (supportsCreator && option.canInitialize);
+            const creatorAvailable = supportsCreator && option.canInitialize;
+            const canSelect = creatorAvailable || supportsExperts;
 
             return (
               <CriteriaWeightingMethodCard
                 key={String(modelId || criteriaModel?.apiModelKey)}
                 title={getCriteriaWeightingModelLabel(criteriaModel)}
                 description={
-                  supportsCreator ? "Compute now" : "Experts evaluate later"
+                  creatorAvailable
+                    ? "Compute now"
+                    : supportsExperts
+                      ? "Experts evaluate later"
+                      : "Unavailable"
                 }
                 selected={selected}
                 disabled={isSingleCriterion || !canSelect}
                 onClick={() => {
                   updateConfig(
-                    supportsCreator
+                    creatorAvailable
                       ? buildCreatorApiConfig(criteriaModel, option.structureEntry)
                       : buildApiCriteriaWeightingConfig({
                           mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
@@ -734,19 +738,24 @@ export const CriteriaWeightingPanel = ({
         ? apiCriteriaWeightingOptions
             .filter((option) => option.model?.supportsCreatorCriteriaWeighting === true)
             .filter((option) => !option.canInitialize)
-            .map((option) => (
-              <Alert
-                severity="warning"
-                key={`${String(
-                  option.model?._id || option.model?.apiModelKey
-                )}-creator-unavailable`}
-              >
-                {getCriteriaWeightingModelLabel(option.model)} cannot be
-                computed during issue creation because its evaluation
-                structure does not expose both a View and
-                buildInitialEvaluation.
-              </Alert>
-            ))
+            .map((option) => {
+              const supportsExperts =
+                option.model?.supportsExpertCriteriaWeighting === true;
+              return (
+                <Alert
+                  severity="warning"
+                  key={`${String(
+                    option.model?._id || option.model?.apiModelKey
+                  )}-creator-unavailable`}
+                >
+                  {getCriteriaWeightingModelLabel(option.model)} creator-side
+                  computation is unavailable during issue creation because its
+                  evaluation structure does not expose both a View and
+                  buildInitialEvaluation.
+                  {supportsExperts ? " Experts can evaluate it later." : ""}
+                </Alert>
+              );
+            })
         : null}
 
       {manualByExpertsSelected ? (
