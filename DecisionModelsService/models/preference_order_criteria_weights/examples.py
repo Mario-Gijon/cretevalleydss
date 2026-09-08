@@ -61,19 +61,38 @@ PREFERENCE_ORDER_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES: dict[
     str,
     dict[str, Any],
 ] = {
-    "under_development": {
-        "summary": "Generated scaffold under development",
+    "success": {
+        "summary": "Successfully computed criteria weights",
         "value": {
-            "success": False,
-            "message": (
-                "Preference Order Criteria Weights is a generated scaffold "
-                "and is still under development."
-            ),
-            "data": None,
-            "error": {
-                "code": "MODEL_UNDER_DEVELOPMENT",
-                "field": None,
-                "details": None,
+            "success": True,
+            "message": "Preference Order Criteria Weights executed successfully",
+            "data": {
+                "message": "Criteria weights computed successfully",
+                "consensusMeasure": None,
+                "weightsByCriterion": {
+                    "CRIT_1": 0.3333333333333333,
+                    "CRIT_2": 0.5,
+                    "CRIT_3": 0.16666666666666666,
+                },
+                "collectiveEvaluations": {
+                    "weightsByCriterion": {
+                        "CRIT_1": 0.3333333333333333,
+                        "CRIT_2": 0.5,
+                        "CRIT_3": 0.16666666666666666,
+                    }
+                },
+                "rawOutput": {
+                    "useMcc": False,
+                    "expertWeightsByExpert": {
+                        "expert.a@example.com": {
+                            "CRIT_1": 0.3333333333333333,
+                            "CRIT_2": 0.5,
+                            "CRIT_3": 0.16666666666666666,
+                        }
+                    },
+                    "nExperts": 1,
+                    "singleExpertKey": "expert.a@example.com",
+                },
             },
         },
     }
