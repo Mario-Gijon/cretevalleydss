@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import LockIcon from '@mui/icons-material/Lock';
-import CancelIcon from '@mui/icons-material/Cancel';
 
-import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, FormHelperText, IconButton, CircularProgress } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { DialogContent, TextField, DialogActions, Button, FormHelperText, IconButton, CircularProgress } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { AppDialog } from '../../../../components/StyledComponents/AppDialog';
 
 
 export default function ConfirmPasswordDialog({ open, repeatPassword, setRepeatPassword, onCancel, onConfirm, error, loading }) {
 
   const [showPassword, setShowPassword] = useState(false);
-  const theme = useTheme();
 
 
   const handleClickShowPassword = () => setShowPassword((prev) => !prev);
@@ -22,21 +20,13 @@ export default function ConfirmPasswordDialog({ open, repeatPassword, setRepeatP
 
   return (
 
-    <Dialog
+    <AppDialog
       open={open}
       onClose={onCancel}
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.secondary.main, 0.24)}`,
-          background: `radial-gradient(760px 280px at 10% 0%, ${alpha(
-            theme.palette.info.main,
-            0.16
-          )}, transparent 58%), rgba(16, 24, 34, 0.95)`,
-        },
-      }}
+      title="Confirm new password"
+      icon={<LockIcon />}
+      maxWidth="xs"
     >
-      <DialogTitle>Confirm new password</DialogTitle>
       <DialogContent>
         <TextField
           label="Repeat Password"
@@ -70,9 +60,6 @@ export default function ConfirmPasswordDialog({ open, repeatPassword, setRepeatP
         </FormHelperText>
       </DialogContent>
       <DialogActions>
-        <Button startIcon={<CancelIcon />} onClick={onCancel} color="error" sx={{ textTransform: "none", fontWeight: 700 }}>
-          Cancel
-        </Button>
         <Button
           onClick={onConfirm}
           color="success"
@@ -84,6 +71,6 @@ export default function ConfirmPasswordDialog({ open, repeatPassword, setRepeatP
           Confirm
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

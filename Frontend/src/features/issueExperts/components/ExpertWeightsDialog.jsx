@@ -4,13 +4,13 @@ import {
   Button,
   DialogActions,
   DialogContent,
-  DialogTitle,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 
-import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import BalanceIcon from "@mui/icons-material/Balance";
+import { AppDialog } from "../../../components/StyledComponents/AppDialog";
 import {
   buildEditedExpertWeights,
   buildEqualExpertWeights,
@@ -46,8 +46,7 @@ const ExpertWeightsDialog = ({
   const validation = validateExpertWeights({ expertEmails, expertWeights });
 
   return (
-    <GlassDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Assign expert weights</DialogTitle>
+    <AppDialog open={open} onClose={onClose} title="Assign expert weights" icon={<BalanceIcon />} maxWidth="sm">
       <DialogContent>
         <Stack spacing={1.25} sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
@@ -96,7 +95,6 @@ const ExpertWeightsDialog = ({
           Equal weights
         </Button>
         <Box sx={{ flex: 1 }} />
-        <Button onClick={onClose}>Cancel</Button>
         <Button
           variant="contained"
           onClick={() => onConfirm(expertWeights)}
@@ -105,7 +103,7 @@ const ExpertWeightsDialog = ({
           Confirm
         </Button>
       </DialogActions>
-    </GlassDialog>
+    </AppDialog>
   );
 };
 

@@ -1,12 +1,10 @@
 import {
-  Button,
-  DialogActions,
   DialogContent,
-  DialogTitle,
   Typography,
 } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
-import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { AppDialog } from "../../../components/StyledComponents/AppDialog";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages";
 import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
 import EvaluationStructureDialog from "./EvaluationStructureDialog";
@@ -31,8 +29,7 @@ const EvaluationDialogHost = ({ issue, stage, isOpen, setIsOpen, setOpenIssueDia
 
   if (!structureEntry) {
     return (
-      <GlassDialog open={Boolean(isOpen)} onClose={() => setIsOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 900 }}>Unsupported evaluation structure</DialogTitle>
+      <AppDialog open={Boolean(isOpen)} onClose={() => setIsOpen(false)} title="Unsupported evaluation structure" icon={<InfoOutlinedIcon />} maxWidth="sm" titleSx={{ fontWeight: 900 }}>
 
         <DialogContent>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -47,12 +44,7 @@ const EvaluationDialogHost = ({ issue, stage, isOpen, setIsOpen, setOpenIssueDia
           </Typography>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button variant="outlined" color="info" onClick={() => setIsOpen(false)}>
-            Close
-          </Button>
-        </DialogActions>
-      </GlassDialog>
+      </AppDialog>
     );
   }
 

@@ -89,7 +89,7 @@ describe("EvaluationDialogHost", () => {
     expect(screen.getByText("Stage: criteriaWeighting")).toBeInTheDocument();
     expect(screen.getByText("Structure key: unknownWeights")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }));
 
     expect(setIsOpen).toHaveBeenCalledWith(false);
   });
