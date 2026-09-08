@@ -12,6 +12,8 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import DriveFileMoveOutlinedIcon from "@mui/icons-material/DriveFileMoveOutlined";
 
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
 import { getActiveIssuesAuroraBg } from "../../../activeIssues/shared";
@@ -115,11 +117,11 @@ export default function AdminIssueReassignDialog({
         <Divider sx={{ opacity: 0.12, my: 2 }} />
 
         <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1} justifyContent="flex-end">
-          <Button onClick={onClose} color="warning" variant="outlined">
+          <Button onClick={onClose} color="warning" variant="outlined" startIcon={<CancelOutlinedIcon />}>
             Cancel
           </Button>
 
-          <Button onClick={onReassign} color="secondary" variant="outlined">
+          <Button onClick={onReassign} color="secondary" variant="outlined" startIcon={<DriveFileMoveOutlinedIcon />}>
             Reassign
           </Button>
         </Stack>

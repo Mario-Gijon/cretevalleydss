@@ -422,7 +422,7 @@ export const ViewExpressionsDomainDialog = ({
         </DialogContent>
 
         <DialogActions sx={getCreateIssueCompactDialogActionsSx(theme)}>
-          <Button onClick={onClose} color="secondary" variant="outlined">
+          <Button onClick={onClose} color="secondary" variant="outlined" startIcon={<CancelOutlinedIcon />}>
             Close
           </Button>
         </DialogActions>

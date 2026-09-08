@@ -645,7 +645,7 @@ export const CriteriaStep = () => {
             </Stack>
 
             <Stack direction="row" justifyContent="flex-end" spacing={0.4}>
-              <Button variant="text" color="warning" onClick={() => setOpenDialog(false)}>
+              <Button variant="text" color="warning" startIcon={<CancelOutlinedIcon />} onClick={() => setOpenDialog(false)}>
                 Cancel
               </Button>
               <Button
@@ -653,6 +653,7 @@ export const CriteriaStep = () => {
                 color="info"
                 onClick={handleAddChild}
                 disabled={!childInputValue.trim()}
+                startIcon={<AddIcon />}
               >
                 Add
               </Button>

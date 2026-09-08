@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 
 import BalanceIcon from "@mui/icons-material/Balance";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { AppDialog } from "../../../components/StyledComponents/AppDialog";
 import {
   buildEditedExpertWeights,
@@ -91,12 +92,13 @@ const ExpertWeightsDialog = ({
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={() => setExpertWeights(buildEqualExpertWeights(expertEmails))}>
+        <Button startIcon={<BalanceIcon />} onClick={() => setExpertWeights(buildEqualExpertWeights(expertEmails))}>
           Equal weights
         </Button>
         <Box sx={{ flex: 1 }} />
         <Button
           variant="contained"
+          startIcon={<CheckCircleOutlineIcon />}
           onClick={() => onConfirm(expertWeights)}
           disabled={!validation.valid}
         >
