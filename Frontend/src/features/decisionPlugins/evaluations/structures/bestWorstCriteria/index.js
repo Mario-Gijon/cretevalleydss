@@ -5,6 +5,7 @@ import { buildInitialEvaluation } from "./operations/buildInitialEvaluation";
 export const bestWorstCriteriaStructure = Object.freeze({
   key: "bestWorstCriteria",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  displayLabel: "BWM",
   View: BestWorstCriteriaView,
   buildInitialEvaluation,
 });

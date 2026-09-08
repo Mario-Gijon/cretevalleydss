@@ -13,6 +13,10 @@ import {
 const FEATURES_ROOT = join(cwd(), "src/features");
 const SOURCE_ROOT = join(cwd(), "src");
 const DECISION_PLUGINS_ROOT = join(FEATURES_ROOT, "decisionPlugins");
+const EVALUATION_STRUCTURES_ROOT = join(
+  DECISION_PLUGINS_ROOT,
+  "evaluations/structures"
+);
 
 const listSourceFiles = (directory) =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -67,6 +71,41 @@ const listExternalDecisionPluginImports = () =>
       }));
     });
 
+const listRegisteredEvaluationStructureKeys = () =>
+  readdirSync(EVALUATION_STRUCTURES_ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const source = readFileSync(
+        join(EVALUATION_STRUCTURES_ROOT, entry.name, "index.js"),
+        "utf8"
+      );
+
+      if (/implementationStatus:\s*["']scaffold["']/.test(source)) {
+        return [];
+      }
+
+      const keyMatch = source.match(/key:\s*["']([^"']+)["']/);
+      return keyMatch ? [keyMatch[1]] : [];
+    });
+
+const hasQuotedValue = (source, value) =>
+  ["'", '"', "`"].some((quote) => source.includes(`${quote}${value}${quote}`));
+
+const findConcreteEvaluationStructureIdentity = ({ source, file }) =>
+  listRegisteredEvaluationStructureKeys()
+    .filter((structureKey) => hasQuotedValue(source, structureKey))
+    .map((structureKey) => ({ file, structureKey }));
+
+const listConcreteEvaluationStructureIdentities = () =>
+  listSourceFiles(SOURCE_ROOT)
+    .filter((filePath) => !filePath.startsWith(DECISION_PLUGINS_ROOT))
+    .flatMap((filePath) =>
+      findConcreteEvaluationStructureIdentity({
+        source: readFileSync(filePath, "utf8"),
+        file: filePath.slice(SOURCE_ROOT.length + 1),
+      })
+    );
+
 describe("feature public API boundaries", () => {
   it("exposes shared active-issue visuals without the full feature entry", () => {
     expect(ActiveIssuesPill).toBeTypeOf("function");
@@ -107,5 +146,20 @@ describe("feature public API boundaries", () => {
 
   it("keeps external Decision Plugin consumers on focused public contracts", () => {
     expect(listExternalDecisionPluginImports()).toEqual([]);
+  });
+
+  it("keeps registered evaluation structure identities inside Decision Plugins", () => {
+    expect(listConcreteEvaluationStructureIdentities()).toEqual([]);
+  });
+
+  it("detects a concrete registered structure identity outside the plugin boundary", () => {
+    const [structureKey] = listRegisteredEvaluationStructureKeys();
+
+    expect(
+      findConcreteEvaluationStructureIdentity({
+        source: `const structureKey = "${structureKey}";`,
+        file: "features/example/example.js",
+      })
+    ).toEqual([{ file: "features/example/example.js", structureKey }]);
   });
 });

@@ -4,5 +4,6 @@ import AlternativePairwiseByCriterionView from "./AlternativePairwiseByCriterion
 export const alternativePairwiseByCriterionStructure = Object.freeze({
   key: "alternativePairwiseByCriterion",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  displayLabel: "Pairwise alternatives by criterion",
   View: AlternativePairwiseByCriterionView,
 });

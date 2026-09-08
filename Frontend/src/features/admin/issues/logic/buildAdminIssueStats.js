@@ -8,11 +8,6 @@ export const buildAdminIssueStats = (issues = []) => {
     active: list.filter((issue) => issue?.active).length,
     finished: list.filter((issue) => !issue?.active).length,
     consensus: list.filter((issue) => issue?.isConsensus).length,
-    pairwise: list.filter(
-      (issue) =>
-        issue?.evaluationStructureKey ===
-        "alternativePairwiseByCriterion"
-    ).length,
   };
 };
 

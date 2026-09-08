@@ -28,16 +28,7 @@ import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.sty
 import ActiveIssueParticipationChart from "./ActiveIssueParticipationChart";
 import { buildParameterContext } from "../../../modelParameters/context";
 import { IssueModelParametersView } from "../../../modelParameters/rendering";
-
-const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
-  manualCriteriaWeights: "Manual criteria weights",
-  bestWorstCriteria: "BWM",
-};
-
-const ALTERNATIVE_STRUCTURE_LABELS = {
-  alternativeCriteriaMatrix: "Alternative-criteria matrix",
-  alternativePairwiseByCriterion: "Pairwise alternatives by criterion",
-};
+import { getEvaluationStructureDisplayLabel } from "../../../decisionPlugins/evaluations/registry";
 
 const ActiveIssueInfoRow = ({ label, value }) => {
   return (
@@ -339,19 +330,15 @@ const ActiveIssueOverview = ({
             />
             <ActiveIssueInfoRow
               label="Criteria weighting structure"
-              value={
-                CRITERIA_WEIGHTING_STRUCTURE_LABELS[
-                  selectedIssue?.criteriaWeightsStructureKey
-                ] || selectedIssue?.criteriaWeightsStructureKey || "—"
-              }
+              value={getEvaluationStructureDisplayLabel(
+                selectedIssue?.criteriaWeightsStructureKey
+              )}
             />
             <ActiveIssueInfoRow
               label="Alternative evaluation structure"
-              value={
-                ALTERNATIVE_STRUCTURE_LABELS[
-                  selectedIssue?.evaluationStructureKey
-                ] || selectedIssue?.evaluationStructureKey || "—"
-              }
+              value={getEvaluationStructureDisplayLabel(
+                selectedIssue?.evaluationStructureKey
+              )}
             />
             <ActiveIssueInfoRow
               label="Consensus"

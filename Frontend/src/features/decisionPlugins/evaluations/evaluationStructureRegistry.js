@@ -42,6 +42,22 @@ const validateOptionalCapabilities = ({ structure, modulePath }) => {
   }
 };
 
+const validateOptionalMetadata = ({ structure, modulePath }) => {
+  if (
+    Object.hasOwn(structure, "displayLabel") &&
+    !isNonEmptyString(structure.displayLabel)
+  ) {
+    throw new Error(`${modulePath} displayLabel must be a non-empty string when provided`);
+  }
+
+  if (
+    Object.hasOwn(structure, "defaultForStage") &&
+    typeof structure.defaultForStage !== "boolean"
+  ) {
+    throw new Error(`${modulePath} defaultForStage must be a boolean when provided`);
+  }
+};
+
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/structures\/([^/]+)\/index\.js$/);
   if (!match) {
@@ -74,6 +90,7 @@ export const buildEvaluationStructureRegistry = (
   structureModules = STRUCTURE_MODULES
 ) => {
   const registry = {};
+  const defaultsByStage = new Set();
   const modulePaths = Object.keys(structureModules).sort((left, right) =>
     left.localeCompare(right)
   );
@@ -87,6 +104,7 @@ export const buildEvaluationStructureRegistry = (
 
     validateOptionalCapabilities({ structure, modulePath });
     validateImplementationStatus({ structure, modulePath });
+    validateOptionalMetadata({ structure, modulePath });
 
     if (structure.key !== folderName) {
       throw new Error(
@@ -96,6 +114,16 @@ export const buildEvaluationStructureRegistry = (
 
     if (structure.implementationStatus === "scaffold") {
       continue;
+    }
+
+    if (structure.defaultForStage === true) {
+      if (defaultsByStage.has(structure.stage)) {
+        throw new Error(
+          `${modulePath} declares a duplicate default evaluation structure for stage '${structure.stage}'`
+        );
+      }
+
+      defaultsByStage.add(structure.stage);
     }
 
     if (Object.hasOwn(registry, structure.key)) {
@@ -128,4 +156,16 @@ export const getEvaluationStructureEntryForStage = ({ structureKey, stage }) => 
   if (entry.stage !== stage) return null;
 
   return entry;
+};
+
+export const getDefaultEvaluationStructureEntryForStage = (stage) =>
+  Object.values(EVALUATION_STRUCTURE_REGISTRY).find(
+    (entry) => entry.stage === stage && entry.defaultForStage === true
+  ) ?? null;
+
+export const getEvaluationStructureDisplayLabel = (structureKey) => {
+  const normalizedKey = typeof structureKey === "string" ? structureKey.trim() : "";
+  if (!normalizedKey) return "—";
+
+  return getEvaluationStructureEntry(normalizedKey)?.displayLabel || normalizedKey;
 };

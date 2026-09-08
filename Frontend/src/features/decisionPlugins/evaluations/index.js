@@ -1,7 +1,9 @@
 export {
   EVALUATION_STAGES,
   EVALUATION_STRUCTURE_REGISTRY,
+  getDefaultEvaluationStructureEntryForStage,
   getEvaluationStructureEntry,
+  getEvaluationStructureDisplayLabel,
   getEvaluationStructureEntryForStage,
 } from "./registry.js";
 export {

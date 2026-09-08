@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   EVALUATION_STAGES,
   EVALUATION_STRUCTURE_REGISTRY,
+  getDefaultEvaluationStructureEntryForStage,
   getEvaluationStructureEntry,
+  getEvaluationStructureDisplayLabel,
   getEvaluationStructureEntryForStage,
 } from "../../../src/features/decisionPlugins/evaluations";
 import {
@@ -58,6 +60,22 @@ describe("evaluation Decision Plugin public registry", () => {
     expect(
       EVALUATION_STRUCTURE_REGISTRY.alternativePairwiseByCriterion
     ).not.toHaveProperty("buildInitialEvaluation");
+  });
+
+  it("resolves registered display labels and the default criteria-weighting structure", () => {
+    expect(getEvaluationStructureDisplayLabel("manualCriteriaWeights")).toBe(
+      "Manual criteria weights"
+    );
+    expect(getEvaluationStructureDisplayLabel("bestWorstCriteria")).toBe("BWM");
+    expect(getEvaluationStructureDisplayLabel("unknownStructure")).toBe(
+      "unknownStructure"
+    );
+    expect(getEvaluationStructureDisplayLabel()).toBe("—");
+    expect(
+      getDefaultEvaluationStructureEntryForStage(
+        EVALUATION_STAGES.CRITERIA_WEIGHTING
+      )
+    ).toBe(EVALUATION_STRUCTURE_REGISTRY.manualCriteriaWeights);
   });
 
   it("rejects unknown structures and stage mismatches at the registry boundary", () => {
@@ -178,5 +196,48 @@ describe("evaluation Decision Plugin public registry", () => {
         ])
       )
     ).toThrow("must match folder name");
+  });
+
+  it("rejects malformed structure metadata and duplicate stage defaults", () => {
+    expect(() =>
+      buildEvaluationStructureRegistry(
+        buildModules([
+          {
+            folderName: "invalidLabel",
+            structure: {
+              key: "invalidLabel",
+              stage: "alternativeEvaluation",
+              displayLabel: "",
+              View,
+            },
+          },
+        ])
+      )
+    ).toThrow("displayLabel must be a non-empty string");
+
+    expect(() =>
+      buildEvaluationStructureRegistry(
+        buildModules([
+          {
+            folderName: "firstDefault",
+            structure: {
+              key: "firstDefault",
+              stage: "alternativeEvaluation",
+              defaultForStage: true,
+              View,
+            },
+          },
+          {
+            folderName: "secondDefault",
+            structure: {
+              key: "secondDefault",
+              stage: "alternativeEvaluation",
+              defaultForStage: true,
+              View,
+            },
+          },
+        ])
+      )
+    ).toThrow("duplicate default evaluation structure");
   });
 });

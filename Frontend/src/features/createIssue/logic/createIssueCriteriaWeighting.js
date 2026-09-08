@@ -10,6 +10,10 @@ import {
 import { isPlainObject } from "../../../utils/common/objects";
 import { resolveAssignedDomainIds } from "./createIssueAssignedDomains";
 import {
+  EVALUATION_STAGES,
+  getDefaultEvaluationStructureEntryForStage,
+} from "../../decisionPlugins/evaluations/registry";
+import {
   getExpressionDomainFuzzyValueCount,
   isLinguisticFuzzyExpressionDomain,
 } from "../../../utils/expressionDomains";
@@ -24,6 +28,11 @@ export const isFuzzyCriteriaWeightModel = (model) =>
 
 export const buildCreateIssueEqualManualWeights = (leafCriteria) =>
   buildEqualWeightsByCriterion(leafCriteria);
+
+const getDefaultCriteriaWeightingStructureKey = () =>
+  getDefaultEvaluationStructureEntryForStage(
+    EVALUATION_STAGES.CRITERIA_WEIGHTING
+  )?.key || null;
 
 export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
   if (!modelUsesCriteriaWeights(selectedModel)) {
@@ -45,7 +54,7 @@ export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
     mode: "expertManual",
     source: "experts",
     method: "manual",
-    structureKey: "manualCriteriaWeights",
+    structureKey: getDefaultCriteriaWeightingStructureKey(),
     level: "leaf",
     payload: {},
   };
@@ -121,7 +130,8 @@ export const isCreateIssueCriteriaWeightingConfigOnDefault = ({
           CREATE_ISSUE_CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL &&
         criteriaWeightingConfig.source === "creator" &&
         criteriaWeightingConfig.method === "manual" &&
-        criteriaWeightingConfig.structureKey === "manualCriteriaWeights" &&
+        criteriaWeightingConfig.structureKey ===
+          getDefaultCriteriaWeightingStructureKey() &&
         (
           isDeepEqual(
             criteriaWeightingConfig?.payload?.weightsByCriterion || {},

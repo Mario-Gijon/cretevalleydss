@@ -7,6 +7,8 @@
 export { EVALUATION_STAGES } from "./evaluationStages.js";
 export {
   EVALUATION_STRUCTURE_REGISTRY,
+  getDefaultEvaluationStructureEntryForStage,
   getEvaluationStructureEntry,
+  getEvaluationStructureDisplayLabel,
   getEvaluationStructureEntryForStage,
 } from "./evaluationStructureRegistry.js";

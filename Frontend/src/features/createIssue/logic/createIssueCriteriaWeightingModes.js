@@ -1,4 +1,8 @@
 import { buildEqualWeightsByCriterion } from "./createIssueCriteriaWeightValues";
+import {
+  EVALUATION_STAGES,
+  getDefaultEvaluationStructureEntryForStage,
+} from "../../decisionPlugins/evaluations/registry";
 
 export const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_FUZZY: "creatorFuzzy",
@@ -18,6 +22,11 @@ export const normalizeMode = (mode) =>
 
 export const normalizeCriteriaWeightingLevel = (level) =>
   level === "parent" ? "parent" : "leaf";
+
+const getDefaultCriteriaWeightingStructureKey = () =>
+  getDefaultEvaluationStructureEntryForStage(
+    EVALUATION_STAGES.CRITERIA_WEIGHTING
+  )?.key || null;
 
 export const isExpertCriteriaWeightingMode = (mode) => {
   const normalizedMode = normalizeMode(mode);
@@ -49,7 +58,7 @@ export const buildConfigByMode = ({ mode, leafCriteria, level }) => {
       mode: resolvedMode,
       source: "creator",
       method: "manual",
-      structureKey: "manualCriteriaWeights",
+      structureKey: getDefaultCriteriaWeightingStructureKey(),
       level: resolveCriteriaWeightingLevel({ level }),
       payload: {
         weightsByCriterion: buildEqualWeightsByCriterion(leafCriteria),
@@ -61,7 +70,7 @@ export const buildConfigByMode = ({ mode, leafCriteria, level }) => {
     mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
     source: "experts",
     method: "manual",
-    structureKey: "manualCriteriaWeights",
+    structureKey: getDefaultCriteriaWeightingStructureKey(),
     criteriaWeightingModelKey: MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY,
     level: resolveCriteriaWeightingLevel({
       level,
