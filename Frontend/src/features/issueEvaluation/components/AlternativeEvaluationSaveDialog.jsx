@@ -24,6 +24,7 @@ const AlternativeEvaluationSaveDialog = ({
       open={open}
       onClose={onClose}
       tone="info"
+      headerIcon={<SaveOutlinedIcon />}
       title="Save changes?"
       subtitle="You have unsaved changes. Save as draft or exit without saving."
       actions={[

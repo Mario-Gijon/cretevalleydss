@@ -668,6 +668,7 @@ export const CriteriaStep = () => {
         open={openRemoveCriterionDialog}
         onClose={handleCancelRemoveCriteria}
         tone="error"
+        headerIcon={<DeleteOutlineIcon />}
         title="Delete criterion?"
         subtitle={
           criterionToRemove?.name
@@ -680,11 +681,14 @@ export const CriteriaStep = () => {
             label: "Cancel",
             color: "secondary",
             icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel criterion deletion",
+            tooltip: "Cancel",
             onClick: handleCancelRemoveCriteria,
           },
           {
             id: "confirm-delete-criterion",
-            label: "Delete",
+            label: "Delete criterion",
             color: "error",
             icon: <DeleteOutlineIcon />,
             onClick: handleConfirmRemoveCriteria,

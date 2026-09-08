@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
   Box,
   Divider,
@@ -587,6 +588,7 @@ export const LinguisticFuzzyCreationForm = ({
         open={confirmManualModeOpen}
         onClose={() => setConfirmManualModeOpen(false)}
         tone="warning"
+        headerIcon={<WarningAmberIcon />}
         title="Enable manual values?"
         subtitle="Editing membership values is an advanced option. Incorrect values may make this domain incompatible with some models or produce invalid fuzzy computations. If you are not sure, keep the automatically generated values."
         actions={[

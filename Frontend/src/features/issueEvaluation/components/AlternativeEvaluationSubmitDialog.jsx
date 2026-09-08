@@ -22,6 +22,7 @@ const AlternativeEvaluationSubmitDialog = ({
       open={open}
       onClose={onClose}
       tone="success"
+      headerIcon={<CheckCircleOutlineIcon />}
       title="Submit evaluations?"
       subtitle="You won't be able to modify them."
       actions={[
@@ -31,6 +32,9 @@ const AlternativeEvaluationSubmitDialog = ({
           color: "info",
           variant: "text",
           icon: <CancelOutlinedIcon />,
+          iconOnly: true,
+          ariaLabel: "Cancel evaluation submission",
+          tooltip: "Cancel",
           onClick: onClose,
         },
         {

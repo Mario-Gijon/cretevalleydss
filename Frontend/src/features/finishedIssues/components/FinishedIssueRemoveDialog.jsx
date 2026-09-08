@@ -24,6 +24,7 @@ const FinishedIssueRemoveDialog = ({
       open={open}
       onClose={onClose}
       tone="error"
+      headerIcon={<DeleteOutlineIcon />}
       title="Remove issue"
       subtitle="Are you sure you want to remove this issue? Other users will still be able to see it."
       actions={[
@@ -32,11 +33,14 @@ const FinishedIssueRemoveDialog = ({
           label: "Cancel",
           color: "secondary",
           icon: <CancelOutlinedIcon />,
+          iconOnly: true,
+          ariaLabel: "Cancel removing issue",
+          tooltip: "Cancel",
           onClick: onClose,
         },
         {
           id: "confirm-remove-finished-issue",
-          label: removeLoading ? "Removing..." : "Remove",
+          label: removeLoading ? "Removing issue..." : "Remove issue",
           color: "error",
           icon: <DeleteOutlineIcon />,
           loading: removeLoading,

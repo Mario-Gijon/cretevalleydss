@@ -68,7 +68,9 @@ describe("evaluation dialog shell and confirmation dialogs", () => {
       />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel evaluation submission" })
+    );
     await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     expect(onClose).toHaveBeenCalledTimes(1);

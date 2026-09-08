@@ -432,6 +432,7 @@ export const ViewExpressionsDomainDialog = ({
         open={openDeleteDialog}
         onClose={handleCancelDelete}
         tone="error"
+        headerIcon={<DeleteOutlineIcon />}
         title="Delete expression domain?"
         subtitle={
           selectedDomain?.name
@@ -444,11 +445,14 @@ export const ViewExpressionsDomainDialog = ({
             label: "Cancel",
             color: "secondary",
             icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel expression domain deletion",
+            tooltip: "Cancel",
             onClick: handleCancelDelete,
           },
           {
             id: "confirm-delete-expression-domain",
-            label: "Delete",
+            label: "Delete domain",
             color: "error",
             icon: <DeleteOutlineIcon />,
             loading: removeLoading,

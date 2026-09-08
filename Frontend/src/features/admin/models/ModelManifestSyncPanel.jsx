@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import SyncIcon from "@mui/icons-material/Sync";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
@@ -210,10 +211,15 @@ export default function ModelManifestSyncPanel() {
         title="Synchronize model catalog?"
         subtitle="This action will synchronize technical model metadata from ApiModels into MongoDB. It will not delete models and it will preserve editorial fields such as name, small description, extended description and more info URL."
         tone="warning"
+        headerIcon={<SyncIcon />}
         actions={[
           {
             id: "cancel-sync",
             label: "Cancel",
+            icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel catalog synchronization",
+            tooltip: "Cancel",
             onClick: () => setIsConfirmDialogOpen(false),
             disabled: loadingSync,
           },
@@ -249,10 +255,15 @@ export default function ModelManifestSyncPanel() {
             ? "warning"
             : "info"
         }
+        headerIcon={<SyncIcon />}
         actions={[
           {
             id: "cancel-visibility",
             label: "Cancel",
+            icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel model visibility change",
+            tooltip: "Cancel",
             onClick: () => setPendingVisibilityRow(null),
             disabled: Boolean(visibilityBusyId),
           },

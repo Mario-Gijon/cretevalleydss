@@ -23,6 +23,7 @@ export default function ConfirmDeleteAccountDialog({
       open={open}
       onClose={handleCancel}
       tone="error"
+      headerIcon={<DeleteIcon />}
       title="Delete Account"
       subtitle="Are you sure you want to delete your account? This action cannot be undone."
       actions={[
@@ -31,11 +32,14 @@ export default function ConfirmDeleteAccountDialog({
           label: "Cancel",
           color: "secondary",
           icon: <CancelIcon />,
+          iconOnly: true,
+          ariaLabel: "Cancel account deletion",
+          tooltip: "Cancel",
           onClick: handleCancel,
         },
         {
           id: "confirm-delete",
-          label: "Confirm",
+          label: "Delete account",
           color: "error",
           icon: <DeleteIcon />,
           autoFocus: true,

@@ -50,6 +50,7 @@ const ActiveIssueConfirmDialog = ({
       open={open}
       onClose={onClose}
       tone={tone}
+      headerIcon={TONE_CONFIRM_ICONS[tone] || <InfoOutlinedIcon />}
       title={title}
       subtitle={description}
       actions={[
@@ -58,6 +59,9 @@ const ActiveIssueConfirmDialog = ({
           label: "Cancel",
           color: "secondary",
           icon: <CancelOutlinedIcon />,
+          iconOnly: true,
+          ariaLabel: "Cancel action",
+          tooltip: "Cancel",
           onClick: onClose,
         },
         {

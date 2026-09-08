@@ -202,7 +202,8 @@ export const AlternativesStep = () => {
       <ConfirmationDialog
         open={openRemoveAlternativeDialog}
         onClose={handleCancelRemoveAlternative}
-        tone="warning"
+        tone="error"
+        headerIcon={<DeleteOutlineIcon />}
         title="Delete alternative?"
         subtitle={
           alternativeToRemove
@@ -215,11 +216,14 @@ export const AlternativesStep = () => {
             label: "Cancel",
             color: "secondary",
             icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel alternative deletion",
+            tooltip: "Cancel",
             onClick: handleCancelRemoveAlternative,
           },
           {
             id: "confirm-delete-alternative",
-            label: "Delete",
+            label: "Delete alternative",
             color: "error",
             icon: <DeleteOutlineIcon />,
             onClick: handleConfirmRemoveAlternative,

@@ -645,6 +645,7 @@ export default function AdminExpertsSection() {
         open={confirmDelete.open}
         onClose={() => setConfirmDelete({ open: false, expert: null })}
         tone="error"
+        headerIcon={<DeleteOutlineIcon />}
         title="Delete user"
         subtitle="This action can affect active and finished issues."
         actions={[
@@ -654,6 +655,9 @@ export default function AdminExpertsSection() {
             color: "secondary",
             variant: "outlined",
             icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel user deletion",
+            tooltip: "Cancel",
             onClick: () => setConfirmDelete({ open: false, expert: null }),
           },
           {

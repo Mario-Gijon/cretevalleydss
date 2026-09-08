@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuthContext } from "../../context/auth/auth.context";
@@ -218,6 +218,7 @@ export const ResponsiveNavbar = (props) => {
         open={openLogoutDialog}
         onClose={handleCloseLogoutDialog}
         tone="warning"
+        headerIcon={<LogoutIcon />}
         title="Log out"
         subtitle="Are you sure you want to log out?"
         actions={[
@@ -226,13 +227,16 @@ export const ResponsiveNavbar = (props) => {
             label: "Cancel",
             color: "secondary",
             icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel logout",
+            tooltip: "Cancel logout",
             onClick: handleCloseLogoutDialog,
           },
           {
             id: "confirm-logout",
             label: "Logout",
             color: "warning",
-            icon: <InfoOutlinedIcon />,
+            icon: <LogoutIcon />,
             autoFocus: true,
             loading: logoutLoading,
             onClick: handleConfirmLogout,

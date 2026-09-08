@@ -230,6 +230,7 @@ export const NotificationsDrawer = ({
         open={openRemoveDialog}
         onClose={onCloseRemoveDialog}
         tone="warning"
+        headerIcon={<DeleteOutlineIcon />}
         title="Remove notification"
         subtitle="Are you sure you want to remove the notification?"
         actions={[
@@ -238,11 +239,14 @@ export const NotificationsDrawer = ({
             label: "Cancel",
             color: "secondary",
             icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel notification removal",
+            tooltip: "Cancel",
             onClick: onCloseRemoveDialog,
           },
           {
             id: "confirm-remove-notification",
-            label: "Remove",
+            label: "Remove notification",
             color: "warning",
             icon: <DeleteOutlineIcon />,
             onClick: onRemoveNotification,

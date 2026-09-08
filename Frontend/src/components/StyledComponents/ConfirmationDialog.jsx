@@ -6,17 +6,32 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  IconButton,
+  Stack,
+  Tooltip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 const DIALOG_TONE_COLORS = {
   warning: "warning",
   success: "success",
-  info: "info",
+  secondary: "secondary",
+  info: "secondary",
   error: "error",
 };
 
 const DEFAULT_TONE = "info";
+
+const DEFAULT_HEADER_ICONS = {
+  warning: <WarningAmberIcon />,
+  success: <CheckCircleOutlineIcon />,
+  secondary: <InfoOutlinedIcon />,
+  error: <ErrorOutlineIcon />,
+};
 
 /**
  * Generic confirmation dialog with configurable tone, content and action buttons.
@@ -27,12 +42,16 @@ const DEFAULT_TONE = "info";
  * @param {string} props.title
  * @param {string} [props.subtitle]
  * @param {string} [props.tone]
+ * @param {JSX.Element} [props.headerIcon]
  * @param {*} [props.children]
  * @param {Object[]} [props.actions]
  * @param {string} [props.actions[].id]
  * @param {string} props.actions[].label
  * @param {Function} [props.actions[].onClick]
  * @param {JSX.Element} [props.actions[].icon]
+ * @param {boolean} [props.actions[].iconOnly]
+ * @param {string} [props.actions[].ariaLabel]
+ * @param {string} [props.actions[].tooltip]
  * @param {string} [props.actions[].color]
  * @param {string} [props.actions[].variant]
  * @param {boolean} [props.actions[].loading]
@@ -53,6 +72,7 @@ export function ConfirmationDialog({
   title,
   subtitle,
   tone = DEFAULT_TONE,
+  headerIcon,
   children,
   actions = [],
   titleId = "confirmation-dialog-title",
@@ -67,6 +87,7 @@ export function ConfirmationDialog({
   const paletteKey = DIALOG_TONE_COLORS[tone] || DEFAULT_TONE;
   const toneColor = theme.palette[paletteKey].main;
   const hasContent = Boolean(subtitle) || Boolean(children);
+  const resolvedHeaderIcon = headerIcon || DEFAULT_HEADER_ICONS[paletteKey];
 
   return (
     <Dialog
@@ -75,7 +96,9 @@ export function ConfirmationDialog({
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       PaperProps={{
+        "data-confirmation-tone": paletteKey,
         sx: {
+          width: "min(100% - 24px, 520px)",
           borderRadius: 3,
           border: `1px solid ${alpha(toneColor, 0.28)}`,
           background: `radial-gradient(760px 280px at 10% 0%, ${alpha(
@@ -87,13 +110,25 @@ export function ConfirmationDialog({
         },
       }}
       {...dialogProps}
-    >
+      >
       <DialogTitle
         id={titleId}
-        color={paletteKey}
-        sx={titleSx}
+        sx={{ py: 2, ...titleSx }}
       >
-        {title}
+        <Stack direction="row" spacing={1.25} alignItems="center">
+          {resolvedHeaderIcon && (
+            <Stack
+              aria-hidden="true"
+              data-testid="confirmation-dialog-header-icon"
+              alignItems="center"
+              justifyContent="center"
+              sx={{ color: toneColor, flexShrink: 0 }}
+            >
+              {resolvedHeaderIcon}
+            </Stack>
+          )}
+          <span>{title}</span>
+        </Stack>
       </DialogTitle>
 
       {hasContent && (
@@ -108,13 +143,24 @@ export function ConfirmationDialog({
       )}
 
       {actions.length > 0 && (
-        <DialogActions sx={actionsSx}>
+        <DialogActions
+          sx={{
+            gap: 0.5,
+            px: 2.5,
+            pb: 2,
+            "& .MuiIconButton-root": { minWidth: 44, minHeight: 44 },
+            ...actionsSx,
+          }}
+        >
           {actions.map((action, index) => {
             const {
               id,
               label,
               onClick,
               icon,
+              iconOnly = false,
+              ariaLabel,
+              tooltip,
               color = "inherit",
               variant,
               loading = false,
@@ -123,6 +169,27 @@ export function ConfirmationDialog({
               sx,
               ...buttonProps
             } = action;
+
+            if (iconOnly) {
+              const accessibleLabel = ariaLabel || label;
+              return (
+                <Tooltip key={id || `${label}-${index}`} title={tooltip || accessibleLabel}>
+                  <span>
+                    <IconButton
+                      onClick={onClick}
+                      color={color}
+                      autoFocus={autoFocus}
+                      disabled={disabled || loading}
+                      aria-label={accessibleLabel}
+                      sx={sx}
+                      {...buttonProps}
+                    >
+                      {loading ? <CircularProgress size={20} color="inherit" /> : icon}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              );
+            }
 
             return (
               <Button

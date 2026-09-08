@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import {
   Alert,
   Box,
@@ -809,11 +811,16 @@ export const CriteriaWeightingPanel = ({
         open={parentConfirmationOpen}
         onClose={() => setParentConfirmationOpen(false)}
         tone="info"
+        headerIcon={<AccountTreeOutlinedIcon />}
         title="Use parent criteria weighting?"
         subtitle="Weights will be produced for the parent criteria instead of the leaf criteria. Each resulting parent weight will be distributed equally among its direct leaf criteria. Alternative evaluations will continue to use the leaf criteria."
         actions={[
           {
             label: "Cancel",
+            icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel parent criteria weighting",
+            tooltip: "Cancel",
             onClick: () => setParentConfirmationOpen(false),
           },
           {

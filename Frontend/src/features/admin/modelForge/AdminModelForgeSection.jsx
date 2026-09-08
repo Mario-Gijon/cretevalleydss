@@ -23,11 +23,13 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
@@ -2126,10 +2128,15 @@ export default function AdminModelForgeSection() {
         title="Apply scaffold package?"
         subtitle="This will write missing scaffold files to the project. Existing items are skipped."
         tone="warning"
+        headerIcon={<WarningAmberIcon />}
         actions={[
           {
             id: "cancel-apply-model-forge",
             label: "Cancel",
+            icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel scaffold application",
+            tooltip: "Cancel",
             onClick: () => setApplyDialogOpen(false),
           },
           {
@@ -2154,18 +2161,23 @@ export default function AdminModelForgeSection() {
             ? `This will delete files for "${pendingDeleteAsset.key}". This action is only allowed when no existing issue uses the asset.`
             : ""
         }
-        tone="warning"
+        tone="error"
+        headerIcon={<DeleteOutlineIcon />}
         actions={[
           {
             id: "cancel-delete-model-forge-asset",
             label: "Cancel",
+            icon: <CancelOutlinedIcon />,
+            iconOnly: true,
+            ariaLabel: "Cancel generated asset deletion",
+            tooltip: "Cancel",
             onClick: () => setPendingDeleteAsset(null),
             disabled: Boolean(deleteBusyId),
           },
           {
             id: "confirm-delete-model-forge-asset",
-            label: "Delete",
-            color: "warning",
+            label: "Delete asset",
+            color: "error",
             variant: "contained",
             onClick: handleDeleteAsset,
             loading: Boolean(deleteBusyId),

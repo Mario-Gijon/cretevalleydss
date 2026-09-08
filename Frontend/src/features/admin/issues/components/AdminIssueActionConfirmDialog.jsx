@@ -46,6 +46,7 @@ export default function AdminIssueActionConfirmDialog({
       open={Boolean(confirmAction)}
       onClose={onClose}
       tone={confirmTone}
+      headerIcon={confirmIcon}
       title={confirmAction?.title || "Confirm action"}
       subtitle={
         confirmAction?.description || "Are you sure you want to continue?"
@@ -57,6 +58,9 @@ export default function AdminIssueActionConfirmDialog({
           color: "secondary",
           variant: "outlined",
           icon: <CancelOutlinedIcon />,
+          iconOnly: true,
+          ariaLabel: "Cancel admin issue action",
+          tooltip: "Cancel",
           onClick: onClose,
         },
         {
