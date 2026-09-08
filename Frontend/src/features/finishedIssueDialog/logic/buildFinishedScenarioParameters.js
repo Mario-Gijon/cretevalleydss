@@ -1,4 +1,5 @@
 import { isPlainObject } from "../../../utils/common/objects";
+import { normalizeModelParameterValue } from "../../modelParameters/logic/modelParameterValueState";
 
 const normalizeNonEmptyString = (value) => {
   if (typeof value !== "string") return null;
@@ -10,16 +11,6 @@ const hasOwnKey = (value, key) =>
   value !== null &&
   typeof value === "object" &&
   Object.prototype.hasOwnProperty.call(value, key);
-
-const cloneJsonCompatible = (value) => {
-  if (Array.isArray(value)) return value.map(cloneJsonCompatible);
-  if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, cloneJsonCompatible(item)])
-    );
-  }
-  return value;
-};
 
 const filterOutWeightsParam = (param) =>
   Boolean(param) && param?.semanticRole !== "criteriaWeights";
@@ -174,7 +165,7 @@ export const buildParamsResolved = ({
     }
 
     if (hasOwnKey(parameter, "default")) {
-      out[key] = cloneJsonCompatible(parameter.default);
+      out[key] = normalizeModelParameterValue(parameter, parameter.default);
     }
   }
 
@@ -199,7 +190,7 @@ export const cleanParamsForSend = ({ model, values, leafCount, leafCriteria = []
     }
 
     if (hasOwnKey(source, key)) {
-      out[key] = cloneJsonCompatible(source[key]);
+      out[key] = normalizeModelParameterValue(parameter, source[key]);
     }
   }
 

@@ -14,7 +14,7 @@ export const isCriteriaWeightLikeParameter = (parameter) => parameter?.semanticR
 const readModelParameters = (selectedModel) =>
   Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
 
-const normalizeParameterValue = (parameter, value) => {
+export const normalizeModelParameterValue = (parameter, value) => {
   if (
     parameter?.parameterStructureKey !== "twoTupleAggregation" ||
     !isPlainObject(value)
@@ -46,7 +46,7 @@ export const getCreateIssueModelParameters = (selectedModel) =>
 export const buildCreateIssueParameterDefaults = ({ selectedModel }) =>
   getCreateIssueModelParameters(selectedModel).reduce((result, parameter) => {
     if (hasOwnKey(parameter, "default")) {
-      result[parameter.key] = normalizeParameterValue(parameter, parameter.default);
+      result[parameter.key] = normalizeModelParameterValue(parameter, parameter.default);
     }
     return result;
   }, {});
@@ -55,9 +55,9 @@ export const updateCreateIssueParameterValues = ({ previous, selectedModel }) =>
   const source = isPlainObject(previous) ? previous : {};
   return getCreateIssueModelParameters(selectedModel).reduce((result, parameter) => {
     if (hasOwnKey(source, parameter.key)) {
-      result[parameter.key] = normalizeParameterValue(parameter, source[parameter.key]);
+      result[parameter.key] = normalizeModelParameterValue(parameter, source[parameter.key]);
     } else if (hasOwnKey(parameter, "default")) {
-      result[parameter.key] = normalizeParameterValue(parameter, parameter.default);
+      result[parameter.key] = normalizeModelParameterValue(parameter, parameter.default);
     }
     return result;
   }, {});
@@ -72,7 +72,7 @@ export const pruneCreateIssueParameterValues = ({ selectedModel, values }) => {
       .filter(([key]) => allowedKeys.has(key))
       .map(([key, value]) => {
         const parameter = parameters.find((candidate) => candidate.key === key);
-        return [key, normalizeParameterValue(parameter, value)];
+        return [key, normalizeModelParameterValue(parameter, value)];
       })
   );
 };

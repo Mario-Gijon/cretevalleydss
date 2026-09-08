@@ -21,6 +21,35 @@ const model = {
   ],
 };
 
+const twoTupleModel = {
+  parameterDefinitions: [
+    {
+      key: "criteriaAggregation",
+      parameterStructureKey: "twoTupleAggregation",
+      default: { method: "weighted_average" },
+      restrictions: {
+        methods: [
+          { key: "weighted_average", subparameters: [] },
+          { key: "arithmetic_mean", subparameters: [] },
+          { key: "l2towa", subparameters: [{ key: "quantifier" }] },
+        ],
+      },
+    },
+    {
+      key: "expertAggregation",
+      parameterStructureKey: "twoTupleAggregation",
+      default: { method: "arithmetic_mean", options: null },
+      restrictions: {
+        methods: [
+          { key: "arithmetic_mean", subparameters: [] },
+          { key: "l2towa", subparameters: [{ key: "quantifier" }] },
+        ],
+      },
+    },
+    { key: "unrelated", default: { nested: ["value"] } },
+  ],
+};
+
 describe("finished scenario parameter drafts", () => {
   it("copies only declared defaults without fabricating values from restrictions", () => {
     const resolved = buildParamsResolved({ model, leafCount: 0 });
@@ -47,5 +76,41 @@ describe("finished scenario parameter drafts", () => {
     };
 
     expect(cleanParamsForSend({ model, values, leafCount: 0 })).toEqual(values);
+  });
+
+  it("canonicalizes parameterless two-tuple defaults and final values", () => {
+    expect(buildParamsResolved({ model: twoTupleModel, leafCount: 0 })).toEqual({
+      criteriaAggregation: { method: "weighted_average", options: {} },
+      expertAggregation: { method: "arithmetic_mean", options: {} },
+      unrelated: { nested: ["value"] },
+    });
+
+    expect(cleanParamsForSend({
+      model: twoTupleModel,
+      values: {
+        criteriaAggregation: { method: "weighted_average" },
+        expertAggregation: { method: "arithmetic_mean", options: null },
+        unrelated: { nested: ["draft"] },
+      },
+      leafCount: 0,
+    })).toEqual({
+      criteriaAggregation: { method: "weighted_average", options: {} },
+      expertAggregation: { method: "arithmetic_mean", options: {} },
+      unrelated: { nested: ["draft"] },
+    });
+  });
+
+  it("preserves valid options for configurable two-tuple methods", () => {
+    const options = { quantifier: "most" };
+
+    expect(cleanParamsForSend({
+      model: twoTupleModel,
+      values: {
+        criteriaAggregation: { method: "l2towa", options },
+      },
+      leafCount: 0,
+    })).toEqual({
+      criteriaAggregation: { method: "l2towa", options },
+    });
   });
 });

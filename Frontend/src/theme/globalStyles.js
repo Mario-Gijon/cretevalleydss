@@ -35,7 +35,7 @@ export const appGlobalStyles = {
     flexDirection: "column",
     background: "transparent",
   },
-  "body.finished-issue-route, body.finished-issue-route *": finishedIssueScrollbarSx,
+  "body.finished-issue-route": finishedIssueScrollbarSx,
   ".MuiTableContainer-root, .MuiStack-root": {
     "&::-webkit-scrollbar": {
       width: "8px",

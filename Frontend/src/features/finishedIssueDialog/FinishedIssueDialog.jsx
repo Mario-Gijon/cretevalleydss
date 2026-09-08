@@ -31,7 +31,6 @@ const FinishedIssueDialogBody = () => {
         elevation: 0,
         sx: {
           ...finishedIssueScrollbarSx,
-          "& *": finishedIssueScrollbarSx,
           bgcolor: alpha("#070B10", 0.72),
           backdropFilter: "blur(10px)",
         },
