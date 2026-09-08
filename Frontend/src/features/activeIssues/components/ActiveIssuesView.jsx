@@ -4,7 +4,7 @@ import { useTheme } from "@mui/material/styles";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
+import IssueListSkeleton from "../../../components/LoadingProgress/IssueListSkeleton";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import EmptyState from "../../../components/StyledComponents/EmptyState";
 import { useActiveIssueDrawer } from "../hooks/useActiveIssueDrawer";
@@ -117,7 +117,7 @@ const ActiveIssuesView = () => {
   } = useActiveIssueConfirm();
 
   if (loading) {
-    return <CircularLoading color="secondary" size={50} height="30vh" />;
+    return <IssueListSkeleton />;
   }
 
   if (!activeIssues || activeIssues.length === 0) {

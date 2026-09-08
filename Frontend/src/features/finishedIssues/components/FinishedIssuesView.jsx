@@ -2,6 +2,7 @@ import { Box, Backdrop, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
+import IssueListSkeleton from "../../../components/LoadingProgress/IssueListSkeleton";
 import { FinishedIssueDialog } from "../../finishedIssueDialog";
 import FinishedIssuesHeader from "./FinishedIssuesHeader";
 import FinishedIssuesCards from "./FinishedIssuesCards";
@@ -46,7 +47,7 @@ const FinishedIssuesView = () => {
   } = useFinishedIssuesView();
 
   if (loading) {
-    return <CircularLoading color="secondary" size={50} height="30vh" />;
+    return <IssueListSkeleton />;
   }
 
   if (!finishedIssues || finishedIssues.length === 0) {
