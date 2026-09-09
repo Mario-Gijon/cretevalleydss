@@ -12,7 +12,7 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: env.E2E_BASE_URL || "http://127.0.0.1:5174",
+    baseURL: env.E2E_BASE_URL || "http://localhost:5174",
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     video: "off",
