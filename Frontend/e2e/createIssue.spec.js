@@ -39,9 +39,10 @@ test("create issue smoke: a seeded owner can create a minimal active issue", asy
   await expect(page.getByText("issue.expert@example.test", { exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: "Next" }).click();
 
-  await page.getByLabel("Domain").click();
+  const domainSelect = page.getByRole("combobox", { name: /^Domain\b/ });
+  await domainSelect.click();
   await page.getByRole("option", { name: /^E2E Numeric 0-10\b/ }).click();
-  await expect(page.getByLabel("Domain")).toContainText("E2E Numeric 0-10");
+  await expect(domainSelect).toContainText("E2E Numeric 0-10");
   await page.getByRole("button", { name: "Next" }).click();
 
   await page.getByLabel("Issue name", { exact: true }).fill(issueName);
