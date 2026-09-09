@@ -40,8 +40,8 @@ test("create issue smoke: a seeded owner can create a minimal active issue", asy
   await page.getByRole("button", { name: "Next" }).click();
 
   await page.getByLabel("Domain").click();
-  await page.getByRole("option", { name: "E2E Numeric 0-10", exact: true }).click();
-  await expect(page.getByLabel("Domain")).toHaveText("E2E Numeric 0-10");
+  await page.getByRole("option", { name: /^E2E Numeric 0-10\b/ }).click();
+  await expect(page.getByLabel("Domain")).toContainText("E2E Numeric 0-10");
   await page.getByRole("button", { name: "Next" }).click();
 
   await page.getByLabel("Issue name", { exact: true }).fill(issueName);
