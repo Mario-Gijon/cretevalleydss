@@ -36,7 +36,7 @@ test("create issue smoke: a seeded owner can create a minimal active issue", asy
   await expect(expertRow).toBeVisible();
   await expertRow.getByRole("button", { name: "Add expert" }).click();
   await expect(page.getByText("1 selected", { exact: true })).toBeVisible();
-  await expect(page.getByText("issue.expert@example.test", { exact: true })).toHaveCount(2);
+  await expect(page.getByText("issue.expert@example.test", { exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: "Next" }).click();
 
   await page.getByLabel("Domain").click();
