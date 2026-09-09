@@ -7,7 +7,7 @@ test("auth smoke: a seeded user can log in and log out", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
   await page.getByLabel("Email").fill(authSmokeUser.email);
-  await page.getByLabel("Password").fill(authSmokeUser.password);
+  await page.getByLabel("Password", { exact: true }).fill(authSmokeUser.password);
   await page.getByRole("button", { name: "Log in" }).click();
 
   await page.waitForURL("**/dashboard");
