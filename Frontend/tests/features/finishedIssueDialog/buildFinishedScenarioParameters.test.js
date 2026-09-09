@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildParamsResolved,
   cleanParamsForSend,
+  getScenarioParameterDefinitions,
 } from "../../../src/features/finishedIssueDialog/logic/buildFinishedScenarioParameters";
 
 const model = {
@@ -112,5 +113,29 @@ describe("finished scenario parameter drafts", () => {
     })).toEqual({
       criteriaAggregation: { method: "l2towa", options },
     });
+  });
+
+  it("uses the registered numeric criteria-value structure for synthetic weights", () => {
+    expect(
+      getScenarioParameterDefinitions({
+        capabilities: { usesCriteriaWeights: true },
+      })
+    ).toEqual([
+      {
+        key: "weights",
+        label: "Criteria weights",
+        parameterStructureKey: "numberCriterion",
+        semanticRole: "criteriaWeights",
+        required: true,
+        default: "equal",
+        restrictions: {
+          min: 0,
+          max: 1,
+          ordered: null,
+          length: "matchCriteria",
+          allowed: null,
+        },
+      },
+    ]);
   });
 });

@@ -62,6 +62,38 @@ const validateNormalizeValue = ({ entry, modulePath }) => {
   }
 };
 
+const validateSemanticCapabilities = ({ entry, modulePath }) => {
+  if (!Object.hasOwn(entry, "semanticCapabilities")) return;
+
+  if (
+    !Array.isArray(entry.semanticCapabilities) ||
+    entry.semanticCapabilities.some((capability) => !isNonEmptyString(capability)) ||
+    new Set(entry.semanticCapabilities).size !== entry.semanticCapabilities.length
+  ) {
+    throw new Error(
+      `[modelParameters] ${modulePath} semanticCapabilities must be an array of unique non-empty strings when provided.`
+    );
+  }
+};
+
+const validateSemanticCapabilityOwnership = (registry) => {
+  const keysByCapability = new Map();
+
+  Object.values(registry).forEach((entry) => {
+    (entry.semanticCapabilities || []).forEach((capability) => {
+      const existingKey = keysByCapability.get(capability);
+
+      if (existingKey) {
+        throw new Error(
+          `[modelParameters] Semantic capability "${capability}" is claimed by both "${existingKey}" and "${entry.key}".`
+        );
+      }
+
+      keysByCapability.set(capability, entry.key);
+    });
+  });
+};
+
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/fields\/([^/]+)\/index\.js$/);
 
@@ -109,6 +141,7 @@ export const buildParameterFieldRegistry = (
 
     validateImplementationStatus({ entry, modulePath });
     validateNormalizeValue({ entry, modulePath });
+    validateSemanticCapabilities({ entry, modulePath });
 
     if (entry.key !== folderName) {
       throw new Error(
@@ -128,6 +161,8 @@ export const buildParameterFieldRegistry = (
 
     registry[entry.key] = entry;
   }
+
+  validateSemanticCapabilityOwnership(registry);
 
   return Object.freeze(registry);
 };
@@ -163,6 +198,28 @@ export const resolveParameterFieldEntryFromRegistry = (registry, parameter) => {
 
 export const resolveParameterFieldEntry = (parameter) =>
   resolveParameterFieldEntryFromRegistry(PARAMETER_FIELD_REGISTRY, parameter);
+
+export const resolveParameterFieldEntryBySemanticCapabilityFromRegistry = (
+  registry,
+  capability
+) => {
+  const normalizedCapability =
+    typeof capability === "string" ? capability.trim() : "";
+
+  if (!normalizedCapability) return null;
+
+  return (
+    Object.values(registry).find((entry) =>
+      entry.semanticCapabilities?.includes(normalizedCapability)
+    ) || null
+  );
+};
+
+export const resolveParameterStructureKeyBySemanticCapability = (capability) =>
+  resolveParameterFieldEntryBySemanticCapabilityFromRegistry(
+    PARAMETER_FIELD_REGISTRY,
+    capability
+  )?.key || null;
 
 export const normalizeParameterValueFromRegistry = (registry, parameter, value) => {
   const structureKey =

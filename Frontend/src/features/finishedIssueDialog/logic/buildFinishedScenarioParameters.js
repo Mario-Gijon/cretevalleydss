@@ -1,5 +1,8 @@
 import { isPlainObject } from "../../../utils/common/objects";
+import { resolveParameterStructureKeyBySemanticCapability } from "../../decisionPlugins/modelParameters";
 import { normalizeModelParameterValue } from "../../modelParameters/logic/modelParameterValueState";
+
+const SCENARIO_CRITERIA_WEIGHT_CAPABILITY = "numericCriteriaValues";
 
 const normalizeNonEmptyString = (value) => {
   if (typeof value !== "string") return null;
@@ -118,10 +121,15 @@ export const validateScenarioCriteriaWeights = ({ weights, leafCriteria = [], le
 const buildSyntheticWeightsParameter = (model) => {
   if (!modelUsesScenarioCriteriaWeights(model)) return null;
 
+  const parameterStructureKey = resolveParameterStructureKeyBySemanticCapability(
+    SCENARIO_CRITERIA_WEIGHT_CAPABILITY
+  );
+  if (!parameterStructureKey) return null;
+
   return {
     key: "weights",
     label: "Criteria weights",
-    parameterStructureKey: "numberCriterion",
+    parameterStructureKey,
     semanticRole: "criteriaWeights",
     required: true,
     default: "equal",

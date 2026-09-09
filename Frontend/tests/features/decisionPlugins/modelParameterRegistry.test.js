@@ -4,11 +4,13 @@ import {
   PARAMETER_FIELD_REGISTRY,
   normalizeParameterValue,
   resolveParameterFieldEntry,
+  resolveParameterStructureKeyBySemanticCapability,
 } from "../../../src/features/decisionPlugins/modelParameters";
 import {
   buildParameterFieldRegistry,
   normalizeParameterValueFromRegistry,
   resolveParameterFieldEntryFromRegistry,
+  resolveParameterFieldEntryBySemanticCapabilityFromRegistry,
 } from "../../../src/features/decisionPlugins/modelParameters/modelParameterRegistry.js";
 
 describe("model-parameter Decision Plugin public registry", () => {
@@ -75,6 +77,16 @@ describe("model-parameter Decision Plugin public registry", () => {
     expect(entry).toBe(PARAMETER_FIELD_REGISTRY.selectGlobal);
     expect(entry.FieldComponent).toBeTruthy();
     expect(entry.ReadOnlyComponent).toBeTruthy();
+  });
+
+  it("resolves a parameter structure through an exclusive semantic capability", () => {
+    expect(PARAMETER_FIELD_REGISTRY.numberCriterion.semanticCapabilities).toContain(
+      "numericCriteriaValues"
+    );
+    expect(
+      resolveParameterStructureKeyBySemanticCapability("numericCriteriaValues")
+    ).toBe("numberCriterion");
+    expect(resolveParameterStructureKeyBySemanticCapability("unknownCapability")).toBeNull();
   });
 
   it("dispatches structure-specific value normalization without throwing for missing or unknown structures", () => {
@@ -153,6 +165,54 @@ describe("model-parameter Decision Plugin public registry", () => {
     ).toThrow('Unsupported parameterStructureKey "scaffold" for parameter "alpha".');
   });
 
+  it("rejects ambiguous semantic capabilities among registered structures", () => {
+    expect(() =>
+      buildParameterFieldRegistry(
+        buildModules([
+          {
+            folderName: "first",
+            entry: {
+              key: "first",
+              FieldComponent,
+              ReadOnlyComponent,
+              semanticCapabilities: ["exclusiveCapability"],
+            },
+          },
+          {
+            folderName: "second",
+            entry: {
+              key: "second",
+              FieldComponent,
+              ReadOnlyComponent,
+              semanticCapabilities: ["exclusiveCapability"],
+            },
+          },
+        ])
+      )
+    ).toThrow('Semantic capability "exclusiveCapability" is claimed by both "first" and "second".');
+
+    const registry = buildParameterFieldRegistry(
+      buildModules([
+        {
+          folderName: "capable",
+          entry: {
+            key: "capable",
+            FieldComponent,
+            ReadOnlyComponent,
+            semanticCapabilities: ["exclusiveCapability"],
+          },
+        },
+      ])
+    );
+
+    expect(
+      resolveParameterFieldEntryBySemanticCapabilityFromRegistry(
+        registry,
+        "exclusiveCapability"
+      )
+    ).toBe(registry.capable);
+  });
+
   it("rejects unknown statuses, malformed scaffolds, and folder-name mismatches", () => {
     expect(() =>
       buildParameterFieldRegistry(
@@ -185,6 +245,22 @@ describe("model-parameter Decision Plugin public registry", () => {
         ])
       )
     ).toThrow("normalizeValue must be a function when provided");
+
+    expect(() =>
+      buildParameterFieldRegistry(
+        buildModules([
+          {
+            folderName: "invalidCapabilities",
+            entry: {
+              key: "invalidCapabilities",
+              FieldComponent,
+              ReadOnlyComponent,
+              semanticCapabilities: ["valid", ""],
+            },
+          },
+        ])
+      )
+    ).toThrow("semanticCapabilities must be an array of unique non-empty strings when provided");
 
     expect(() =>
       buildParameterFieldRegistry(

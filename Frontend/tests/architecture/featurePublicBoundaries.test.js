@@ -196,4 +196,20 @@ describe("feature public API boundaries", () => {
       )
     ).toEqual([]);
   });
+
+  it("keeps Finished Issue scenario parameter logic free of parameter-plugin identities", () => {
+    const source = readFileSync(
+      join(
+        FEATURES_ROOT,
+        "finishedIssueDialog/logic/buildFinishedScenarioParameters.js"
+      ),
+      "utf8"
+    );
+
+    expect(
+      listRegisteredParameterStructureKeys().filter((structureKey) =>
+        hasQuotedValue(source, structureKey)
+      )
+    ).toEqual([]);
+  });
 });
