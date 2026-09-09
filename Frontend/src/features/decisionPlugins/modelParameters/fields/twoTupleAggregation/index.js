@@ -4,10 +4,12 @@
 
 import TwoTupleAggregationParameterField from "./TwoTupleAggregationParameterField";
 import TwoTupleAggregationParameterReadOnly from "./TwoTupleAggregationParameterReadOnly";
+import { normalizeTwoTupleAggregationValue } from "./normalizeTwoTupleAggregationValue";
 
 export const twoTupleAggregationParameterField = Object.freeze({
   key: "twoTupleAggregation",
   implementationStatus: "ready",
   FieldComponent: TwoTupleAggregationParameterField,
   ReadOnlyComponent: TwoTupleAggregationParameterReadOnly,
+  normalizeValue: normalizeTwoTupleAggregationValue,
 });

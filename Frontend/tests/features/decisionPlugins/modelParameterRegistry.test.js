@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   PARAMETER_FIELD_REGISTRY,
+  normalizeParameterValue,
   resolveParameterFieldEntry,
 } from "../../../src/features/decisionPlugins/modelParameters";
 import {
   buildParameterFieldRegistry,
+  normalizeParameterValueFromRegistry,
   resolveParameterFieldEntryFromRegistry,
 } from "../../../src/features/decisionPlugins/modelParameters/modelParameterRegistry.js";
 
@@ -75,6 +77,43 @@ describe("model-parameter Decision Plugin public registry", () => {
     expect(entry.ReadOnlyComponent).toBeTruthy();
   });
 
+  it("dispatches structure-specific value normalization without throwing for missing or unknown structures", () => {
+    const normalizeValue = (parameter, value) => ({
+      ...value,
+      normalizedBy: parameter.key,
+    });
+    const registry = buildParameterFieldRegistry(
+      buildModules([
+        {
+          folderName: "normalizing",
+          entry: {
+            key: "normalizing",
+            FieldComponent,
+            ReadOnlyComponent,
+            normalizeValue,
+          },
+        },
+      ])
+    );
+    const value = { nested: { enabled: true } };
+
+    expect(
+      normalizeParameterValueFromRegistry(
+        registry,
+        { key: "alpha", parameterStructureKey: "normalizing" },
+        value
+      )
+    ).toEqual({ nested: { enabled: true }, normalizedBy: "alpha" });
+    expect(
+      normalizeParameterValueFromRegistry(
+        registry,
+        { key: "unknown", parameterStructureKey: "future" },
+        value
+      )
+    ).toEqual(value);
+    expect(normalizeParameterValue({ key: "missing" }, value)).toEqual(value);
+  });
+
   it("registers legacy and ready entries but omits scaffold entries", () => {
     const registry = buildParameterFieldRegistry(
       buildModules([
@@ -130,6 +169,22 @@ describe("model-parameter Decision Plugin public registry", () => {
         ])
       )
     ).toThrow('implementationStatus must be "ready" or "scaffold" when provided');
+
+    expect(() =>
+      buildParameterFieldRegistry(
+        buildModules([
+          {
+            folderName: "invalidNormalizer",
+            entry: {
+              key: "invalidNormalizer",
+              FieldComponent,
+              ReadOnlyComponent,
+              normalizeValue: true,
+            },
+          },
+        ])
+      )
+    ).toThrow("normalizeValue must be a function when provided");
 
     expect(() =>
       buildParameterFieldRegistry(

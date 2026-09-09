@@ -2,6 +2,15 @@ const PARAMETER_FIELD_MODULES = import.meta.glob("./fields/*/index.js", {
   eager: true,
 });
 
+const isPlainObject = (value) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
@@ -12,6 +21,16 @@ const isReactComponentCandidate = (component) =>
     typeof component === "object" &&
     Object.hasOwn(component, "$$typeof")
   );
+
+const cloneValue = (value) => {
+  if (Array.isArray(value)) return value.map(cloneValue);
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, cloneValue(item)])
+    );
+  }
+  return value;
+};
 
 const isValidParameterFieldEntry = (value) =>
   value !== null &&
@@ -29,6 +48,16 @@ const validateImplementationStatus = ({ entry, modulePath }) => {
   ) {
     throw new Error(
       `[modelParameters] ${modulePath} implementationStatus must be "ready" or "scaffold" when provided.`
+    );
+  }
+};
+
+const validateNormalizeValue = ({ entry, modulePath }) => {
+  if (!Object.hasOwn(entry, "normalizeValue")) return;
+
+  if (typeof entry.normalizeValue !== "function") {
+    throw new Error(
+      `[modelParameters] ${modulePath} normalizeValue must be a function when provided.`
     );
   }
 };
@@ -79,6 +108,7 @@ export const buildParameterFieldRegistry = (
     const folderName = extractFolderName(modulePath);
 
     validateImplementationStatus({ entry, modulePath });
+    validateNormalizeValue({ entry, modulePath });
 
     if (entry.key !== folderName) {
       throw new Error(
@@ -133,3 +163,19 @@ export const resolveParameterFieldEntryFromRegistry = (registry, parameter) => {
 
 export const resolveParameterFieldEntry = (parameter) =>
   resolveParameterFieldEntryFromRegistry(PARAMETER_FIELD_REGISTRY, parameter);
+
+export const normalizeParameterValueFromRegistry = (registry, parameter, value) => {
+  const structureKey =
+    typeof parameter?.parameterStructureKey === "string"
+      ? parameter.parameterStructureKey.trim()
+      : "";
+  const normalizeValue = registry[structureKey]?.normalizeValue;
+  const clonedValue = cloneValue(value);
+
+  return typeof normalizeValue === "function"
+    ? cloneValue(normalizeValue(parameter, clonedValue))
+    : clonedValue;
+};
+
+export const normalizeParameterValue = (parameter, value) =>
+  normalizeParameterValueFromRegistry(PARAMETER_FIELD_REGISTRY, parameter, value);

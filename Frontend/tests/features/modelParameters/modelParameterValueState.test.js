@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCreateIssueParameterDefaults,
+  normalizeModelParameterValue,
   pruneCreateIssueParameterValues,
   updateCreateIssueParameterValues,
 } from "../../../src/features/modelParameters/logic/modelParameterValueState";
@@ -113,5 +114,34 @@ describe("model parameter value state", () => {
         values: { aggregation: { method: "l2towa", options } },
       })
     ).toEqual({ aggregation: { method: "l2towa", options } });
+  });
+
+  it("preserves missing, unknown, and unrelated parameter structures as clone-only values", () => {
+    const unknownValue = { nested: { enabled: true } };
+    const missingValue = { nested: { enabled: false } };
+    const unrelatedValue = { nested: { count: 2 } };
+
+    expect(
+      normalizeModelParameterValue(
+        { key: "unknown", parameterStructureKey: "futureStructure" },
+        unknownValue
+      )
+    ).toEqual(unknownValue);
+    expect(
+      normalizeModelParameterValue({ key: "missing" }, missingValue)
+    ).toEqual(missingValue);
+    expect(
+      normalizeModelParameterValue(
+        { key: "unrelated", parameterStructureKey: "numberGlobal" },
+        unrelatedValue
+      )
+    ).toEqual(unrelatedValue);
+
+    expect(normalizeModelParameterValue({ key: "unknown" }, unknownValue)).not.toBe(
+      unknownValue
+    );
+    expect(
+      normalizeModelParameterValue({ key: "unknown" }, unknownValue).nested
+    ).not.toBe(unknownValue.nested);
   });
 });

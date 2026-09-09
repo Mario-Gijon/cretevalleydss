@@ -17,6 +17,10 @@ const EVALUATION_STRUCTURES_ROOT = join(
   DECISION_PLUGINS_ROOT,
   "evaluations/structures"
 );
+const PARAMETER_STRUCTURES_ROOT = join(
+  DECISION_PLUGINS_ROOT,
+  "modelParameters/fields"
+);
 
 const listSourceFiles = (directory) =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -77,6 +81,23 @@ const listRegisteredEvaluationStructureKeys = () =>
     .flatMap((entry) => {
       const source = readFileSync(
         join(EVALUATION_STRUCTURES_ROOT, entry.name, "index.js"),
+        "utf8"
+      );
+
+      if (/implementationStatus:\s*["']scaffold["']/.test(source)) {
+        return [];
+      }
+
+      const keyMatch = source.match(/key:\s*["']([^"']+)["']/);
+      return keyMatch ? [keyMatch[1]] : [];
+    });
+
+const listRegisteredParameterStructureKeys = () =>
+  readdirSync(PARAMETER_STRUCTURES_ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const source = readFileSync(
+        join(PARAMETER_STRUCTURES_ROOT, entry.name, "index.js"),
         "utf8"
       );
 
@@ -161,5 +182,18 @@ describe("feature public API boundaries", () => {
         file: "features/example/example.js",
       })
     ).toEqual([{ file: "features/example/example.js", structureKey }]);
+  });
+
+  it("keeps general model-parameter value state free of parameter-plugin identities", () => {
+    const source = readFileSync(
+      join(FEATURES_ROOT, "modelParameters/logic/modelParameterValueState.js"),
+      "utf8"
+    );
+
+    expect(
+      listRegisteredParameterStructureKeys().filter((structureKey) =>
+        hasQuotedValue(source, structureKey)
+      )
+    ).toEqual([]);
   });
 });

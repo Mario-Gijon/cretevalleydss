@@ -1,44 +1,16 @@
+import { normalizeParameterValue } from "../../decisionPlugins/modelParameters";
 import { isPlainObject } from "../../../utils/common/objects";
 
 const hasOwnKey = (value, key) =>
   value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key);
-
-const cloneValue = (value) => {
-  if (Array.isArray(value)) return value.map(cloneValue);
-  if (isPlainObject(value)) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneValue(item)]));
-  return value;
-};
 
 export const isCriteriaWeightLikeParameter = (parameter) => parameter?.semanticRole === "criteriaWeights";
 
 const readModelParameters = (selectedModel) =>
   Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
 
-export const normalizeModelParameterValue = (parameter, value) => {
-  if (
-    parameter?.parameterStructureKey !== "twoTupleAggregation" ||
-    !isPlainObject(value)
-  ) {
-    return cloneValue(value);
-  }
-
-  const methodDefinition = Array.isArray(parameter?.restrictions?.methods)
-    ? parameter.restrictions.methods.find((method) => method?.key === value.method)
-    : null;
-
-  if (
-    !methodDefinition ||
-    (Array.isArray(methodDefinition.subparameters) &&
-      methodDefinition.subparameters.length > 0)
-  ) {
-    return cloneValue(value);
-  }
-
-  return {
-    ...cloneValue(value),
-    options: isPlainObject(value.options) ? cloneValue(value.options) : {},
-  };
-};
+export const normalizeModelParameterValue = (parameter, value) =>
+  normalizeParameterValue(parameter, value);
 
 export const getCreateIssueModelParameters = (selectedModel) =>
   readModelParameters(selectedModel).filter((parameter) => parameter?.key && !isCriteriaWeightLikeParameter(parameter));
