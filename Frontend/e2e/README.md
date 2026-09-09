@@ -11,13 +11,14 @@ bun install
 bunx playwright install chromium
 ```
 
-## Run the authentication smoke test
+## Run the golden-path smoke tests
 
 From the repository root, start the isolated stack:
 
 ```bash
 docker compose -f docker-compose.e2e.yml up --build -d
 docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:auth
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:create-issue
 ```
 
 Then, from `Frontend`, run:
@@ -32,7 +33,9 @@ For a visible browser session:
 bun run test:e2e:headed
 ```
 
-The smoke test uses only `auth.smoke@example.test`; the seed command is idempotent and refuses to run unless `NODE_ENV=e2e`, `E2E_ISOLATED_STACK=true`, the database is exactly `cretevalley_e2e`, and MongoDB is the compose-only `mongo-e2e` host.
+The authentication smoke test uses `auth.smoke@example.test`. The create-issue smoke test also uses the isolated `issue.expert@example.test`, `E2E Matrix Model`, and `E2E Numeric 0-10` fixtures. Both seed commands are idempotent and refuse to run unless `NODE_ENV=e2e`, `E2E_ISOLATED_STACK=true`, the database is exactly `cretevalley_e2e`, and MongoDB is the compose-only `mongo-e2e` host.
+
+Coverage: authentication verifies login and logout; issue creation verifies a logged-in owner can select the seeded model and domain, add alternatives, a criterion, and an expert, then create an active issue.
 
 ## Teardown
 
@@ -42,4 +45,4 @@ Remove the isolated services and their E2E-only MongoDB volume:
 docker compose -f docker-compose.e2e.yml down --volumes --remove-orphans
 ```
 
-The current stack starts MongoDB, Backend, and Frontend. DecisionModelsService is intentionally not started for this authentication-only smoke test; it can be added to this dedicated compose stack when later golden-path coverage needs model execution.
+The current stack starts MongoDB, Backend, and Frontend. DecisionModelsService is intentionally not started: the seeded `E2E Matrix Model` does not use criteria or expert weighting and this smoke flow stops after issue creation, before model execution.
