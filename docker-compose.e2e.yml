@@ -1,0 +1,109 @@
+name: cretevalley-e2e
+
+services:
+  mongo-e2e:
+    image: mongo:7.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo_e2e_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'mongosh --quiet --eval "db.adminCommand({ ping: 1 }).ok" | grep -q 1'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  mongo-e2e-init:
+    image: mongo:7.0
+    depends_on:
+      mongo-e2e:
+        condition: service_healthy
+    restart: "no"
+    command:
+      - sh
+      - -ec
+      - |
+        mongosh --host mongo-e2e --quiet --eval 'try { rs.status() } catch (error) { rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongo-e2e:27017"}]}) }'
+        until mongosh --host mongo-e2e --quiet --eval 'db.hello().isWritablePrimary ? 0 : 1' | grep -q 0; do sleep 1; done
+
+  backend-e2e:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    working_dir: /app
+    environment:
+      NODE_ENV: e2e
+      E2E_ISOLATED_STACK: "true"
+      PORT: "5000"
+      MONGODB_URI: mongodb://mongo-e2e:27017/?replicaSet=rs0
+      MONGODB_DB_NAME: cretevalley_e2e
+      JWT_SECRET: e2e-only-access-token-signing-secret
+      JWT_REFRESH: e2e-only-refresh-token-signing-secret
+      ORIGIN_FRONT: http://localhost:5174
+      ORIGIN_BACK: http://localhost:5001
+      ORIGIN_CRETEVALLEY: http://localhost:5174
+      ORIGIN_SULEIMAN: http://localhost:5174
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+          bun install --frozen-lockfile
+        fi
+        exec bun --watch server.js
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./Backend:/app
+      - backend_e2e_node_modules:/app/node_modules
+    depends_on:
+      mongo-e2e-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'bun -e "fetch(''http://127.0.0.1:5000/api/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  frontend-e2e:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile.dev
+    working_dir: /app
+    environment:
+      VITE_API_BACK: http://localhost:5001/api
+      VITE_MODE: e2e
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+          bun install --frozen-lockfile
+        fi
+        exec bun run dev --host 0.0.0.0 --port 5173 --strictPort
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./Frontend:/app
+      - frontend_e2e_node_modules:/app/node_modules
+    depends_on:
+      backend-e2e:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'bun -e "fetch(''http://127.0.0.1:5173/login'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  mongo_e2e_data:
+  backend_e2e_node_modules:
+  frontend_e2e_node_modules:
