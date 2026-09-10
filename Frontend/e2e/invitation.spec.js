@@ -64,9 +64,11 @@ test("invitation smoke: an invited expert can accept a newly created issue", asy
   await loginAsUser(page, issueExpertUser);
   await page.getByRole("button", { name: "Open options" }).click();
   await page.getByRole("menuitem", { name: "Notifications" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Notifications", exact: true })
-  ).toBeVisible();
+  const notificationsHeading = page.getByRole("heading", {
+    name: "Notifications",
+    exact: true,
+  });
+  await expect(notificationsHeading).toBeVisible();
 
   const invitationList = page.getByRole("list").filter({ hasText: issueName });
   const invitation = invitationList.getByRole("listitem").filter({ hasText: issueName });
@@ -77,10 +79,8 @@ test("invitation smoke: an invited expert can accept a newly created issue", asy
     invitation.getByRole("button", { name: "Invitation accepted", exact: true })
   ).toBeVisible();
 
-  await page.keyboard.press("Escape");
-  await expect(
-    page.getByRole("heading", { name: "Notifications", exact: true })
-  ).not.toBeVisible();
+  await page.getByRole("button", { name: "Close notifications" }).click();
+  await expect(notificationsHeading).not.toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   const activeTab = page.getByRole("tab", { name: "Active" });
   await expect(activeTab).toBeVisible();

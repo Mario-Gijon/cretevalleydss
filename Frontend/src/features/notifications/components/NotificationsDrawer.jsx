@@ -93,6 +93,7 @@ export const NotificationsDrawer = ({
             </Typography>
             <IconButton
               onClick={onClose}
+              aria-label="Close notifications"
               edge="end"
               sx={{
                 bgcolor: alpha(theme.palette.common.white, 0.05),
