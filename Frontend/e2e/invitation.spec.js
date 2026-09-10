@@ -10,7 +10,9 @@ test("invitation smoke: an invited expert can accept a newly created issue", asy
   await loginAsAuthSmokeUser(page);
 
   await page.getByRole("tab", { name: "Create" }).click();
-  await expect(page.getByRole("heading", { name: "Create issue" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Create issue", exact: true })
+  ).toBeVisible();
 
   await page.getByText("E2E Matrix Model", { exact: true }).click();
   await expect(page.getByText("Selected", { exact: true })).toBeVisible();
