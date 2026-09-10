@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   Button,
   TextField,
@@ -128,6 +128,8 @@ export const CriteriaStep = () => {
   const [inputValue, setInputValue] = useState("");
   const [inputDescription, setInputDescription] = useState("");
   const [inputError, setInputError] = useState("");
+  const criterionTypeLabelId = useId();
+  const criterionTypeSelectId = useId();
 
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedParent, setSelectedParent] = useState(null);
@@ -494,8 +496,10 @@ export const CriteriaStep = () => {
 
           {showCriterionTypes ? (
             <FormControl variant="outlined" size="small" color="secondary" fullWidth sx={{ minWidth: { sm: 140, md: 140 }, flex: { sm: "0 0 140px" } }}>
-              <InputLabel color="secondary">Type</InputLabel>
+              <InputLabel id={criterionTypeLabelId} color="secondary">Type</InputLabel>
               <Select
+                id={criterionTypeSelectId}
+                labelId={criterionTypeLabelId}
                 value={selectedType}
                 onChange={(event) => setSelectedType(event.target.value)}
                 label="Type" color="secondary" fullWidth

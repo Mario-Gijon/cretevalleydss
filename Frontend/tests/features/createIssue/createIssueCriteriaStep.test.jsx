@@ -49,6 +49,7 @@ const renderControlledCriteriaStep = ({
   criteria,
   criteriaWeightingModels,
   initialCriteriaWeightingConfig,
+  selectedModel = criteriaWeightModelFixture,
 }) => {
   let currentConfig = initialCriteriaWeightingConfig;
   const setDefaultModelParams = vi.fn();
@@ -62,7 +63,7 @@ const renderControlledCriteriaStep = ({
     mockUseCreateIssueContext.mockReturnValue({
       criteria,
       setCriteria: vi.fn(),
-      selectedModel: criteriaWeightModelFixture,
+      selectedModel,
       criteriaWeightingConfig,
       setCriteriaWeightingConfig,
       setDefaultModelParams,
@@ -85,6 +86,26 @@ const renderControlledCriteriaStep = ({
     setDefaultModelParams,
   };
 };
+
+describe("CriteriaStep criterion type accessibility", () => {
+  it("exposes the default Benefit criterion type as a labeled combobox", () => {
+    renderControlledCriteriaStep({
+      criteria: [],
+      criteriaWeightingModels: [],
+      initialCriteriaWeightingConfig: null,
+      selectedModel: {
+        ...criteriaWeightModelFixture,
+        isMultiCriteria: true,
+        usesCriteriaWeights: false,
+        usesCriterionTypes: true,
+      },
+    });
+
+    const criterionType = screen.getByRole("combobox", { name: "Type" });
+
+    expect(criterionType).toHaveTextContent("Benefit");
+  });
+});
 
 describe("CriteriaStep manual equal weights", () => {
   it("maps Manual MCC experts consensus to its canonical expert weighting config", async () => {
