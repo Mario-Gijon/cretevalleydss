@@ -16,11 +16,13 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Grid2 as Grid,
   Divider,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -78,6 +80,19 @@ const KVRow = ({ k, v }) => (
       {v ?? "—"}
     </Typography>
   </Stack>
+);
+
+const ContextualHelp = ({ description }) => (
+  <Tooltip title={description}>
+    <Box
+      component="span"
+      tabIndex={0}
+      aria-label={description}
+      sx={{ display: "inline-flex", color: "text.secondary", opacity: 0.76 }}
+    >
+      <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+    </Box>
+  </Tooltip>
 );
 
 export const SummaryStep = () => {
@@ -441,9 +456,12 @@ export const SummaryStep = () => {
                       spacing={1.2}
                       alignItems={{ xs: "stretch", sm: "center" }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 950, minWidth: 190 }}>
-                        NºMax consensus rounds
-                      </Typography>
+                      <Stack direction="row" spacing={0.4} alignItems="center" sx={{ minWidth: 190 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 950 }}>
+                          NºMax consensus rounds
+                        </Typography>
+                        <ContextualHelp description="Maximum number of consensus rounds before the process stops." />
+                      </Stack>
 
                       {!unlimited && (
                         <TextField
@@ -485,9 +503,12 @@ export const SummaryStep = () => {
                       spacing={1.2}
                       alignItems={{ xs: "stretch", sm: "center" }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 950, minWidth: 190 }}>
-                        Consensus threshold
-                      </Typography>
+                      <Stack direction="row" spacing={0.4} alignItems="center" sx={{ minWidth: 190 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 950 }}>
+                          Consensus threshold
+                        </Typography>
+                        <ContextualHelp description="Minimum agreement level required to complete the consensus process." />
+                      </Stack>
 
                       <TextField
                         variant="outlined"
@@ -524,9 +545,12 @@ export const SummaryStep = () => {
                           spacing={1.2}
                           alignItems={{ xs: "stretch", sm: "center" }}
                         >
-                          <Typography variant="body2" sx={{ fontWeight: 950, minWidth: 190 }}>
-                            Consensus rounds
-                          </Typography>
+                          <Stack direction="row" spacing={0.4} alignItems="center" sx={{ minWidth: 190 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 950 }}>
+                              Consensus rounds
+                            </Typography>
+                            <ContextualHelp description="Manual rounds require new expert evaluations; simulated rounds generate the following rounds automatically." />
+                          </Stack>
 
                           <ToggleButtonGroup
                             exclusive

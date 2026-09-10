@@ -9,6 +9,7 @@ import {
   Box,
   Typography,
   ToggleButton,
+  Tooltip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
@@ -132,18 +133,20 @@ const AlternativeEvaluationDialogShell = ({
                 <ExpressionDomainSummaryButton criteria={criteria} />
               ) : null}
               {showCollectiveControl ? (
-                <ToggleButton
-                  selected={collectiveVisible}
-                  onChange={() => onToggleCollective?.()}
-                  color="secondary"
-                  size="small"
-                  sx={{
-                    borderRadius: 2.5,
-                    fontWeight: 850,
-                  }}
-                >
-                  {collectiveVisible ? "Hide collective" : "Show collective"}
-                </ToggleButton>
+                <Tooltip title="Show the aggregated evaluation obtained from the participating experts.">
+                  <ToggleButton
+                    selected={collectiveVisible}
+                    onChange={() => onToggleCollective?.()}
+                    color="secondary"
+                    size="small"
+                    sx={{
+                      borderRadius: 2.5,
+                      fontWeight: 850,
+                    }}
+                  >
+                    {collectiveVisible ? "Hide collective" : "Show collective"}
+                  </ToggleButton>
+                </Tooltip>
               ) : null}
               <IconButton onClick={onClose} sx={softIconBtnSx(theme)}>
                 <CloseIcon fontSize="small" />

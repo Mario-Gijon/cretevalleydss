@@ -11,6 +11,7 @@ import {
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { alpha } from "@mui/material/styles";
 
 const getSelectedExpertsPanelSx = (theme) => ({
@@ -68,9 +69,23 @@ export const SelectedExpertsPanelContent = ({
     <Stack spacing={1.2} sx={{ p: 1.35, minHeight: 0, height: "100%" }}>
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
         <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-            Selected experts
-          </Typography>
+          <Stack direction="row" spacing={0.45} alignItems="center">
+            <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+              Selected experts
+            </Typography>
+            {usesExpertWeights ? (
+              <Tooltip title="Expert weights control how much influence each expert has in the aggregated result.">
+                <Box
+                  component="span"
+                  tabIndex={0}
+                  aria-label="Expert weights control how much influence each expert has in the aggregated result."
+                  sx={{ display: "inline-flex", color: "text.secondary", opacity: 0.76 }}
+                >
+                  <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                </Box>
+              </Tooltip>
+            ) : null}
+          </Stack>
           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
             {selectedCount} selected
           </Typography>
