@@ -161,4 +161,81 @@ test("resolve issue smoke: an owner resolves an expert-evaluated issue with Bord
   await expect(
     page.getByRole("heading", { name: issueName, exact: true })
   ).toBeVisible();
+
+  const finishedIssueDialog = page.getByRole("dialog");
+  const finishedIssueHeading = finishedIssueDialog.getByRole("heading", {
+    name: issueName,
+    exact: true,
+    level: 1,
+  });
+  await page.getByRole("heading", { name: issueName, exact: true }).click();
+  await expect(finishedIssueDialog).toBeVisible();
+  await expect(finishedIssueDialog.getByText("Finished issue", { exact: true })).toBeVisible();
+  await expect(finishedIssueHeading).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Summary", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Overview", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Results analysis", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Evaluations", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Models", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByText("Unable to load this Finished Issue.", { exact: true })
+  ).toHaveCount(0);
+
+  await finishedIssueDialog
+    .getByRole("tab", { name: "Results analysis", exact: true })
+    .click();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Outcome", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Visualizations", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("tab", { name: "Interpretation", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByRole("heading", { name: "Final ranking", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByText("E2E Resolve Alpha", { exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByText("E2E Resolve Beta", { exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByText("2 alternatives", { exact: true })
+  ).toBeVisible();
+
+  await finishedIssueDialog
+    .getByRole("tab", { name: "Interpretation", exact: true })
+    .click();
+  await expect(
+    finishedIssueDialog.getByRole("heading", { name: "General analysis", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByText(/General analysis is not available for this execution/)
+  ).toHaveCount(0);
+  await expect(
+    finishedIssueDialog.getByRole("heading", { name: "Final ranking", exact: true })
+  ).toBeVisible();
+  await expect(
+    finishedIssueDialog.getByText(
+      /E2E Resolve Alpha.*finished first in the recorded execution\./
+    )
+  ).toBeVisible();
+
+  await finishedIssueDialog
+    .getByRole("button", { name: "Close Finished Issue", exact: true })
+    .click();
+  await expect(finishedIssueHeading).not.toBeVisible();
 });
