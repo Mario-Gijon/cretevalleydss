@@ -14,6 +14,8 @@ import { getActiveIssuesTasksAccordionGlassSx } from "../styles/activeIssues.sty
 import TaskCenter from "./TaskCenter";
 import ActiveIssuesGrid from "./ActiveIssuesGrid";
 import ActiveIssuesPagination from "./ActiveIssuesPagination";
+import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
+import EmptyState from "../../../components/StyledComponents/EmptyState";
 
 /**
  * Layout responsive para tablet y móvil en la pantalla
@@ -25,6 +27,7 @@ import ActiveIssuesPagination from "./ActiveIssuesPagination";
 const ActiveIssuesMobileView = ({
   isMobile,
   filteredIssues,
+  noMatchingIssues,
   overview,
   refreshing,
   handleRefresh,
@@ -122,12 +125,23 @@ const ActiveIssuesMobileView = ({
         </Accordion>
       )}
 
-      <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 2 }} />
-      <ActiveIssuesPagination
-        page={page}
-        pageCount={pageCount}
-        onChange={setPage}
-      />
+      {noMatchingIssues ? (
+        <EmptyState
+          icon={<SearchOffOutlinedIcon fontSize="large" />}
+          title="No matching issues"
+          description="Try adjusting your search or filters."
+          sx={{ py: { xs: 4, sm: 5 }, mt: 2 }}
+        />
+      ) : (
+        <>
+          <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 2 }} />
+          <ActiveIssuesPagination
+            page={page}
+            pageCount={pageCount}
+            onChange={setPage}
+          />
+        </>
+      )}
     </>
   );
 };

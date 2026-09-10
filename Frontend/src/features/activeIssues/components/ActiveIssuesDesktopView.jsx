@@ -5,6 +5,8 @@ import { getActiveIssuesPageHeaderAuroraBg, getActiveIssuesPageHeaderGlassSx } f
 import TaskCenter from "./TaskCenter";
 import ActiveIssuesGrid from "./ActiveIssuesGrid";
 import ActiveIssuesPagination from "./ActiveIssuesPagination";
+import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
+import EmptyState from "../../../components/StyledComponents/EmptyState";
 /**
  * Layout de escritorio para la pantalla de issues activos.
  *
@@ -13,6 +15,7 @@ import ActiveIssuesPagination from "./ActiveIssuesPagination";
  */
 const ActiveIssuesDesktopView = ({
   filteredIssues,
+  noMatchingIssues,
   overview,
   refreshing,
   handleRefresh,
@@ -112,12 +115,23 @@ const ActiveIssuesDesktopView = ({
         </Box>
       </Paper>
 
-      <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
-      <ActiveIssuesPagination
-        page={page}
-        pageCount={pageCount}
-        onChange={setPage}
-      />
+      {noMatchingIssues ? (
+        <EmptyState
+          icon={<SearchOffOutlinedIcon fontSize="large" />}
+          title="No matching issues"
+          description="Try adjusting your search or filters."
+          sx={{ py: { xs: 4, sm: 5 } }}
+        />
+      ) : (
+        <>
+          <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
+          <ActiveIssuesPagination
+            page={page}
+            pageCount={pageCount}
+            onChange={setPage}
+          />
+        </>
+      )}
     </Stack>
   );
 };

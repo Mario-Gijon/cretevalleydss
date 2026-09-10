@@ -8,6 +8,9 @@ import FinishedIssuesHeader from "./FinishedIssuesHeader";
 import FinishedIssuesCards from "./FinishedIssuesCards";
 import FinishedIssueRemoveDialog from "./FinishedIssueRemoveDialog";
 import FinishedIssuesEmptyState from "./FinishedIssuesEmptyState";
+import FinishedIssuesPagination from "./FinishedIssuesPagination";
+import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
+import EmptyState from "../../../components/StyledComponents/EmptyState";
 import { useFinishedIssuesView } from "../hooks/useFinishedIssuesView";
 
 /**
@@ -35,10 +38,14 @@ const FinishedIssuesView = () => {
     searchBy,
     sortBy,
     filteredIssues,
+    paginatedIssues,
+    page,
+    pageCount,
     overview,
     setQuery,
     setSearchBy,
     setSortBy,
+    setPage,
     setOpenRemoveConfirmDialog,
     openDetails,
     closeDetails,
@@ -53,6 +60,16 @@ const FinishedIssuesView = () => {
   if (!finishedIssues || finishedIssues.length === 0) {
     return <FinishedIssuesEmptyState />;
   }
+
+  const noMatchingIssues = filteredIssues.length === 0;
+  const emptyFilteredState = noMatchingIssues ? (
+    <EmptyState
+      icon={<SearchOffOutlinedIcon fontSize="large" />}
+      title="No matching issues"
+      description="Try adjusting your search or filters."
+      sx={{ py: { xs: 4, sm: 5 } }}
+    />
+  ) : null;
 
   return (
     <>
@@ -90,12 +107,21 @@ const FinishedIssuesView = () => {
             </Box>
 
             <Box sx={{ gridArea: "issues", minWidth: 0, width: "100%" }}>
-              <FinishedIssuesCards
-                issues={filteredIssues}
-                isLgUp={isLgUp}
-                isMobile={isMobile}
-                onOpenDetails={openDetails}
-              />
+              {noMatchingIssues ? emptyFilteredState : (
+                <>
+                  <FinishedIssuesCards
+                    issues={paginatedIssues}
+                    isLgUp={isLgUp}
+                    isMobile={isMobile}
+                    onOpenDetails={openDetails}
+                  />
+                  <FinishedIssuesPagination
+                    page={page}
+                    pageCount={pageCount}
+                    onChange={setPage}
+                  />
+                </>
+              )}
             </Box>
           </Box>
         ) : (
@@ -113,12 +139,21 @@ const FinishedIssuesView = () => {
             />
 
             <Box sx={{ mt: 2 }}>
-              <FinishedIssuesCards
-                issues={filteredIssues}
-                isLgUp={isLgUp}
-                isMobile={isMobile}
-                onOpenDetails={openDetails}
-              />
+              {noMatchingIssues ? emptyFilteredState : (
+                <>
+                  <FinishedIssuesCards
+                    issues={paginatedIssues}
+                    isLgUp={isLgUp}
+                    isMobile={isMobile}
+                    onOpenDetails={openDetails}
+                  />
+                  <FinishedIssuesPagination
+                    page={page}
+                    pageCount={pageCount}
+                    onChange={setPage}
+                  />
+                </>
+              )}
             </Box>
           </>
         )}

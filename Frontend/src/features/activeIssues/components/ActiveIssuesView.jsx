@@ -64,6 +64,7 @@ const ActiveIssuesView = () => {
     searchBy,
     sortBy,
     taskType,
+    filteredIssues,
     paginatedIssues,
     page,
     pageCount,
@@ -140,6 +141,7 @@ const ActiveIssuesView = () => {
         {isLgUp ? (
           <ActiveIssuesDesktopView
             filteredIssues={paginatedIssues}
+            noMatchingIssues={filteredIssues.length === 0}
             totalIssues={activeIssues.length}
             overview={overview}
             refreshing={refreshing}
@@ -164,6 +166,7 @@ const ActiveIssuesView = () => {
           <ActiveIssuesMobileView
             isMobile={isMobile}
             filteredIssues={paginatedIssues}
+            noMatchingIssues={filteredIssues.length === 0}
             overview={overview}
             refreshing={refreshing}
             handleRefresh={handleRefresh}

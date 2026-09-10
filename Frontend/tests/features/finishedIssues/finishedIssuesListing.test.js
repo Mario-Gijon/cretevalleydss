@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { buildFinishedIssuesOverview } from "../../../src/features/finishedIssues/logic/buildFinishedIssuesOverview.js";
@@ -9,6 +9,12 @@ import {
 import { sortFinishedIssues } from "../../../src/features/finishedIssues/logic/sortFinishedIssues.js";
 import { useFinishedIssuesListing } from "../../../src/features/finishedIssues/hooks/useFinishedIssuesListing.js";
 import { finishedIssuesDashboardFixture } from "../../mocks/fixtures/finishedIssues.fixtures.js";
+
+const sevenFinishedIssues = Array.from({ length: 7 }, (_, index) => ({
+  ...finishedIssuesDashboardFixture[0],
+  id: `issue-finished-${index + 1}`,
+  name: `Finished Issue ${index + 1}`,
+}));
 
 describe("finished issues listing logic", () => {
   it("returns all finished issues when the query is empty", () => {
@@ -148,6 +154,9 @@ describe("useFinishedIssuesListing", () => {
     expect(result.current.searchBy).toBe("all");
     expect(result.current.sortBy).toBe("finalizationDate");
     expect(result.current.filteredIssues).toHaveLength(3);
+    expect(result.current.page).toBe(1);
+    expect(result.current.pageCount).toBe(1);
+    expect(result.current.paginatedIssues).toHaveLength(3);
     expect(result.current.overview).toEqual({
       total: 3,
       owner: 1,
@@ -202,6 +211,71 @@ describe("useFinishedIssuesListing", () => {
       owner: 1,
       withClosure: 2,
       filtered: 1,
+    });
+  });
+
+  it("paginates filtered and sorted issues with six issues per page", () => {
+    const { result } = renderHook(() =>
+      useFinishedIssuesListing({ finishedIssues: sevenFinishedIssues })
+    );
+
+    expect(result.current.filteredIssues).toHaveLength(7);
+    expect(result.current.pageCount).toBe(2);
+    expect(result.current.paginatedIssues).toEqual(
+      result.current.filteredIssues.slice(0, 6)
+    );
+
+    act(() => {
+      result.current.setPage(2);
+    });
+
+    expect(result.current.page).toBe(2);
+    expect(result.current.paginatedIssues).toEqual(
+      result.current.filteredIssues.slice(6)
+    );
+  });
+
+  it("resets to the first page when query, searchBy, or sortBy changes", () => {
+    const { result } = renderHook(() =>
+      useFinishedIssuesListing({ finishedIssues: sevenFinishedIssues })
+    );
+
+    act(() => {
+      result.current.setPage(2);
+      result.current.setQuery("finished");
+    });
+    expect(result.current.page).toBe(1);
+
+    act(() => {
+      result.current.setPage(2);
+      result.current.setSearchBy("issue");
+    });
+    expect(result.current.page).toBe(1);
+
+    act(() => {
+      result.current.setPage(2);
+      result.current.setSortBy("name");
+    });
+    expect(result.current.page).toBe(1);
+  });
+
+  it("clamps the current page when the filtered result set shrinks", async () => {
+    const { result, rerender } = renderHook(
+      ({ finishedIssues }) => useFinishedIssuesListing({ finishedIssues }),
+      { initialProps: { finishedIssues: sevenFinishedIssues } }
+    );
+
+    act(() => {
+      result.current.setPage(2);
+    });
+    expect(result.current.page).toBe(2);
+
+    rerender({ finishedIssues: finishedIssuesDashboardFixture });
+
+    await waitFor(() => {
+      expect(result.current.page).toBe(1);
+      expect(result.current.pageCount).toBe(1);
+      expect(result.current.paginatedIssues).toHaveLength(3);
     });
   });
 });
