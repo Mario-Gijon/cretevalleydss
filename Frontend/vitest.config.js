@@ -7,6 +7,7 @@ export default defineConfig({
     "import.meta.env.VITE_API_BACK": JSON.stringify("http://localhost:4010"),
   },
   test: {
+    include: ["tests/**/*.{test,spec}.{js,jsx,ts,tsx}"],
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup/testSetup.js"],

@@ -133,7 +133,10 @@ const AlternativeEvaluationDialogShell = ({
                 <ExpressionDomainSummaryButton criteria={criteria} />
               ) : null}
               {showCollectiveControl ? (
-                <Tooltip title="Show the aggregated evaluation obtained from the participating experts.">
+                <Tooltip
+                  title="Show the aggregated evaluation obtained from the participating experts."
+                  describeChild
+                >
                   <ToggleButton
                     selected={collectiveVisible}
                     onChange={() => onToggleCollective?.()}
