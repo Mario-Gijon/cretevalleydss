@@ -224,7 +224,7 @@ const manualCriteriaWeightingModel = {
   requiresHomogeneousExpressionDomains: false,
   visibleInIssueCreation: false,
   visibleInCriteriaWeighting: true,
-  apiEndpoint: { method: "POST", path: "/criteria-weights" },
+  apiEndpoint: { method: "POST", path: "/manual_criteria_weights" },
   manifestSync: { isStale: false },
   isMultiCriteria: true,
   smallDescription: "Manual criteria weighting",
