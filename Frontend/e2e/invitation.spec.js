@@ -51,7 +51,10 @@ test("invitation smoke: an invited expert can accept a newly created issue", asy
   await page.waitForURL("**/dashboard");
   await expect(page.getByText(issueName, { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Open options" }).click();
+  const openOptionsButton = page.getByRole("button", { name: "Open options" });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(openOptionsButton).toBeVisible();
+  await openOptionsButton.click();
   await page.getByRole("menuitem", { name: "Logout" }).click();
   await expect(page.getByRole("dialog", { name: "Log out" })).toBeVisible();
   await page.getByRole("button", { name: "Logout", exact: true }).click();
