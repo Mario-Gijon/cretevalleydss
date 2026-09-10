@@ -7,8 +7,7 @@ export const appGlobalStyles = {
     margin: 0,
   },
   body: {
-    background:
-      "linear-gradient(180deg, rgba(15, 15, 20, 0.7) 0%, rgba(30, 35, 45, 0.9) 100%)",
+    background: "linear-gradient(180deg, #040c15 0%, #07141d 100%)",
     backgroundBlendMode: "soft-light",
     backgroundAttachment: "fixed",
     backgroundRepeat: "no-repeat",

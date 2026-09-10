@@ -74,6 +74,7 @@ const TaskCenterRail = ({
         borderRadius: 5,
         p: isSmDown ? 1.35 : 1.75,
         ...getTaskCenterGlassSx(theme),
+        border: "none",
         height: resolvedHeight,
         maxHeight: resolvedMaxHeight,
         minHeight,

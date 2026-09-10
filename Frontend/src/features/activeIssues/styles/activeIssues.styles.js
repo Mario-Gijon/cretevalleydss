@@ -91,7 +91,7 @@ export const getActiveIssuesPageHeaderGlassSx = (theme, strength = 0.16) => ({
   backgroundColor: alpha(theme.palette.background.paper, strength),
   backdropFilter: "blur(14px)",
   boxShadow: `0 18px 50px ${alpha(theme.palette.common.black, 0.10)}`,
-  borderBottom: "2px solid rgba(155, 192, 197, 0.25)",
+  borderBottom: "1px solid rgba(155, 192, 197, 0.12)",
 });
 
 /**

@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   buildActiveIssuesOverview,
   buildFilteredActiveIssues,
 } from "../logic/activeIssuesListing";
+
+export const ACTIVE_ISSUES_PAGE_SIZE = 6;
 
 /**
  * Gestiona la búsqueda, ordenación y métricas derivadas
@@ -25,6 +27,7 @@ export const useActiveIssuesListing = ({
   const [searchBy, setSearchBy] = useState("all");
   const [sortBy, setSortBy] = useState("creationDate");
   const [taskType, setTaskType] = useState("all");
+  const [page, setPage] = useState(1);
 
   /**
    * Lista final filtrada y ordenada.
@@ -39,6 +42,27 @@ export const useActiveIssuesListing = ({
       sortBy,
     });
   }, [activeIssues, query, searchBy, sortBy]);
+
+  const pageCount = useMemo(
+    () => Math.max(1, Math.ceil(filteredIssues.length / ACTIVE_ISSUES_PAGE_SIZE)),
+    [filteredIssues.length]
+  );
+
+  const currentPage = Math.min(page, pageCount);
+
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, pageCount));
+  }, [pageCount]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, searchBy, sortBy]);
+
+  const paginatedIssues = useMemo(() => {
+    const start = (currentPage - 1) * ACTIVE_ISSUES_PAGE_SIZE;
+
+    return filteredIssues.slice(start, start + ACTIVE_ISSUES_PAGE_SIZE);
+  }, [currentPage, filteredIssues]);
 
   /**
    * Número total de tareas visible en la pantalla.
@@ -67,12 +91,16 @@ export const useActiveIssuesListing = ({
     sortBy,
     taskType,
     filteredIssues,
+    paginatedIssues,
+    page: currentPage,
+    pageCount,
     tasksCount,
     overview,
     setQuery,
     setSearchBy,
     setSortBy,
     setTaskType,
+    setPage,
   };
 };
 

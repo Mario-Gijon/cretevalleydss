@@ -64,13 +64,16 @@ const ActiveIssuesView = () => {
     searchBy,
     sortBy,
     taskType,
-    filteredIssues,
+    paginatedIssues,
+    page,
+    pageCount,
     tasksCount,
     overview,
     setQuery,
     setSearchBy,
     setSortBy,
     setTaskType,
+    setPage,
   } = useActiveIssuesListing({
     activeIssues,
     taskCenter,
@@ -136,7 +139,7 @@ const ActiveIssuesView = () => {
       <Box p={{xs: 1, sm:0}}>
         {isLgUp ? (
           <ActiveIssuesDesktopView
-            filteredIssues={filteredIssues}
+            filteredIssues={paginatedIssues}
             totalIssues={activeIssues.length}
             overview={overview}
             refreshing={refreshing}
@@ -153,11 +156,14 @@ const ActiveIssuesView = () => {
             setTaskType={setTaskType}
             openDetails={openDetails}
             openDetailsById={openDetailsById}
+            page={page}
+            pageCount={pageCount}
+            setPage={setPage}
           />
         ) : (
           <ActiveIssuesMobileView
             isMobile={isMobile}
-            filteredIssues={filteredIssues}
+            filteredIssues={paginatedIssues}
             overview={overview}
             refreshing={refreshing}
             handleRefresh={handleRefresh}
@@ -173,6 +179,9 @@ const ActiveIssuesView = () => {
             setTaskType={setTaskType}
             openDetails={openDetails}
             openDetailsById={openDetailsById}
+            page={page}
+            pageCount={pageCount}
+            setPage={setPage}
           />
         )}
 

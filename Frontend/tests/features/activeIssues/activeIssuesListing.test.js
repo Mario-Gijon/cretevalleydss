@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -188,6 +188,8 @@ describe("useActiveIssuesListing", () => {
     expect(result.current.sortBy).toBe("creationDate");
     expect(result.current.taskType).toBe("all");
     expect(result.current.tasksCount).toBe(5);
+    expect(result.current.pageCount).toBe(1);
+    expect(result.current.paginatedIssues).toHaveLength(4);
     expect(result.current.overview).toEqual({
       total: 4,
       tasks: 5,
@@ -225,6 +227,90 @@ describe("useActiveIssuesListing", () => {
       "Campus Labs",
       "Dorm Upgrade",
     ]);
+  });
+
+  it("paginates after filtering and sorting with six issues per page", () => {
+    const sevenIssues = [
+      ...activeIssuesDashboardFixture,
+      { ...activeIssuesDashboardFixture[0], id: "issue-5", name: "Issue Five" },
+      { ...activeIssuesDashboardFixture[1], id: "issue-6", name: "Issue Six" },
+      { ...activeIssuesDashboardFixture[2], id: "issue-7", name: "Issue Seven" },
+    ];
+
+    const { result } = renderHook(() =>
+      useActiveIssuesListing({ activeIssues: sevenIssues })
+    );
+
+    expect(result.current.filteredIssues).toHaveLength(7);
+    expect(result.current.paginatedIssues).toHaveLength(6);
+    expect(result.current.pageCount).toBe(2);
+
+    act(() => {
+      result.current.setPage(2);
+    });
+
+    expect(result.current.page).toBe(2);
+    expect(result.current.paginatedIssues).toHaveLength(1);
+  });
+
+  it("resets to the first page when searchBy or sortBy changes", () => {
+    const sevenIssues = [
+      ...activeIssuesDashboardFixture,
+      { ...activeIssuesDashboardFixture[0], id: "issue-5", name: "Issue Five" },
+      { ...activeIssuesDashboardFixture[1], id: "issue-6", name: "Issue Six" },
+      { ...activeIssuesDashboardFixture[2], id: "issue-7", name: "Issue Seven" },
+    ];
+    const { result } = renderHook(() =>
+      useActiveIssuesListing({ activeIssues: sevenIssues })
+    );
+
+    act(() => {
+      result.current.setPage(2);
+      result.current.setSearchBy("issue");
+    });
+
+    expect(result.current.page).toBe(1);
+
+    act(() => {
+      result.current.setPage(2);
+      result.current.setSortBy("name");
+    });
+
+    expect(result.current.page).toBe(1);
+  });
+
+  it("resets and clamps pagination when the result set changes", async () => {
+    const sevenIssues = [
+      ...activeIssuesDashboardFixture,
+      { ...activeIssuesDashboardFixture[0], id: "issue-5", name: "Issue Five" },
+      { ...activeIssuesDashboardFixture[1], id: "issue-6", name: "Issue Six" },
+      { ...activeIssuesDashboardFixture[2], id: "issue-7", name: "Issue Seven" },
+    ];
+    const { result, rerender } = renderHook(
+      ({ activeIssues }) => useActiveIssuesListing({ activeIssues }),
+      { initialProps: { activeIssues: sevenIssues } }
+    );
+
+    act(() => {
+      result.current.setPage(2);
+      result.current.setQuery("budget");
+    });
+
+    expect(result.current.page).toBe(1);
+    expect(result.current.pageCount).toBe(1);
+    expect(result.current.paginatedIssues).toHaveLength(1);
+
+    act(() => {
+      result.current.setQuery("");
+      result.current.setPage(2);
+    });
+    rerender({ activeIssues: activeIssuesDashboardFixture });
+
+    await waitFor(() => {
+      expect(result.current.page).toBe(1);
+      expect(result.current.pageCount).toBe(1);
+      expect(result.current.paginatedIssues).toHaveLength(4);
+    });
   });
 
   it("updates overview when inputs change via rerender", () => {

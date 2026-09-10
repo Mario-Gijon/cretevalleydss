@@ -13,6 +13,7 @@ import ActiveIssuesPill from "./ActiveIssuesPill";
 import { getActiveIssuesTasksAccordionGlassSx } from "../styles/activeIssues.styles";
 import TaskCenter from "./TaskCenter";
 import ActiveIssuesGrid from "./ActiveIssuesGrid";
+import ActiveIssuesPagination from "./ActiveIssuesPagination";
 
 /**
  * Layout responsive para tablet y móvil en la pantalla
@@ -39,6 +40,9 @@ const ActiveIssuesMobileView = ({
   setTaskType,
   openDetails,
   openDetailsById,
+  page,
+  pageCount,
+  setPage,
 }) => {
   const theme = useTheme();
 
@@ -119,6 +123,11 @@ const ActiveIssuesMobileView = ({
       )}
 
       <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 2 }} />
+      <ActiveIssuesPagination
+        page={page}
+        pageCount={pageCount}
+        onChange={setPage}
+      />
     </>
   );
 };

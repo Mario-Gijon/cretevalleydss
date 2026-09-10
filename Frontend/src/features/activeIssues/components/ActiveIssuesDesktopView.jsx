@@ -1,9 +1,10 @@
-import { Box, Paper, Stack } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { Box, Divider, Paper, Stack } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import ActiveIssuesToolbar from "./ActiveIssuesToolbar";
 import { getActiveIssuesPageHeaderAuroraBg, getActiveIssuesPageHeaderGlassSx } from "../styles/activeIssues.styles";
 import TaskCenter from "./TaskCenter";
 import ActiveIssuesGrid from "./ActiveIssuesGrid";
+import ActiveIssuesPagination from "./ActiveIssuesPagination";
 /**
  * Layout de escritorio para la pantalla de issues activos.
  *
@@ -27,6 +28,9 @@ const ActiveIssuesDesktopView = ({
   setTaskType,
   openDetails,
   openDetailsById,
+  page,
+  pageCount,
+  setPage,
 }) => {
   const theme = useTheme();
 
@@ -51,7 +55,7 @@ const ActiveIssuesDesktopView = ({
             zIndex: 1,
             height: "100%",
             display: "grid",
-            gridTemplateColumns: "minmax(560px, 1.6fr) minmax(360px, 1fr)",
+            gridTemplateColumns: "minmax(560px, 1.6fr) auto minmax(360px, 1fr)",
             gap: 3,
             alignItems: "stretch",
             minWidth: 0,
@@ -84,6 +88,15 @@ const ActiveIssuesDesktopView = ({
             />
           </Box>
 
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{
+              borderColor: alpha(theme.palette.common.white, 0.12),
+              alignSelf: "stretch",
+            }}
+          />
+
           <Box sx={{ minWidth: 0, height: "100%" }}>
             <TaskCenter
               variant="rail"
@@ -100,6 +113,11 @@ const ActiveIssuesDesktopView = ({
       </Paper>
 
       <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
+      <ActiveIssuesPagination
+        page={page}
+        pageCount={pageCount}
+        onChange={setPage}
+      />
     </Stack>
   );
 };

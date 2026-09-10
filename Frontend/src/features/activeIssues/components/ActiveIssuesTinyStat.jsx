@@ -1,6 +1,5 @@
 import { Avatar, Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { getActiveIssuesPageHeaderAuroraBg } from "../styles/activeIssues.styles";
 import { resolveActiveIssuesToneColor } from "../logic/activeIssuesMeta";
 
 /**
@@ -30,16 +29,6 @@ const ActiveIssuesTinyStat = ({ icon, label, value, tone = "info" }) => {
         boxShadow: `0 12px 34px ${alpha(theme.palette.common.black, 0.06)}`,
         overflow: "hidden",
         border: "1px solid rgba(255,255,255,0.10)",
-        position: "relative",
-        ...getActiveIssuesPageHeaderAuroraBg(theme),
-        "&:after": {
-          content: '""',
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 55%)`,
-          opacity: 0.22,
-        },
       }}
     >
       <Avatar
@@ -50,14 +39,12 @@ const ActiveIssuesTinyStat = ({ icon, label, value, tone = "info" }) => {
           color: colors.text,
           fontWeight: 950,
           border: "1px solid rgba(255,255,255,0.06)",
-          position: "relative",
-          zIndex: 1,
         }}
       >
         {icon}
       </Avatar>
 
-      <Stack spacing={0.1} sx={{ minWidth: 0, position: "relative", zIndex: 1 }}>
+      <Stack spacing={0.1} sx={{ minWidth: 0 }}>
         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
           {label}
         </Typography>
