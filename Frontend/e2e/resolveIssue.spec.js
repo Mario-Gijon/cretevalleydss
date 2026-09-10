@@ -126,6 +126,13 @@ test("resolve issue smoke: an owner resolves an expert-evaluated issue with Bord
   await issueHeading.click();
   await expect(evaluateAlternatives).toBeDisabled();
 
+  const closeIssueDetailsButton = page.getByRole("button", {
+    name: "Close issue details",
+    exact: true,
+  });
+  await closeIssueDetailsButton.click();
+  await expect(closeIssueDetailsButton).not.toBeVisible();
+
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(openOptionsButton).toBeVisible();
   await openOptionsButton.click();

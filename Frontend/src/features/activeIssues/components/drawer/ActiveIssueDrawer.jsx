@@ -168,7 +168,7 @@ const ActiveIssueDrawer = ({
               Issue details
             </Typography>
 
-            <IconButton onClick={onClose}>
+            <IconButton aria-label="Close issue details" onClick={onClose}>
               <CloseIcon />
             </IconButton>
           </Stack>

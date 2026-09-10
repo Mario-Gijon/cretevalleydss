@@ -101,6 +101,7 @@ const ActiveIssueDrawerHeader = ({
         </Stack>
 
         <IconButton
+          aria-label="Close issue details"
           onClick={onClose}
           sx={{ bgcolor: alpha(theme.palette.text.primary, 0.06) }}
         >
