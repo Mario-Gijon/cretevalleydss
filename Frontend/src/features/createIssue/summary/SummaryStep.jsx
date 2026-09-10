@@ -182,11 +182,18 @@ export const SummaryStep = () => {
   const accordionSx = getCreateIssueSummaryAccordionSx(theme);
   const domainHeaderCellSx = getCreateIssueSummaryDomainHeaderCellSx(theme);
 
-  const sectionHeader = (title, right) => (
+  const sectionHeader = (title, right, description) => (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center", width: "100%" }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 980, flex: 1 }}>
-        {title}
-      </Typography>
+      <Stack spacing={0.1} sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+          {title}
+        </Typography>
+        {description ? (
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
+            {description}
+          </Typography>
+        ) : null}
+      </Stack>
       {right}
     </Stack>
   );
@@ -352,7 +359,11 @@ export const SummaryStep = () => {
 
             <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                {sectionHeader("Model parameters", null)}
+                {sectionHeader(
+                  "Model parameters",
+                  null,
+                  "Review model-specific settings or keep the defaults."
+                )}
               </AccordionSummary>
 
               <AccordionDetails sx={{ pt: 0 }}>
@@ -374,7 +385,11 @@ export const SummaryStep = () => {
 
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Scheduling", null)}
+            {sectionHeader(
+              "Scheduling",
+              null,
+              "Set when the issue closes and, when applicable, its consensus limits."
+            )}
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>

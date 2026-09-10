@@ -8,6 +8,7 @@ import {
   Box,
   ToggleButton,
   InputAdornment,
+  Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
@@ -68,17 +69,19 @@ export const ModelSelectionStep = () => {
         spacing={1.25}
         alignItems={{ xs: "stretch", sm: "flex-end" }}
       >
-        <ToggleButton
-          value="consensus"
-          selected={showConsensusModels}
-          onChange={handleConsensus}
-          color="secondary"
-          size="small"
-          sx={getCreateIssueModelPillToggleSx(theme)}
-        >
-          <FilterListIcon sx={{ mr: 1 }} />
-          Consensus
-        </ToggleButton>
+        <Tooltip title="Show only decision models that support consensus.">
+          <ToggleButton
+            value="consensus"
+            selected={showConsensusModels}
+            onChange={handleConsensus}
+            color="secondary"
+            size="small"
+            sx={getCreateIssueModelPillToggleSx(theme)}
+          >
+            <FilterListIcon sx={{ mr: 1 }} />
+            Consensus
+          </ToggleButton>
+        </Tooltip>
 
         <TextField
           size="small"

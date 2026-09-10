@@ -29,7 +29,10 @@ import { CircularLoading } from "../../../components/LoadingProgress/CircularLoa
 import { GlassPaper } from "../../../components/StyledComponents/GlassPaper";
 import { CreateIssueProvider } from "../context/createIssue.provider";
 import { useCreateIssueContext } from "../context/createIssue.context";
-import { CREATE_ISSUE_STEPS as steps } from "../logic/createIssueSummary";
+import {
+  CREATE_ISSUE_STEPS as steps,
+  getCreateIssueStepDescription,
+} from "../logic/createIssueSummary";
 import {
   contentSx,
   getCreateIssueFooterSx,
@@ -126,6 +129,12 @@ const CreateIssueViewContent = () => {
 
         <Box sx={contentSx}>
           <Stack sx={{ width: "100%", minHeight: 0, mt: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", fontWeight: 650, mb: 1.1, maxWidth: 760 }}
+            >
+              {getCreateIssueStepDescription(activeStep)}
+            </Typography>
             {activeStep === 0 && <ModelSelectionStep />}
             {activeStep === 1 && <AlternativesStep />}
             {activeStep === 2 && <CriteriaStep />}
