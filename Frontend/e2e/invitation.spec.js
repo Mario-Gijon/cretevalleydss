@@ -78,6 +78,12 @@ test("invitation smoke: an invited expert can accept a newly created issue", asy
   ).toBeVisible();
 
   await page.keyboard.press("Escape");
-  await page.getByRole("tab", { name: "Active" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Notifications", exact: true })
+  ).not.toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const activeTab = page.getByRole("tab", { name: "Active" });
+  await expect(activeTab).toBeVisible();
+  await activeTab.click();
   await expect(page.getByText(issueName, { exact: true })).toBeVisible();
 });
