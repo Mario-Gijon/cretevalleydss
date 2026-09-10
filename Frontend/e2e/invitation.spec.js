@@ -61,7 +61,9 @@ test("invitation smoke: an invited expert can accept a newly created issue", asy
   await loginAsUser(page, issueExpertUser);
   await page.getByRole("button", { name: "Open options" }).click();
   await page.getByRole("menuitem", { name: "Notifications" }).click();
-  await expect(page.getByText("Notifications", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Notifications", exact: true })
+  ).toBeVisible();
 
   const invitationList = page.getByRole("list").filter({ hasText: issueName });
   const invitation = invitationList.getByRole("listitem").filter({ hasText: issueName });
