@@ -373,21 +373,6 @@ const TaskCenterRail = ({
           }}
         />
 
-        <Box
-          sx={{
-            pointerEvents: "none",
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            right: 0,
-            width: 18,
-            background: `linear-gradient(to left, ${alpha(
-              theme.palette.background.paper,
-              0.45
-            )}, transparent)`,
-            opacity: railItems.length ? 1 : 0,
-          }}
-        />
       </Box>
     </Paper>
   );

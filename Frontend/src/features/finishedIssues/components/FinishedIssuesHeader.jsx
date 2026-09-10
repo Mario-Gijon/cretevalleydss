@@ -23,7 +23,6 @@ import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 import {
   ActiveIssuesPill,
-  getActiveIssuesAuroraBg,
   getActiveIssuesPanelGlassSx,
 } from "../../activeIssues/shared";
 
@@ -74,7 +73,10 @@ const FinishedIssuesHeader = ({
         overflow: "hidden",
         position: "relative",
         ...getActiveIssuesPanelGlassSx(theme, 0.16, "crystal"),
-        ...getActiveIssuesAuroraBg(theme, 0.16),
+        backgroundImage: `radial-gradient(1100px 480px at 12% 0%, ${alpha(
+          theme.palette.info.main,
+          0.16
+        )}, transparent 62%)`,
         "&:after": {
           content: '""',
           position: "absolute",
