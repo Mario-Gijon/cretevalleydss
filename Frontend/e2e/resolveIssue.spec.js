@@ -207,10 +207,10 @@ test("resolve issue smoke: an owner resolves an expert-evaluated issue with Bord
     finishedIssueDialog.getByRole("heading", { name: "Final ranking", exact: true })
   ).toBeVisible();
   await expect(
-    finishedIssueDialog.getByText("E2E Resolve Alpha", { exact: true })
+    finishedIssueDialog.getByTitle("E2E Resolve Alpha", { exact: true })
   ).toBeVisible();
   await expect(
-    finishedIssueDialog.getByText("E2E Resolve Beta", { exact: true })
+    finishedIssueDialog.getByTitle("E2E Resolve Beta", { exact: true })
   ).toBeVisible();
   await expect(
     finishedIssueDialog.getByText("2 alternatives", { exact: true })
