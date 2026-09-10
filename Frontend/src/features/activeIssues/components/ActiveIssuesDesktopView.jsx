@@ -1,5 +1,5 @@
 import { Box, Paper, Stack } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import ActiveIssuesToolbar from "./ActiveIssuesToolbar";
 import { getActiveIssuesPageHeaderAuroraBg, getActiveIssuesPageHeaderGlassSx } from "../styles/activeIssues.styles";
 import TaskCenter from "./TaskCenter";
@@ -43,14 +43,6 @@ const ActiveIssuesDesktopView = ({
           overflow: "hidden",
           position: "relative",
           mb: 1,
-          "&:after": {
-            content: '""',
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background: `linear-gradient(190deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 45%)`,
-            opacity: 0.22,
-          },
         }}
       >
         <Box
