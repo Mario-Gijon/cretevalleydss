@@ -19,6 +19,19 @@ const issueExpert = {
   emailTokenConfirm: null,
 };
 
+const securityOutsider = {
+  name: "E2E Security Outsider",
+  university: "E2E Testing",
+  email: "security.outsider@example.test",
+  password: "E2eSecurityOutsider123",
+  role: "user",
+  accountConfirm: true,
+  isDeleted: false,
+  deletedAt: null,
+  tokenConfirm: null,
+  emailTokenConfirm: null,
+};
+
 const issueModel = {
   name: "E2E Matrix Model",
   apiModelKey: "e2e-matrix-model",
@@ -285,6 +298,11 @@ const seedCreateIssueSmokeFixtures = async () => {
 
   await Promise.all([
     upsertByLookup({ Model: User, lookup: { email: issueExpert.email }, document: issueExpert }),
+    upsertByLookup({
+      Model: User,
+      lookup: { email: securityOutsider.email },
+      document: securityOutsider,
+    }),
     upsertByLookup({
       Model: IssueModel,
       lookup: { apiModelKey: issueModel.apiModelKey },
