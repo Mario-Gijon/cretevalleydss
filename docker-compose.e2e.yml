@@ -28,6 +28,32 @@ services:
         mongosh --host mongo-e2e --quiet --eval 'try { rs.status() } catch (error) { rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongo-e2e:27017"}]}) }'
         until mongosh --host mongo-e2e --quiet --eval 'db.hello().isWritablePrimary ? 0 : 1' | grep -q 0; do sleep 1; done
 
+  decision-models-service-e2e:
+    build:
+      context: .
+      dockerfile: docker/decision-models-service/Dockerfile.dev
+    working_dir: /app
+    command:
+      - uvicorn
+      - app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "7000"
+      - --reload
+    volumes:
+      - ./DecisionModelsService:/app
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:7000/health', timeout=3).read()
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
   backend-e2e:
     build:
       context: .
@@ -45,6 +71,7 @@ services:
       ORIGIN_BACK: http://localhost:5001
       ORIGIN_CRETEVALLEY: http://localhost:5174
       ORIGIN_SULEIMAN: http://localhost:5174
+      DECISION_MODELS_SERVICE_BASE_URL: http://decision-models-service-e2e:7000
     command:
       - sh
       - -lc
@@ -61,6 +88,8 @@ services:
     depends_on:
       mongo-e2e-init:
         condition: service_completed_successfully
+      decision-models-service-e2e:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD-SHELL

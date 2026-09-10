@@ -77,6 +77,38 @@ const weightedIssueModel = {
   response: null,
 };
 
+const bordaResolveIssueModel = {
+  name: "E2E Borda Resolve Model",
+  apiModelKey: "borda",
+  modelKind: "issue",
+  supportsCreatorCriteriaWeighting: false,
+  supportsExpertCriteriaWeighting: false,
+  requiresHomogeneousExpressionDomains: false,
+  visibleInIssueCreation: true,
+  visibleInCriteriaWeighting: false,
+  apiEndpoint: { method: "POST", path: "/borda" },
+  manifestSync: { isStale: false },
+  isMultiCriteria: true,
+  smallDescription: "E2E Borda issue-resolution fixture model",
+  extendDescription: "Real Borda model used only by the isolated Playwright resolve flow.",
+  implementationStatus: "ready",
+  publicUsable: true,
+  parameters: [],
+  evaluationStructureKey: "alternativeCriteriaMatrix",
+  supportsConsensus: false,
+  supportsConsensusSimulation: false,
+  usesCriteriaWeights: false,
+  usesExpertWeights: false,
+  usesFuzzyCriteriaWeights: false,
+  usesCriterionTypes: true,
+  supportedExpressionDomains: [
+    { typeKey: "numericContinuous", constraints: {} },
+    { typeKey: "numericDiscrete", constraints: {} },
+  ],
+  request: null,
+  response: null,
+};
+
 const manualCriteriaWeightingModel = {
   name: "Manual Criteria Weights",
   apiModelKey: "manual_criteria_weights",
@@ -140,6 +172,11 @@ const seedCreateIssueSmokeFixtures = async () => {
       Model: IssueModel,
       lookup: { apiModelKey: weightedIssueModel.apiModelKey },
       document: weightedIssueModel,
+    }),
+    upsertByLookup({
+      Model: IssueModel,
+      lookup: { apiModelKey: bordaResolveIssueModel.apiModelKey },
+      document: bordaResolveIssueModel,
     }),
     upsertByLookup({
       Model: IssueModel,
