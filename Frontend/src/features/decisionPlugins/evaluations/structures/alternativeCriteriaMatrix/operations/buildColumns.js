@@ -21,6 +21,7 @@ export const buildColumns = ({
     renderCell: (params) =>
       renderCell({
         rowId: params.row.id,
+        alternativeName: params.row.alternativeLabel,
         criterion,
         value: params.row[criterion.id],
       }),

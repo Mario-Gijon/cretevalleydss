@@ -72,7 +72,7 @@ const AlternativeCriteriaMatrixView = ({
 
   const columns = buildColumns({
     criteria,
-    renderCell: ({ rowId, criterion, value }) => {
+    renderCell: ({ rowId, alternativeName, criterion, value }) => {
       const validationMessage = validateValue({
         value,
         expressionDomain: criterion.expressionDomain,
@@ -80,6 +80,8 @@ const AlternativeCriteriaMatrixView = ({
 
       return (
         <Cell
+          alternativeName={alternativeName}
+          criterionName={criterion.name}
           expressionDomain={criterion.expressionDomain}
           value={value}
           collectiveValue={collectiveResolution.payload?.[rowId]?.[criterion.id]}

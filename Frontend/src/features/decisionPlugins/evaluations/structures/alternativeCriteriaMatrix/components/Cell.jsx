@@ -8,6 +8,8 @@ import { cellSx } from "../styles/Cell.styles";
 import { formatCollectiveValue } from "../operations/formatCollectiveValue";
 
 const Cell = ({
+  alternativeName,
+  criterionName,
   expressionDomain,
   value,
   collectiveValue,
@@ -32,6 +34,8 @@ const Cell = ({
     <Stack
       direction="row"
       alignItems="center"
+      role="group"
+      aria-label={`${alternativeName} — ${criterionName}`}
       sx={cellSx.container}
     >
       <Box sx={cellSx.input}>

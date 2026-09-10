@@ -101,6 +101,9 @@ describe("AlternativeCriteriaMatrixView", () => {
 
     expect(screen.getByRole("spinbutton")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Option A — Cost" })
+    ).toContainElement(screen.getByRole("spinbutton"));
   });
 
   it("marks an invalid numeric cell without showing helper text", () => {
