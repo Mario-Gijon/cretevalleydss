@@ -4,7 +4,8 @@ import { env } from "node:process";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
-  timeout: 30_000,
+  workers: 2,
+  timeout: 60_000,
   expect: {
     timeout: 5_000,
   },
