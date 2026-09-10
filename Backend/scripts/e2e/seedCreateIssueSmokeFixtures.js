@@ -77,6 +77,63 @@ const weightedIssueModel = {
   response: null,
 };
 
+const twoTupleAggregationMethods = [
+  {
+    key: "arithmetic_mean",
+    label: "2-Tuple Arithmetic Mean",
+    subparameters: [],
+  },
+  {
+    key: "weighted_average",
+    label: "2-Tuple Weighted Average",
+    subparameters: [],
+  },
+  {
+    key: "l2towa",
+    label: "L2TOWA",
+    subparameters: [
+      {
+        key: "quantifier",
+        label: "Quantifier",
+        type: "select",
+        required: true,
+        default: "most",
+        options: [
+          { value: "most", label: "Most", a: 0.3, b: 0.8 },
+          { value: "at_least_half", label: "At least half", a: 0, b: 0.5 },
+          {
+            value: "as_many_as_possible",
+            label: "As many as possible",
+            a: 0.5,
+            b: 1,
+          },
+          { value: "custom", label: "Custom" },
+        ],
+      },
+      {
+        key: "a",
+        label: "a",
+        type: "number",
+        required: true,
+        default: 0,
+        min: 0,
+        max: 1,
+        visibleWhen: { field: "quantifier", equals: "custom" },
+      },
+      {
+        key: "b",
+        label: "b",
+        type: "number",
+        required: true,
+        default: 1,
+        min: 0,
+        max: 1,
+        visibleWhen: { field: "quantifier", equals: "custom" },
+      },
+    ],
+  },
+];
+
 const bordaResolveIssueModel = {
   name: "E2E Borda Resolve Model",
   apiModelKey: "borda",
@@ -105,6 +162,53 @@ const bordaResolveIssueModel = {
     { typeKey: "numericContinuous", constraints: {} },
     { typeKey: "numericDiscrete", constraints: {} },
   ],
+  request: null,
+  response: null,
+};
+
+const twoTupleIssueModel = {
+  name: "E2E 2-Tuple Linguistic Model",
+  apiModelKey: "two_tuple",
+  modelKind: "issue",
+  supportsCreatorCriteriaWeighting: false,
+  supportsExpertCriteriaWeighting: false,
+  requiresHomogeneousExpressionDomains: true,
+  visibleInIssueCreation: true,
+  visibleInCriteriaWeighting: false,
+  apiEndpoint: { method: "POST", path: "/two_tuple" },
+  manifestSync: { isStale: false },
+  isMultiCriteria: true,
+  smallDescription: "Real 2-tuple linguistic model for the isolated E2E flow.",
+  extendDescription:
+    "Real Decision Models Service 2-tuple model used only by the isolated Playwright flow.",
+  implementationStatus: "ready",
+  publicUsable: true,
+  parameters: [
+    {
+      key: "expertAggregation",
+      label: "Expert aggregation",
+      parameterStructureKey: "twoTupleAggregation",
+      required: true,
+      default: { method: "arithmetic_mean", options: {} },
+      restrictions: { methods: twoTupleAggregationMethods },
+    },
+    {
+      key: "criteriaAggregation",
+      label: "Criteria aggregation",
+      parameterStructureKey: "twoTupleAggregation",
+      required: true,
+      default: { method: "weighted_average", options: {} },
+      restrictions: { methods: twoTupleAggregationMethods },
+    },
+  ],
+  evaluationStructureKey: "alternativeCriteriaMatrix",
+  supportsConsensus: false,
+  supportsConsensusSimulation: false,
+  usesCriteriaWeights: true,
+  usesExpertWeights: true,
+  usesFuzzyCriteriaWeights: false,
+  usesCriterionTypes: false,
+  supportedExpressionDomains: [{ typeKey: "linguistic2Tuple", constraints: {} }],
   request: null,
   response: null,
 };
@@ -145,6 +249,22 @@ const expressionDomain = {
   definition: { min: 0, max: 10, step: 1 },
 };
 
+const twoTupleExpressionDomain = {
+  owner: null,
+  name: "E2E Linguistic 2-Tuple 5",
+  typeKey: "linguistic2Tuple",
+  definition: {
+    labelCount: 5,
+    labels: [
+      { key: "s0", label: "Very Low", index: 0 },
+      { key: "s1", label: "Low", index: 1 },
+      { key: "s2", label: "Medium", index: 2 },
+      { key: "s3", label: "High", index: 3 },
+      { key: "s4", label: "Very High", index: 4 },
+    ],
+  },
+};
+
 const upsertByLookup = async ({ Model, lookup, document }) => {
   const existingDocument = await Model.findOne(lookup);
 
@@ -180,6 +300,11 @@ const seedCreateIssueSmokeFixtures = async () => {
     }),
     upsertByLookup({
       Model: IssueModel,
+      lookup: { apiModelKey: twoTupleIssueModel.apiModelKey },
+      document: twoTupleIssueModel,
+    }),
+    upsertByLookup({
+      Model: IssueModel,
       lookup: { apiModelKey: manualCriteriaWeightingModel.apiModelKey },
       document: manualCriteriaWeightingModel,
     }),
@@ -187,6 +312,11 @@ const seedCreateIssueSmokeFixtures = async () => {
       Model: ExpressionDomain,
       lookup: { owner: null, name: expressionDomain.name },
       document: expressionDomain,
+    }),
+    upsertByLookup({
+      Model: ExpressionDomain,
+      lookup: { owner: null, name: twoTupleExpressionDomain.name },
+      document: twoTupleExpressionDomain,
     }),
   ]);
 
