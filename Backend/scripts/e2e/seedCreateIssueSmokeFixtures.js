@@ -186,6 +186,7 @@ const twoTupleIssueModel = {
   parameters: [
     {
       key: "expertAggregation",
+      name: "expertAggregation",
       label: "Expert aggregation",
       parameterStructureKey: "twoTupleAggregation",
       required: true,
@@ -194,6 +195,7 @@ const twoTupleIssueModel = {
     },
     {
       key: "criteriaAggregation",
+      name: "criteriaAggregation",
       label: "Criteria aggregation",
       parameterStructureKey: "twoTupleAggregation",
       required: true,
