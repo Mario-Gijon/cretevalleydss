@@ -135,10 +135,64 @@ test("2-tuple smoke: an owner resolves a linguistically evaluated issue", async 
   await expect(issueHeading).toBeVisible();
   await issueHeading.click();
   await expect(evaluateWeights).toBeDisabled();
-
   const evaluateAlternatives = page.getByRole("button", {
     name: "Evaluate alternatives",
   });
+  await expect(evaluateAlternatives).toBeDisabled();
+
+  const closeIssueDetailsButton = page.getByRole("button", {
+    name: "Close issue details",
+    exact: true,
+  });
+  await closeIssueDetailsButton.click();
+  await expect(closeIssueDetailsButton).not.toBeVisible();
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(openOptionsButton).toBeVisible();
+  await openOptionsButton.click();
+  await page.getByRole("menuitem", { name: "Logout" }).click();
+  await expect(page.getByRole("dialog", { name: "Log out" })).toBeVisible();
+  await page.getByRole("button", { name: "Logout", exact: true }).click();
+  await page.waitForURL("**/login");
+
+  await loginAsAuthSmokeUser(page);
+  await expect(activeTab).toBeVisible();
+  await activeTab.click();
+  await expect(issueHeading).toBeVisible();
+  await issueHeading.click();
+
+  const computeWeights = page.getByRole("button", {
+    name: "Compute weights",
+    exact: true,
+  });
+  await expect(computeWeights).toBeEnabled();
+  await computeWeights.click();
+  const computeWeightsDialog = page.getByRole("dialog", {
+    name: "Compute weights",
+    exact: true,
+  });
+  await expect(computeWeightsDialog).toBeVisible();
+  await computeWeightsDialog
+    .getByRole("button", { name: "Compute", exact: true })
+    .click();
+  await expect(computeWeightsDialog).not.toBeVisible();
+  await expect(closeIssueDetailsButton).not.toBeVisible();
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(openOptionsButton).toBeVisible();
+  await openOptionsButton.click();
+  await page.getByRole("menuitem", { name: "Logout" }).click();
+  await expect(page.getByRole("dialog", { name: "Log out" })).toBeVisible();
+  await page.getByRole("button", { name: "Logout", exact: true }).click();
+  await page.waitForURL("**/login");
+
+  await loginAsUser(page, issueExpertUser);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(activeTab).toBeVisible();
+  await activeTab.click();
+  await expect(issueHeading).toBeVisible();
+  await issueHeading.click();
+
   await expect(evaluateAlternatives).toBeEnabled();
   await evaluateAlternatives.click();
   await expect(
@@ -185,10 +239,6 @@ test("2-tuple smoke: an owner resolves a linguistically evaluated issue", async 
   await issueHeading.click();
   await expect(evaluateAlternatives).toBeDisabled();
 
-  const closeIssueDetailsButton = page.getByRole("button", {
-    name: "Close issue details",
-    exact: true,
-  });
   await closeIssueDetailsButton.click();
   await expect(closeIssueDetailsButton).not.toBeVisible();
 
