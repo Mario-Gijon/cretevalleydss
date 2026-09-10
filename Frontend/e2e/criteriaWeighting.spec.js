@@ -28,6 +28,8 @@ test("criteria weighting smoke: an invited expert can submit manual criteria wei
   const expertManualToggle = page.getByRole("button", {
     name: "MCC EXPERTS CONSENSUS",
   });
+  await expect(expertManualToggle).toHaveAttribute("aria-pressed", "false");
+  await expertManualToggle.click();
   await expect(expertManualToggle).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Next" }).click();
 
