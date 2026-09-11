@@ -41,8 +41,7 @@ const ModelCatalogSection = ({ title, description, familyLabel, models, searchAc
             <ModelCard
               key={model?.id || model?._id || model?.apiModelKey || model?.name || model?.displayName || index}
               model={model}
-              familyLabel={familyLabel}
-              onOpen={() => onOpenModel(model, familyLabel)}
+              onOpen={() => onOpenModel(model)}
             />
           ))}
         </Box>

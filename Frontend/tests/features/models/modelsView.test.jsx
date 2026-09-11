@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -63,6 +63,8 @@ describe("ModelsView", () => {
     expect(decisionCard).not.toHaveAttribute("aria-selected");
     expect(decisionCard).not.toHaveAttribute("aria-pressed");
     expect(screen.queryByTestId("MenuBookOutlinedIcon")).not.toBeInTheDocument();
+    expect(screen.queryByText("Decision", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("Criteria weighting", { exact: true })).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Criteria weighting methods" })
     ).toBeInTheDocument();
@@ -89,21 +91,26 @@ describe("ModelsView", () => {
     const user = userEvent.setup();
     renderModelsView();
 
-    await user.click(
-      screen.getByRole("button", { name: "Learn about Balanced choice method" })
-    );
+    const decisionCard = screen.getByRole("button", {
+      name: "Learn about Balanced choice method",
+    });
+    await user.click(decisionCard);
 
-    expect(screen.getByRole("button", { name: "Close dialog", exact: true })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Close", exact: true })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "What does it do?" })).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Close dialog", exact: true })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Close", exact: true })).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(decisionModel.smallDescription, { exact: true })).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("Decision", { exact: true })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "What does it do?" })).toBeInTheDocument();
     expect(
-      screen.getByText("Combines the evaluation of each alternative into a clear comparison.")
+      within(dialog).getByText("Combines the evaluation of each alternative into a clear comparison.")
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "When should I use it?" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Advantages" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Limitations" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "When should I use it?" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Advantages" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Limitations" })).toBeInTheDocument();
 
-    const reference = screen.getByRole("link", { name: "Further information" });
+    expect(decisionCard).not.toHaveAttribute("aria-selected");
+    const reference = within(dialog).getByRole("link", { name: "Further information" });
     expect(reference).toHaveAttribute("href", "https://example.com/models/balanced-choice");
     expect(reference).toHaveAttribute("target", "_blank");
     expect(reference).toHaveAttribute("rel", "noopener noreferrer");

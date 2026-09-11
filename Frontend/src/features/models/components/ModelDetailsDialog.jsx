@@ -13,14 +13,12 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LaunchIcon from "@mui/icons-material/Launch";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 
 import { AppDialog } from "../../../components/StyledComponents/AppDialog";
 import {
   getEducationalList,
-  getModelDescription,
   getModelDisplayName,
   getMoreInfoUrl,
   hasModelEducation,
@@ -52,7 +50,7 @@ const EducationalList = ({ items, icon, color }) => (
  * @param {object} props Propiedades del componente.
  * @returns {JSX.Element|null}
  */
-const ModelDetailsDialog = ({ model, familyLabel, open, onClose }) => {
+const ModelDetailsDialog = ({ model, open, onClose }) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -68,56 +66,30 @@ const ModelDetailsDialog = ({ model, familyLabel, open, onClose }) => {
   const advantages = getEducationalList(section.advantages);
   const limitations = getEducationalList(section.limitations);
   const moreInfoUrl = getMoreInfoUrl(model.moreInfoUrl);
-  const description = getModelDescription(model);
 
   return (
     <AppDialog
       open={open}
       onClose={onClose}
       title={
-        <Stack spacing={0.55} sx={{ minWidth: 0 }}>
-          <Box>
-            <Typography
-              component="span"
-              variant="overline"
-              sx={{
-                display: "inline-flex",
-                px: 0.9,
-                py: 0.2,
-                borderRadius: 999,
-                color: "secondary.main",
-                border: "1px solid rgba(69, 197, 197, 0.28)",
-                lineHeight: 1.5,
-                fontWeight: 850,
-              }}
-            >
-              {familyLabel}
-            </Typography>
-          </Box>
-          <Typography component="h2" variant="h6" sx={{ fontWeight: 950, overflowWrap: "anywhere" }}>
-            {getModelDisplayName(model)}
-          </Typography>
-          {description ? (
-            <Typography variant="body2" sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
-              {description}
-            </Typography>
-          ) : null}
-        </Stack>
+        <Typography component="span" variant="h6" sx={{ fontWeight: 950, overflowWrap: "anywhere" }}>
+          {getModelDisplayName(model)}
+        </Typography>
       }
-      icon={<InfoOutlinedIcon />}
       titleId="model-details-dialog-title"
+      titleSx={{ py: { xs: 0.7, sm: 0.95 } }}
       maxWidth="md"
       fullScreen={fullScreen}
       PaperProps={{
         sx: {
           border: "1px solid rgba(255,255,255,0.12)",
-          backgroundColor: alpha(theme.palette.background.paper, 0.94),
+          backgroundColor: alpha(theme.palette.background.default, 0.96),
           backgroundImage: `linear-gradient(180deg, ${alpha(
             theme.palette.secondary.main,
-            0.055
-          )}, transparent 28%), radial-gradient(720px 280px at 0% 0%, ${alpha(
+            0.04
+          )}, transparent 30%), radial-gradient(720px 280px at 0% 0%, ${alpha(
             theme.palette.info.main,
-            0.1
+            0.07
           )}, transparent 68%)`,
           backgroundClip: "padding-box",
         },

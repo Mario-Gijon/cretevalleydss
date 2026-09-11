@@ -1,10 +1,4 @@
-import {
-  CardActionArea,
-  Chip,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { CardActionArea, Paper, Stack, Typography } from "@mui/material";
 
 import { getModelDescription, getModelDisplayName } from "../logic/modelCatalog";
 import { getModelCardSx } from "../styles/models.styles";
@@ -15,7 +9,7 @@ import { getModelCardSx } from "../styles/models.styles";
  * @param {object} props Propiedades del componente.
  * @returns {JSX.Element}
  */
-const ModelCard = ({ model, familyLabel, onOpen }) => {
+const ModelCard = ({ model, onOpen }) => {
   const name = getModelDisplayName(model);
   const description = getModelDescription(model);
 
@@ -24,19 +18,18 @@ const ModelCard = ({ model, familyLabel, onOpen }) => {
       <CardActionArea
         onClick={() => onOpen(model)}
         aria-label={`Learn about ${name}`}
-        sx={{ height: "100%", display: "flex", alignItems: "stretch", textAlign: "left" }}
+        sx={{
+          height: "100%",
+          display: "flex",
+          alignItems: "stretch",
+          textAlign: "left",
+          "&.Mui-focusVisible": {
+            outline: "2px solid rgba(69, 197, 197, 0.7)",
+            outlineOffset: "-2px",
+          },
+        }}
       >
         <Stack spacing={1.15} sx={{ width: "100%", minHeight: 168, p: { xs: 1.5, sm: 1.75 } }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Chip
-              label={familyLabel}
-              size="small"
-              variant="outlined"
-              color="secondary"
-              sx={{ borderColor: "rgba(69, 197, 197, 0.32)", fontWeight: 800 }}
-            />
-          </Stack>
-
           <Stack spacing={0.55} sx={{ minWidth: 0, flex: 1 }}>
             <Typography component="h3" variant="h6" sx={{ fontWeight: 850, overflowWrap: "anywhere" }}>
               {name}

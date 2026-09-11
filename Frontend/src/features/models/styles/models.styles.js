@@ -40,7 +40,4 @@ export const getModelCardSx = (theme) => ({
     borderColor: alpha(theme.palette.secondary.main, 0.38),
     transform: "translateY(-2px)",
   },
-  "&:focus-within": {
-    borderColor: alpha(theme.palette.secondary.main, 0.55),
-  },
 });

@@ -54,7 +54,7 @@ const ModelsView = () => {
             familyLabel="Decision"
             models={decisionModels}
             searchActive={Boolean(query.trim())}
-            onOpenModel={(model, familyLabel) => setSelectedModel({ model, familyLabel })}
+            onOpenModel={setSelectedModel}
           />
           <ModelCatalogSection
             title="Criteria weighting methods"
@@ -62,7 +62,7 @@ const ModelsView = () => {
             familyLabel="Criteria weighting"
             models={weightingModels}
             searchActive={Boolean(query.trim())}
-            onOpenModel={(model, familyLabel) => setSelectedModel({ model, familyLabel })}
+            onOpenModel={setSelectedModel}
           />
         </>
       ) : (
@@ -74,8 +74,7 @@ const ModelsView = () => {
       )}
 
       <ModelDetailsDialog
-        model={selectedModel?.model}
-        familyLabel={selectedModel?.familyLabel}
+        model={selectedModel}
         open={Boolean(selectedModel)}
         onClose={() => setSelectedModel(null)}
       />
