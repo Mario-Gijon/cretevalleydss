@@ -82,11 +82,6 @@ export const ResponsiveNavbar = (props) => {
       const selected = navPages[newNavValue];
       if (!selected) return;
 
-      if (selected.label === "Models") {
-        showSnackbarAlert("Models page is not available yet", "info");
-        return;
-      }
-
       if (selected.label === "Admin" && !isAdmin) {
         showSnackbarAlert("You don't have permission to access Admin panel", "warning");
         return;
@@ -134,9 +129,7 @@ export const ResponsiveNavbar = (props) => {
   };
 
   const handleMenuNavigation = ({ label, url }) => {
-    if (label === "Models") {
-      showSnackbarAlert("Models page is not available yet", "info");
-    } else if (label === "Admin" && !isAdmin) {
+    if (label === "Admin" && !isAdmin) {
       showSnackbarAlert("You don't have permission to access Admin panel", "warning");
     } else {
       navigate(url);

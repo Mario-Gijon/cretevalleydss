@@ -21,6 +21,7 @@ const FinishedIssuesPage = lazy(() =>
 const CreateIssuePage = lazy(() =>
   import("../pages/private/createIssue/CreateIssuePage")
 );
+const ModelsPage = lazy(() => import("../pages/private/models/ModelsPage"));
 const AdminRoute = lazy(() => import("../pages/private/admin/AdminRoute"));
 const AdminPage = lazy(() => import("../pages/private/admin/AdminPage"));
 const ApplyingBackendChangesPage = lazy(() =>
@@ -79,6 +80,7 @@ export function AppRoutes({ isLoggedIn, hasPendingBackendChange }) {
         <Route path="active" element={<ActiveIssuesPage />} />
         <Route path="finished" element={<FinishedIssuesPage />} />
         <Route path="create" element={<CreateIssuePage />} />
+        <Route path="models" element={<ModelsPage />} />
         <Route
           path="admin/*"
           element={
@@ -99,6 +101,10 @@ export function AppRoutes({ isLoggedIn, hasPendingBackendChange }) {
         <Route
           path="create/*"
           element={<Navigate to={APP_PATHS.DASHBOARD_CREATE} replace />}
+        />
+        <Route
+          path="models/*"
+          element={<Navigate to={APP_PATHS.DASHBOARD_MODELS} replace />}
         />
       </Route>
 

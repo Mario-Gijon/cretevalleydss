@@ -51,6 +51,10 @@ vi.mock("../../src/pages/private/createIssue/CreateIssuePage", () => ({
   default: () => <div>create-issue-page</div>,
 }));
 
+vi.mock("../../src/pages/private/models/ModelsPage", () => ({
+  default: () => <div>models-page</div>,
+}));
+
 vi.mock("../../src/pages/private/admin/AdminRoute", () => ({
   default: ({ children }) => children,
 }));
@@ -164,6 +168,7 @@ describe("App routes", () => {
     ["/dashboard/active/unrecognized", "active-issues-page"],
     ["/dashboard/finished/unrecognized", "finished-issues-page"],
     ["/dashboard/create/unrecognized", "create-issue-page"],
+    ["/dashboard/models/unrecognized", "models-page"],
   ])("redirects the private wildcard %s", async (route, expectedContent) => {
     authState.isLoggedIn = true;
     window.history.pushState({}, "", route);
@@ -171,6 +176,15 @@ describe("App routes", () => {
     renderApp();
 
     expect(await screen.findByText(expectedContent)).toBeInTheDocument();
+  });
+
+  it("renders the authenticated Models route", async () => {
+    authState.isLoggedIn = true;
+    window.history.pushState({}, "", "/dashboard/models");
+
+    renderApp();
+
+    expect(await screen.findByText("models-page")).toBeInTheDocument();
   });
 
   it("gives a pending change precedence on the global wildcard", async () => {

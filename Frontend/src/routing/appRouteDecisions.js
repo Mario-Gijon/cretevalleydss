@@ -6,6 +6,7 @@ export const APP_PATHS = Object.freeze({
   DASHBOARD_ACTIVE: "/dashboard/active",
   DASHBOARD_FINISHED: "/dashboard/finished",
   DASHBOARD_CREATE: "/dashboard/create",
+  DASHBOARD_MODELS: "/dashboard/models",
   APPLYING_BACKEND_CHANGES: "/system/applying-changes",
 });
 
