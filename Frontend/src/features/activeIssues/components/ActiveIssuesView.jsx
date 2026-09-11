@@ -30,7 +30,7 @@ import { IssueExpertsProvider } from "../../issueExperts/provider";
 const ActiveIssuesView = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery("(max-width:900px)");
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isLgUp = useMediaQuery(theme.breakpoints.up("lg"));
 
   const { showSnackbarAlert } = useSnackbarAlertContext();

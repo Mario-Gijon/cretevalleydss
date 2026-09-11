@@ -23,7 +23,7 @@ import { useFinishedIssuesView } from "../hooks/useFinishedIssuesView";
  */
 const FinishedIssuesView = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery("(max-width:900px)");
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isLgUp = useMediaQuery(theme.breakpoints.up("lg"));
 
   const {

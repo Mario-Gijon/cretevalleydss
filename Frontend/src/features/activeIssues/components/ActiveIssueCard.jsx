@@ -280,7 +280,7 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
 
   return (
     <Grid item xs={12} md={6} xl={4} key={issue.id}>
-      <IssuesGridCard elevation={0} sx={{ height: ISSUES_GRID_CARD_HEIGHT }}>
+      <IssuesGridCard elevation={0} sx={{ height: { xs: "auto", md: ISSUES_GRID_CARD_HEIGHT } }}>
         <Box
           onClick={() => onOpenIssue?.(issue)}
           sx={{

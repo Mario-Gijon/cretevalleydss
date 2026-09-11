@@ -69,7 +69,7 @@ const FinishedIssuesHeader = ({
       elevation={0}
       sx={{
         borderRadius: 3,
-        p: { xs: 1.6, md: 2.0 },
+        p: { xs: 1.2, sm: 1.6, md: 2.0 },
         height: "auto",
         overflow: "hidden",
         position: "relative",
@@ -87,8 +87,8 @@ const FinishedIssuesHeader = ({
             <Stack direction="row" spacing={1.1}>
               <Avatar
                 sx={{
-                  width: 44,
-                  height: 44,
+                  width: { xs: 40, md: 44 },
+                  height: { xs: 40, md: 44 },
                   bgcolor: alpha(theme.palette.success.main, 0.14),
                   color: "success.main",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -102,6 +102,7 @@ const FinishedIssuesHeader = ({
                   variant="h4"
                   sx={{
                     whiteSpace: "nowrap",
+                    fontSize: { xs: "1.7rem", sm: "2rem", md: "2.125rem" },
                   }}
                 >
                   Finished issues
@@ -162,8 +163,14 @@ const FinishedIssuesHeader = ({
                 endAdornment: (
                   <>
                     <Divider orientation="vertical" flexItem />
-                    <InputAdornment position="start" sx={{ mr: 0.5, ml: 2 }}>
-                      <FormControl variant="standard" sx={{ minWidth: 128 }}>
+                    <InputAdornment
+                      position="start"
+                      sx={{ mr: { xs: 0.25, sm: 0.5 }, ml: { xs: 0.75, sm: 2 } }}
+                    >
+                      <FormControl
+                        variant="standard"
+                        sx={{ minWidth: { xs: 96, sm: 128 } }}
+                      >
                         <Select
                           value={searchBy}
                           onChange={(event) => setSearchBy(event.target.value)}
