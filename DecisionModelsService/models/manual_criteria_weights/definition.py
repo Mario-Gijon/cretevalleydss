@@ -37,4 +37,35 @@ MODEL_DEFINITION = ModelDefinition(
     uses_criterion_types=False,
     supported_expression_domains=[],
     parameters=[],
+    model_section={
+        "whatItDoes": (
+            "Manual Criteria Weights allows users to state directly how important each criterion "
+            "is. Each participant assigns importance values to the criteria, and the system combines "
+            "the completed evaluations into a normalized group set of weights.\n\n"
+            "These weights are then used by the main decision model when comparing alternatives. "
+            "This is therefore a simple and transparent way of defining priorities rather than a "
+            "model that ranks the alternatives on its own."
+        ),
+        "whenToUse": (
+            "Use manual weighting when participants already have a clear idea of the relative "
+            "importance of the criteria and can express it directly. It is also appropriate when "
+            "simplicity and transparency are more important than deriving weights through a more "
+            "structured comparison method.\n\n"
+            "It may be less suitable when users find it difficult to assign consistent importance "
+            "values or when a more systematic weighting procedure such as BWM would help them "
+            "express their preferences."
+        ),
+        "advantages": [
+            "Very simple for users to understand.",
+            "Provides direct control over the importance assigned to each criterion.",
+            "Makes the chosen priorities easy to inspect and explain.",
+            "Can combine weights provided by several experts.",
+        ],
+        "limitations": [
+            "Weights depend directly on subjective values entered by users.",
+            "Users may find it difficult to judge several importance values consistently.",
+            "Small differences in manually assigned weights may not reflect meaningful differences in preference.",
+            "It determines criterion importance but does not rank alternatives by itself.",
+        ],
+    },
 )

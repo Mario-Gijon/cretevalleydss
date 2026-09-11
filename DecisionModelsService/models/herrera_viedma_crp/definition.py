@@ -96,4 +96,37 @@ MODEL_DEFINITION = ModelDefinition(
             "restrictions": {"min": 0, "max": 1, "allowed": None},
         },
     ],
+    model_section={
+        "whatItDoes": (
+            "Herrera-Viedma CRP is designed for decisions in which reaching agreement between "
+            "several people is important. Instead of immediately combining everyone's opinions "
+            "into a final answer, the model measures how similar or different the participants' "
+            "preferences are.\n\n"
+            "When the group has not reached the required level of agreement, the process can "
+            "continue through additional consensus rounds. This allows participants to reconsider "
+            "their evaluations and move towards a decision that better represents the group rather "
+            "than simply accepting a result despite strong disagreement."
+        ),
+        "whenToUse": (
+            "Use this model when several experts or stakeholders participate and the level of "
+            "agreement itself is important. It is particularly useful for collaborative decisions "
+            "where participants should have an opportunity to revise their opinions before the "
+            "process is considered complete.\n\n"
+            "It may be unnecessary for individual decisions, for situations where disagreement is "
+            "acceptable, or when the only objective is to calculate a ranking as quickly as possible "
+            "without an iterative consensus process."
+        ),
+        "advantages": [
+            "Makes the level of agreement between participants explicit.",
+            "Supports additional rounds when consensus is not sufficient.",
+            "Helps identify situations where a collective result hides significant disagreement.",
+            "Encourages a more collaborative group decision process.",
+        ],
+        "limitations": [
+            "Can require more time and interaction than a one-step decision model.",
+            "Participants may need to evaluate their preferences again in additional rounds.",
+            "Reaching a higher consensus does not necessarily mean that every participant fully agrees.",
+            "It is unnecessary for decisions made by a single person.",
+        ],
+    },
 )

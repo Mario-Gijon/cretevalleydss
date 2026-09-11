@@ -46,4 +46,36 @@ MODEL_DEFINITION = ModelDefinition(
             "restrictions": {"min": 0, "max": 1, "allowed": None},
         },
     ],
+    model_section={
+        "whatItDoes": (
+            "VIKOR looks for a compromise solution when no alternative is clearly the best on "
+            "every criterion. It considers both the overall performance of an alternative across "
+            "the complete decision and its weakest important aspect.\n\n"
+            "This balance helps identify alternatives that provide strong general performance "
+            "without ignoring an important disadvantage. The result is a ranking focused on "
+            "finding an acceptable compromise between overall benefit and the risk of performing "
+            "poorly on a particular criterion."
+        ),
+        "whenToUse": (
+            "Use VIKOR when the criteria conflict with each other and you are looking for a "
+            "balanced compromise rather than an alternative that simply maximizes an overall "
+            "score. It is useful when both general performance and avoiding a serious weakness "
+            "should influence the final choice.\n\n"
+            "It may be less appropriate when the decision has a clear ideal reference and TOPSIS "
+            "is easier to communicate, or when users do not want to configure how strongly the "
+            "model should favour collective performance versus individual regret."
+        ),
+        "advantages": [
+            "Focuses explicitly on finding a compromise between conflicting criteria.",
+            "Considers both overall performance and the strongest individual disadvantage.",
+            "Takes criterion importance into account.",
+            "Supports both benefit and cost criteria.",
+        ],
+        "limitations": [
+            "The compromise strategy must be configured according to the decision context.",
+            "Its interpretation is less immediate than a simple weighted score.",
+            "The final ranking depends on the chosen criteria and weights.",
+            "It requires numerical evaluations.",
+        ],
+    },
 )

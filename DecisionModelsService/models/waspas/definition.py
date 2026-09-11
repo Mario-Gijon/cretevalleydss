@@ -46,4 +46,36 @@ MODEL_DEFINITION = ModelDefinition(
             "restrictions": {"min": 0, "max": 1, "allowed": None},
         },
     ],
+    model_section={
+        "whatItDoes": (
+            "WASPAS evaluates alternatives using two complementary ways of combining their "
+            "performance across the criteria. One approach adds the weighted contributions of "
+            "the criteria, while the other considers their combined proportional effect. The "
+            "model blends both perspectives into a single final score.\n\n"
+            "A configurable balance determines how much influence each approach has. This allows "
+            "the final ranking to benefit from two different ways of looking at overall performance "
+            "instead of relying exclusively on a single aggregation rule."
+        ),
+        "whenToUse": (
+            "Use WASPAS when you have numerical evaluations, criterion importance values and want "
+            "a ranking that combines additive and proportional views of performance. It can be a "
+            "useful choice when you want a robust general-purpose comparison and neither perspective "
+            "should dominate by default.\n\n"
+            "It may be less suitable when the evaluations are mainly linguistic or uncertain, or "
+            "when there is no clear reason to introduce an additional balance parameter into an "
+            "otherwise simple decision."
+        ),
+        "advantages": [
+            "Combines two complementary approaches to evaluating overall performance.",
+            "Takes criterion importance into account.",
+            "Supports benefit and cost criteria.",
+            "Allows the balance between the two aggregation approaches to be adjusted.",
+        ],
+        "limitations": [
+            "Requires numerical evaluations.",
+            "The balance parameter adds an additional decision that users must understand.",
+            "The ranking still depends on the selected criteria and their importance.",
+            "It does not explicitly represent uncertainty in the evaluations.",
+        ],
+    },
 )

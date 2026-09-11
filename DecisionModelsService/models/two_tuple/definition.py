@@ -11,7 +11,6 @@ from .examples import (
     TWO_TUPLE_RESPONSE_EXAMPLES,
 )
 
-
 MODEL_DEFINITION = ModelDefinition(
     api_model_key="two_tuple",
     api_endpoint_path="/two_tuple",
@@ -36,7 +35,7 @@ MODEL_DEFINITION = ModelDefinition(
     uses_expert_weights=True,
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=False,
-    supported_expression_domains=[{'typeKey': 'linguistic2Tuple', 'constraints': {}}],
+    supported_expression_domains=[{"typeKey": "linguistic2Tuple", "constraints": {}}],
     parameters=[
         {
             "key": "expertAggregation",
@@ -55,4 +54,36 @@ MODEL_DEFINITION = ModelDefinition(
             "restrictions": {"methods": AGGREGATION_METHODS},
         },
     ],
+    model_section={
+        "whatItDoes": (
+            "The 2-Tuple Linguistic Model is designed for decisions in which people evaluate "
+            "alternatives using words instead of exact numbers. Assessments such as low, medium "
+            "or high can be represented in a way that preserves small differences that normally "
+            "appear when several linguistic opinions are combined.\n\n"
+            "The model aggregates the evaluations provided by the experts and then combines the "
+            "information across the criteria. Different aggregation strategies can be selected "
+            "for these stages, allowing the final collective evaluation to reflect how the group "
+            "and the criteria should contribute to the decision."
+        ),
+        "whenToUse": (
+            "Use this model when expert knowledge is naturally qualitative and asking for exact "
+            "numerical scores would give a false sense of precision. It is particularly appropriate "
+            "when several people evaluate the same alternatives using a common linguistic scale and "
+            "the decision needs to combine those opinions systematically.\n\n"
+            "It may be less appropriate when accurate numerical measurements are already available, "
+            "or when the problem specifically requires a distance-to-ideal ranking such as TOPSIS."
+        ),
+        "advantages": [
+            "Allows evaluations to be expressed using understandable linguistic terms.",
+            "Preserves more detail when linguistic assessments are aggregated.",
+            "Supports the combination of evaluations from multiple experts.",
+            "Provides configurable ways of aggregating expert and criterion information.",
+        ],
+        "limitations": [
+            "Participants need to use compatible linguistic scales.",
+            "The aggregation configuration can influence the final result.",
+            "The mathematical representation is less intuitive for non-technical users than simple numerical scoring.",
+            "It can be unnecessary when reliable numerical measurements are already available.",
+        ],
+    },
 )

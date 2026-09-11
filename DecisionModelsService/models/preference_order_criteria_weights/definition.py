@@ -10,7 +10,6 @@ from .examples import (
     PREFERENCE_ORDER_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES,
 )
 
-
 MODEL_DEFINITION = ModelDefinition(
     api_model_key="preference_order_criteria_weights",
     api_endpoint_path="/preference_order_criteria_weights",
@@ -37,4 +36,35 @@ MODEL_DEFINITION = ModelDefinition(
     uses_criterion_types=False,
     supported_expression_domains=[],
     parameters=[],
+    model_section={
+        "whatItDoes": (
+            "Preference Order Criteria Weights determines criterion importance from a simple "
+            "ranking. Instead of asking users to assign exact weights, they only need to order "
+            "the criteria from the most important to the least important.\n\n"
+            "The system converts that order into normalized numerical weights that can then be "
+            "used by the main decision model. This makes it possible to obtain usable criterion "
+            "weights from people who know their priorities but do not feel comfortable assigning "
+            "precise percentages or numerical importance values."
+        ),
+        "whenToUse": (
+            "Use this approach when users can clearly say which criteria matter more than others "
+            "but cannot reliably express how much more important they are. It provides a useful "
+            "middle ground between assuming equal importance and asking for precise numerical weights.\n\n"
+            "It may be less suitable when the strength of preference between criteria is important. "
+            "A simple order can say that one criterion is above another, but it cannot fully express "
+            "whether the difference is very small or extremely large."
+        ),
+        "advantages": [
+            "Easy to understand because users only need to rank the criteria.",
+            "Does not require users to invent precise importance percentages.",
+            "Produces normalized weights that can be used directly by other decision models.",
+            "Can be used for both creator-side and expert-side weighting.",
+        ],
+        "limitations": [
+            "Captures the order of importance but not the strength of the differences between criteria.",
+            "A complete ranking of the criteria is required.",
+            "Two users with the same order receive the same positional interpretation even if their preference strengths differ.",
+            "It determines criterion weights but does not rank alternatives by itself.",
+        ],
+    },
 )

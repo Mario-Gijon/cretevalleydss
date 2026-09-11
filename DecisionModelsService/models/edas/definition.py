@@ -35,4 +35,35 @@ MODEL_DEFINITION = ModelDefinition(
         {"typeKey": "numericContinuous"},
         {"typeKey": "numericDiscrete"},
     ],
+    model_section={
+        "whatItDoes": (
+            "EDAS compares each alternative with the average performance of all the alternatives "
+            "being considered. For every criterion, it looks at whether an alternative performs "
+            "better or worse than that average and takes the importance of the criterion into account.\n\n"
+            "Alternatives that show stronger positive differences and fewer important negative "
+            "differences receive better overall scores. The result is a ranking that highlights "
+            "the options that perform most favourably compared with the general level of the group."
+        ),
+        "whenToUse": (
+            "Use EDAS when you have numerical evaluations for several alternatives and want to "
+            "judge their performance relative to what is typical within the current set of options. "
+            "It is useful when comparing with the average is more intuitive for the problem than "
+            "comparing with a theoretical perfect alternative.\n\n"
+            "It may be less appropriate when the average has little meaning for the decision, "
+            "when evaluations are mainly qualitative, or when a specific ideal target is central "
+            "to the interpretation of the result."
+        ),
+        "advantages": [
+            "Provides a clear ranking based on performance relative to the average.",
+            "Takes criterion importance into account.",
+            "Supports criteria where either higher or lower values are preferable.",
+            "The idea of performing above or below average is relatively easy to explain.",
+        ],
+        "limitations": [
+            "Requires numerical evaluations.",
+            "The reference average changes when the set of alternatives changes.",
+            "The result depends on the selected criteria and their importance.",
+            "It does not explicitly represent uncertainty or linguistic assessments.",
+        ],
+    },
 )

@@ -10,7 +10,6 @@ from .examples import (
     TOPSIS_2TUPLE_RESPONSE_EXAMPLES,
 )
 
-
 MODEL_DEFINITION = ModelDefinition(
     api_model_key="topsis_2tuple",
     api_endpoint_path="/topsis_2tuple",
@@ -35,6 +34,39 @@ MODEL_DEFINITION = ModelDefinition(
     uses_expert_weights=True,
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=True,
-    supported_expression_domains=[{'typeKey': 'linguistic2Tuple', 'constraints': {}}],
+    supported_expression_domains=[{"typeKey": "linguistic2Tuple", "constraints": {}}],
     parameters=[],
+    model_section={
+        "whatItDoes": (
+            "2-Tuple TOPSIS combines the ranking approach of TOPSIS with a linguistic way of "
+            "representing expert opinions. Instead of requiring every evaluation to be expressed "
+            "as an exact number, experts can work with understandable terms such as low, medium "
+            "or high.\n\n"
+            "The model combines the participants' evaluations and compares each alternative with "
+            "desirable and undesirable reference situations. The 2-tuple representation helps "
+            "retain differences that could otherwise be lost when linguistic assessments are "
+            "converted too early into simple numerical values."
+        ),
+        "whenToUse": (
+            "Use 2-Tuple TOPSIS when several experts must rank alternatives using multiple criteria "
+            "and linguistic assessments are more natural than exact numerical scores. It is a good "
+            "choice when the decision still needs criterion importance, expert importance and the "
+            "distinction between desirable and undesirable criterion directions.\n\n"
+            "It may be unnecessary when the available information is already precise and numerical, "
+            "in which case standard TOPSIS is simpler, or when no ideal-reference style comparison "
+            "is desired."
+        ),
+        "advantages": [
+            "Allows experts to evaluate alternatives using natural linguistic terms.",
+            "Supports the participation of multiple experts.",
+            "Takes both criterion importance and expert importance into account.",
+            "Produces a clear ranking while preserving more information from linguistic evaluations.",
+        ],
+        "limitations": [
+            "Requires an appropriate linguistic scale to be defined for the problem.",
+            "Its internal calculations are harder to explain than those of a purely numerical model.",
+            "The ranking depends on the chosen criteria, weights and expert evaluations.",
+            "It adds unnecessary complexity when precise numerical information is already available.",
+        ],
+    },
 )

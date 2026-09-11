@@ -112,4 +112,35 @@ MODEL_DEFINITION = ModelDefinition(
             "restrictions": {"min": 1, "max": None, "allowed": None},
         },
     ],
+    model_section={
+        "whatItDoes": (
+            "PROMETHEE VI compares alternatives criterion by criterion and examines how strongly "
+            "one option is preferred over another. It can distinguish between small differences "
+            "that are not meaningful and larger differences that represent a real preference.\n\n"
+            "A distinctive feature of this model is that the importance of a criterion does not "
+            "need to be represented by one exact weight. Instead, a lower and an upper value can "
+            "describe a range of acceptable importance, allowing the decision to reflect uncertainty "
+            "about the exact priorities."
+        ),
+        "whenToUse": (
+            "Use PROMETHEE VI when the decision requires a detailed comparison between alternatives "
+            "and you can describe what differences should be considered negligible or significant "
+            "for each criterion. It is especially useful when criterion importance cannot be fixed "
+            "precisely but reasonable lower and upper limits are known.\n\n"
+            "It may be excessive for simple decisions where exact weights are already available or "
+            "where users cannot meaningfully define preference thresholds and weight ranges."
+        ),
+        "advantages": [
+            "Allows criterion importance to be represented as ranges instead of exact weights.",
+            "Can distinguish negligible differences from meaningful preferences.",
+            "Provides a detailed comparison between competing alternatives.",
+            "Is useful when the decision contains uncertainty about criterion importance.",
+        ],
+        "limitations": [
+            "Requires more configuration than many simpler ranking methods.",
+            "Preference thresholds may be difficult for non-expert users to define.",
+            "The result can be sensitive to the selected preference functions and ranges.",
+            "It may be unnecessarily complex for straightforward decision problems.",
+        ],
+    },
 )

@@ -34,4 +34,37 @@ MODEL_DEFINITION = ModelDefinition(
     uses_criterion_types=False,
     supported_expression_domains=[],
     parameters=[],
+    model_section={
+        "whatItDoes": (
+            "The Best-Worst Method helps determine how important the criteria of a decision "
+            "should be. Instead of asking users to compare every criterion with every other "
+            "criterion, it starts by identifying the most important criterion and the least "
+            "important one.\n\n"
+            "The remaining comparisons are made using these two criteria as references. From "
+            "those preferences, the method calculates a set of criterion weights that can later "
+            "be used by the decision model that ranks the alternatives. BWM therefore supports "
+            "the weighting stage rather than producing the final alternative ranking itself."
+        ),
+        "whenToUse": (
+            "Use BWM when the criteria do not all have the same importance and you want that "
+            "importance to be obtained systematically from the preferences of a person or a "
+            "group of experts. It is particularly useful when directly assigning percentages "
+            "to many criteria feels difficult or arbitrary.\n\n"
+            "It may be unnecessary when the criterion weights are already known, when all "
+            "criteria should have equal importance, or when users simply want to enter the "
+            "weights directly."
+        ),
+        "advantages": [
+            "Provides a structured way to determine criterion importance.",
+            "Requires fewer comparisons than approaches that compare every possible pair of criteria.",
+            "Can be used with both creator-defined and expert-defined weighting.",
+            "Makes users think explicitly about their most and least important criteria.",
+        ],
+        "limitations": [
+            "Users must be able to identify a clear best and worst criterion.",
+            "The resulting weights still depend on subjective judgments.",
+            "Inconsistent comparisons can reduce the reliability of the resulting weights.",
+            "It determines criterion weights but does not rank the alternatives by itself.",
+        ],
+    },
 )
