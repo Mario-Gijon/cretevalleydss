@@ -203,7 +203,13 @@ const ActiveIssuesToolbar = ({
           </Grid>
         </Grid>
 
-        <Grid container spacing={1} alignItems="stretch" sx={{ width: "100%", m: 0, rowGap: 0.5 }}>
+        <Grid
+          container
+          columnSpacing={{ xs: 0, md: 1 }}
+          rowSpacing={1}
+          alignItems="stretch"
+          sx={{ width: "100%", m: 0, alignSelf: "stretch", rowGap: 0.5 }}
+        >
           <Grid item {...gridConfig.search}>
             <TextField
               value={query}
