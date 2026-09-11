@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   Stack,
+  Box,
   Typography,
   Grid,
   Paper,
@@ -65,12 +66,6 @@ const ActiveIssuesToolbar = ({
   paperSx,
 }) => {
   const theme = useTheme();
-
-  const gridConfig = useMemo(() => {
-    return isLgUp
-      ? { search: { xs: 12, md: 8, lg: 8 }, sort: { xs: 12, md: 4, lg: 4 } }
-      : { search: { xs: 12, md: 8 }, sort: { xs: 12, md: 4 } };
-  }, [isLgUp]);
 
   const sortOptions = useMemo(
     () => [
@@ -203,14 +198,17 @@ const ActiveIssuesToolbar = ({
           </Grid>
         </Grid>
 
-        <Grid
-          container
-          columnSpacing={{ xs: 0, md: 1 }}
-          rowSpacing={1}
-          alignItems="stretch"
-          sx={{ width: "100%", m: 0, alignSelf: "stretch", rowGap: 0.5 }}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 1fr)" },
+            columnGap: 1,
+            rowGap: 0.5,
+            width: "100%",
+            minWidth: 0,
+          }}
         >
-          <Grid item {...gridConfig.search}>
+          <Box sx={{ minWidth: 0 }}>
             <TextField
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -259,9 +257,9 @@ const ActiveIssuesToolbar = ({
                 ),
               }}
             />
-          </Grid>
+          </Box>
 
-          <Grid item {...gridConfig.sort}>
+          <Box sx={{ minWidth: 0 }}>
             <FormControl size="small" fullWidth>
               <InputLabel color="secondary">Sort</InputLabel>
               <Select
@@ -277,8 +275,8 @@ const ActiveIssuesToolbar = ({
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Stack>
     </Paper>
   );

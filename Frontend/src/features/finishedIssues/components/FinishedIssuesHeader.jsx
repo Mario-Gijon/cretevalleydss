@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   Stack,
+  Box,
   Typography,
   Paper,
   Tooltip,
@@ -13,7 +14,6 @@ import {
   Avatar,
   CircularProgress,
   InputAdornment,
-  Grid,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
@@ -144,14 +144,17 @@ const FinishedIssuesHeader = ({
           </Tooltip>
         </Stack>
 
-        <Grid
-          container
-          columnSpacing={{ xs: 0, md: 1 }}
-          rowSpacing={1}
-          alignItems="stretch"
-          sx={{ width: "100%", m: 0, alignSelf: "stretch", rowGap: 0.5 }}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 1fr)" },
+            columnGap: 1,
+            rowGap: 0.5,
+            width: "100%",
+            minWidth: 0,
+          }}
         >
-          <Grid item xs={12} md={8}>
+          <Box sx={{ minWidth: 0 }}>
             <TextField
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -204,9 +207,9 @@ const FinishedIssuesHeader = ({
                 ),
               }}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} md={4}>
+          <Box sx={{ minWidth: 0 }}>
             <FormControl size="small" fullWidth>
               <Typography component="label" sx={{ display: "none" }}>
                 Sort
@@ -223,8 +226,8 @@ const FinishedIssuesHeader = ({
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Stack>
     </Paper>
   );
