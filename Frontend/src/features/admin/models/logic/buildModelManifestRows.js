@@ -138,6 +138,7 @@ export const normalizeModelCatalogRows = (models = []) =>
     manifestSync: model?.manifestSync || null,
     smallDescription: model?.smallDescription,
     extendDescription: model?.extendDescription,
+    modelSection: model?.modelSection || {},
     moreInfoUrl: model?.moreInfoUrl,
     matched: Boolean(model?.apiModelKey),
     matchedBy: model?.apiModelKey ? "apiModelKey" : null,

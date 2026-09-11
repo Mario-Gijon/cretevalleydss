@@ -16,6 +16,7 @@ MODEL_DEFINITION = ModelDefinition(
     display_name={{ display_name_literal }},
     small_description={{ small_description_literal }},
     extended_description={{ extended_description_literal }},
+    model_section={},
     request_examples={{ request_examples_value }},
     response_examples={{ response_examples_value }},
     more_info_url={{ more_info_url_literal }},

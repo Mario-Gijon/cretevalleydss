@@ -174,12 +174,24 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
         parameters=[{"key": "lambda", "label": "Lambda"}],
         request_examples={"sample": {"value": {"payload": 1}}},
         response_examples={"success": {"value": {"success": True}}},
+        model_section={
+            "whatItDoes": "Explains the model.",
+            "whenToUse": "Use it for this decision.",
+            "advantages": ["Simple to explain."],
+            "limitations": ["Needs suitable data."],
+        },
     )
 
     manifest_entry = _build_manifest_entry(model)
 
     assert manifest_entry["apiModelKey"] == "alpha"
     assert manifest_entry["displayName"] == "Alpha"
+    assert manifest_entry["modelSection"] == {
+        "whatItDoes": "Explains the model.",
+        "whenToUse": "Use it for this decision.",
+        "advantages": ["Simple to explain."],
+        "limitations": ["Needs suitable data."],
+    }
     assert manifest_entry["modelKind"] == "issue"
     assert manifest_entry["evaluationStructureKey"] == "alternativeCriteriaMatrix"
     assert manifest_entry["apiEndpoint"] == {"method": "POST", "path": "/alpha"}

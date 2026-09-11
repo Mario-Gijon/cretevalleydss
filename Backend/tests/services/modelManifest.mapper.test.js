@@ -1,9 +1,32 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildManifestTechnicalProjection,
   normalizeParameter,
   validateSyncableManifestModel,
 } from "../../services/modelApi/modelManifest.mapper.js";
+
+it("preserves modelSection in the backend technical projection", () => {
+  expect(
+    buildManifestTechnicalProjection({
+      apiModelKey: "demo",
+      displayName: "Demo",
+      modelKind: "issue",
+      implementationStatus: "ready",
+      modelSection: {
+        whatItDoes: "Explains the model.",
+        whenToUse: "Use it for this decision.",
+        advantages: ["Simple to explain."],
+        limitations: ["Needs suitable data."],
+      },
+    }).modelSection
+  ).toEqual({
+    whatItDoes: "Explains the model.",
+    whenToUse: "Use it for this decision.",
+    advantages: ["Simple to explain."],
+    limitations: ["Needs suitable data."],
+  });
+});
 
 const buildManifest = (parameters) => ({
   apiModelKey: "demo_model",

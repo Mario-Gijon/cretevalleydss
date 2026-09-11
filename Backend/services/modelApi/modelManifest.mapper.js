@@ -360,6 +360,7 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     extendDescription: normalizeNonEmptyString(
       manifestModel?.extendedDescription ?? manifestModel?.extendDescription
     ),
+    modelSection: normalizeDynamicObject(manifestModel?.modelSection) || {},
     moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
     evaluationStructureKey: normalizeNonEmptyString(
       manifestModel?.evaluationStructureKey

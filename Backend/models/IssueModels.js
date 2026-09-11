@@ -163,6 +163,10 @@ const issueModelSchema = new Schema({
     trim: true,
     default: null,
   },
+  modelSection: {
+    type: Schema.Types.Mixed,
+    default: {},
+  },
   moreInfoUrl: {
     type: String,
     trim: true,

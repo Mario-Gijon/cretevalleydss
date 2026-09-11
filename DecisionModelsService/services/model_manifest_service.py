@@ -72,6 +72,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         },
         "smallDescription": model.small_description,
         "extendedDescription": model.extended_description,
+        "modelSection": model.model_section,
         "moreInfoUrl": model.more_info_url,
         "implementationStatus": model.implementation_status,
         "publicUsable": model.implementation_status == "ready",

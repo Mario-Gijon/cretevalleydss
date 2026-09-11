@@ -187,6 +187,7 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
     assert executor_source in prompt_llm_source
     assert run_source in prompt_llm_source
     assert 'implementation_status="scaffold"' in definition_source
+    assert "model_section={}" in definition_source
 
     examples_module = _load_module_from_file(
         "generated_demo_model_examples",

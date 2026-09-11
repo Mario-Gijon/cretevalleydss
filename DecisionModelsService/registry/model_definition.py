@@ -17,6 +17,7 @@ class ModelDefinition:
     display_name: str
     small_description: str
     extended_description: str
+    model_section: dict[str, Any] = field(default_factory=dict)
     request_examples: dict[str, dict[str, Any]] = field(default_factory=dict)
     response_examples: dict[str, dict[str, Any]] = field(default_factory=dict)
     implementation_status: str = "ready"
@@ -47,6 +48,34 @@ class ModelDefinition:
                 f"ModelDefinition '{self.api_model_key}' has invalid "
                 f"implementation_status '{self.implementation_status}'."
             )
+
+        if not isinstance(self.model_section, dict):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires model_section to be a dict."
+            )
+
+        if self.model_section:
+            for key in ("whatItDoes", "whenToUse"):
+                value = self.model_section.get(key)
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(
+                        f"ModelDefinition '{self.api_model_key}' requires model_section.{key} "
+                        "to be a non-empty string."
+                    )
+
+            for key in ("advantages", "limitations"):
+                values = self.model_section.get(key)
+                if not isinstance(values, list):
+                    raise ValueError(
+                        f"ModelDefinition '{self.api_model_key}' requires model_section.{key} "
+                        "to be a list."
+                    )
+
+                if any(not isinstance(value, str) or not value.strip() for value in values):
+                    raise ValueError(
+                        f"ModelDefinition '{self.api_model_key}' requires every model_section.{key} "
+                        "entry to be a non-empty string."
+                    )
 
         if self.model_kind not in MODEL_KINDS:
             raise ValueError(

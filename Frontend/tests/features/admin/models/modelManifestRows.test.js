@@ -14,6 +14,19 @@ import {
 } from "../../../mocks/fixtures/adminModels.fixtures.js";
 
 describe("buildModelManifestRows", () => {
+  it("preserves educational modelSection metadata from the catalog", () => {
+    const modelSection = {
+      whatItDoes: "Explains the model.",
+      whenToUse: "Use it for this decision.",
+      advantages: ["Simple to explain."],
+      limitations: ["Needs suitable data."],
+    };
+
+    expect(
+      normalizeModelCatalogRows([{ name: "Demo", modelSection }])[0].modelSection
+    ).toEqual(modelSection);
+  });
+
   it("normalizes catalog rows from mixed Mongo payload shapes", () => {
     const rows = normalizeModelCatalogRows(buildAdminCatalogModelsFixture());
 

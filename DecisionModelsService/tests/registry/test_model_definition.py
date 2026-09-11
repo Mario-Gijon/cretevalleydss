@@ -35,6 +35,38 @@ def test_valid_issue_model_definition():
     assert definition.implementation_status == "ready"
 
 
+def test_model_definition_accepts_valid_model_section():
+    definition = _build_definition(
+        model_section={
+            "whatItDoes": "Explains the model.",
+            "whenToUse": "Use it for this decision.",
+            "advantages": ["Simple to explain."],
+            "limitations": ["Needs suitable data."],
+        }
+    )
+
+    assert definition.model_section["whatItDoes"] == "Explains the model."
+
+
+def test_model_definition_accepts_empty_model_section():
+    assert _build_definition(model_section={}).model_section == {}
+
+
+@pytest.mark.parametrize(
+    "model_section",
+    [
+        [],
+        {"whatItDoes": "", "whenToUse": "Use it.", "advantages": [], "limitations": []},
+        {"whatItDoes": "Does it.", "whenToUse": "", "advantages": [], "limitations": []},
+        {"whatItDoes": "Does it.", "whenToUse": "Use it.", "advantages": "one", "limitations": []},
+        {"whatItDoes": "Does it.", "whenToUse": "Use it.", "advantages": [""], "limitations": []},
+    ],
+)
+def test_model_definition_rejects_invalid_model_section(model_section):
+    with pytest.raises(ValueError, match="model_section"):
+        _build_definition(model_section=model_section)
+
+
 def test_valid_criteria_weighting_definition_with_creator_side_support():
     definition = _build_definition(
         model_kind="criteriaWeighting",

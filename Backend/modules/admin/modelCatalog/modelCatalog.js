@@ -46,6 +46,7 @@ export const mapIssueModelCatalogItem = (model) => {
     supportedExpressionDomains: model.supportedExpressionDomains,
     smallDescription: model.smallDescription,
     extendDescription: model.extendDescription,
+    modelSection: model.modelSection,
     moreInfoUrl: model.moreInfoUrl,
   };
 };
