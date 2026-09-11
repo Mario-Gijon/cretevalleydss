@@ -83,7 +83,6 @@ const ModelDetailsDialog = ({ model, open, onClose }) => {
       PaperProps={{
         sx: {
           border: "1px solid rgba(255,255,255,0.12)",
-          backgroundColor: alpha(theme.palette.background.default, 0.96),
           backgroundImage: `linear-gradient(180deg, ${alpha(
             theme.palette.secondary.main,
             0.04

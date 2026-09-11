@@ -1,13 +1,23 @@
 services:
   frontend:
     image: mariogijon/cretevalleydss_frontend:latest
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
 
   backend:
     image: mariogijon/cretevalleydss_backend:latest
+    restart: unless-stopped
+    env_file:
+      - ./.env.production
     environment:
       NODE_ENV: production
       PORT: 5000
@@ -16,9 +26,20 @@ services:
       - "5000"
     depends_on:
       - decision-models-service
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:5000/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
 
   decision-models-service:
     image: mariogijon/cretevalleydss_decision-models-service:latest
+    restart: unless-stopped
     expose:
       - "7000"
     healthcheck:

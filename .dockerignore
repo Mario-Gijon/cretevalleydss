@@ -1,3 +1,15 @@
 **/__pycache__/
 **/*.pyc
 **/node_modules/
+
+# Runtime environment files and secrets must never enter image build contexts.
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Focused local build artifacts that are not needed in production images.
+.git/
+**/.DS_Store
+**/*.log
+**/.venv/
