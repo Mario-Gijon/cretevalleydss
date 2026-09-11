@@ -46,7 +46,7 @@ export const SnackbarAlert = ({ open, onClose, message, severity = "info" }) => 
 
           return {
             width: "100%",
-            alignItems: "flex-start",
+            alignItems: "center",
             border: `1px solid ${alpha(toneColor, 0.45)}`,
             borderRadius: 2.5,
             color: theme.palette.text.primary,
@@ -57,12 +57,10 @@ export const SnackbarAlert = ({ open, onClose, message, severity = "info" }) => 
             "& .MuiAlert-icon": {
               color: toneColor,
               opacity: 1,
-              pt: 0.25,
             },
             "& .MuiAlert-message": {
               minWidth: 0,
               overflowWrap: "anywhere",
-              py: 0.25,
             },
           };
         }}
@@ -73,7 +71,7 @@ export const SnackbarAlert = ({ open, onClose, message, severity = "info" }) => 
               color="inherit"
               onClick={handleClose}
               aria-label="Close notification"
-              sx={{ minWidth: 44, minHeight: 44, mt: -0.5, mr: -0.75 }}
+              sx={{ minWidth: 36, minHeight: 36, p: 0.75 }}
             >
               <CloseIcon fontSize="small" />
             </IconButton>

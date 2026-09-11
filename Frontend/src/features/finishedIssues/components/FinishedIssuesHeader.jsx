@@ -23,7 +23,8 @@ import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 import {
   ActiveIssuesPill,
-  getActiveIssuesPanelGlassSx,
+  getActiveIssuesPageHeaderAuroraBg,
+  getActiveIssuesPageHeaderGlassSx,
 } from "../../activeIssues/shared";
 
 /**
@@ -72,22 +73,8 @@ const FinishedIssuesHeader = ({
         height: "auto",
         overflow: "hidden",
         position: "relative",
-        ...getActiveIssuesPanelGlassSx(theme, 0.16, "crystal"),
-        backgroundImage: `radial-gradient(1100px 480px at 12% 0%, ${alpha(
-          theme.palette.info.main,
-          0.16
-        )}, transparent 62%)`,
-        "&:after": {
-          content: '""',
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background: `linear-gradient(180deg, ${alpha(
-            theme.palette.common.white,
-            0.1
-          )}, transparent 45%)`,
-          opacity: 0.22,
-        },
+        ...getActiveIssuesPageHeaderGlassSx(theme, 0.16),
+        ...getActiveIssuesPageHeaderAuroraBg(theme),
       }}
     >
       <Stack spacing={1.05} sx={{ position: "relative", zIndex: 1 }}>

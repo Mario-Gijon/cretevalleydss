@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Box, useMediaQuery } from "@mui/material";
+import { Box, Button, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import IssueListSkeleton from "../../../components/LoadingProgress/IssueListSkeleton";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EmptyState from "../../../components/StyledComponents/EmptyState";
 import { useActiveIssueDrawer } from "../hooks/useActiveIssueDrawer";
 import { useActiveIssuesListing } from "../hooks/useActiveIssuesListing";
@@ -27,6 +29,7 @@ import { IssueExpertsProvider } from "../../issueExperts/provider";
  */
 const ActiveIssuesView = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width:900px)");
   const isLgUp = useMediaQuery(theme.breakpoints.up("lg"));
 
@@ -127,9 +130,19 @@ const ActiveIssuesView = () => {
   if (!activeIssues || activeIssues.length === 0) {
     return (
       <EmptyState
-        icon={<AssignmentOutlinedIcon fontSize="large" />}
-        title="No active issues"
-        description="Issues that require your attention will appear here."
+        icon={<AssignmentOutlinedIcon sx={{ fontSize: 42 }} />}
+        title="You don't have any active decision issues yet."
+        description="Create a new issue to start defining alternatives, criteria and participants."
+        action={
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={() => navigate("/dashboard/create")}
+          >
+            Create issue
+          </Button>
+        }
         sx={{ minHeight: { xs: "34vh", sm: "46vh", md: "54vh", lg: "60vh" }, mt: { xs: 2, sm: 3 } }}
       />
     );

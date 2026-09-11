@@ -89,9 +89,10 @@ export const getActiveIssuesPageHeaderAuroraBg = (theme) => ({
  */
 export const getActiveIssuesPageHeaderGlassSx = (theme, strength = 0.16) => ({
   backgroundColor: alpha(theme.palette.background.paper, strength),
+  backgroundClip: "padding-box",
   backdropFilter: "blur(14px)",
   boxShadow: `0 18px 50px ${alpha(theme.palette.common.black, 0.10)}`,
-  borderBottom: "1px solid rgba(155, 192, 197, 0.12)",
+  border: "1px solid rgba(255, 255, 255, 0.12)",
 });
 
 /**

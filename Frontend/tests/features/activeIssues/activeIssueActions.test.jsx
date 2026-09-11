@@ -266,7 +266,7 @@ describe("ActiveIssuesView smoke", () => {
     expect(screen.getByTestId("issue-list-skeleton")).toBeInTheDocument();
   });
 
-  it('renders "No active issues" when the list is empty', () => {
+  it("renders the create-issue action when the list is empty", () => {
     renderWithProviders(<ActiveIssuesView />, {
       issuesValue: {
         loading: false,
@@ -274,6 +274,16 @@ describe("ActiveIssuesView smoke", () => {
       },
     });
 
-    expect(screen.getByText("No active issues")).toBeInTheDocument();
+    expect(
+      screen.getByText("You don't have any active decision issues yet.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Create a new issue to start defining alternatives, criteria and participants."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create issue" })
+    ).toBeInTheDocument();
   });
 });
