@@ -46,6 +46,7 @@ import {
  * @param {Array} props.options Opciones del selector.
  * @param {Array} props.groupsFiltered Grupos visibles.
  * @param {Function} props.openItem Abre una tarea.
+ * @param {boolean} props.showHeader Indica si se muestra el encabezado del panel.
  * @returns {JSX.Element}
  */
 const TaskCenterPanel = ({
@@ -59,6 +60,7 @@ const TaskCenterPanel = ({
   options,
   groupsFiltered,
   openItem,
+  showHeader = true,
 }) => {
   const theme = useTheme();
   const scrollbarSx = getTaskCenterScrollbarSx(theme);
@@ -78,44 +80,46 @@ const TaskCenterPanel = ({
         overflow: "hidden",
       }}
     >
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 1.1 }}
-      >
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-          <Avatar
-            sx={{
-              width: isSmDown ? 34 : 36,
-              height: isSmDown ? 34 : 36,
-              bgcolor: alpha(theme.palette.info.main, 0.12),
-              color: "info.main",
-            }}
-          >
-            <FactCheckIcon fontSize="small" />
-          </Avatar>
+      {showHeader ? (
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 1.1 }}
+        >
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Avatar
+              sx={{
+                width: isSmDown ? 34 : 36,
+                height: isSmDown ? 34 : 36,
+                bgcolor: alpha(theme.palette.info.main, 0.12),
+                color: "info.main",
+              }}
+            >
+              <FactCheckIcon fontSize="small" />
+            </Avatar>
 
-          <Stack spacing={0.1}>
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: 980, lineHeight: 1 }}
-            >
-              Tasks
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{ color: "text.secondary", fontWeight: 900 }}
-            >
-              {total ? `${total} pending` : "No pending actions"}
-            </Typography>
+            <Stack spacing={0.1}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 980, lineHeight: 1 }}
+              >
+                Tasks
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ color: "text.secondary", fontWeight: 900 }}
+              >
+                {total ? `${total} pending` : "No pending actions"}
+              </Typography>
+            </Stack>
           </Stack>
-        </Stack>
 
-        <ActiveIssuesPill tone={total ? "warning" : "success"}>
-          {total}
-        </ActiveIssuesPill>
-      </Stack>
+          <ActiveIssuesPill tone={total ? "info" : "success"}>
+            {total}
+          </ActiveIssuesPill>
+        </Stack>
+      ) : null}
 
       <FormControl size="small" sx={{ mb: 1.1, mt: 0.25 }}>
         <InputLabel color="secondary">Task type</InputLabel>

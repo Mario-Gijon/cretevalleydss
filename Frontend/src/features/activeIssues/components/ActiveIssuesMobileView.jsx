@@ -6,7 +6,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ActiveIssuesToolbar from "./ActiveIssuesToolbar";
 import ActiveIssuesPill from "./ActiveIssuesPill";
@@ -66,7 +66,15 @@ const ActiveIssuesMobileView = ({
       />
 
       {!isMobile ? (
-        <Box sx={{ mt: 2 }}>
+        <Box
+          sx={{
+            mt: 2,
+            p: { xs: 0.5, sm: 0.75 },
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: 5,
+            overflow: "hidden",
+          }}
+        >
           <TaskCenter
             variant="rail"
             tasksCount={tasksCount}
@@ -85,18 +93,13 @@ const ActiveIssuesMobileView = ({
           sx={{
             ...getActiveIssuesTasksAccordionGlassSx(theme, 0.16),
             mt: 2,
+            backgroundImage: "none",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: 5,
             overflow: "hidden",
             position: "relative",
             "&:before": { display: "none" },
-            "&:after": {
-              content: '""',
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 40%)`,
-              opacity: 0.18,
-            },
+            "&.Mui-expanded": { borderRadius: 5 },
           }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -104,7 +107,7 @@ const ActiveIssuesMobileView = ({
               <Typography variant="subtitle1" sx={{ fontWeight: 980, flex: 1 }}>
                 Tasks
               </Typography>
-              <ActiveIssuesPill tone={tasksCount ? "warning" : "success"}>
+              <ActiveIssuesPill tone={tasksCount ? "info" : "success"}>
                 {tasksCount}
               </ActiveIssuesPill>
             </Stack>
@@ -113,6 +116,7 @@ const ActiveIssuesMobileView = ({
           <AccordionDetails>
             <TaskCenter
               variant="panel"
+              showHeader={false}
               taskCenter={taskCenter}
               tasksCount={tasksCount}
               taskType={taskType}

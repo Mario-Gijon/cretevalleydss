@@ -122,7 +122,7 @@ const TaskCenterRail = ({
         </Stack>
 
         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-          <ActiveIssuesPill tone={total ? "warning" : "success"}>
+          <ActiveIssuesPill tone={total ? "info" : "success"}>
             {total}
           </ActiveIssuesPill>
 
