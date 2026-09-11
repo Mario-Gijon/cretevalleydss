@@ -144,7 +144,7 @@ const FinishedIssuesHeader = ({
           </Tooltip>
         </Stack>
 
-        <Grid container spacing={1} alignItems="stretch" sx={{ rowGap: 0.5 }}>
+        <Grid container spacing={1} alignItems="stretch" sx={{ width: "100%", m: 0, rowGap: 0.5 }}>
           <Grid item xs={12} md={8}>
             <TextField
               value={query}

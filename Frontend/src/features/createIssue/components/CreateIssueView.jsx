@@ -81,8 +81,8 @@ const CreateIssueViewContent = () => {
             alignItems="center"
             justifyContent="space-between"
           >
-            <Stack direction="row" spacing={1.15} alignItems="center" sx={{ minWidth: 0 }}>
-              <Avatar sx={getCreateIssueSoftIconSx(theme)}>
+            <Stack direction="row" spacing={1.15} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+              <Avatar sx={{ ...getCreateIssueSoftIconSx(theme), width: { xs: 40, md: 44 }, height: { xs: 40, md: 44 }, flexShrink: 0 }}>
                 <AutoAwesomeIcon />
               </Avatar>
 
@@ -97,7 +97,13 @@ const CreateIssueViewContent = () => {
             </Stack>
 
             <Typography
-              sx={{ display: { xs: "block", sm: "none" }, fontWeight: 900, color: "text.secondary" }}
+              sx={{
+                display: { xs: "block", md: "none" },
+                maxWidth: { xs: "38%", sm: "none" },
+                textAlign: "right",
+                fontWeight: 900,
+                color: "text.secondary",
+              }}
               variant="caption"
             >
               {steps[activeStep]}
@@ -107,7 +113,7 @@ const CreateIssueViewContent = () => {
 
         <Box sx={getCreateIssueStepperWrapSx(theme)}>
           <Stepper
-            sx={{ display: { xs: "none", sm: "flex" }, width: "100%" }}
+            sx={{ display: { xs: "none", md: "flex" }, width: "100%" }}
             alternativeLabel
             activeStep={activeStep}
             connector={<ColorlibConnector />}
@@ -144,7 +150,7 @@ const CreateIssueViewContent = () => {
           </Stack>
         </Box>
 
-        <Box sx={{mt:0, pt:0, ...getCreateIssueFooterSx()}}>
+        <Box sx={{ mt: 0, pt: 0, ...getCreateIssueFooterSx() }}>
           <Stack direction="row" gap={{ xs: 1, sm: 4 }} sx={{ justifyContent: "center", alignItems: "center" }}>
             <MobileStepper
               variant="dots"
@@ -183,7 +189,7 @@ const CreateIssueViewContent = () => {
             />
 
             <Button
-              sx={{ display: { xs: "none", sm: "flex" } }}
+              sx={{ display: { xs: "none", md: "flex" } }}
               color="info"
               variant="outlined"
               startIcon={activeStep !== 0 && <ArrowBackIosIcon />}
@@ -195,7 +201,7 @@ const CreateIssueViewContent = () => {
 
             {activeStep !== steps.length - 1 ? (
               <Button
-                sx={{ display: { xs: "none", sm: "flex" } }}
+                sx={{ display: { xs: "none", md: "flex" } }}
                 color="success"
                 variant="outlined"
                 onClick={goNextStep}
@@ -206,7 +212,7 @@ const CreateIssueViewContent = () => {
               </Button>
             ) : (
               <Button
-                sx={{ display: { xs: "none", sm: "flex" } }}
+                sx={{ display: { xs: "none", md: "flex" } }}
                 color="success"
                 variant="outlined"
                 onClick={handleComplete}

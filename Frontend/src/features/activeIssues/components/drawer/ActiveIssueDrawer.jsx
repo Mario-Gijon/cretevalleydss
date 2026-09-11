@@ -190,7 +190,7 @@ const ActiveIssueDrawer = ({
 
           <Divider sx={{ opacity: 0.18 }} />
 
-          <Box sx={{ px: 2, pt: 1 }}>
+          <Box sx={{ px: { xs: 1, sm: 2 }, pt: 1 }}>
             <Tabs
               value={drawerTab}
               onChange={(_, value) => setDrawerTab(value)}
@@ -219,7 +219,15 @@ const ActiveIssueDrawer = ({
             </Tabs>
           </Box>
 
-          <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pt: 2, pb: 2 }}>
+          <Box
+            sx={{
+              flex: 1,
+              overflowY: "auto",
+              px: { xs: 1.5, sm: 2.5 },
+              pt: { xs: 1.5, sm: 2 },
+              pb: 2,
+            }}
+          >
             {drawerTab === 0 ? <ActiveIssueOverview {...overviewProps} /> : null}
 
             {drawerTab === 1 ? (

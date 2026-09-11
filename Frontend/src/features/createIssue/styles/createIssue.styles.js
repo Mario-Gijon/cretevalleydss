@@ -82,6 +82,7 @@ export const getCreateIssueHeaderSx = (theme) => ({
  * @returns {Object}
  */
 export const getCreateIssueStepperWrapSx = (theme) => ({
+  display: { xs: "none", md: "block" },
   px: { xs: 1.2, sm: 2.0 },
   py: { xs: 1.2, sm: 1.4 },
   borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
@@ -105,8 +106,8 @@ export const contentSx = {
  */
 export const getCreateIssueFooterSx = () => ({
   px: { xs: 1.5, sm: 2.2 },
-  py: 1.6,
-  pt: 5,
+  py: { xs: 1.2, sm: 1.6 },
+  pt: { xs: 2, sm: 3, md: 5 },
 });
 
 /**
@@ -116,7 +117,7 @@ export const getCreateIssueFooterSx = () => ({
  * @returns {Object}
  */
 export const getCreateIssueMobileStepperSx = (theme) => ({
-  display: { xs: "flex", sm: "none" },
+  display: { xs: "flex", md: "none" },
   flexGrow: 1,
   bgcolor: "transparent",
   alignItems: "center",

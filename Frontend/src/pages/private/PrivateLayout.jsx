@@ -54,19 +54,19 @@ const PrivateLayout = () => {
         >
           <Divider />
           <Stack
-            direction={{ sm: "column", md: "row" }}
-            sx={{ pt: 5 }}
-            spacing={{ sm: 0, md: 3 }}
-            alignItems="flex-start"
+            direction={{ xs: "column", md: "row" }}
+            sx={{ pt: { xs: 2.5, sm: 3.5, md: 5 } }}
+            spacing={{ xs: 1.5, md: 3 }}
+            alignItems={{ xs: "center", md: "flex-start" }}
             justifyContent="center"
             width="100%"
           >
-            <EULogoIcon sx={{ fontSize: 190, height: "auto" }} />
+            <EULogoIcon sx={{ fontSize: { xs: 120, sm: 150, md: 190 }, height: "auto" }} />
             <Typography
               variant="caption"
               sx={{
-                textAlign: "justify",
-                width: { sm: "100%", md: "60%", lg: "40%" },
+                textAlign: { xs: "left", md: "justify" },
+                width: { xs: "100%", md: "60%", lg: "40%" },
               }}
             >
               Co-funded by the European Union under grant agreement no. 101136139. Views and

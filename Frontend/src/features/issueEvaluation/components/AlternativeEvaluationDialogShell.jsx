@@ -92,15 +92,15 @@ const AlternativeEvaluationDialogShell = ({
         >
           <Stack
             direction="row"
-            alignItems="center"
+            alignItems={{ xs: "flex-start", sm: "center" }}
             justifyContent="space-between"
-            sx={{ px: 2, py: 1.6 }}
+            sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.35, sm: 1.6 }, flexWrap: "wrap", rowGap: 1 }}
           >
             <Stack
               direction="row"
               spacing={1.25}
               alignItems="center"
-              sx={{ minWidth: 0 }}
+              sx={{ minWidth: 0, flex: { sm: 1 }, width: { xs: "100%", sm: "auto" } }}
             >
               <Avatar
                 sx={{
@@ -115,12 +115,14 @@ const AlternativeEvaluationDialogShell = ({
               </Avatar>
 
               <Stack spacing={0.15} sx={{ minWidth: 0 }}>
-                <Typography variant="h6">
+                <Typography variant="h6" noWrap title={title}>
                   {title}
                 </Typography>
 
                 <Typography
                   variant="caption"
+                  noWrap
+                  title={subtitle}
                   sx={{ color: "text.secondary", fontWeight: 900 }}
                 >
                   {subtitle}
@@ -128,7 +130,14 @@ const AlternativeEvaluationDialogShell = ({
               </Stack>
             </Stack>
 
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              useFlexGap
+              flexWrap="wrap"
+              sx={{ width: { xs: "100%", sm: "auto" }, justifyContent: { xs: "flex-end", sm: "flex-start" } }}
+            >
               {showExpressionDomains ? (
                 <ExpressionDomainSummaryButton criteria={criteria} />
               ) : null}
@@ -165,10 +174,11 @@ const AlternativeEvaluationDialogShell = ({
         {actions ? (
           <DialogActions
             sx={{
-              px: 2,
-              py: 1.5,
+              px: { xs: 1.5, sm: 2 },
+              py: { xs: 1.25, sm: 1.5 },
               borderTop: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
               gap: 1,
+              flexWrap: "wrap",
             }}
           >
             {actions}
