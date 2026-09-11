@@ -36,10 +36,10 @@ const PrivateLayout = () => {
           <Container
             maxWidth={false}
             sx={{
-              maxWidth: 2900,
+              maxWidth: 2300,
               paddingTop: { xs: 8, sm: 9, md: 10 },
               minHeight: { xs: "60vh", sm: "80vh", md: "86vh" },
-              px: { xs: 0, sm: 2 },
+              px: { xs: 1, sm: 2, md: 2.5 },
             }}
           >
             <Outlet />

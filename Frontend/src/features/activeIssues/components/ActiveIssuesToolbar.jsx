@@ -19,7 +19,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import DashboardCustomizeIcon from "@mui/icons-material/DashboardCustomize";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
-import CalculateIcon from "@mui/icons-material/Calculate";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import GavelIcon from "@mui/icons-material/Gavel";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import {
@@ -185,7 +185,7 @@ const ActiveIssuesToolbar = ({
 
           <Grid item xs={6} md={3}>
             <ActiveIssuesTinyStat
-              icon={<CalculateIcon fontSize="small" />}
+              icon={<PersonOutlineIcon fontSize="small" />}
               label="Owner"
               value={overview.owner}
               tone="success"

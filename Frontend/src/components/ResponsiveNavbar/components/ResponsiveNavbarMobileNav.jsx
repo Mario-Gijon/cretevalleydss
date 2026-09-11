@@ -25,9 +25,9 @@ export const ResponsiveNavbarMobileNav = ({
     <Stack
       direction="row"
       spacing={0}
-      sx={{ justifyContent: "space-between", alignItems: "center", display: { xs: "flex", md: "none" } }}
+      sx={{ justifyContent: "space-between", alignItems: "center", display: { xs: "flex", lg: "none" } }}
     >
-      <Box sx={{ flexGrow: 1, display: { xs: "flex", md: "none", alignItems: "center", justifyContent: "center" } }}>
+      <Box sx={{ flexGrow: 1, display: { xs: "flex", lg: "none", alignItems: "center", justifyContent: "center" } }}>
         <IconButton
           size="large"
           aria-label="open navigation menu"
@@ -58,13 +58,13 @@ export const ResponsiveNavbarMobileNav = ({
         </Menu>
       </Box>
 
-      <Stack direction="row" spacing={0.2} useFlexGap sx={{ display: { xs: "flex", md: "none" }, flexGrow: 1 }}>
+      <Stack direction="row" spacing={0.2} useFlexGap sx={{ display: { xs: "flex", lg: "none" }, flexGrow: 1 }}>
         <LogoIcon sx={{ fontSize: "40px" }} />
         <Typography
           variant="h6"
           noWrap
           sx={{
-            display: { xs: "flex", md: "none", alignItems: "center", justifyContent: "center" },
+            display: { xs: "flex", lg: "none", alignItems: "center", justifyContent: "center" },
             flexGrow: 1,
             fontFamily: "monospace",
             fontWeight: 700,

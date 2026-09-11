@@ -1,6 +1,6 @@
 import { Box, Divider, Grid, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 import {
@@ -351,7 +351,7 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
                       lineHeight: 0,
                     }}
                   >
-                    <AdminPanelSettingsIcon sx={{ fontSize: 18 }} />
+                    <PersonOutlineIcon sx={{ fontSize: 18 }} />
                   </Box>
                 </Tooltip>
               ) : null}

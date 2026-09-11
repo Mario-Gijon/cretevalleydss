@@ -17,7 +17,7 @@ export const ResponsiveNavbarDesktopNav = ({ navPages, navValue, onNavChange }) 
   return (
     <Stack
       direction="row"
-      sx={{ justifyContent: "space-between", alignItems: "center", display: { xs: "none", md: "flex" } }}
+      sx={{ justifyContent: "space-between", alignItems: "center", display: { xs: "none", lg: "flex" } }}
     >
       <Box sx={{ display: "flex", flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
         <LogoIcon sx={{ fontSize: "50px" }} />
@@ -27,7 +27,7 @@ export const ResponsiveNavbarDesktopNav = ({ navPages, navValue, onNavChange }) 
           component="a"
           sx={{
             mr: 2,
-            display: { xs: "none", md: "flex" },
+            display: { xs: "none", lg: "flex" },
             fontFamily: "monospace",
             fontWeight: 700,
             letterSpacing: ".2rem",
@@ -39,9 +39,9 @@ export const ResponsiveNavbarDesktopNav = ({ navPages, navValue, onNavChange }) 
         </Typography>
       </Box>
 
-      <Divider orientation="vertical" variant="middle" flexItem sx={{ display: { xs: "none", md: "flex" } }} />
+      <Divider orientation="vertical" variant="middle" flexItem sx={{ display: { xs: "none", lg: "flex" } }} />
 
-      <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, pl: "8px", alignItems: "center" }}>
+      <Box sx={{ flexGrow: 1, display: { xs: "none", lg: "flex" }, pl: "8px", alignItems: "center" }}>
         <GradientTabs
           value={navValue}
           onChange={onNavChange}
