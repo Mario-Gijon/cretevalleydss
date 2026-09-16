@@ -17,7 +17,6 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
-  Grid2 as Grid,
   Divider,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
@@ -410,13 +409,9 @@ export const SummaryStep = () => {
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={1.4} alignItems="center">
-              <Grid item size={isConsensus ? { xs: 12, md: 6 } : { xs: 12 }}>
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1.2}
-                  alignItems="flex-start"
-                >
+            <Stack spacing={2}>
+              <Stack spacing={0.65} alignItems="flex-start">
+                <Stack direction="row" spacing={0.9} alignItems="center">
                   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
                     <DatePicker
                       label="Expected finalization date"
@@ -441,34 +436,68 @@ export const SummaryStep = () => {
                     />
                   </LocalizationProvider>
 
-                  <Box sx={{ mt: { xs: -0.5, sm: 1 }, lineHeight: 0 }}>
-                    <ContextualHelp description="This date is only an estimate. The issue will not be finalized automatically when it is reached." />
-                  </Box>
-
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "text.secondary", fontWeight: 900, mt: { xs: 0.25, sm: 1 } }}
-                  >
-                    {getRemainingTime(closureDate)}
-                  </Typography>
+                  <ContextualHelp description="This date is only an estimate. The issue will not be finalized automatically when it is reached." />
                 </Stack>
-              </Grid>
+
+                <Typography
+                  variant="caption"
+                  sx={{ color: "text.secondary", fontWeight: 900 }}
+                >
+                  {getRemainingTime(closureDate)}
+                </Typography>
+              </Stack>
 
               {isConsensus && (
-                <>
-                  <Grid item size={{ xs: 12, md: 6 }}>
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1.2}
-                      alignItems={{ xs: "stretch", sm: "center" }}
-                    >
-                      <Stack direction="row" spacing={0.4} alignItems="center" sx={{ minWidth: 190 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 950 }}>
-                          NºMax consensus rounds
-                        </Typography>
-                        <ContextualHelp description="Maximum number of consensus rounds before the process stops." />
-                      </Stack>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={{ xs: 1.8, sm: 3 }}
+                  useFlexGap
+                  flexWrap={{ xs: "nowrap", sm: "wrap" }}
+                  alignItems="flex-start"
+                >
+                  <Stack spacing={0.9} sx={{ flex: "0 0 auto", minWidth: 0 }}>
+                    <Stack direction="row" spacing={0.4} alignItems="center">
+                      <Typography variant="body2" sx={{ fontWeight: 950 }}>
+                        Consensus threshold
+                      </Typography>
+                      <ContextualHelp description="Minimum agreement level required to complete the consensus process." />
+                    </Stack>
 
+                    <TextField
+                      variant="outlined"
+                      type="number"
+                      size="small"
+                      color="secondary"
+                      value={consensusThreshold}
+                      onChange={(event) => {
+                        let value = event.target.value;
+                        if (value === "") {
+                          setConsensusThreshold("");
+                          return;
+                        }
+
+                        value = value.replace(/[^0-9.]/g, "");
+                        if (value.split(".").length > 2) return;
+
+                        const numberValue = parseFloat(value);
+                        if (!isNaN(numberValue) && numberValue >= 0 && numberValue <= 1) {
+                          setConsensusThreshold(value);
+                        }
+                      }}
+                      inputProps={{ min: 0, max: 1, step: 0.1 }}
+                      sx={{ width: { xs: "100%", sm: 180 } }}
+                    />
+                  </Stack>
+
+                  <Stack spacing={0.9} sx={{ flex: "0 0 auto", minWidth: 0 }}>
+                    <Stack direction="row" spacing={0.4} alignItems="center">
+                      <Typography variant="body2" sx={{ fontWeight: 950 }}>
+                        Max consensus rounds
+                      </Typography>
+                      <ContextualHelp description="Maximum number of consensus rounds before the process stops." />
+                    </Stack>
+
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "stretch", sm: "center" }}>
                       {!unlimited && (
                         <TextField
                           variant="outlined"
@@ -483,7 +512,7 @@ export const SummaryStep = () => {
                           }}
                           disabled={unlimited}
                           inputProps={{ min: 1 }}
-                          sx={{ width: 120 }}
+                          sx={{ width: { xs: "100%", sm: 120 } }}
                         />
                       )}
 
@@ -501,89 +530,41 @@ export const SummaryStep = () => {
                         Unlimited
                       </ToggleButton>
                     </Stack>
-                  </Grid>
-
-                  <Grid item size={{ xs: 12, md: 6 }}>
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1.2}
-                      alignItems={{ xs: "stretch", sm: "center" }}
-                    >
-                      <Stack direction="row" spacing={0.4} alignItems="center" sx={{ minWidth: 190 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 950 }}>
-                          Consensus threshold
-                        </Typography>
-                        <ContextualHelp description="Minimum agreement level required to complete the consensus process." />
-                      </Stack>
-
-                      <TextField
-                        variant="outlined"
-                        type="number"
-                        size="small"
-                        color="secondary"
-                        value={consensusThreshold}
-                        onChange={(event) => {
-                          let value = event.target.value;
-                          if (value === "") {
-                            setConsensusThreshold("");
-                            return;
-                          }
-
-                          value = value.replace(/[^0-9.]/g, "");
-                          if (value.split(".").length > 2) return;
-
-                          const numberValue = parseFloat(value);
-                          if (!isNaN(numberValue) && numberValue >= 0 && numberValue <= 1) {
-                            setConsensusThreshold(value);
-                          }
-                        }}
-                        inputProps={{ min: 0, max: 1, step: 0.1 }}
-                        sx={{ width: 180 }}
-                      />
-                    </Stack>
-                  </Grid>
+                  </Stack>
 
                   {showSimulationModeToggle && (
-                    <Grid item size={{ xs: 12, md: 6 }}>
-                      <Stack spacing={1}>
-                        <Stack
-                          direction={{ xs: "column", sm: "row" }}
-                          spacing={1.2}
-                          alignItems={{ xs: "stretch", sm: "center" }}
-                        >
-                          <Stack direction="row" spacing={0.4} alignItems="center" sx={{ minWidth: 190 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 950 }}>
-                              Consensus rounds
-                            </Typography>
-                            <ContextualHelp description="Manual rounds require new expert evaluations; simulated rounds generate the following rounds automatically." />
-                          </Stack>
-
-                          <ToggleButtonGroup
-                            exclusive
-                            color="secondary"
-                            size="small"
-                            value={simulateConsensus ? "simulated" : "manual"}
-                            onChange={(_, value) => {
-                              if (!value) return;
-                              setSimulateConsensus(value === "simulated");
-                            }}
-                          >
-                            <ToggleButton value="manual">Manual rounds</ToggleButton>
-                            <ToggleButton value="simulated">Simulated rounds</ToggleButton>
-                          </ToggleButtonGroup>
+                    <Stack spacing={0.9} sx={{ flex: "0 0 auto", minWidth: 0 }}>
+                        <Stack direction="row" spacing={0.4} alignItems="center">
+                          <Typography variant="body2" sx={{ fontWeight: 950 }}>
+                            Consensus rounds
+                          </Typography>
+                          <ContextualHelp description="Manual rounds require new expert evaluations; simulated rounds generate the following rounds automatically." />
                         </Stack>
+
+                        <ToggleButtonGroup
+                          exclusive
+                          color="secondary"
+                          size="small"
+                          value={simulateConsensus ? "simulated" : "manual"}
+                          onChange={(_, value) => {
+                            if (!value) return;
+                            setSimulateConsensus(value === "simulated");
+                          }}
+                        >
+                          <ToggleButton value="manual">Manual rounds</ToggleButton>
+                          <ToggleButton value="simulated">Simulated rounds</ToggleButton>
+                        </ToggleButtonGroup>
 
                         {simulateConsensus && (
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
                             Experts submit only the first round; next rounds are generated automatically.
                           </Typography>
                         )}
-                      </Stack>
-                    </Grid>
+                    </Stack>
                   )}
-                </>
+                </Stack>
               )}
-            </Grid>
+            </Stack>
           </AccordionDetails>
         </Accordion>
 

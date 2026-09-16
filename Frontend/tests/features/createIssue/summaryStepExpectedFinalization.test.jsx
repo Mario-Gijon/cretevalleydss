@@ -83,6 +83,8 @@ describe("SummaryStep expected finalization date", () => {
         { exact: true }
       )
     ).toBeInTheDocument();
+    expect(screen.getByText("Max consensus rounds", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText("NºMax consensus rounds", { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByText("Set an expected finalization date.", { exact: true })).not.toBeInTheDocument();
   });
 });
