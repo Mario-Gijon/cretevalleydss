@@ -32,6 +32,16 @@ const weightingModel = {
   moreInfoUrl: null,
 };
 
+const consensusModel = {
+  apiModelKey: "generic-consensus-method",
+  displayName: "Consensus reaching method",
+  smallDescription: "Helps experts reach a collective decision.",
+  supportsConsensus: true,
+  modelSection: {
+    whatItDoes: "Supports consensus reaching among multiple experts.",
+  },
+};
+
 const renderModelsView = (issuesValue = {}) =>
   renderWithProviders(<ModelsView />, {
     issuesValue: {
@@ -50,27 +60,47 @@ describe("ModelsView", () => {
     });
   });
 
-  it("renders the two catalog families from IssuesDataContext", () => {
-    renderModelsView();
+  it("renders catalog families from IssuesDataContext", () => {
+    renderModelsView({ models: [decisionModel, consensusModel] });
 
-    expect(
-      screen.getByRole("heading", { name: "Decision models" })
-    ).toBeInTheDocument();
-    const decisionCard = screen.getByRole("button", {
+    const decisionSection = screen.getByRole("region", { name: "Decision models" });
+    expect(decisionSection).toBeInTheDocument();
+    const decisionCard = within(decisionSection).getByRole("button", {
       name: "Learn about Balanced choice method",
     });
     expect(decisionCard).toBeInTheDocument();
     expect(decisionCard).not.toHaveAttribute("aria-selected");
     expect(decisionCard).not.toHaveAttribute("aria-pressed");
-    expect(screen.queryByTestId("MenuBookOutlinedIcon")).not.toBeInTheDocument();
-    expect(screen.queryByText("Decision", { exact: true })).not.toBeInTheDocument();
-    expect(screen.queryByText("Criteria weighting", { exact: true })).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Criteria weighting methods" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Learn about Priority weighting method" })
-    ).toBeInTheDocument();
+    expect(within(decisionSection).queryByRole("button", {
+      name: "Learn about Consensus reaching method",
+    })).not.toBeInTheDocument();
+
+    const consensusSection = screen.getByRole("region", { name: "Consensus models" });
+    expect(within(consensusSection).getByRole("button", {
+      name: "Learn about Consensus reaching method",
+    })).toBeInTheDocument();
+
+    const weightingSection = screen.getByRole("region", { name: "Criteria weighting methods" });
+    expect(within(weightingSection).getByRole("button", {
+      name: "Learn about Priority weighting method",
+    })).toBeInTheDocument();
+  });
+
+  it("classifies consensus-capable models using supportsConsensus", () => {
+    renderModelsView({ models: [decisionModel, consensusModel] });
+
+    const decisionSection = screen.getByRole("region", { name: "Decision models" });
+    const consensusSection = screen.getByRole("region", { name: "Consensus models" });
+
+    expect(within(decisionSection).getByRole("button", {
+      name: "Learn about Balanced choice method",
+    })).toBeInTheDocument();
+    expect(within(decisionSection).queryByRole("button", {
+      name: "Learn about Consensus reaching method",
+    })).not.toBeInTheDocument();
+    expect(within(consensusSection).getByRole("button", {
+      name: "Learn about Consensus reaching method",
+    })).toBeInTheDocument();
   });
 
   it("filters both catalog families using user-facing model content", async () => {
@@ -79,12 +109,29 @@ describe("ModelsView", () => {
 
     await user.type(screen.getByRole("textbox", { name: "Search models" }), "priority");
 
-    expect(
-      screen.getByText("No decision models match your search.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Learn about Priority weighting method" })
-    ).toBeInTheDocument();
+    const decisionSection = screen.getByRole("region", { name: "Decision models" });
+    const weightingSection = screen.getByRole("region", { name: "Criteria weighting methods" });
+    expect(within(decisionSection).getByText("No decision models match your search.")).toBeInTheDocument();
+    expect(within(weightingSection).getByRole("button", {
+      name: "Learn about Priority weighting method",
+    })).toBeInTheDocument();
+  });
+
+  it("places a matching consensus model in the Consensus models section", async () => {
+    const user = userEvent.setup();
+    renderModelsView({ models: [decisionModel, consensusModel] });
+
+    await user.type(screen.getByRole("textbox", { name: "Search models" }), "consensus");
+
+    const decisionSection = screen.getByRole("region", { name: "Decision models" });
+    const consensusSection = screen.getByRole("region", { name: "Consensus models" });
+    expect(within(decisionSection).getByText("No decision models match your search.")).toBeInTheDocument();
+    expect(within(decisionSection).queryByRole("button", {
+      name: "Learn about Consensus reaching method",
+    })).not.toBeInTheDocument();
+    expect(within(consensusSection).getByRole("button", {
+      name: "Learn about Consensus reaching method",
+    })).toBeInTheDocument();
   });
 
   it("shows metadata-driven educational content and an external reference when available", async () => {

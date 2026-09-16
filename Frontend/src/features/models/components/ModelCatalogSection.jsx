@@ -32,7 +32,7 @@ const ModelCatalogSection = ({ title, description, familyLabel, models, searchAc
             gridTemplateColumns: {
               xs: "minmax(0, 1fr)",
               sm: "repeat(2, minmax(0, 1fr))",
-              lg: "repeat(3, minmax(0, 1fr))",
+              lg: "repeat(4, minmax(0, 1fr))",
             },
             gap: { xs: 1.1, sm: 1.35, md: 1.5 },
           }}

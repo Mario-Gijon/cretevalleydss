@@ -23,9 +23,21 @@ const ModelsView = () => {
   const [query, setQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(null);
 
+  const decisionModelCatalog = useMemo(
+    () => catalogModels.filter((model) => model?.supportsConsensus !== true),
+    [catalogModels]
+  );
+  const consensusModelCatalog = useMemo(
+    () => catalogModels.filter((model) => model?.supportsConsensus === true),
+    [catalogModels]
+  );
   const decisionModels = useMemo(
-    () => filterCatalogModels(catalogModels, query),
-    [catalogModels, query]
+    () => filterCatalogModels(decisionModelCatalog, query),
+    [decisionModelCatalog, query]
+  );
+  const consensusModels = useMemo(
+    () => filterCatalogModels(consensusModelCatalog, query),
+    [consensusModelCatalog, query]
   );
   const weightingModels = useMemo(
     () => filterCatalogModels(catalogWeightingModels, query),
@@ -53,6 +65,14 @@ const ModelsView = () => {
             description="Methods that help compare alternatives and identify the option that best fits your decision criteria."
             familyLabel="Decision"
             models={decisionModels}
+            searchActive={Boolean(query.trim())}
+            onOpenModel={setSelectedModel}
+          />
+          <ModelCatalogSection
+            title="Consensus models"
+            description="Models that help multiple experts reach consensus before the final collective decision."
+            familyLabel="Consensus"
+            models={consensusModels}
             searchActive={Boolean(query.trim())}
             onOpenModel={setSelectedModel}
           />
