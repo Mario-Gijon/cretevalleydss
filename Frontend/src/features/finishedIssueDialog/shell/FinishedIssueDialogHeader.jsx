@@ -56,9 +56,6 @@ const FinishedIssueDialogHeader = () => {
             spacing={1.4}
           >
             <Box sx={finishedIssueHeaderIdentitySx}>
-              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: "0.105em" }}>
-                Finished issue
-              </Typography>
               <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mt: 0.35, minWidth: 0, maxWidth: "100%" }}>
                 <Typography variant="h4" component="h1" noWrap title={issue?.name || ""} sx={{ ...finishedIssueHeaderTitleSx, flex: 1 }}>
                   {issue?.name || "Finished issue"}

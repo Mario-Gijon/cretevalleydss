@@ -66,7 +66,12 @@ export const buildFinishedIssuePayload = async ({ issue }) => {
     expressionDomains,
     participants: loaded.participations,
   });
-  evaluations.participation = serializeEvaluationParticipation({ participations: loaded.participations, evaluations: loaded.evaluations, issueEvents: loaded.issueEvents });
+  evaluations.participation = serializeEvaluationParticipation({
+    participations: loaded.participations,
+    evaluations: loaded.evaluations,
+    evaluationRevisions: loaded.evaluationRevisions,
+    issueEvents: loaded.issueEvents,
+  });
   const models = serializeModels({
     issue,
     compatibleModels: loaded.compatibleModels,

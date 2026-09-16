@@ -27,7 +27,7 @@ const newerSnapshot = (current, candidate) => {
 };
 
 /** A deliberately binary, reason-free record of every expert retained by finished evidence. */
-export const serializeParticipantHistory = ({ participations, exitUsers, evaluations, phaseResults }) => {
+export const serializeParticipantHistory = ({ participations, exitUsers, evaluations, evaluationRevisions = [], phaseResults }) => {
   const experts = new Map();
   const add = (user) => {
     const id = idOf(user);
@@ -37,9 +37,11 @@ export const serializeParticipantHistory = ({ participations, exitUsers, evaluat
   };
 
   participations.forEach((entry) => add(entry.expert));
-  // Finished-visibility records are hidden and must not create history records.
-  exitUsers.filter((entry) => entry.hidden !== true).forEach((entry) => add(entry.user));
+  // Exit records remain authoritative historical evidence even after the expert
+  // is hidden from the active issue.
+  exitUsers.forEach((entry) => add(entry.user));
   evaluations.forEach((entry) => add(entry.expert));
+  evaluationRevisions.forEach((entry) => add(entry.expert));
   phaseResults.forEach((result) => (Array.isArray(result.inputSnapshot?.expertWeights) ? result.inputSnapshot.expertWeights : []).forEach((entry) => add(entry.expert)));
 
   participations.forEach((entry) => {
@@ -47,9 +49,10 @@ export const serializeParticipantHistory = ({ participations, exitUsers, evaluat
     if (id && experts.has(id)) experts.get(id).participation = entry;
   });
 
-  const completedIds = new Set(
-    evaluations.filter((entry) => entry.completed === true).map((entry) => idOf(entry.expert)).filter(Boolean)
-  );
+  const completedIds = new Set([
+    ...evaluations.filter((entry) => entry.completed === true),
+    ...evaluationRevisions.filter((entry) => entry.action === "submitted"),
+  ].map((entry) => idOf(entry.expert)).filter(Boolean));
   const snapshots = new Map();
   phaseResults.forEach((result) => (Array.isArray(result.inputSnapshot?.expertWeights) ? result.inputSnapshot.expertWeights : []).forEach((entry) => {
     const id = idOf(entry.expert);

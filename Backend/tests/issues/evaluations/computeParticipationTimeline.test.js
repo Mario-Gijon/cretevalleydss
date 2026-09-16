@@ -2,9 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Issue } from "../../../models/Issues.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
+import { editIssueExperts } from "../../../modules/issues/participants/index.js";
+import { buildIssueHistoryDocument } from "../../../modules/issues/history/index.js";
+import { buildAnalysisContext } from "../../../modules/issues/resultsAnalysis/index.js";
+import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
 import {
   createConfirmedUser,
   createIssueAlternativesFixture,
@@ -151,7 +156,7 @@ const createAlternativeTimelineFixture = async ({
 };
 
 describe("compute participation timeline hardening", () => {
-  it("ignores old history and same-phase evaluations from removed experts when computing the current phase", async () => {
+  it("excludes an expert removed after submission from the later computation evidence", async () => {
     const {
       owner,
       currentExpert,
@@ -169,28 +174,13 @@ describe("compute participation timeline hardening", () => {
       entryPhase: 2,
       entryStage: "alternativeEvaluation",
     });
-
-    await ExitUserIssue.create({
-      issue: issue._id,
-      user: removedExpert._id,
-      hidden: true,
-      phase: 2,
-      stage: "alternativeEvaluation",
-      reason: "Expelled by owner",
-      history: [
-        {
-          phase: 0,
-          stage: "alternativeEvaluation",
-          action: "entered",
-          reason: "Invited by owner",
-        },
-        {
-          phase: 2,
-          stage: "alternativeEvaluation",
-          action: "exited",
-          reason: "Expelled by owner",
-        },
-      ],
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: removedExpert._id,
+      invitationStatus: "accepted",
+      evaluationCompleted: true,
+      entryPhase: 2,
+      entryStage: "alternativeEvaluation",
     });
 
     await createIssueEvaluationFixture({
@@ -223,24 +213,27 @@ describe("compute participation timeline hardening", () => {
         },
       }),
     });
-    const removedDraftExpert = await createConfirmedUser({
-      email: "removed-draft@example.com",
+
+    await writeIssueStateSnapshot({
+      issue,
+      snapshotType: "creation",
+      occurredAt: new Date("2026-01-10T09:00:00.000Z"),
+      correlationId: "removed-expert-creation",
     });
-    await createIssueEvaluationFixture({
+
+    await editIssueExperts({
       issueId: issue._id,
-      expertId: removedDraftExpert._id,
+      userId: owner._id,
+      expertsToAdd: [],
+      expertsToRemove: [removedExpert.email],
+    });
+
+    expect(await IssueEvaluation.findOne({
+      issue: issue._id,
+      expert: removedExpert._id,
       stage: "alternativeEvaluation",
       consensusPhase: 2,
-      completed: false,
-      payload: buildAlternativeMatrixPayload({
-        alternatives,
-        leafCriteria,
-        valuesByAlternativeId: {
-          [String(alternatives[0]._id)]: 3,
-          [String(alternatives[1]._id)]: 7,
-        },
-      }),
-    });
+    })).toBeNull();
 
     const httpClient = createHttpClientMock(
       buildModelSuccessResponse(
@@ -260,7 +253,101 @@ describe("compute participation timeline hardening", () => {
 
     expect(requestPayload.evaluations).toHaveLength(1);
     expect(requestPayload.evaluations[0].expert.email).toBe("current@example.com");
+    const stageResult = await IssueStageResult.findOne({
+      issue: issue._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 2,
+    }).lean();
+    const executionAttempt = await IssueExecutionAttempt.findOne({
+      issue: issue._id,
+      evaluationStage: "alternativeEvaluation",
+      consensusPhase: 2,
+    }).lean();
+
+    expect(executionAttempt.request.body.evaluations.map((entry) => entry.expert.id))
+      .toEqual([String(currentExpert._id)]);
+    expect(JSON.stringify(stageResult)).not.toContain(String(removedExpert._id));
+    const analysisContext = buildAnalysisContext(await buildIssueHistoryDocument({
+      issueId: issue._id,
+    }));
+    const computedRound = analysisContext.rounds.find((round) => round.phase === 2);
+
+    expect(computedRound.selectedExecution.input.evaluations.map((entry) => entry.expert.id))
+      .toEqual([String(currentExpert._id)]);
+    expect(await ExitUserIssue.findOne({
+      issue: issue._id,
+      user: removedExpert._id,
+      hidden: true,
+    })).not.toBeNull();
     expect(result.currentStage).toBe("finished");
+  });
+
+  it("allows computation after a pending expert is removed", async () => {
+    const {
+      owner,
+      currentExpert,
+      removedExpert,
+      issue,
+      alternatives,
+      leafCriteria,
+    } = await createAlternativeTimelineFixture();
+
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: currentExpert._id,
+      invitationStatus: "accepted",
+      evaluationCompleted: true,
+      entryPhase: 2,
+      entryStage: "alternativeEvaluation",
+    });
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: removedExpert._id,
+      invitationStatus: "pending",
+      evaluationCompleted: false,
+      entryPhase: 2,
+      entryStage: "alternativeEvaluation",
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: currentExpert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 2,
+      completed: true,
+      payload: buildAlternativeMatrixPayload({
+        alternatives,
+        leafCriteria,
+        valuesByAlternativeId: {
+          [String(alternatives[0]._id)]: 8,
+          [String(alternatives[1]._id)]: 4,
+        },
+      }),
+    });
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [],
+      expertsToRemove: [removedExpert.email],
+    });
+
+    const httpClient = createHttpClientMock(
+      buildModelSuccessResponse(
+        buildAlternativeServiceResult({ alternatives, leafCriteria })
+      )
+    );
+
+    await expect(computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    })).resolves.toMatchObject({ currentStage: "finished" });
+
+    const [, requestPayload] = httpClient.post.mock.calls[0];
+    expect(requestPayload.evaluations.map((entry) => entry.expert.id))
+      .toEqual([String(currentExpert._id)]);
   });
 
   it("counts re-added current experts as expected evaluators and rejects compute until they complete the current phase", async () => {

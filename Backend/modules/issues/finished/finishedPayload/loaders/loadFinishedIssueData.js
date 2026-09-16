@@ -1,6 +1,7 @@
 import { Alternative } from "../../../../../models/Alternatives.js";
 import { Criterion } from "../../../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../../../models/IssueEvaluations.js";
+import { IssueEvaluationRevision } from "../../../../../models/IssueEvaluationRevisions.js";
 import { IssueExpressionDomain } from "../../../../../models/IssueExpressionDomains.js";
 import { IssueModel } from "../../../../../models/IssueModels.js";
 import { IssueScenario } from "../../../../../models/IssueScenarios.js";
@@ -20,6 +21,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     expressionDomains,
     participations,
     evaluations,
+    evaluationRevisions,
     phaseResults,
     compatibleModels,
     scenarios,
@@ -36,6 +38,10 @@ export const loadFinishedIssueData = async ({ issue }) => {
     IssueEvaluation.find({ issue: issueId })
       .populate("expert", USER_SELECT)
       .sort({ stage: 1, consensusPhase: 1, _id: 1 })
+      .lean(),
+    IssueEvaluationRevision.find({ issue: issueId })
+      .populate("expert", USER_SELECT)
+      .sort({ stage: 1, consensusPhase: 1, occurredAt: 1, _id: 1 })
       .lean(),
     IssueStageResult.find({ issue: issueId })
       .sort({ stage: 1, consensusPhase: 1, _id: 1 })
@@ -54,7 +60,10 @@ export const loadFinishedIssueData = async ({ issue }) => {
     ExitUserIssue.find({ issue: issueId })
       .populate("user", USER_SELECT)
       .lean(),
-    IssueEvent.find({ issue: issueId }).sort({ occurredAt: 1, _id: 1 }).lean(),
+    IssueEvent.find({ issue: issueId })
+      .populate("subjectUser", USER_SELECT)
+      .sort({ occurredAt: 1, _id: 1 })
+      .lean(),
   ]);
 
   return {
@@ -63,6 +72,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     expressionDomains,
     participations,
     evaluations,
+    evaluationRevisions,
     phaseResults,
     compatibleModels,
     scenarios,

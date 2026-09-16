@@ -56,14 +56,14 @@ describe("Results Analysis analytical projection comparison", () => {
     });
   });
 
-  it("prefers stored expert ids over emails and labels for stable matching", () => {
+  it("uses stored expert names while preferring ids for stable matching", () => {
     const result = buildCanonicalAnalyticalProjection({ execution: {
       key: "base", name: "base", displayLabel: "base", color: colors[0],
-      standardizedOutput: { plotsGraphic: { expert_points: [[0, 0], [1, 1]], collective_point: [0, 0], expert_ids: ["expert-2", "expert-1"], expert_emails: ["second@example.test", "first@example.test"], expert_labels: ["Second", "First"] } },
+      standardizedOutput: { plotsGraphic: { expert_points: [[0, 0], [1, 1]], collective_point: [0, 0], expert_ids: ["expert-2", "expert-1"], expert_emails: ["second@example.test", "first@example.test"], expert_labels: ["Test 1", "Admin"] } },
     } });
     expect(result.expertPoints.map((point) => point.identity)).toEqual(["expert-1", "expert-2"]);
     expect(result.expertPoints.map((point) => point.email)).toEqual(["first@example.test", "second@example.test"]);
-    expect(result.expertPoints.map((point) => point.label)).toEqual(["First", "Second"]);
+    expect(result.expertPoints.map((point) => point.label)).toEqual(["Admin", "Test 1"]);
   });
 
   it("keeps a coincident one-expert projection available for the normal charts", () => {

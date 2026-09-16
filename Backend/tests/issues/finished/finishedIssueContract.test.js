@@ -3,6 +3,9 @@ import mongoose from "mongoose";
 
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
+import { IssueEvent } from "../../../models/IssueEvents.js";
+import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
@@ -288,6 +291,121 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
 };
 
 describe("definitive Finished Issue contract", () => {
+  it("keeps removed experts' submission evidence separate from the final computation", async () => {
+    const fixture = await createCompleteIssue({ consensus: false });
+    const removedExpert = await createConfirmedUser({ email: "removed-submitter@example.test" });
+    const submittedAt = new Date("2026-01-10T10:00:00.000Z");
+    const [evaluation] = await IssueEvaluation.create([{
+      issue: fixture.issue._id,
+      expert: removedExpert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      payload: {},
+      completed: true,
+      submittedAt,
+    }]);
+
+    await IssueEvaluationRevision.create({
+      issue: fixture.issue._id,
+      evaluation: evaluation._id,
+      expert: removedExpert._id,
+      actorType: "user",
+      actorUser: removedExpert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      action: "submitted",
+      structureKey: "alternativeCriteriaMatrix",
+      rawPayload: {},
+      normalizedPayload: {},
+      decisionContext: {},
+      submittedAt,
+      occurredAt: submittedAt,
+      correlationId: "removed-submitter-submission",
+    });
+    await IssueEvaluation.deleteOne({ _id: evaluation._id });
+    await ExitUserIssue.create({
+      issue: fixture.issue._id,
+      user: removedExpert._id,
+      hidden: true,
+      phase: 0,
+      stage: "alternativeEvaluation",
+      reason: "Expelled by owner",
+      history: [{
+        timestamp: new Date("2026-01-10T11:00:00.000Z"),
+        phase: 0,
+        stage: "alternativeEvaluation",
+        action: "exited",
+        reason: "Expelled by owner",
+      }],
+    });
+    await IssueEvent.create({
+      issue: fixture.issue._id,
+      eventType: "participation.removed",
+      actorType: "system",
+      subjectUser: removedExpert._id,
+      stage: "alternativeEvaluation",
+      phase: 0,
+      occurredAt: new Date("2026-01-10T11:00:00.000Z"),
+      correlationId: "removed-submitter-removal",
+      details: {},
+    });
+
+    const payload = await getFinishedIssueInfoPayload({
+      issueId: fixture.issue._id,
+      userId: fixture.owner._id,
+    });
+    const participation = payload.evaluations.participation.experts.find(
+      (expert) => expert.expertId === String(removedExpert._id)
+    );
+    const participantHistory = payload.participantHistory.records.find(
+      (record) => record.expert.id === String(removedExpert._id)
+    );
+
+    expect(participation).toMatchObject({
+      name: removedExpert.name,
+      alternativeEvaluation: {
+        submissions: [{ phase: 0, completed: true, submittedAt: submittedAt.toISOString() }],
+      },
+      participationEvents: [expect.objectContaining({ type: "removed" })],
+    });
+    expect(participantHistory).toMatchObject({
+      participated: true,
+      participationKey: "participated",
+    });
+    expect(payload.phaseResults.every((result) =>
+      !result.expertWeightSnapshot.some((entry) => entry.expertId === String(removedExpert._id))
+    )).toBe(true);
+  });
+
+  it("serializes event-only experts with populated identities", async () => {
+    const fixture = await createCompleteIssue({ consensus: false });
+    const historicalExpert = await createConfirmedUser({ email: "historical-event@example.test" });
+
+    await IssueEvent.create({
+      issue: fixture.issue._id,
+      eventType: "participation.entered",
+      actorType: "system",
+      subjectUser: historicalExpert._id,
+      stage: "alternativeEvaluation",
+      phase: 0,
+      occurredAt: new Date("2026-01-10T10:00:00.000Z"),
+      correlationId: "historical-event-expert",
+      details: {},
+    });
+
+    const payload = await getFinishedIssueInfoPayload({
+      issueId: fixture.issue._id,
+      userId: fixture.owner._id,
+    });
+
+    expect(payload.evaluations.participation.experts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        expertId: String(historicalExpert._id),
+        name: historicalExpert.name,
+      }),
+    ]));
+  });
+
   it("retains removed experts as historical contributors without restoring current participation", async () => {
     const fixture = await createCompleteIssue({ consensus: false });
     const historicalExperts = await Promise.all(

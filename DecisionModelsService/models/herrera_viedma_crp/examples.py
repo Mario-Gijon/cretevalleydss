@@ -147,6 +147,12 @@ HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
                         [-0.1927, -0.0786],
                     ],
                     "collective_point": [-0.0049, 0.0315],
+                    "expert_ids": ["expert-ana", "expert-luis"],
+                    "expert_labels": ["Ana Torres", "Luis Romero"],
+                    "expert_emails": [
+                        "ana.torres@example.com",
+                        "luis.romero@example.com",
+                    ],
                 },
                 "consensusMeasure": 0.85,
                 "rawOutput": {
@@ -170,6 +176,12 @@ HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
                             [-0.1927, -0.0786],
                         ],
                         "collective_point": [-0.0049, 0.0315],
+                        "expert_ids": ["expert-ana", "expert-luis"],
+                        "expert_labels": ["Ana Torres", "Luis Romero"],
+                        "expert_emails": [
+                            "ana.torres@example.com",
+                            "luis.romero@example.com",
+                        ],
                     },
                     "suggested_next_evaluations": {},
                     "diagnostics": {
