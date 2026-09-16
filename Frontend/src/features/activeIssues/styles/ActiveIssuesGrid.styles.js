@@ -30,12 +30,12 @@ export const IssuesGridCard = styled(Paper)(({ theme }) => ({
 export const ISSUES_GRID_CARD_HEIGHT = 262;
 
 /**
- * Altura minima del grid de escritorio para mantener estable la posicion de la paginacion.
+ * Altura fija del listado de escritorio para mantener estable la posicion de la paginacion.
  */
-export const getActiveIssuesDesktopListingMinHeightSx = (theme) => ({
-  minHeight: {
-    lg: `calc(${ISSUES_GRID_CARD_HEIGHT * 3}px + ${theme.spacing(3)} + ${theme.spacing(4)})`,
-    xl: `calc(${ISSUES_GRID_CARD_HEIGHT * 2}px + ${theme.spacing(1.5)} + ${theme.spacing(3)} + ${theme.spacing(4)})`,
+export const getActiveIssuesDesktopListingHeightSx = (theme) => ({
+  height: {
+    lg: `calc(${ISSUES_GRID_CARD_HEIGHT * 3}px + ${theme.spacing(3)} + ${theme.spacing(5)} + ${theme.spacing(4)})`,
+    xl: `calc(${ISSUES_GRID_CARD_HEIGHT * 2}px + ${theme.spacing(1.5)} + ${theme.spacing(5)} + ${theme.spacing(4)})`,
   },
 });
 

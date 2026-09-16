@@ -7,7 +7,7 @@ import ActiveIssuesGrid from "./ActiveIssuesGrid";
 import ActiveIssuesPagination from "./ActiveIssuesPagination";
 import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
 import EmptyState from "../../../components/StyledComponents/EmptyState";
-import { getActiveIssuesDesktopListingMinHeightSx } from "../styles/ActiveIssuesGrid.styles";
+import { getActiveIssuesDesktopListingHeightSx } from "../styles/ActiveIssuesGrid.styles";
 /**
  * Layout de escritorio para la pantalla de issues activos.
  *
@@ -129,7 +129,7 @@ const ActiveIssuesDesktopView = ({
             display: "flex",
             flexDirection: "column",
             ...(pageCount > 1
-              ? getActiveIssuesDesktopListingMinHeightSx(theme)
+              ? getActiveIssuesDesktopListingHeightSx(theme)
               : {}),
           }}
         >
@@ -142,7 +142,7 @@ const ActiveIssuesDesktopView = ({
             page={page}
             pageCount={pageCount}
             onChange={setPage}
-            sx={{ mt: "auto", pt: 3 }}
+            sx={{ mt: "auto", pt: 5 }}
           />
         </Box>
       )}
