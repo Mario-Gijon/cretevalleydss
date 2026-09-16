@@ -24,6 +24,7 @@ import {
   readStoredCreateIssueData,
   resolveInitialConsensusMaxPhases,
   resolveInitialConsensusThreshold,
+  resolveInitialClosureDate,
   resolveInitialCriteriaWeightingConfig,
   resolveInitialExpressionDomainConfig,
 } from "../logic/createIssueDraftState";
@@ -111,7 +112,9 @@ export const useCreateIssue = () => {
   );
   const [issueNameError, setIssueNameError] = useState("");
   const [issueDescriptionError, setIssueDescriptionError] = useState(false);
-  const [closureDate, setClosureDate] = useState(null);
+  const [closureDate, setClosureDate] = useState(() =>
+    resolveInitialClosureDate(storedData)
+  );
   const [closureDateError, setClosureDateError] = useState(false);
   const [consensusMaxPhases, setConsensusMaxPhases] = useState(
     resolveInitialConsensusMaxPhases(storedData)

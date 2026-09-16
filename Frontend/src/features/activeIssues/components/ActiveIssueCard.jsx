@@ -1,4 +1,12 @@
-import { Box, Divider, Grid, Stack, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Divider,
+  Grid,
+  LinearProgress,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -12,6 +20,7 @@ import {
   buildIssueWorkflowSteps,
   resolveIssueCurrentStepKey,
 } from "../logic/activeIssueWorkflow";
+import { computeIssueDeadlineProgress } from "../logic/activeIssueDeadline";
 import {
   ISSUES_GRID_CARD_HEIGHT,
   IssuesGridCard,
@@ -44,6 +53,7 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
 
   const label = issue.closureDate;
   const tooltip = `Expected finalization date: ${label}`;
+  const deadlineProgress = computeIssueDeadlineProgress(issue);
 
   return (
     <Tooltip title={tooltip} placement="top" arrow>
@@ -80,6 +90,21 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
             {label}
           </Typography>
         </Stack>
+
+        <LinearProgress
+          aria-label="Expected finalization progress"
+          variant="determinate"
+          value={deadlineProgress?.progress ?? 0}
+          sx={{
+            height: 3,
+            borderRadius: 999,
+            bgcolor: alpha(theme.palette.common.white, 0.12),
+            "& .MuiLinearProgress-bar": {
+              borderRadius: 999,
+              bgcolor: alpha(theme.palette.secondary.main, 0.8),
+            },
+          }}
+        />
       </Box>
     </Tooltip>
   );

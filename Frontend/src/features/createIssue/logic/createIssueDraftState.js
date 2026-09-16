@@ -1,4 +1,5 @@
 import { isPlainObject } from "../../../utils/common/objects";
+import dayjs from "dayjs";
 
 export const normalizeStoredConsensusThreshold = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -73,6 +74,17 @@ export const resolveInitialConsensusThreshold = (storedData) => {
   );
 
   return storedConsensusThreshold !== null ? storedConsensusThreshold : 0.7;
+};
+
+export const resolveInitialClosureDate = (storedData) => {
+  const storedClosureDate = storedData?.closureDate;
+  if (!storedClosureDate) {
+    return null;
+  }
+
+  const closureDate = dayjs(storedClosureDate);
+
+  return closureDate.isValid() ? closureDate : null;
 };
 
 export const resolveInitialExpressionDomainConfig = (storedData) =>

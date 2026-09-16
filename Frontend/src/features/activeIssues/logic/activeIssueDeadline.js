@@ -1,17 +1,18 @@
-const clamp01 = (value) => {
-  return Math.max(0, Math.min(1, value));
-};
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+
+dayjs.extend(customParseFormat);
+
+const clampPercent = (value) => Math.max(0, Math.min(100, value));
 
 const parseIssueGridDateDDMMYYYY = (value) => {
-  if (!value || typeof value !== "string") return null;
+  if (!value || typeof value !== "string") {
+    return null;
+  }
 
-  const [day, month, year] = value.split("-").map((part) => Number(part));
+  const date = dayjs(value, "DD-MM-YYYY", true);
 
-  if (!day || !month || !year) return null;
-
-  const timestamp = new Date(year, month - 1, day).getTime();
-
-  return Number.isFinite(timestamp) ? timestamp : null;
+  return date.isValid() ? date.startOf("day") : null;
 };
 
 /**
@@ -20,33 +21,35 @@ const parseIssueGridDateDDMMYYYY = (value) => {
  * @param {Object|null} issue Issue a evaluar.
  * @returns {Object|null}
  */
-export const computeIssueDeadlineProgress = (issue) => {
+export const computeIssueDeadlineProgress = (issue, currentDate = dayjs()) => {
   const serverDeadline = issue?.ui?.deadline;
 
-  if (!serverDeadline?.hasDeadline || typeof serverDeadline.daysLeft !== "number") {
+  if (!serverDeadline?.hasDeadline) {
     return null;
   }
 
   const end = parseIssueGridDateDDMMYYYY(issue.closureDate);
   const start = parseIssueGridDateDDMMYYYY(issue.creationDate);
-  const now = Date.now();
 
   if (!end) {
     return {
       progress: 0,
-      daysLeft: serverDeadline.daysLeft,
       label: issue.closureDate,
     };
   }
 
-  const fallbackTotal = 1000 * 60 * 60 * 24 * 30;
-  const baseStart = start || end - fallbackTotal;
-  const total = Math.max(1, end - baseStart);
-  const progress = clamp01((now - baseStart) / total);
+  const today = dayjs(currentDate).startOf("day");
+  const totalCalendarDays = start ? end.diff(start, "day") : 0;
+  const elapsedCalendarDays = start ? today.diff(start, "day") : 0;
+  const progress =
+    totalCalendarDays > 0
+      ? clampPercent((elapsedCalendarDays / totalCalendarDays) * 100)
+      : today.isAfter(end, "day") || today.isSame(end, "day")
+        ? 100
+        : 0;
 
   return {
     progress,
-    daysLeft: serverDeadline.daysLeft,
     label: issue.closureDate,
   };
 };

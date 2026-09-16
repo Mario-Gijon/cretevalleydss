@@ -135,11 +135,13 @@ describe("active issue visibility", () => {
       email: "expert-with-deadline@example.com",
     });
 
-    await createPreparedActiveIssue({
+    const createdIssue = await createPreparedActiveIssue({
       owner,
       expert,
       issueInfoOverrides: { closureDate: "2026-09-25" },
     });
+
+    expect(createdIssue.closureDate).toBe("25-09-2026");
 
     const payload = await getActiveIssuesPayload({
       userId: owner._id,
@@ -149,6 +151,7 @@ describe("active issue visibility", () => {
       hasDeadline: true,
       iso: expect.any(String),
     });
+    expect(payload.issues[0].closureDate).toBe("25-09-2026");
   });
 
   it("accepted participant sees the active issue they participate in", async () => {

@@ -35,7 +35,31 @@ describe("ActiveIssueCard expected finalization", () => {
 
     expect(screen.getByText("Expected finalization", { exact: true })).toBeInTheDocument();
     expect(screen.getByText("01-01-2000", { exact: true })).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "Expected finalization progress" })
+    ).toBeInTheDocument();
     expect(screen.queryByText("Expired", { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByText(/day\(s\) left/i)).not.toBeInTheDocument();
+  });
+
+  it("does not render an expected-finalization line when no date is configured", () => {
+    renderWithProviders(
+      <ActiveIssueCard
+        issue={{
+          ...pastExpectedFinalizationIssue,
+          closureDate: null,
+          ui: {
+            ...pastExpectedFinalizationIssue.ui,
+            deadline: { hasDeadline: false },
+          },
+        }}
+        onOpenIssue={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("No expected finalization date")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("progressbar", { name: "Expected finalization progress" })
+    ).not.toBeInTheDocument();
   });
 });

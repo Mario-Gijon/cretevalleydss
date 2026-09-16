@@ -1,6 +1,6 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import dayjs from "dayjs";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
 const mockUseIssuesDataContext = vi.hoisted(() => vi.fn());
@@ -68,6 +68,10 @@ const createIssuesContextValue = (overrides = {}) => ({
 describe("useCreateIssue", () => {
   const showSnackbarAlert = vi.fn();
 
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -112,6 +116,7 @@ describe("useCreateIssue", () => {
     expect(result.current.addedExperts).toEqual([]);
     expect(result.current.issueName).toBe("");
     expect(result.current.issueDescription).toBe("");
+    expect(result.current.closureDate).toBeNull();
     expect(result.current.paramValues).toEqual({});
     expect(result.current.expressionDomainConfig).toEqual({
       mode: "global",
@@ -120,6 +125,8 @@ describe("useCreateIssue", () => {
   });
 
   it("initializes from the stored localStorage draft", async () => {
+    const expectedFinalizationDate = dayjs().add(4, "day").startOf("day");
+
     localStorage.setItem(
       LOCAL_STORAGE_KEY,
       JSON.stringify({
@@ -137,10 +144,11 @@ describe("useCreateIssue", () => {
         },
         consensusMaxPhases: 9,
         consensusThreshold: 0.9,
+        closureDate: expectedFinalizationDate.toJSON(),
       })
     );
 
-    const { result } = renderCreateIssueHook();
+    const { result, unmount } = renderCreateIssueHook();
 
     await waitFor(() => {
       expect(result.current.activeStep).toBe(2);
@@ -156,7 +164,12 @@ describe("useCreateIssue", () => {
       expect(result.current.addedExperts).toEqual(["stored@example.com"]);
       expect(result.current.consensusMaxPhases).toBe(9);
       expect(result.current.consensusThreshold).toBe(0.9);
+      expect(result.current.closureDate?.toJSON()).toBe(
+        expectedFinalizationDate.toJSON()
+      );
     });
+
+    unmount();
   });
 
   it("persists state changes back to localStorage", async () => {
@@ -331,6 +344,8 @@ describe("useCreateIssue", () => {
 
     expect(result.current.closureDateError).toBe(true);
     expect(showSnackbarAlert).toHaveBeenCalledWith("Expected finalization date is not valid", "error");
+
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
   });
 
   it("updates activeStep through step navigation helpers", () => {
@@ -422,6 +437,34 @@ describe("useCreateIssue", () => {
       expect(setLoading).not.toHaveBeenCalledWith(false);
       expect(window.requestAnimationFrame).not.toHaveBeenCalled();
     });
+  });
+
+  it("sends the selected expected finalization date in the create request", async () => {
+    createIssue.mockResolvedValue({ success: true, data: { id: "issue-1" } });
+    const selectedDate = dayjs().add(4, "day").startOf("day");
+    const { result, unmount } = renderCreateIssueHook();
+
+    await fillValidState(result);
+
+    await act(async () => {
+      result.current.setClosureDate(selectedDate);
+    });
+
+    await act(async () => {
+      await result.current.handleComplete();
+    });
+
+    const requestPayload = createIssue.mock.calls[0][0];
+    const requestBody = JSON.parse(
+      JSON.stringify({ issueInfo: requestPayload })
+    );
+
+    expect(requestPayload.closureDate).toBeInstanceOf(Date);
+    expect(requestBody.issueInfo.closureDate).toBe(
+      requestPayload.closureDate.toJSON()
+    );
+
+    unmount();
   });
 
   it("surfaces backend issue-name errors and clears loading", async () => {

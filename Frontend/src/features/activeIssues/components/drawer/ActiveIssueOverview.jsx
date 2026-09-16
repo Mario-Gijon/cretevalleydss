@@ -32,14 +32,21 @@ import { getEvaluationStructureDisplayLabel } from "../../../decisionPlugins/eva
 
 const ActiveIssueInfoRow = ({ label, value }) => {
   return (
-    <Stack
-      direction={{ xs: "column", sm: "row" }}
-      spacing={{ xs: 0.2, sm: 1 }}
-      sx={{ alignItems: { xs: "stretch", sm: "baseline" } }}
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "minmax(0, 1fr)",
+          sm: "180px minmax(0, 1fr)",
+        },
+        columnGap: { sm: 1.25 },
+        rowGap: { xs: 0.2, sm: 0 },
+        alignItems: "baseline",
+      }}
     >
       <Typography
         variant="caption"
-        sx={{ color: "text.secondary", fontWeight: 950, minWidth: { sm: 150 } }}
+        sx={{ color: "text.secondary", fontWeight: 950, minWidth: 0 }}
       >
         {label}
       </Typography>
@@ -50,7 +57,7 @@ const ActiveIssueInfoRow = ({ label, value }) => {
       >
         {value ?? "—"}
       </Typography>
-    </Stack>
+    </Box>
   );
 };
 
