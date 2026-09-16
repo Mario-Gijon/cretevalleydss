@@ -7,6 +7,7 @@ import ActiveIssuesGrid from "./ActiveIssuesGrid";
 import ActiveIssuesPagination from "./ActiveIssuesPagination";
 import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
 import EmptyState from "../../../components/StyledComponents/EmptyState";
+import { getActiveIssuesDesktopListingMinHeightSx } from "../styles/ActiveIssuesGrid.styles";
 /**
  * Layout de escritorio para la pantalla de issues activos.
  *
@@ -123,14 +124,27 @@ const ActiveIssuesDesktopView = ({
           sx={{ py: { xs: 4, sm: 5 } }}
         />
       ) : (
-        <>
-          <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            ...(pageCount > 1
+              ? getActiveIssuesDesktopListingMinHeightSx(theme)
+              : {}),
+          }}
+        >
+          <ActiveIssuesGrid
+            issues={filteredIssues}
+            onOpenIssue={openDetails}
+            sx={{ mt: 0 }}
+          />
           <ActiveIssuesPagination
             page={page}
             pageCount={pageCount}
             onChange={setPage}
+            sx={{ mt: "auto", pt: 3 }}
           />
-        </>
+        </Box>
       )}
     </Stack>
   );

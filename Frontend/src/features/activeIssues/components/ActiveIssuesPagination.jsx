@@ -7,13 +7,21 @@ import { Box, Pagination } from "@mui/material";
  * @param {number} props.page Página actual.
  * @param {number} props.pageCount Número total de páginas.
  * @param {Function} props.onChange Callback de cambio de página.
+ * @param {Object} props.sx Estilos adicionales del contenedor.
  * @returns {JSX.Element|null}
  */
-const ActiveIssuesPagination = ({ page, pageCount, onChange }) => {
+const ActiveIssuesPagination = ({ page, pageCount, onChange, sx }) => {
   if (pageCount <= 1) return null;
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", mt: 1.25 }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        mt: { xs: 1.25, lg: 2 },
+        ...sx,
+      }}
+    >
       <Pagination
         page={page}
         count={pageCount}

@@ -52,61 +52,58 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
   }
 
   const label = issue.closureDate;
-  const tooltip = `Expected finalization date: ${label}`;
   const deadlineProgress = computeIssueDeadlineProgress(issue);
 
   return (
-    <Tooltip title={tooltip} placement="top" arrow>
-      <Box sx={{ mt: 0.9 }}>
-        <Stack
-          direction="row"
-          spacing={0.8}
-          sx={{ alignItems: "center", mb: 0.6 }}
-        >
-          <CalendarMonthIcon
-            sx={{ fontSize: 16, color: alpha(theme.palette.common.white, 0.72) }}
-          />
-
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 950,
-              color: alpha(theme.palette.common.white, 0.82),
-            }}
-          >
-            Expected finalization
-          </Typography>
-
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 900,
-              color: alpha(theme.palette.common.white, 0.72),
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {label}
-          </Typography>
-        </Stack>
-
-        <LinearProgress
-          aria-label="Expected finalization progress"
-          variant="determinate"
-          value={deadlineProgress?.progress ?? 0}
-          sx={{
-            height: 3,
-            borderRadius: 999,
-            bgcolor: alpha(theme.palette.common.white, 0.12),
-            "& .MuiLinearProgress-bar": {
-              borderRadius: 999,
-              bgcolor: alpha(theme.palette.secondary.main, 0.8),
-            },
-          }}
+    <Box sx={{ mt: 0.9 }}>
+      <Stack
+        direction="row"
+        spacing={0.8}
+        sx={{ alignItems: "center", mb: 0.6 }}
+      >
+        <CalendarMonthIcon
+          sx={{ fontSize: 16, color: alpha(theme.palette.common.white, 0.72) }}
         />
-      </Box>
-    </Tooltip>
+
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 950,
+            color: alpha(theme.palette.common.white, 0.82),
+          }}
+        >
+          Expected finalization
+        </Typography>
+
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 900,
+            color: alpha(theme.palette.common.white, 0.72),
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </Typography>
+      </Stack>
+
+      <LinearProgress
+        aria-label="Expected finalization progress"
+        variant="determinate"
+        value={deadlineProgress?.progress ?? 0}
+        sx={{
+          height: 3,
+          borderRadius: 999,
+          bgcolor: alpha(theme.palette.common.white, 0.12),
+          "& .MuiLinearProgress-bar": {
+            borderRadius: 999,
+            bgcolor: alpha(theme.palette.secondary.main, 0.8),
+          },
+        }}
+      />
+    </Box>
   );
 };
 
