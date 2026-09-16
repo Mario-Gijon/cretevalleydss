@@ -30,4 +30,19 @@ describe("TaskCenterPanel", () => {
     expect(screen.queryByText("Tasks", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeVisible();
   });
+
+  it("can render without its outer surface when embedded", () => {
+    const { container } = renderWithProviders(
+      <TaskCenterPanel
+        {...panelProps}
+        total={0}
+        showHeader={false}
+        embedded
+      />
+    );
+
+    expect(container.querySelector(".MuiPaper-root")).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeVisible();
+    expect(screen.getByText("All good. Nothing to do here.")).toBeVisible();
+  });
 });

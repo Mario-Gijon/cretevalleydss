@@ -3,7 +3,6 @@ import {
   Stack,
   Box,
   Typography,
-  Grid,
   Paper,
   TextField,
   FormControl,
@@ -160,50 +159,59 @@ const ActiveIssuesToolbar = ({
           </Stack>
         </Stack>
 
-        <Grid container spacing={1} pr={0}>
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<DashboardCustomizeIcon fontSize="small" />}
-              label="Issues"
-              value={overview.total}
-              tone="success"
-            />
-          </Grid>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "repeat(2, minmax(0, 1fr))",
+              md: "repeat(4, minmax(0, 1fr))",
+            },
+            gap: 1,
+            width: "100%",
+            mx: "auto",
+            alignItems: "stretch",
+          }}
+        >
+          <ActiveIssuesTinyStat
+            icon={<DashboardCustomizeIcon fontSize="small" />}
+            label="Issues"
+            value={overview.total}
+            tone="success"
+            fullHeight
+          />
 
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<AssignmentTurnedInIcon fontSize="small" />}
-              label="Tasks"
-              value={overview.tasks}
-              tone="info"
-            />
-          </Grid>
+          <ActiveIssuesTinyStat
+            icon={<AssignmentTurnedInIcon fontSize="small" />}
+            label="Tasks"
+            value={overview.tasks}
+            tone="info"
+            fullHeight
+          />
 
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<PersonOutlineIcon fontSize="small" />}
-              label="Owner"
-              value={overview.owner}
-              tone="success"
-            />
-          </Grid>
+          <ActiveIssuesTinyStat
+            icon={<PersonOutlineIcon fontSize="small" />}
+            label="Owner"
+            value={overview.owner}
+            tone="success"
+            fullHeight
+          />
 
-          <Grid item xs={6} md={3}>
-            <ActiveIssuesTinyStat
-              icon={<GavelIcon fontSize="small" />}
-              label="Ready to resolve"
-              value={overview.readyResolve}
-              tone="warning"
-            />
-          </Grid>
-        </Grid>
+          <ActiveIssuesTinyStat
+            icon={<GavelIcon fontSize="small" />}
+            label="Ready to resolve"
+            mobileLabel="Resolve"
+            value={overview.readyResolve}
+            tone="warning"
+            fullHeight
+          />
+        </Box>
 
         <Box
           sx={{
             display: "grid",
             gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 1fr)" },
             columnGap: 1,
-            rowGap: 0.5,
+            rowGap: { xs: 1.5, sm: 0.5 },
             width: "100%",
             minWidth: 0,
           }}

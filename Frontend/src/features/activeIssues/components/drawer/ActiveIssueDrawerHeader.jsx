@@ -1,4 +1,4 @@
-import { Box, Grid, IconButton, Stack, Typography } from "@mui/material";
+import { Box, IconButton, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -7,7 +7,6 @@ import CategoryIcon from "@mui/icons-material/Category";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 
-import { stageLabel } from "../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../ActiveIssuesPill";
 import ActiveIssuesTinyStat from "../ActiveIssuesTinyStat";
 import { getIssueDetailsDrawerCrystalBorder } from "../../styles/ActiveIssueDrawer.styles";
@@ -77,21 +76,15 @@ const ActiveIssueDrawerHeader = ({
           <Stack
             direction="row"
             spacing={1}
-            sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}
+            sx={{
+              display: { xs: "none", sm: "flex" },
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 1,
+            }}
           >
-            <Typography
-              variant="body2"
-              sx={{ color: "text.secondary", fontWeight: 900 }}
-            >
-              {selectedIssue?.model?.name}
-            </Typography>
-
             <ActiveIssuesPill tone={selectedIssue?.isIssueOwner ? "warning" : "info"}>
               {selectedIssue?.isIssueOwner ? "Owner" : "Expert"}
-            </ActiveIssuesPill>
-
-            <ActiveIssuesPill tone="info">
-              {stageLabel(selectedIssue?.currentStage)}
             </ActiveIssuesPill>
 
             {selectedIssue?.isConsensus ? (
@@ -109,43 +102,49 @@ const ActiveIssueDrawerHeader = ({
         </IconButton>
       </Stack>
 
-      <Grid container spacing={1.1} sx={{ mt: 2 }}>
-        <Grid item xs={6} sm={3}>
-          <ActiveIssuesTinyStat
-            icon={<ViewListIcon fontSize="small" />}
-            label="Alternatives"
-            value={alternativesCount}
-            tone="info"
-          />
-        </Grid>
+      <Box
+        sx={{
+          mt: 2,
+          display: { xs: "none", sm: "grid" },
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            sm: "repeat(3, minmax(0, 1fr)) minmax(0, 1.3fr)",
+          },
+          gap: 1.1,
+          alignItems: "stretch",
+        }}
+      >
+        <ActiveIssuesTinyStat
+          compact
+          icon={<ViewListIcon fontSize="small" />}
+          label="Alternatives"
+          value={alternativesCount}
+          tone="info"
+        />
 
-        <Grid item xs={6} sm={3}>
-          <ActiveIssuesTinyStat
-            icon={<CategoryIcon fontSize="small" />}
-            label="Criteria"
-            value={criteriaCount}
-            tone="info"
-          />
-        </Grid>
+        <ActiveIssuesTinyStat
+          compact
+          icon={<CategoryIcon fontSize="small" />}
+          label="Criteria"
+          value={criteriaCount}
+          tone="info"
+        />
 
-        <Grid item xs={6} sm={3}>
-          <ActiveIssuesTinyStat
-            icon={<PeopleAltIcon fontSize="small" />}
-            label="Experts"
-            value={totalExperts}
-            tone="warning"
-          />
-        </Grid>
+        <ActiveIssuesTinyStat
+          compact
+          icon={<PeopleAltIcon fontSize="small" />}
+          label="Experts"
+          value={totalExperts}
+          tone="warning"
+        />
 
-        <Grid item xs={6} sm={3}>
-          <ActiveIssuesTinyStat
-            icon={<TimelineIcon fontSize="small" />}
-            label="Expected finalization"
-            value={deadlineLabel}
-            tone="info"
-          />
-        </Grid>
-      </Grid>
+        <ActiveIssuesTinyStat
+          icon={<TimelineIcon fontSize="small" />}
+          label="Expected finalization"
+          value={deadlineLabel}
+          tone="info"
+        />
+      </Box>
     </Box>
   );
 };

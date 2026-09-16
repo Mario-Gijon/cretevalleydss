@@ -48,6 +48,7 @@ const ActiveIssuesMobileView = ({
   setPage,
 }) => {
   const theme = useTheme();
+  const sectionSpacing = 1.25;
 
   return (
     <>
@@ -68,7 +69,7 @@ const ActiveIssuesMobileView = ({
       {!isMobile ? (
         <Box
           sx={{
-            mt: 2,
+            mt: sectionSpacing,
             p: { xs: 0.5, sm: 0.75 },
             border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: 5,
@@ -92,7 +93,7 @@ const ActiveIssuesMobileView = ({
           elevation={0}
           sx={{
             ...getActiveIssuesTasksAccordionGlassSx(theme, 0.16),
-            mt: 2,
+            mt: sectionSpacing,
             backgroundImage: "none",
             border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: 5,
@@ -124,6 +125,7 @@ const ActiveIssuesMobileView = ({
               onOpenIssueId={openDetailsById}
               height="auto"
               minHeight={260}
+              embedded
             />
           </AccordionDetails>
         </Accordion>
@@ -138,7 +140,11 @@ const ActiveIssuesMobileView = ({
         />
       ) : (
         <>
-          <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 2 }} />
+          <ActiveIssuesGrid
+            issues={filteredIssues}
+            onOpenIssue={openDetails}
+            sx={{ mt: sectionSpacing }}
+          />
           <ActiveIssuesPagination
             page={page}
             pageCount={pageCount}
