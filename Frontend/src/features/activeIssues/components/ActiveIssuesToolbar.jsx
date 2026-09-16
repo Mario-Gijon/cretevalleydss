@@ -71,7 +71,7 @@ const ActiveIssuesToolbar = ({
     () => [
       { value: "name", label: "Name" },
       { value: "creationDate", label: "Creation Date" },
-      { value: "deadlineDate", label: "Deadline Date" },
+      { value: "deadlineDate", label: "Expected finalization date" },
     ],
     []
   );

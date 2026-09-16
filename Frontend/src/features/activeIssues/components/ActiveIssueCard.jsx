@@ -7,7 +7,6 @@ import {
   getNextActionMeta,
   resolveActiveIssuesToneColor,
 } from "../logic/activeIssuesMeta";
-import { computeIssueDeadlineProgress } from "../logic/activeIssueDeadline";
 import ActiveIssuesPill from "./ActiveIssuesPill";
 import {
   buildIssueWorkflowSteps,
@@ -16,16 +15,15 @@ import {
 import {
   ISSUES_GRID_CARD_HEIGHT,
   IssuesGridCard,
-  getIssueDeadlineColorByProgress,
   issuesGridHideScrollbarSx,
 } from "../styles/ActiveIssuesGrid.styles";
 
 const ActiveIssueDeadlineBar = ({ issue }) => {
   const theme = useTheme();
 
-  const hasServerDeadline = issue.ui.deadline.hasDeadline;
+  const hasExpectedFinalization = issue?.ui?.deadline?.hasDeadline === true;
 
-  if (!hasServerDeadline) {
+  if (!hasExpectedFinalization) {
     return (
       <Box
         sx={{
@@ -38,22 +36,14 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
       >
         <CalendarMonthIcon sx={{ fontSize: 16, opacity: 0.75 }} />
         <Typography variant="caption" sx={{ fontWeight: 950 }}>
-          No deadline
+          No expected finalization date
         </Typography>
       </Box>
     );
   }
 
-  const data = computeIssueDeadlineProgress(issue);
-  const progress = data?.progress ?? 0;
-  const daysLeft = data?.daysLeft;
-  const label = data?.label || issue.closureDate;
-  const barColor = getIssueDeadlineColorByProgress(theme, progress);
-
-  const tooltip =
-    typeof daysLeft === "number"
-      ? `${label} • ${daysLeft <= 0 ? "Expired" : `${daysLeft} day(s) left`}`
-      : String(label);
+  const label = issue.closureDate;
+  const tooltip = `Expected finalization date: ${label}`;
 
   return (
     <Tooltip title={tooltip} placement="top" arrow>
@@ -74,43 +64,22 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
               color: alpha(theme.palette.common.white, 0.82),
             }}
           >
-            {label}
+            Expected finalization
           </Typography>
 
-          <Box sx={{ flex: 1 }} />
-
-          {typeof daysLeft === "number" ? (
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 950,
-                color: alpha(theme.palette.common.white, 0.72),
-              }}
-            >
-              {daysLeft <= 0 ? "Expired" : `${daysLeft}d`}
-            </Typography>
-          ) : null}
-        </Stack>
-
-        <Box
-          sx={{
-            height: 9,
-            borderRadius: 999,
-            bgcolor: alpha(theme.palette.common.white, 0.08),
-            border: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
-            overflow: "hidden",
-          }}
-        >
-          <Box
+          <Typography
+            variant="caption"
             sx={{
-              height: "100%",
-              width: `${Math.round(progress * 100)}%`,
-              bgcolor: barColor,
-              boxShadow: `0 0 18px ${alpha(barColor, 0.25)}`,
-              transition: "width 220ms ease, background 220ms ease",
+              fontWeight: 900,
+              color: alpha(theme.palette.common.white, 0.72),
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
-          />
-        </Box>
+          >
+            {label}
+          </Typography>
+        </Stack>
       </Box>
     </Tooltip>
   );

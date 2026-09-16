@@ -395,7 +395,8 @@ export const buildOverviewData = (payload) => {
         issue.owner.name || issue.owner.email || "—",
       model: safeText(baseModel?.name),
       creationDate: lifecycle.creationDate ?? lifecycle.createdAt ?? null,
-      closureDate: lifecycle.closureDate ?? lifecycle.finishedAt ?? null,
+      closureDate: lifecycle.closureDate ?? null,
+      finishedAt: lifecycle.finishedAt ?? null,
     },
     description: issue.description,
     configuration: detailedConfiguration,
@@ -469,6 +470,8 @@ export const buildOverviewPreview = (data) => ({
   baseModelName: data.general.model,
   creationDate: data.general.creationDate,
   closureDate: data.general.closureDate,
+  expectedFinalizationDate: data.general.closureDate,
+  finishedAt: data.general.finishedAt,
   lifecycleStage:
     data.issue.lifecycle?.active === false ? "Finished" : "Active",
   consensusEnabled: Boolean(data.consensus),

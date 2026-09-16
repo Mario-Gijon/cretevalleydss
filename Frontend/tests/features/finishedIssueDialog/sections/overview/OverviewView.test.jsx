@@ -58,6 +58,22 @@ describe("OverviewView", () => {
     });
   });
 
+  it("keeps the expected finalization date distinct from the actual finished timestamp", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.lifecycle.closureDate = "2026-01-02";
+    payload.lifecycle.finishedAt = "2026-01-04T15:30:00.000Z";
+
+    const data = buildOverviewData(payload);
+
+    expect(data.general).toMatchObject({
+      closureDate: "2026-01-02",
+      finishedAt: "2026-01-04T15:30:00.000Z",
+    });
+    renderView(data);
+    expect(screen.getByText("Expected finalization date")).toBeInTheDocument();
+    expect(screen.getByText("Finalized at")).toBeInTheDocument();
+  });
+
   it("renders arbitrary-depth criteria, resolves weights and domains, and collapses parents", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.criteria = {

@@ -15,6 +15,7 @@ import { Participation } from "../../../models/Participations.js";
 import { deleteActiveIssueAsOwner } from "../../../modules/issues/lifecycle/deleteActiveIssue.js";
 import { leaveActiveIssue } from "../../../modules/issues/lifecycle/leaveActiveIssue.js";
 import { hideFinishedIssueForUser } from "../../../modules/issues/lifecycle/hideFinishedIssue.js";
+import { buildDeadlineInfo } from "../../../modules/issues/active/buildActiveDeadlineInfo.js";
 import {
   createConfirmedUser,
   createIssueCriteriaFixture,
@@ -32,6 +33,8 @@ const createIssue = async ({
   active = true,
   currentStage = "criteriaWeighting",
   consensusPhase = 0,
+  isConsensus = false,
+  closureDate = null,
   name = "Issue under test",
 } = {}) => {
   const modelId = new mongoose.Types.ObjectId();
@@ -51,6 +54,8 @@ const createIssue = async ({
     active,
     currentStage,
     consensusPhase,
+    isConsensus,
+    closureDate,
   });
 };
 
@@ -159,6 +164,30 @@ const createCascadeFixture = async () => {
 };
 
 describe("issue lifecycle", () => {
+  it("keeps an issue active when its expected finalization date is in the past", async () => {
+    const owner = await createConfirmedUser();
+    const issue = await createIssue({
+      ownerId: owner._id,
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 2,
+      isConsensus: true,
+      closureDate: "01-01-2000",
+    });
+
+    const expectedFinalization = buildDeadlineInfo(issue.closureDate);
+    expect(expectedFinalization.hasDeadline).toBe(true);
+    expect(expectedFinalization.daysLeft).toBeLessThan(0);
+
+    const storedIssue = await Issue.findById(issue._id).lean();
+    expect(storedIssue).toMatchObject({
+      active: true,
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 2,
+      isConsensus: true,
+      closureDate: "01-01-2000",
+    });
+  });
+
   it("deleteActiveIssueAsOwner allows the owner to delete an active issue and cascades related documents", async () => {
     const { owner, issue } = await createCascadeFixture();
 

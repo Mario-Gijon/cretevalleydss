@@ -20,7 +20,7 @@ import { getIssueDetailsDrawerCrystalBorder } from "../../styles/ActiveIssueDraw
  * @param {number} props.alternativesCount Número de alternativas.
  * @param {number} props.criteriaCount Número de criterios hoja.
  * @param {number} props.totalExperts Número total de expertos.
- * @param {string} props.deadlineLabel Fecha límite visible.
+ * @param {string} props.deadlineLabel Fecha de finalización esperada visible.
  * @param {Function} props.onClose Acción de cierre.
  * @returns {JSX.Element}
  */
@@ -140,9 +140,9 @@ const ActiveIssueDrawerHeader = ({
         <Grid item xs={6} sm={3}>
           <ActiveIssuesTinyStat
             icon={<TimelineIcon fontSize="small" />}
-            label="Deadline"
+            label="Expected finalization"
             value={deadlineLabel}
-            tone={deadlineLabel && deadlineLabel !== "—" ? "warning" : "success"}
+            tone="info"
           />
         </Grid>
       </Grid>

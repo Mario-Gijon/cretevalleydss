@@ -184,7 +184,7 @@ const FinishedIssuesCards = ({
                               color: alpha(theme.palette.common.white, 0.78),
                             }}
                           >
-                            Closed: {issue?.closureDate}
+                            Expected finalization: {issue?.closureDate}
                           </Typography>
                         </Stack>
                       ) : null}
@@ -323,7 +323,7 @@ const FinishedIssuesCards = ({
                       color: alpha(theme.palette.common.white, 0.78),
                     }}
                   >
-                    Closed: {issue?.closureDate}
+                    Expected finalization: {issue?.closureDate}
                   </Typography>
                 ) : null}
               </Stack>

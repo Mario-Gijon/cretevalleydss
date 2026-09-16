@@ -14,21 +14,18 @@ export const resolveTaskCenterToneFromSeverity = (severity) => {
 };
 
 /**
- * Formatea una fecha limite compacta para el task center.
+ * Formatea una fecha estimada compacta para el task center.
  *
  * @param {Object|null} deadline Informacion de deadline.
  * @returns {string|null}
  */
 export const formatTaskCenterDeadlineMini = (deadline) => {
-  if (!deadline?.hasDeadline) return null;
+  if (!deadline?.hasDeadline || !deadline.iso) return null;
 
-  const daysLeft = deadline.daysLeft;
+  const date = new Date(deadline.iso);
+  if (Number.isNaN(date.getTime())) return null;
 
-  if (typeof daysLeft !== "number") return null;
-  if (daysLeft < 0) return "Expired";
-  if (daysLeft === 0) return "Today";
-
-  return `${daysLeft}d`;
+  return `${`${date.getDate()}`.padStart(2, "0")}/${`${date.getMonth() + 1}`.padStart(2, "0")}`;
 };
 
 export const formatTaskCenterDeadlineLabel = (deadline) => {
@@ -43,7 +40,7 @@ export const formatTaskCenterDeadlineLabel = (deadline) => {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const year = date.getFullYear();
 
-  return `${day}-${month}-${year}`;
+  return `Expected finalization date: ${day}-${month}-${year}`;
 };
 
 /**

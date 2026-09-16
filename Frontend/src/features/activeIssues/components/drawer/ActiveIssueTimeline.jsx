@@ -29,7 +29,7 @@ const ActiveIssueTimelineBar = ({ creationDate, closureDate }) => {
         </Typography>
         {closure ? (
           <Typography variant="caption" color="text.secondary">
-            {closure.format("DD MMM")}
+            Expected finalization: {closure.format("DD MMM")}
           </Typography>
         ) : null}
       </Box>
@@ -43,25 +43,15 @@ const ActiveIssueTimelineBar = ({ creationDate, closureDate }) => {
             borderRadius: 5,
             backgroundColor: "rgba(200,200,200,0.2)",
             "& .MuiLinearProgress-bar": {
-              backgroundColor: progress >= 100 ? "#f44336" : "#2196f3",
+              backgroundColor: "#2196f3",
             },
           }}
         />
       ) : (
         <Typography variant="caption" color="text.secondary">
-          No deadline
+          No expected finalization date
         </Typography>
       )}
-
-      {closure ? (
-        <Box sx={{ textAlign: "center", mt: 0.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            {progress >= 100
-              ? "Closed"
-              : `${Math.max(0, closure.diff(today, "days"))} days left`}
-          </Typography>
-        </Box>
-      ) : null}
     </Box>
   );
 };
@@ -71,7 +61,7 @@ const ActiveIssueTimelineBar = ({ creationDate, closureDate }) => {
  *
  * @param {Object} props Props del componente.
  * @param {Object|null} props.selectedIssue Issue seleccionado.
- * @param {string} props.deadlineLabel Fecha límite visible.
+ * @param {string} props.deadlineLabel Fecha de finalización esperada visible.
  * @returns {JSX.Element}
  */
 const ActiveIssueTimeline = ({
@@ -97,7 +87,7 @@ const ActiveIssueTimeline = ({
           />
         ) : (
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            No deadline defined.
+            No expected finalization date defined.
           </Typography>
         )}
       </Box>

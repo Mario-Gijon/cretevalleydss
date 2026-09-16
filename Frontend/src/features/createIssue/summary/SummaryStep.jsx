@@ -403,7 +403,9 @@ export const SummaryStep = () => {
             {sectionHeader(
               "Scheduling",
               null,
-              "Set when the issue closes and, when applicable, its consensus limits."
+              isConsensus
+                ? "Set an expected finalization date and the consensus threshold."
+                : "Set an expected finalization date."
             )}
           </AccordionSummary>
 
@@ -417,7 +419,7 @@ export const SummaryStep = () => {
                 >
                   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
                     <DatePicker
-                      label="Closure date"
+                      label="Expected finalization date"
                       value={closureDate}
                       minDate={dayjs().add(2, "day")}
                       onChange={(newValue) => {
@@ -438,6 +440,10 @@ export const SummaryStep = () => {
                       }}
                     />
                   </LocalizationProvider>
+
+                  <Box sx={{ mt: { xs: -0.5, sm: 1 }, lineHeight: 0 }}>
+                    <ContextualHelp description="This date is only an estimate. The issue will not be finalized automatically when it is reached." />
+                  </Box>
 
                   <Typography
                     variant="caption"

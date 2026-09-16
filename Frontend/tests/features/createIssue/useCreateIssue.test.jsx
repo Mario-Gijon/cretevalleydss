@@ -321,7 +321,7 @@ describe("useCreateIssue", () => {
     });
   });
 
-  it("marks an invalid closure date and shows a snackbar", async () => {
+  it("marks an invalid expected finalization date and shows a snackbar", async () => {
     const { result } = renderCreateIssueHook();
 
     await act(async () => {
@@ -330,7 +330,7 @@ describe("useCreateIssue", () => {
     });
 
     expect(result.current.closureDateError).toBe(true);
-    expect(showSnackbarAlert).toHaveBeenCalledWith("Closure date is not valid", "error");
+    expect(showSnackbarAlert).toHaveBeenCalledWith("Expected finalization date is not valid", "error");
   });
 
   it("updates activeStep through step navigation helpers", () => {

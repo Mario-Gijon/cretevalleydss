@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
 export const getRemainingTime = (closureDate) => {
-  if (!closureDate) return "Without closure date";
+  if (!closureDate) return "No expected finalization date";
 
   const now = dayjs();
   const years = closureDate.diff(now, "year");
@@ -16,14 +16,14 @@ export const getRemainingTime = (closureDate) => {
     "hour"
   );
 
-  let message = "Close in ";
+  let message = "Expected in ";
   if (years > 0) message += `${years} year${years > 1 ? "s" : ""}, `;
   if (months > 0) message += `${months} month${months > 1 ? "s" : ""}, `;
   if (days > 0) message += `${days} day${days !== 1 ? "s" : ""}, `;
   if (hours > 0) message += `${hours} hour${hours !== 1 ? "s" : ""}`;
 
   if (days === 0 && hours === 0) {
-    message = "Close in less than an hour";
+    message = "Expected in less than an hour";
   }
 
   return message;

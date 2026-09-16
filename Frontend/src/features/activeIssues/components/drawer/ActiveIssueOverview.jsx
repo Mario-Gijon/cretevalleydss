@@ -323,7 +323,7 @@ const ActiveIssueOverview = ({
             <ActiveIssueInfoRow label="Creator" value={selectedIssue?.creator} />
             <ActiveIssueInfoRow label="Description" value={selectedIssue?.description} />
             <ActiveIssueInfoRow label="Creation date" value={selectedIssue?.creationDate} />
-            <ActiveIssueInfoRow label="Closure date" value={deadlineLabel} />
+            <ActiveIssueInfoRow label="Expected finalization date" value={deadlineLabel} />
             <ActiveIssueInfoRow
               label="Stage"
               value={stageLabel(selectedIssue?.currentStage)}

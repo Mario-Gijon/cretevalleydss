@@ -363,7 +363,7 @@ export const useCreateIssue = () => {
     if (selectedDate) {
       if (closureDateObj.isBefore(today.add(2, "day"), "day")) {
         setClosureDateError(true);
-        showSnackbarAlert("Closure date is not valid", "error");
+        showSnackbarAlert("Expected finalization date is not valid", "error");
         return true;
       }
     }
