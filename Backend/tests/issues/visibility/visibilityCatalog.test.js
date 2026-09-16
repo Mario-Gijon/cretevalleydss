@@ -61,7 +61,11 @@ const getAuthHeader = () => ({
   Authorization: "Bearer mocked-access-token",
 });
 
-const createPreparedActiveIssue = async ({ owner, expert }) => {
+const createPreparedActiveIssue = async ({
+  owner,
+  expert,
+  issueInfoOverrides,
+}) => {
   const model = await createIssueModel();
   const domain = await createExpressionDomainFixture({
     userId: owner._id,
@@ -73,6 +77,7 @@ const createPreparedActiveIssue = async ({ owner, expert }) => {
       selectedModelId: model._id,
       globalDomainId: domain._id,
       addedExperts: [expert.email],
+      ...issueInfoOverrides,
     }),
   });
 
@@ -119,6 +124,30 @@ describe("active issue visibility", () => {
       name: "Example issue",
       owner: "owner@example.com",
       createdBy: "owner@example.com",
+    });
+  });
+
+  it("includes a persisted expected finalization date in the active issue UI metadata", async () => {
+    const owner = await createConfirmedUser({
+      email: "owner-with-deadline@example.com",
+    });
+    const expert = await createConfirmedUser({
+      email: "expert-with-deadline@example.com",
+    });
+
+    await createPreparedActiveIssue({
+      owner,
+      expert,
+      issueInfoOverrides: { closureDate: "2026-09-25" },
+    });
+
+    const payload = await getActiveIssuesPayload({
+      userId: owner._id,
+    });
+
+    expect(payload.issues[0].ui.deadline).toMatchObject({
+      hasDeadline: true,
+      iso: expect.any(String),
     });
   });
 
