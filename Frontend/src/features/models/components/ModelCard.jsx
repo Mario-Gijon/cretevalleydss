@@ -29,21 +29,25 @@ const ModelCard = ({ model, onOpen }) => {
           },
         }}
       >
-        <Stack spacing={1.15} sx={{ width: "100%", minHeight: 168, p: { xs: 1.5, sm: 1.75 } }}>
+        <Stack spacing={1.25} sx={{ width: "100%", minHeight: 148, p: { xs: 1.5, sm: 1.75 } }}>
           <Stack spacing={0.55} sx={{ minWidth: 0, flex: 1 }}>
-            <Typography component="h3" variant="h6" sx={{ fontWeight: 850, overflowWrap: "anywhere" }}>
+            <Typography
+              component="h3"
+              variant="h6"
+              sx={{ fontWeight: 900, letterSpacing: "-0.015em", overflowWrap: "anywhere" }}
+            >
               {name}
             </Typography>
             {description ? (
-              <Typography variant="body2" sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
+              <Typography
+                variant="body2"
+                sx={{ color: "text.secondary", lineHeight: 1.55, overflowWrap: "anywhere" }}
+              >
                 {description}
               </Typography>
             ) : null}
           </Stack>
 
-          <Typography variant="body2" sx={{ color: "secondary.main", fontWeight: 850 }}>
-            Learn more
-          </Typography>
         </Stack>
       </CardActionArea>
     </Paper>

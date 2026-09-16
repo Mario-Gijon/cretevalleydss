@@ -1,6 +1,10 @@
 import { Box, Stack, Typography } from "@mui/material";
 
 import ModelCard from "./ModelCard";
+import {
+  getModelCatalogSectionHeaderSx,
+  getModelCatalogSectionSx,
+} from "../styles/models.styles";
 
 /**
  * Sección de una familia del catálogo educativo.
@@ -15,8 +19,8 @@ const ModelCatalogSection = ({ title, description, familyLabel, models, searchAc
     : `No ${title.toLocaleLowerCase()} are available yet.`;
 
   return (
-    <Stack component="section" spacing={1.35} aria-labelledby={headingId}>
-      <Stack spacing={0.25}>
+    <Stack component="section" spacing={1.5} sx={(theme) => getModelCatalogSectionSx(theme)} aria-labelledby={headingId}>
+      <Stack spacing={0.35} sx={(theme) => getModelCatalogSectionHeaderSx(theme)}>
         <Typography id={headingId} component="h2" variant="h5" sx={{ fontWeight: 900 }}>
           {title}
         </Typography>
