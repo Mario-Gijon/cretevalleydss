@@ -51,7 +51,10 @@ def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
         or any(len(row) != 18 for matrix in data.get("sourceValuesByExpert", {}).values() for row in matrix.values())
     ):
         raise ScenarioLabError("two-tuple Greece video fixture must contain an 18-column source matrix")
-    if set(data.get("sourceValuesByExpert", {})) != set(experts) or any(set(matrix) != {item["key"] for item in data["alternatives"]} for matrix in data["sourceValuesByExpert"].values()):
+    if set(data.get("sourceValuesByExpert", {})) != set(experts) or any(
+        set(matrix) != {item["key"] for item in data["alternatives"]}
+        for matrix in data["sourceValuesByExpert"].values()
+    ):
         raise ScenarioLabError("source matrix must contain every authoritative alternative")
     if data.get("expressionDomain", {}).get("labels") != list(EXPECTED_LABELS):
         raise ScenarioLabError("two-tuple Greece video fixture must declare the ordered five-label linguistic scale")
@@ -288,7 +291,14 @@ def _label_keys(context: dict[str, Any]) -> dict[str, str]:
     return resolved
 
 
-def _matrix(data: dict[str, Any], context: dict[str, Any], *, expert_alias: str, alternatives: dict[str, str], criteria: dict[str, str]) -> dict[str, dict[str, dict[str, Any]]]:
+def _matrix(
+    data: dict[str, Any],
+    context: dict[str, Any],
+    *,
+    expert_alias: str,
+    alternatives: dict[str, str],
+    criteria: dict[str, str],
+) -> dict[str, dict[str, dict[str, Any]]]:
     labels = _label_keys(context)
     ordered_labels = [label.casefold() for label in EXPECTED_LABELS]
     leaves = _fixture_leaves(data)
@@ -453,7 +463,17 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
             expert_api = IssuesApi(sessions.client_for(alias))
             expert_context = _context(expert_api.evaluation(issue_id, ALTERNATIVE_STAGE), issue_id, ALTERNATIVE_STAGE, MODEL_KEY)
             expert_alternatives, expert_criteria = _leaf_context_maps(data, expert_context, expected_leaf)
-            expert_api.submit_evaluation(issue_id, ALTERNATIVE_STAGE, _matrix(data, expert_context, expert_alias=alias, alternatives=expert_alternatives, criteria=expert_criteria))
+            expert_api.submit_evaluation(
+                issue_id,
+                ALTERNATIVE_STAGE,
+                _matrix(
+                    data,
+                    expert_context,
+                    expert_alias=alias,
+                    alternatives=expert_alternatives,
+                    criteria=expert_criteria,
+                ),
+            )
         finished = owner.compute_evaluation(issue_id, ALTERNATIVE_STAGE)
         _validate_finished(finished, alternatives, criterion_ids)
         detail = owner.finished_issue(issue_id)
