@@ -6,7 +6,7 @@ import { styled } from "@mui/material/styles";
  *
  * @type {number}
  */
-export const FINISHED_ISSUE_CARD_HEIGHT = 250;
+export const FINISHED_ISSUE_CARD_HEIGHT = 328;
 
 /**
  * Tarjeta glass para cada issue finalizado en el listado.

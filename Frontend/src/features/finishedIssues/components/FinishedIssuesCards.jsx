@@ -18,6 +18,100 @@ import {
   FinishedIssueCard,
 } from "../styles/finishedIssues.styles";
 
+const FinishedIssueTopAlternatives = ({ topAlternatives = [] }) => {
+  const theme = useTheme();
+  const alternatives = Array.isArray(topAlternatives)
+    ? topAlternatives.slice(0, 3)
+    : [];
+
+  return (
+    <Box sx={{ minHeight: { xs: 0, md: 82 } }}>
+      <Typography
+        variant="caption"
+        sx={{
+          display: "block",
+          mb: 0.55,
+          color: alpha(theme.palette.common.white, 0.58),
+          fontWeight: 950,
+          letterSpacing: 0.35,
+          textTransform: "uppercase",
+        }}
+      >
+        Top alternatives
+      </Typography>
+
+      {alternatives.length ? (
+        <Stack spacing={0.38}>
+          {alternatives.map((alternative, index) => {
+            const rank = Number.isFinite(Number(alternative?.rank))
+              ? Number(alternative.rank)
+              : index + 1;
+            const name = alternative?.name || "Unnamed alternative";
+            const isFirst = index === 0;
+
+            return (
+              <Stack
+                direction="row"
+                spacing={0.7}
+                alignItems="center"
+                key={`${alternative?.alternativeId || name}-${rank}`}
+              >
+                <Box
+                  sx={{
+                    minWidth: 25,
+                    px: 0.52,
+                    py: 0.1,
+                    borderRadius: 1,
+                    textAlign: "center",
+                    fontSize: 10,
+                    lineHeight: 1.45,
+                    fontWeight: 950,
+                    color: isFirst
+                      ? alpha(theme.palette.success.light, 0.98)
+                      : alpha(theme.palette.common.white, 0.78),
+                    bgcolor: isFirst
+                      ? alpha(theme.palette.success.main, 0.18)
+                      : alpha(theme.palette.common.white, 0.06),
+                    border: `1px solid ${
+                      isFirst
+                        ? alpha(theme.palette.success.main, 0.34)
+                        : alpha(theme.palette.common.white, 0.1)
+                    }`,
+                  }}
+                >
+                  #{rank}
+                </Box>
+
+                <Tooltip title={name} placement="top" arrow>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{
+                      minWidth: 0,
+                      flex: 1,
+                      color: alpha(theme.palette.common.white, isFirst ? 0.9 : 0.74),
+                      fontWeight: isFirst ? 900 : 800,
+                    }}
+                  >
+                    {name}
+                  </Typography>
+                </Tooltip>
+              </Stack>
+            );
+          })}
+        </Stack>
+      ) : (
+        <Typography
+          variant="caption"
+          sx={{ color: alpha(theme.palette.common.white, 0.48), fontWeight: 800 }}
+        >
+          Ranking unavailable
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
 /**
  * Renderiza la grilla de tarjetas de issues finalizados.
  *
@@ -147,6 +241,10 @@ const FinishedIssuesCards = ({
                     <Box sx={{ mt: 0.2 }}>
                       <ActiveIssuesPill tone="success">Finished</ActiveIssuesPill>
                     </Box>
+
+                    <FinishedIssueTopAlternatives
+                      topAlternatives={issue?.topAlternatives}
+                    />
 
                     <Divider
                       sx={{
@@ -293,6 +391,14 @@ const FinishedIssuesCards = ({
                   {issue?.description || "—"}
                 </Typography>
 
+                <Box>
+                  <ActiveIssuesPill tone="success">Finished</ActiveIssuesPill>
+                </Box>
+
+                <FinishedIssueTopAlternatives
+                  topAlternatives={issue?.topAlternatives}
+                />
+
                 <Divider
                   sx={{
                     opacity: 0.14,
@@ -300,10 +406,6 @@ const FinishedIssuesCards = ({
                     borderColor: alpha("#fff", 0.12),
                   }}
                 />
-
-                <Box>
-                  <ActiveIssuesPill tone="success">Finished</ActiveIssuesPill>
-                </Box>
 
                 <Typography
                   variant="caption"

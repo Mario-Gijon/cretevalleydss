@@ -3051,6 +3051,29 @@
                           },
                           "isIssueOwner": {
                             "type": "boolean"
+                          },
+                          "topAlternatives": {
+                            "type": "array",
+                            "maxItems": 3,
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "alternativeId",
+                                "name",
+                                "rank"
+                              ],
+                              "properties": {
+                                "alternativeId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "rank": {
+                                  "type": "number"
+                                }
+                              }
+                            }
                           }
                         }
                       }
