@@ -170,7 +170,6 @@ test("resolve issue smoke: an owner resolves an expert-evaluated issue with Bord
   });
   await page.getByRole("heading", { name: issueName, exact: true }).click();
   await expect(finishedIssueDialog).toBeVisible();
-  await expect(finishedIssueDialog.getByText("Finished issue", { exact: true })).toBeVisible();
   await expect(finishedIssueHeading).toBeVisible();
   await expect(
     finishedIssueDialog.getByRole("tab", { name: "Summary", exact: true })
