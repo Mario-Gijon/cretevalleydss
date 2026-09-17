@@ -37,6 +37,18 @@ def test_scaffold_catalog_lists_ready_and_partial_assets(
         "implementationStatus: 'ready'\n",
         encoding="utf-8",
     )
+    (evaluation_frontend / "index.js").write_text(
+        'implementationStatus: "ready"\n',
+        encoding="utf-8",
+    )
+    (parameter_backend / "index.js").write_text(
+        'implementationStatus: "ready"\n',
+        encoding="utf-8",
+    )
+    (parameter_frontend / "index.js").write_text(
+        'implementationStatus: "ready"\n',
+        encoding="utf-8",
+    )
     (partial_backend / "index.js").write_text(
         "stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,\n"
         "implementationStatus: 'scaffold'\n",
@@ -78,6 +90,6 @@ def test_scaffold_catalog_lists_ready_and_partial_assets(
     assert partial_evaluation["status"] == "partial"
     assert partial_evaluation["backendExists"] is True
     assert partial_evaluation["frontendExists"] is False
-    assert partial_evaluation["implementationStatus"] == "scaffold"
+    assert partial_evaluation["implementationStatus"] == "invalid"
     assert partial_evaluation["availableForAlternativeEvaluation"] is False
     assert partial_evaluation["availableForCriteriaWeighting"] is False
