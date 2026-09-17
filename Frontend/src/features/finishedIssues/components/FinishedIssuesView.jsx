@@ -128,6 +128,7 @@ const FinishedIssuesView = () => {
                     page={page}
                     pageCount={pageCount}
                     onChange={setPage}
+                    sx={{ mt: { xs: 1.25, lg: 4 } }}
                   />
                 </>
               )}

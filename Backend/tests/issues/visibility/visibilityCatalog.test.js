@@ -39,6 +39,7 @@ vi.mock("../../../modules/issues/finished/finishedPayload/index.js", () => ({
 
 import app from "../../../app.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
 import { deleteAuthenticatedUserAccount } from "../../../modules/auth/account.js";
 import { getActiveIssuesPayload } from "../../../modules/issues/active/index.js";
@@ -302,6 +303,147 @@ describe("finished issues visibility and detail access", () => {
         },
       ],
     });
+  });
+
+  it("returns Top alternatives from the persisted ranking shapes used by current finished issues", async () => {
+    const owner = await createConfirmedUser({
+      email: "finished-ranking-owner@example.com",
+    });
+    const model = await createIssueModel({
+      name: "Finished ranking model",
+    });
+    const createFinishedIssue = (overrides) =>
+      createIssueFixture({
+        ownerId: owner._id,
+        createdBy: owner._id,
+        modelId: model._id,
+        active: false,
+        currentStage: "finished",
+        ...overrides,
+      });
+    const createAlternativeResult = ({ issue, phase = 0, rankedAlternatives }) =>
+      IssueStageResult.create({
+        issue: issue._id,
+        stage: "alternativeEvaluation",
+        consensusPhase: phase,
+        inputSnapshot: { expertWeights: [] },
+        result: {
+          standardResult: {
+            consensusMeasure: null,
+            rankedAlternatives,
+            collectiveEvaluations: {},
+            plotsGraphic: {},
+          },
+          modelExecution: {},
+          rawOutput: {},
+        },
+      });
+
+    const twoTupleIssue = await createFinishedIssue({
+      name: "2-Tuple finished issue",
+      apiModelKey: "two_tuple",
+    });
+    const topsisIssue = await createFinishedIssue({
+      name: "2-Tuple TOPSIS finished issue",
+      apiModelKey: "topsis_2tuple",
+    });
+    const consensusIssue = await createFinishedIssue({
+      name: "Herrera Viedma finished issue",
+      apiModelKey: "herrera_viedma_crp",
+      isConsensus: true,
+      supportsConsensus: true,
+      consensusPhase: 2,
+    });
+
+    await createAlternativeResult({
+      issue: twoTupleIssue,
+      rankedAlternatives: [
+        {
+          alternativeId: "two-tuple-first",
+          name: "Psyxro",
+          score: 3.16,
+          rank: 1,
+          resultLabel: "High, slightly leaning toward Very high",
+        },
+        {
+          alternativeId: "two-tuple-second",
+          name: "Plati",
+          score: 3.04,
+          rank: 2,
+          resultLabel: "High",
+        },
+      ],
+    });
+    await createAlternativeResult({
+      issue: topsisIssue,
+      rankedAlternatives: [
+        {
+          alternativeId: "topsis-first",
+          name: "Saint George",
+          score: 0.63,
+          rank: 1,
+        },
+        {
+          alternativeId: "topsis-second",
+          name: "Tzermiado",
+          score: 0.52,
+          rank: 2,
+        },
+      ],
+    });
+    await createAlternativeResult({
+      issue: consensusIssue,
+      phase: 0,
+      rankedAlternatives: [
+        {
+          alternativeId: "consensus-old",
+          name: "Premium choice",
+          score: 0.43,
+          rank: 1,
+        },
+      ],
+    });
+    await createAlternativeResult({
+      issue: consensusIssue,
+      phase: 2,
+      rankedAlternatives: [
+        {
+          alternativeId: "consensus-final",
+          name: "Balanced choice",
+          score: 0.56,
+          rank: 1,
+        },
+      ],
+    });
+
+    authState.currentPayload = {
+      uid: String(owner._id),
+      role: "user",
+    };
+
+    const response = await request(app)
+      .get("/api/issues/finished")
+      .set(getAuthHeader())
+      .expect(200);
+    const byId = new Map(
+      response.body.data.map((entry) => [entry.id, entry.topAlternatives])
+    );
+
+    expect(byId.get(String(twoTupleIssue._id))).toEqual([
+      { alternativeId: "two-tuple-first", name: "Psyxro", rank: 1 },
+      { alternativeId: "two-tuple-second", name: "Plati", rank: 2 },
+    ]);
+    expect(byId.get(String(topsisIssue._id))).toEqual([
+      { alternativeId: "topsis-first", name: "Saint George", rank: 1 },
+      { alternativeId: "topsis-second", name: "Tzermiado", rank: 2 },
+    ]);
+    expect(byId.get(String(consensusIssue._id))).toEqual([
+      {
+        alternativeId: "consensus-final",
+        name: "Balanced choice",
+        rank: 1,
+      },
+    ]);
   });
 
   it("accepted participant sees finished issues they participated in", async () => {
