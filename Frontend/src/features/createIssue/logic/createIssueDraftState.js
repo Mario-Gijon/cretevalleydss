@@ -59,6 +59,10 @@ export const persistStoredCreateIssueData = (storageKey, data) => {
 };
 
 export const resolveInitialConsensusMaxPhases = (storedData) => {
+  if (Object.hasOwn(storedData, "consensusMaxPhases") && storedData.consensusMaxPhases === null) {
+    return null;
+  }
+
   const storedConsensusMaxPhases = normalizeStoredConsensusMaxPhases(
     storedData.consensusMaxPhases
   );

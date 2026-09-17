@@ -82,6 +82,7 @@ describe("createIssueDraftState", () => {
     expect(resolveInitialConsensusMaxPhases({ consensusMaxPhases: "" })).toBe(3);
     expect(resolveInitialConsensusMaxPhases({ consensusMaxPhases: 0 })).toBe(3);
     expect(resolveInitialConsensusMaxPhases({ consensusMaxPhases: "7" })).toBe(7);
+    expect(resolveInitialConsensusMaxPhases({ consensusMaxPhases: null })).toBeNull();
 
     expect(resolveInitialConsensusThreshold({})).toBe(0.7);
     expect(resolveInitialConsensusThreshold({ consensusThreshold: "bad" })).toBe(0.7);

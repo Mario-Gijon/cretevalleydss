@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -65,6 +65,9 @@ const criteriaTreeHasMissingIds = (items) => {
     return criteriaTreeHasMissingIds(criterion?.children);
   });
 };
+
+const getCreateIssueModelIdentity = (model) =>
+  model?._id || model?.id || model?.apiModelKey || model?.name || null;
 
 /**
  * Gestiona el estado y reglas del flujo createIssue.
@@ -138,6 +141,9 @@ export const useCreateIssue = () => {
       ),
     })
   );
+  const previousSelectedModelIdentityRef = useRef(
+    getCreateIssueModelIdentity(storedData.selectedModel)
+  );
   const effectiveIsConsensus = selectedModel?.supportsConsensus === true;
   const modelSupportsConsensusSimulation =
     selectedModel?.supportsConsensusSimulation === true;
@@ -207,6 +213,15 @@ export const useCreateIssue = () => {
   }, [criteria]);
 
   useEffect(() => {
+    const selectedModelIdentity = getCreateIssueModelIdentity(selectedModel);
+    const previousSelectedModelIdentity = previousSelectedModelIdentityRef.current;
+
+    if (selectedModelIdentity === previousSelectedModelIdentity) {
+      return;
+    }
+
+    previousSelectedModelIdentityRef.current = selectedModelIdentity;
+
     if (selectedModel) {
       const leafCriteria = getLeafCriteria(criteria);
       try {

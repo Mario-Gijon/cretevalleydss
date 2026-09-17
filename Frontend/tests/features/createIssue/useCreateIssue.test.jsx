@@ -49,6 +49,7 @@ import {
   createIssueCriteriaTreeFixture,
   createIssueExpertsFixture,
   createIssueGlobalExpressionDomainConfigFixture,
+  createIssueManualCriteriaWeightingConfigFixture,
   expertWeightModelFixture,
   globalContinuousDomainFixture,
   basicCreateIssueModelFixture,
@@ -170,6 +171,148 @@ describe("useCreateIssue", () => {
     });
 
     unmount();
+  });
+
+  it("round-trips the complete meaningful draft without overwriting model-dependent state", async () => {
+    const expectedFinalizationDate = dayjs().add(6, "day").startOf("day");
+    const customParamValues = {
+      threshold: 0.85,
+      criterionScores: { "criterion-cost": 0.8, "criterion-speed": 0.3 },
+    };
+    const customExpertWeights = {
+      "expert1@example.com": 0.7,
+      "expert2@example.com": 0.3,
+    };
+    const customCriteriaWeightingConfig = {
+      ...createIssueManualCriteriaWeightingConfigFixture,
+      payload: {
+        weightsByCriterion: {
+          "criterion-cost": 0.65,
+          "criterion-speed": 0.35,
+        },
+      },
+    };
+    const { result, unmount } = renderCreateIssueHook();
+
+    await act(async () => {
+      result.current.setSelectedModel(complexCreateIssueModelFixture);
+    });
+    await waitFor(() => {
+      expect(result.current.selectedModel?._id).toBe("model-complex");
+    });
+
+    await act(async () => {
+      result.current.setAlternatives(createIssueAlternativesFixture);
+      result.current.setCriteria(createIssueCriteriaTreeFixture);
+      result.current.setAddedExperts(createIssueExpertsFixture);
+      result.current.setShowConsensusModels(true);
+      result.current.setExpertWeights(customExpertWeights);
+      result.current.setExpertWeightsCustomized(true);
+      result.current.setParamValues(customParamValues);
+      result.current.setCriteriaWeightingConfig(customCriteriaWeightingConfig);
+      result.current.setExpressionDomainConfig(
+        createIssueGlobalExpressionDomainConfigFixture
+      );
+      result.current.handleValidateIssueName("Budget planning");
+      result.current.handleValidateIssueDescription("Detailed issue summary");
+      result.current.setClosureDate(expectedFinalizationDate);
+      result.current.setConsensusMaxPhases(null);
+      result.current.setConsensusThreshold(0.82);
+      result.current.setSimulateConsensus(true);
+      result.current.goToStep(5);
+    });
+
+    await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
+      expect(stored.paramValues).toEqual(customParamValues);
+      expect(stored.criteriaWeightingConfig).toEqual(
+        customCriteriaWeightingConfig
+      );
+      expect(stored.expertWeights).toEqual(customExpertWeights);
+      expect(stored.expertWeightsCustomized).toBe(true);
+    });
+
+    unmount();
+    const remounted = renderCreateIssueHook();
+
+    await waitFor(() => {
+      expect(remounted.result.current.selectedModel?._id).toBe("model-complex");
+      expect(remounted.result.current.isConsensus).toBe(true);
+      expect(remounted.result.current.showConsensusModels).toBe(true);
+      expect(remounted.result.current.activeStep).toBe(5);
+      expect(remounted.result.current.alternatives).toEqual(
+        createIssueAlternativesFixture
+      );
+      expect(remounted.result.current.criteria).toEqual(
+        createIssueCriteriaTreeFixture.map((criterion) => ({
+          ...criterion,
+          description: "",
+          children: criterion.children.map((child) => ({
+            ...child,
+            description: "",
+          })),
+        }))
+      );
+      expect(remounted.result.current.addedExperts).toEqual(
+        createIssueExpertsFixture
+      );
+      expect(remounted.result.current.expertWeights).toEqual(
+        customExpertWeights
+      );
+      expect(remounted.result.current.expertWeightsCustomized).toBe(true);
+      expect(remounted.result.current.paramValues).toEqual(customParamValues);
+      expect(remounted.result.current.criteriaWeightingConfig).toEqual(
+        customCriteriaWeightingConfig
+      );
+      expect(remounted.result.current.expressionDomainConfig).toEqual(
+        createIssueGlobalExpressionDomainConfigFixture
+      );
+      expect(remounted.result.current.issueName).toBe("Budget planning");
+      expect(remounted.result.current.issueDescription).toBe(
+        "Detailed issue summary"
+      );
+      expect(remounted.result.current.closureDate?.toJSON()).toBe(
+        expectedFinalizationDate.toJSON()
+      );
+      expect(remounted.result.current.consensusMaxPhases).toBeNull();
+      expect(remounted.result.current.consensusThreshold).toBe(0.82);
+      expect(remounted.result.current.simulateConsensus).toBe(true);
+    });
+  });
+
+  it("reinitializes model-dependent state when the user changes model after hydration", async () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEY,
+      JSON.stringify({
+        selectedModel: basicCreateIssueModelFixture,
+        paramValues: { threshold: 0.85, criterionScores: { custom: true } },
+        criteriaWeightingConfig: { mode: "custom-draft" },
+      })
+    );
+
+    const { result } = renderCreateIssueHook();
+
+    await waitFor(() => {
+      expect(result.current.paramValues).toEqual({
+        threshold: 0.85,
+        criterionScores: { custom: true },
+      });
+      expect(result.current.criteriaWeightingConfig).toEqual({
+        mode: "custom-draft",
+      });
+    });
+
+    await act(async () => {
+      result.current.setSelectedModel(expertWeightModelFixture);
+    });
+
+    await waitFor(() => {
+      expect(result.current.paramValues).toEqual({
+        threshold: 0.4,
+        criterionScores: 1,
+      });
+      expect(result.current.criteriaWeightingConfig).toBeNull();
+    });
   });
 
   it("persists state changes back to localStorage", async () => {
