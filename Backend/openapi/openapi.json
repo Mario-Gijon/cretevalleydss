@@ -3060,7 +3060,8 @@
                               "required": [
                                 "alternativeId",
                                 "name",
-                                "rank"
+                                "rank",
+                                "score"
                               ],
                               "properties": {
                                 "alternativeId": {
@@ -3070,6 +3071,9 @@
                                   "type": "string"
                                 },
                                 "rank": {
+                                  "type": "number"
+                                },
+                                "score": {
                                   "type": "number"
                                 }
                               }

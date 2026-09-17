@@ -430,18 +430,19 @@ describe("finished issues visibility and detail access", () => {
     );
 
     expect(byId.get(String(twoTupleIssue._id))).toEqual([
-      { alternativeId: "two-tuple-first", name: "Psyxro", rank: 1 },
-      { alternativeId: "two-tuple-second", name: "Plati", rank: 2 },
+      { alternativeId: "two-tuple-first", name: "Psyxro", rank: 1, score: 3.16 },
+      { alternativeId: "two-tuple-second", name: "Plati", rank: 2, score: 3.04 },
     ]);
     expect(byId.get(String(topsisIssue._id))).toEqual([
-      { alternativeId: "topsis-first", name: "Saint George", rank: 1 },
-      { alternativeId: "topsis-second", name: "Tzermiado", rank: 2 },
+      { alternativeId: "topsis-first", name: "Saint George", rank: 1, score: 0.63 },
+      { alternativeId: "topsis-second", name: "Tzermiado", rank: 2, score: 0.52 },
     ]);
     expect(byId.get(String(consensusIssue._id))).toEqual([
       {
         alternativeId: "consensus-final",
         name: "Balanced choice",
         rank: 1,
+        score: 0.56,
       },
     ]);
   });

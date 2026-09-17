@@ -7,6 +7,10 @@ import {
 } from "../../../src/features/finishedIssues/styles/finishedIssues.styles.js";
 
 describe("Finished Issues desktop grid slot", () => {
+  it("keeps the existing fixed card height", () => {
+    expect(FINISHED_ISSUE_CARD_HEIGHT).toBe(328);
+  });
+
   it("reserves three card rows and two grid gaps at lg", () => {
     const sx = getFinishedIssuesDesktopGridHeightSx(theme);
 

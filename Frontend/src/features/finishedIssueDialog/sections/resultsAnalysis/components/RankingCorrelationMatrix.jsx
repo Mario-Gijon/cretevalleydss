@@ -2,6 +2,7 @@ import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
 
 import { comparisonDetailPanelSx, correlationCellSx, correlationMatrixSx, correlationMatrixViewportSx } from "../resultsAnalysis.styles.js";
+import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
 
 const RankingCorrelationMatrix = ({ correlations }) => {
   if (!correlations.available) {
@@ -10,9 +11,7 @@ const RankingCorrelationMatrix = ({ correlations }) => {
         <Typography variant="h6" component="h2">
           Ranking correlations
         </Typography>
-        <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
-          {correlations.reason}
-        </Typography>
+        <VisualizationUnavailableState minHeight={150} description={correlations.reason} />
       </Box>
     );
   }

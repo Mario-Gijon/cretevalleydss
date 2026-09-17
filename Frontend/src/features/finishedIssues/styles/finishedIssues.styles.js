@@ -8,6 +8,11 @@ import { styled } from "@mui/material/styles";
  */
 export const FINISHED_ISSUE_CARD_HEIGHT = 328;
 
+export const getFinishedTopAlternativesWidgetSx = () => ({
+  minHeight: { xs: 0, md: 84 },
+  py: 0.05,
+});
+
 /**
  * Fixed desktop card-grid slot used while pagination is visible.
  * Finished issue cards use Grid spacing 2: two row gaps at lg and one at xl.

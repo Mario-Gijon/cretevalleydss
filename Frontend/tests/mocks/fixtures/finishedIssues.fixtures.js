@@ -19,9 +19,9 @@ export const finishedIssuesDashboardFixture = [
     closureDate: "15/06/2025",
     isIssueOwner: true,
     topAlternatives: [
-      { alternativeId: "alternative-redwood", name: "Redwood", rank: 1 },
-      { alternativeId: "alternative-cedar", name: "Cedar", rank: 2 },
-      { alternativeId: "alternative-pine", name: "Pine", rank: 3 },
+      { alternativeId: "alternative-redwood", name: "Redwood", rank: 1, score: 0.9 },
+      { alternativeId: "alternative-cedar", name: "Cedar", rank: 2, score: 0.6 },
+      { alternativeId: "alternative-pine", name: "Pine", rank: 3, score: 0.3 },
     ],
   },
   {
@@ -39,7 +39,7 @@ export const finishedIssuesDashboardFixture = [
     closureDate: "10/06/2025",
     isIssueOwner: false,
     topAlternatives: [
-      { alternativeId: "alternative-solar", name: "Solar Roof", rank: 1 },
+      { alternativeId: "alternative-solar", name: "Solar Roof", rank: 1, score: 0.8 },
     ],
   },
   {

@@ -1,5 +1,4 @@
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -28,6 +27,7 @@ import { buildVisualizationLayout } from "../logic/modelVisualizationLayout.js";
 import { buildModelAnalysisSections, scopedEntities, visualizationsForScope } from "../logic/modelAnalysisSections.js";
 import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
+import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
 
 const cardSx = {
   border: "1px solid rgba(83,198,214,0.16)",
@@ -121,13 +121,10 @@ const ConsensusCard = ({ consensus }) => (
         <AnalyticalConsensusLineChart data={consensus.graph} />
       </Box>
     ) : (
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        sx={{ minHeight: 100, display: "grid", placeItems: "center" }}
-      >
-        No finite consensus progression data is available.
-      </Typography>
+      <VisualizationUnavailableState
+        minHeight={140}
+        description="This execution does not expose the phase data required for a meaningful consensus chart."
+      />
     )}
   </Box>
 );
@@ -151,13 +148,9 @@ const SingleVisualization = ({
               />
             </Box>
           ) : (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ minHeight: 180, display: "grid", placeItems: "center" }}
-            >
-              {unavailableMessage(scatter?.unavailableReason)}
-            </Typography>
+            <VisualizationUnavailableState
+              description={unavailableMessage(scatter?.unavailableReason)}
+            />
           )}
         </Box>
       </Box>
@@ -172,17 +165,7 @@ const ComparisonVisualization = ({
   if (comparison.presentation === "unavailable")
     return (
       <Box sx={{ minWidth: 0 }}>
-        <Typography
-          color="text.secondary"
-          sx={{
-            minHeight: 180,
-            display: "grid",
-            placeItems: "center",
-            textAlign: "center",
-          }}
-        >
-          {comparison.footerMessage}
-        </Typography>
+        <VisualizationUnavailableState description={comparison.footerMessage} />
       </Box>
     );
   if (comparison.presentation === "separate")
@@ -337,9 +320,7 @@ const RankingEvolution = ({ executions }) => (
                 embedded
               />
             ) : (
-              <Alert severity="info">
-                Ranking evolution is not available for this execution.
-              </Alert>
+              <VisualizationUnavailableState minHeight={150} />
             )}
           </>
         );
@@ -443,7 +424,7 @@ const RankingStabilityContent = ({ execution, executions }) => {
   const visualization = visualizationFor(execution, "rankingStability");
   return <Box data-testid="ranking-stability" sx={{ minWidth: 0 }}>
     <ExecutionLabel execution={execution} visible={executions.length > 1} />
-    {visualization ? <RankingStabilityChart visualization={visualization} /> : <Typography variant="body2" color="text.secondary">Ranking stability is not available for this execution.</Typography>}
+    {visualization ? <RankingStabilityChart visualization={visualization} /> : <VisualizationUnavailableState minHeight={130} />}
   </Box>;
 };
 
@@ -548,7 +529,7 @@ const RankingAgreementContent = ({ execution, executions, showHeading = false })
   return <Box data-testid="ranking-agreement" sx={{ minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
     {showHeading ? <Box sx={{ mb: 1 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Ranking similarity between rounds</Typography><Typography variant="caption" color="text.secondary">How similar the ranking order is from one round to the next.</Typography></Box> : null}
     <ExecutionLabel execution={execution} visible={executions.length > 1} />
-    {visualization ? <RankingAgreementChart visualization={visualization} color={execution.color || "#27d5e4"} /> : <Typography variant="body2" color="text.secondary">Ranking similarity is not available for this execution.</Typography>}
+    {visualization ? <RankingAgreementChart visualization={visualization} color={execution.color || "#27d5e4"} /> : <VisualizationUnavailableState minHeight={130} />}
   </Box>;
 };
 
@@ -687,7 +668,7 @@ const SemanticSection = ({ section }) => {
     <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: visibleEntries.length > 1 ? scenarioColumns : "minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.4, minWidth: visibleEntries.length > 2 ? `${visibleEntries.length * 360}px` : 0 }}>
         {visibleEntries.flatMap((entry, index) => [
-          <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>{visibleEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}{entry.visualizations.length ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} /> : <Alert severity="info">Alternative-evaluation visualizations are not available for this execution.</Alert>}</Box>,
+          <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>{visibleEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}{entry.visualizations.length ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} /> : <VisualizationUnavailableState minHeight={150} />}</Box>,
           ...(index < visibleEntries.length - 1 ? [<Box key={`${entry.execution.key}-divider`} data-testid="semantic-section-scenario-divider" aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, bgcolor: "rgba(83,198,214,0.22)" }} />] : []),
         ])}
       </Box>

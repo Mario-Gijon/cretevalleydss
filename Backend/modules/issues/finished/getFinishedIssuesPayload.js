@@ -14,6 +14,7 @@ const normalizeTopAlternatives = (rankedAlternatives) =>
           ? alternative.name.trim()
           : null,
       rank: Number(alternative?.rank),
+      score: alternative?.score,
       index,
     }))
     .filter(
@@ -21,17 +22,20 @@ const normalizeTopAlternatives = (rankedAlternatives) =>
         alternative.alternativeId &&
         alternative.name &&
         Number.isFinite(alternative.rank) &&
-        alternative.rank > 0
+        alternative.rank > 0 &&
+        typeof alternative.score === "number" &&
+        Number.isFinite(alternative.score)
     )
     .sort(
       (left, right) =>
         left.rank - right.rank || left.index - right.index
     )
     .slice(0, TOP_ALTERNATIVES_LIMIT)
-    .map(({ alternativeId, name, rank }) => ({
+    .map(({ alternativeId, name, rank, score }) => ({
       alternativeId,
       name,
       rank,
+      score,
     }));
 
 export const getFinishedIssuesPayload = async ({ userId }) => {

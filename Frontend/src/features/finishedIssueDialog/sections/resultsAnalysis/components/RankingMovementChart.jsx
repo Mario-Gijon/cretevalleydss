@@ -4,6 +4,7 @@ import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 
 import { comparisonDetailPanelSx, movementChartViewportSx } from "../resultsAnalysis.styles.js";
 import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js";
+import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
 
 const RANKING_MOVEMENT_PLOT_LEFT = 58;
 const RANKING_MOVEMENT_EMBEDDED_PLOT_LEFT = 30;
@@ -30,7 +31,7 @@ const useViewportWidth = () => {
 
 const RankingMovementChart = ({ movement, title = "Ranking movement", subtitle = "Position changes across selected executions.", embedded = false }) => {
   const [viewportRef, width] = useViewportWidth();
-  if (!movement.available) return <Box sx={embedded ? { minWidth: 0 } : comparisonDetailPanelSx}>{embedded ? null : <Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>{title}</Typography>}<Typography sx={{ mt: embedded ? 0 : 1, color: "text.secondary", fontSize: 12 }}>{movement.reason}</Typography></Box>;
+  if (!movement.available) return <Box sx={embedded ? { minWidth: 0 } : comparisonDetailPanelSx}>{embedded ? null : <Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>{title}</Typography>}<VisualizationUnavailableState minHeight={embedded ? 150 : 180} description={movement.reason} /></Box>;
   const height = movementChartHeight(movement.alternatives.length);
   const left = embedded ? RANKING_MOVEMENT_EMBEDDED_PLOT_LEFT : RANKING_MOVEMENT_PLOT_LEFT;
   const right = embedded ? RANKING_MOVEMENT_EMBEDDED_PLOT_RIGHT : 32;
