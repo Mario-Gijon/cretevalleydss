@@ -47,7 +47,7 @@ def _model() -> dict[str, Any]:
     }
 
 
-def _empty(phase: int, collective: dict[str, Any] | None = None) -> dict[str, Any]:
+def _empty(phase: int, collective: dict[str, Any] | None = None, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     alternatives = {"Balanced choice": "balanced", "Premium choice": "premium", "Budget choice": "budget"}
     matrix = {row: {column: "" for column in alternatives.values() if column != row} for row in alternatives.values()}
     context = {
@@ -71,7 +71,7 @@ def _empty(phase: int, collective: dict[str, Any] | None = None) -> dict[str, An
         "completed": False,
         "submittedAt": None,
         "decisionContext": context,
-        "payload": {"overall": matrix},
+        "payload": payload if payload is not None else {"overall": matrix},
         "collectivePayload": None if phase == 0 else collective,
     }
 
@@ -102,9 +102,14 @@ class FakeClient:
             return {}
         if path.endswith("/evaluations/alternativeEvaluation") and method == "GET":
             self.state["evaluation_get_phases"].append(self.state["phase"])
-            return _empty(self.state["phase"], self._phase_zero_collective() if self.state["phase"] == 1 else None)
+            return _empty(
+                self.state["phase"],
+                self._phase_zero_collective() if self.state["phase"] == 1 else None,
+                self.state["payloads"].get(self.alias),
+            )
         if path.endswith("/submit"):
             self.state["evaluation_submit_phases"].append(self.state["phase"])
+            self.state["payloads"][self.alias] = json["payload"]
             return {
                 "completed": True,
                 "stage": "alternativeEvaluation",
@@ -306,6 +311,7 @@ class FakeSessions:
             "evaluation_get_phases": [],
             "evaluation_submit_phases": [],
             "compute_phases": [],
+            "payloads": {},
         }
         self.clients = {alias: FakeClient(alias, self.state) for alias in self.users}
 
@@ -465,6 +471,23 @@ def test_phase_matrices_are_complete_reciprocal_and_distinct() -> None:
     one = [_matrix(context, values) for values in PHASE_ONE_FORWARD]
     assert zero[0] != zero[1] and one[0] != one[1]
     assert set(zero[0]) == {"overall"} and set(one[0]) == {"overall"}
+
+
+def test_later_phase_requires_the_same_expert_submission_not_collective_payload() -> None:
+    phase_zero = _empty(0)
+    previous_payload = _matrix(_context(phase_zero, "issue", 0), PHASE_ZERO_FORWARD[0])
+    collective = {"overall": {"balanced": {"premium": 0.42, "budget": 0.41}}}
+    _context(_empty(1, collective, previous_payload), "issue", 1, previous_payload, collective)
+    with pytest.raises(ScenarioLabError, match="previous phase submission"):
+        _context(_empty(1, collective), "issue", 1, collective, collective)
+
+
+def test_phase_zero_still_requires_empty_payload() -> None:
+    response = _empty(0)
+    _context(response, "issue", 0)
+    response["payload"]["overall"]["balanced"]["premium"] = 0.5
+    with pytest.raises(ScenarioLabError, match="canonical empty directed matrix"):
+        _context(response, "issue", 0)
 
 
 def test_phase_one_scores_are_derived_from_unrounded_owa_and_qgdd_values() -> None:

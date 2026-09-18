@@ -225,6 +225,13 @@ def _validate_empty(payload: Any, context: dict[str, Any]) -> None:
                 raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
 
 
+def _validate_carried(payload: Any, context: dict[str, Any], previous_payload: Any) -> None:
+    if not isinstance(previous_payload, dict) or payload != previous_payload:
+        raise ScenarioLabError("pairwise payload does not match the expert's previous phase submission")
+    alternatives, criteria = _ids(context)
+    _validate_pairwise(payload, set(criteria.values()), set(alternatives.values()))
+
+
 def _pairwise(context: dict[str, Any], *, expert_b: bool) -> dict[str, Any]:
     alternatives, criteria = _ids(context)
     b, p, u = alternatives["Balanced choice"], alternatives["Premium choice"], alternatives["Budget choice"]

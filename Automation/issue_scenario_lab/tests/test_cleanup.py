@@ -184,6 +184,26 @@ def test_non_auto_and_manifest_write_failure_are_safe(tmp_path: Path, monkeypatc
         delete_finished_generation(FakeSessions(), store, ENTRY.generation_id)
 
 
+def test_legacy_manifest_entry_requires_explicit_opt_in(tmp_path: Path) -> None:
+    legacy = ENTRY.model_copy(update={"issue_name": "Legacy issue"})
+    sessions = FakeSessions()
+    sessions.state["names"] = {alias: legacy.issue_name for alias in legacy.visible_user_aliases}
+    sessions.state["delete_names"] = {alias: legacy.issue_name for alias in legacy.visible_user_aliases}
+    store = store_with_entry(tmp_path, legacy)
+    with pytest.raises(ScenarioLabError, match="non-automated"):
+        delete_finished_generation(FakeSessions(), store, legacy.generation_id)
+    result = delete_finished_generation(sessions, store, legacy.generation_id, allow_legacy_manifest_entry=True)
+    assert result.deletion_confirmed and store.find(legacy.generation_id) is None
+
+
+def test_legacy_opt_in_still_requires_exact_backend_name(tmp_path: Path) -> None:
+    legacy = ENTRY.model_copy(update={"issue_name": "Legacy issue"})
+    sessions = FakeSessions()
+    sessions.state["names"]["expert_a"] = "Different issue"
+    with pytest.raises(ScenarioLabError, match="name does not match"):
+        delete_finished_generation(sessions, store_with_entry(tmp_path, legacy), legacy.generation_id, allow_legacy_manifest_entry=True)
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
@@ -230,7 +250,7 @@ def test_cli_commands_invoke_cleanup_services(monkeypatch: pytest.MonkeyPatch, t
     monkeypatch.setattr(
         cli,
         "delete_finished_generation",
-        lambda *_: FinishedDeletionResult("gen-id", ISSUE_ID, ISSUE_NAME, ("owner",), (), True, True),
+        lambda *_, **__: FinishedDeletionResult("gen-id", ISSUE_ID, ISSUE_NAME, ("owner",), (), True, True),
     )
     monkeypatch.setattr(cli, "delete_active_issue", lambda *_args, **_kwargs: ActiveDeletionResult(ISSUE_ID, ISSUE_NAME, "owner", True))
     runner = CliRunner()

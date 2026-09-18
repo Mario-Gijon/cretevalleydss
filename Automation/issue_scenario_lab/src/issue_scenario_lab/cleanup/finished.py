@@ -34,10 +34,10 @@ def _id(item: dict[str, Any]) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _validate_entry(entry: GeneratedIssue, sessions: SessionPool) -> tuple[str, ...]:
+def _validate_entry(entry: GeneratedIssue, sessions: SessionPool, *, allow_legacy_manifest_entry: bool = False) -> tuple[str, ...]:
     if not entry.issue_id or not entry.issue_name or not entry.owner_alias or not entry.visible_user_aliases:
         raise ScenarioLabError(f"manifest entry {entry.generation_id} is incomplete")
-    if not entry.issue_name.startswith("[AUTO:"):
+    if not allow_legacy_manifest_entry and not entry.issue_name.startswith("[AUTO:"):
         raise ScenarioLabError(f"refusing cleanup for non-automated issue: {entry.issue_name}")
     aliases = tuple(entry.visible_user_aliases)
     if entry.owner_alias not in aliases:
@@ -52,11 +52,13 @@ def _ordered_aliases(entry: GeneratedIssue) -> tuple[str, ...]:
     return tuple(alias for alias in entry.visible_user_aliases if alias != entry.owner_alias) + (entry.owner_alias,)
 
 
-def delete_finished_generation(sessions: SessionPool, store: ManifestStore, generation_id: str) -> FinishedDeletionResult:
+def delete_finished_generation(
+    sessions: SessionPool, store: ManifestStore, generation_id: str, *, allow_legacy_manifest_entry: bool = False
+) -> FinishedDeletionResult:
     entry = store.find(generation_id)
     if entry is None:
         raise ScenarioLabError(f"unknown generation ID: {generation_id}")
-    _validate_entry(entry, sessions)
+    _validate_entry(entry, sessions, allow_legacy_manifest_entry=allow_legacy_manifest_entry)
     aliases = _ordered_aliases(entry)
 
     # Authenticate everyone before hiding the issue for anyone.

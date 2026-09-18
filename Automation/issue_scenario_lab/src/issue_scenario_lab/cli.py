@@ -140,13 +140,15 @@ def _finished_result_output(result: Any) -> dict[str, Any]:
 
 
 @app.command("delete")
-def delete(generation_id: str) -> None:
+def delete(generation_id: str, allow_legacy_manifest_entry: bool = typer.Option(False, "--allow-legacy-manifest-entry")) -> None:
     """Hide and permanently remove one generated finished issue through the Backend."""
 
     try:
         settings = _settings()
         with SessionPool.from_settings(settings) as sessions:
-            result = delete_finished_generation(sessions, ManifestStore(settings.manifest_file), generation_id)
+            result = delete_finished_generation(
+                sessions, ManifestStore(settings.manifest_file), generation_id, allow_legacy_manifest_entry=allow_legacy_manifest_entry
+            )
     except ScenarioLabError as error:
         _raise_cli_error(error)
     console.print(_finished_result_output(result))

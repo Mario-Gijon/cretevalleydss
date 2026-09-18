@@ -18,6 +18,7 @@ from issue_scenario_lab.scenarios.consensus_first_round import (
     _ids,
     _payload,
     _select_model,
+    _validate_carried,
     _validate_collective,
     _validate_finished_weights,
     _validate_pairwise,
@@ -32,7 +33,13 @@ PHASE_ZERO_SCORES = (0.4133, 0.4266, 0.4199)
 PHASE_ONE_SCORES = (0.54224, 0.41156, 0.35532)
 
 
-def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] | None = None) -> dict[str, Any]:
+def _context(
+    response: Any,
+    issue_id: str,
+    phase: int,
+    previous_payload: dict[str, Any] | None = None,
+    previous_collective: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if (
         not isinstance(response, dict)
         or response.get("stage") != STAGE
@@ -55,20 +62,21 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
     alternatives, criteria = _ids(context)
     if set(payload) != set(criteria.values()):
         raise ScenarioLabError("pairwise payload does not contain the persisted Overall preference criterion")
-    for matrix in payload.values():
-        if set(matrix) != set(alternatives.values()) or any(
-            set(row) != set(alternatives.values()) - {row_id} or any(value != "" for value in row.values()) for row_id, row in matrix.items()
-        ):
-            raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
     if phase == 0:
+        for matrix in payload.values():
+            if set(matrix) != set(alternatives.values()) or any(
+                set(row) != set(alternatives.values()) - {row_id} or any(value != "" for value in row.values()) for row_id, row in matrix.items()
+            ):
+                raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
         if response.get("collectivePayload") is not None or (context.get("consensus") or {}).get("previousCollectiveEvaluations") not in ({}, None):
             raise ScenarioLabError("phase-zero evaluation unexpectedly has collective evidence")
-    elif previous is not None:
+    else:
+        _validate_carried(payload, context, previous_payload)
         reference = response.get("collectivePayload")
         if (
             not isinstance(reference, dict)
-            or reference != previous
-            or (context.get("consensus") or {}).get("previousCollectiveEvaluations") != previous
+            or reference != previous_collective
+            or (context.get("consensus") or {}).get("previousCollectiveEvaluations") != previous_collective
             or (context.get("consensus") or {}).get("currentCollectiveEvaluations") != {}
         ):
             raise ScenarioLabError("phase-one evaluation does not expose the phase-zero collective reference")
@@ -358,7 +366,14 @@ def generate(
             raise ScenarioLabError("phase-zero issue is no longer active")
         _validate_active(active_after[0], 1, set(emails[1:]))
         phase_one_contexts = [
-            _context(IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE), issue_id, 1, phase_zero_collective) for alias in aliases[1:]
+            _context(
+                IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE),
+                issue_id,
+                1,
+                phase_zero_payloads[index],
+                phase_zero_collective,
+            )
+            for index, alias in enumerate(aliases[1:])
         ]
         phase_one_payloads = [_matrix(context, PHASE_ONE_FORWARD[index]) for index, context in enumerate(phase_one_contexts)]
         for alias, payload in zip(aliases[1:], phase_one_payloads, strict=True):

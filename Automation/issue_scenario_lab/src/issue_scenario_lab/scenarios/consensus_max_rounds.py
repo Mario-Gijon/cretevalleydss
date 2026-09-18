@@ -18,6 +18,7 @@ from issue_scenario_lab.scenarios.consensus_first_round import (
     _finite,
     _ids,
     _payload,
+    _validate_carried,
     _validate_collective,
     _validate_finished_weights,
     _validate_pairwise,
@@ -91,7 +92,13 @@ def _select_model(data: Any) -> dict[str, Any]:
     return model
 
 
-def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] | None = None) -> dict[str, Any]:
+def _context(
+    response: Any,
+    issue_id: str,
+    phase: int,
+    previous_payload: dict[str, Any] | None = None,
+    previous_collective: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if (
         not isinstance(response, dict)
         or response.get("stage") != STAGE
@@ -115,25 +122,26 @@ def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] 
     alternative_ids, criterion_ids = set(alternatives.values()), set(criteria.values())
     if set(payload) != criterion_ids:
         raise ScenarioLabError("pairwise payload does not contain the persisted Overall preference criterion")
-    for matrix in payload.values():
-        if (
-            not isinstance(matrix, dict)
-            or set(matrix) != alternative_ids
-            or any(
-                not isinstance(row, dict) or set(row) != alternative_ids - {row_id} or any(value != "" for value in row.values())
-                for row_id, row in matrix.items()
-            )
-        ):
-            raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
     if phase == 0:
+        for matrix in payload.values():
+            if (
+                not isinstance(matrix, dict)
+                or set(matrix) != alternative_ids
+                or any(
+                    not isinstance(row, dict) or set(row) != alternative_ids - {row_id} or any(value != "" for value in row.values())
+                    for row_id, row in matrix.items()
+                )
+            ):
+                raise ScenarioLabError("pairwise payload is not the canonical empty directed matrix")
         if response.get("collectivePayload") is not None or (context.get("consensus") or {}).get("previousCollectiveEvaluations") not in ({}, None):
             raise ScenarioLabError("phase-zero evaluation unexpectedly has collective evidence")
-    elif previous is not None:
+    else:
+        _validate_carried(payload, context, previous_payload)
         reference = response.get("collectivePayload")
         if (
             not isinstance(reference, dict)
-            or reference != previous
-            or (context.get("consensus") or {}).get("previousCollectiveEvaluations") != previous
+            or reference != previous_collective
+            or (context.get("consensus") or {}).get("previousCollectiveEvaluations") != previous_collective
             or (context.get("consensus") or {}).get("currentCollectiveEvaluations") != {}
         ):
             raise ScenarioLabError("evaluation does not expose the immediately previous collective reference")
@@ -650,11 +658,20 @@ def generate(
         _validate_initial_participants(active, set(emails[1:]))
         for alias in aliases[1:]:
             IssuesApi(sessions.client_for(alias)).respond_to_invitation(issue_id, "accepted")
-        previous, contexts, collectives, live_suggestion_keys = None, [], [], []
+        previous_collective, previous_payloads, contexts, collectives, live_suggestion_keys = None, {}, [], [], []
         forbidden = {identity.casefold() for identity in (*aliases, *emails)}
         alternative_ids: set[str] | None = None
         for phase in range(4):
-            phase_contexts = [_context(IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE), issue_id, phase, previous) for alias in aliases[1:]]
+            phase_contexts = [
+                _context(
+                    IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE),
+                    issue_id,
+                    phase,
+                    previous_payloads.get(alias),
+                    previous_collective,
+                )
+                for alias in aliases[1:]
+            ]
             if _ids(phase_contexts[0]) != _ids(phase_contexts[1]):
                 raise ScenarioLabError("expert contexts use different persisted identities")
             if alternative_ids is None:
@@ -687,7 +704,8 @@ def generate(
             contexts.append(phase_contexts[0])
             collectives.append(collective)
             live_suggestion_keys.append(keys)
-            previous = collective
+            previous_collective = collective
+            previous_payloads = dict(zip(aliases[1:], payloads, strict=True))
             if phase < 3:
                 active_after = [item for item in _items(owner.active_issues(), "issues") if _id(item) == issue_id]
                 if len(active_after) != 1:

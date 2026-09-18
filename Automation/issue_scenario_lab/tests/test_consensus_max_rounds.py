@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -77,7 +78,7 @@ def _raw_collective(phase: int) -> dict[str, list[list[float]]]:
     }
 
 
-def _empty(phase: int) -> dict[str, Any]:
+def _empty(phase: int, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     ids = {"Balanced choice": "balanced", "Premium choice": "premium", "Budget choice": "budget"}
     matrix = {row: {column: "" for column in ids.values() if column != row} for row in ids.values()}
     previous = _collective(phase - 1) if phase else {}
@@ -101,7 +102,7 @@ def _empty(phase: int) -> dict[str, Any]:
             ],
             "consensus": {"phase": phase, "currentCollectiveEvaluations": {}, "previousCollectiveEvaluations": previous},
         },
-        "payload": {"overall": matrix},
+        "payload": payload if payload is not None else {"overall": matrix},
         "collectivePayload": None if phase == 0 else previous,
     }
 
@@ -129,10 +130,12 @@ class FakeClient:
         if path.endswith("/evaluations/alternativeEvaluation") and method == "GET":
             phase = self.state["phase"]
             self.state["gets"].append((self.alias, phase))
-            return _empty(phase)
+            return _empty(phase, self.state["payloads"].get(self.alias))
         if path.endswith("/submit"):
             phase = self.state["phase"]
             self.state["submits"].append((self.alias, phase, json["payload"]))
+            self.state["submit_snapshots"].append(deepcopy(json["payload"]))
+            self.state["payloads"][self.alias] = json["payload"]
             return {
                 "completed": True,
                 "stage": "alternativeEvaluation",
@@ -348,7 +351,15 @@ class FakeSessions:
             alias: UserCredentials(email=email, password="secret")
             for alias, email in {"owner": "owner@example.test", "expert_a": "a@example.test", "expert_b": "b@example.test"}.items()
         }
-        self.state: dict[str, Any] = {"calls": [], "phase": 0, "gets": [], "submits": [], "computes": []}
+        self.state: dict[str, Any] = {
+            "calls": [],
+            "phase": 0,
+            "gets": [],
+            "submits": [],
+            "submit_snapshots": [],
+            "computes": [],
+            "payloads": {},
+        }
         self.clients = {alias: FakeClient(alias, self.state) for alias in self.users}
 
     def login(self, alias: str) -> dict[str, str]:
@@ -383,6 +394,7 @@ def test_four_round_flow_validates_finished_evidence_before_manifest(tmp_path: P
     ]
     assert sessions.state["gets"] == [(alias, phase) for phase in range(4) for alias in ("expert_a", "expert_b")]
     assert [phase for _, phase, _ in sessions.state["submits"]] == [0, 0, 1, 1, 2, 2, 3, 3]
+    assert [payload for _, _, payload in sessions.state["submits"]] == sessions.state["submit_snapshots"]
     assert sessions.state["computes"] == [0, 1, 2, 3]
     assert sessions.state["phase"] == 3
     assert [call[0] for call in calls if call[1] == "LOGIN"] == ["owner", "expert_a", "expert_b"]
@@ -434,6 +446,22 @@ def test_all_four_matrix_pairs_are_complete_reciprocal_and_distinct() -> None:
         assert set(first) == {"overall"}
     assert PHASE_MEASURES == (0.50, 0.65, 0.73, 0.80)
     assert all(left < right < 0.9 for left, right in zip(PHASE_MEASURES, PHASE_MEASURES[1:], strict=False))
+
+
+def test_later_phase_requires_the_expert_carry_forward_not_collective_data() -> None:
+    previous_payload = _matrix(_context(_empty(0), "issue", 0), PHASE_FORWARDS[0][0])
+    collective = _collective(0)
+    _context(_empty(1, previous_payload), "issue", 1, previous_payload, collective)
+    with pytest.raises(ScenarioLabError, match="previous phase submission"):
+        _context(_empty(1, payload=collective), "issue", 1, previous_payload, collective)
+
+
+def test_phase_zero_still_requires_empty_expert_payload() -> None:
+    response = _empty(0)
+    _context(response, "issue", 0)
+    response["payload"]["overall"]["balanced"]["premium"] = 0.5
+    with pytest.raises(ScenarioLabError, match="canonical empty directed matrix"):
+        _context(response, "issue", 0)
 
 
 @pytest.mark.parametrize("phase", range(4))
