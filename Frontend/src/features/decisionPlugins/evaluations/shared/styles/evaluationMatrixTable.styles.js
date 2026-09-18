@@ -12,7 +12,7 @@ export const buildEvaluationMatrixDataGridSx = (theme) => ({
   "& .MuiDataGrid-columnHeader": { backgroundColor: headerBg, borderRight: cellBorder },
   "& .MuiDataGrid-columnHeader:last-of-type": { borderRight: "none" },
   "& .MuiDataGrid-columnHeaderTitle": { fontWeight: 800, color: theme.palette.text.primary },
-  "& .MuiDataGrid-cell": { alignItems: "center", backgroundColor: bodyCellBg, borderRight: cellBorder, borderBottom: cellBorder },
+  "& .MuiDataGrid-cell": { alignItems: "center", boxSizing: "border-box", backgroundColor: bodyCellBg, borderRight: cellBorder, borderBottom: cellBorder, backgroundClip: "padding-box" },
   "& .MuiDataGrid-cell:last-of-type": { borderRight: "none" },
   "& .MuiDataGrid-row": { backgroundColor: bodyCellBg },
   "& .MuiDataGrid-row:hover": { backgroundColor: bodyCellBg },

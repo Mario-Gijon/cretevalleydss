@@ -6,6 +6,8 @@ import {
   buildPairwiseMatrixSx,
   pairwiseMatrixSx,
 } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/styles/PairwiseMatrix.styles.js";
+import { cellSx } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/styles/Cell.styles.js";
+import { buildEvaluationMatrixDataGridSx } from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
 import {
   ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
   EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
@@ -49,6 +51,39 @@ describe("PairwiseMatrix Cell", () => {
 });
 
 describe("PairwiseMatrix layout", () => {
+  it("keeps inner evaluation outlines transparent with restrained editable feedback", () => {
+    expect(cellSx.inputBoundary["& .MuiOutlinedInput-notchedOutline"]).toEqual({
+      borderColor: "transparent",
+    });
+    expect(
+      cellSx.inputBoundary["& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline"]
+    ).toEqual({ borderColor: "rgba(103, 221, 218, 0.35)" });
+    expect(
+      cellSx.inputBoundary["& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline"]
+    ).toEqual({ borderColor: "rgba(103, 221, 218, 0.65)" });
+    expect(
+      cellSx.inputBoundary[
+        "& .MuiOutlinedInput-root.Mui-disabled:hover .MuiOutlinedInput-notchedOutline"
+      ]
+    ).toEqual({ borderColor: "transparent" });
+  });
+
+  it("keeps row and column separators on the shared DataGrid cell geometry", () => {
+    const sharedCellStyles = buildEvaluationMatrixDataGridSx({
+      palette: { common: { white: "#fff" } },
+      text: { primary: "#fff", disabled: "#999" },
+    })["& .MuiDataGrid-cell"];
+
+    expect(sharedCellStyles).toMatchObject({
+      boxSizing: "border-box",
+      borderRight: "1px solid rgba(255,255,255,0.075)",
+      borderBottom: "1px solid rgba(255,255,255,0.075)",
+      backgroundClip: "padding-box",
+    });
+    expect(cellSx.diagonal).not.toHaveProperty("borderBottom");
+    expect(cellSx.diagonal).not.toHaveProperty("borderRight");
+  });
+
   it("leaves horizontal scrolling to DataGrid while preserving the matrix minimum width", () => {
     expect(pairwiseMatrixSx.container).toMatchObject({ width: "100%", minWidth: 0 });
     expect(pairwiseMatrixSx.container).not.toHaveProperty("overflowX");
@@ -56,7 +91,7 @@ describe("PairwiseMatrix layout", () => {
     const styles = buildPairwiseMatrixSx({
       theme: {},
       alternativeCount: 6,
-      buildSharedStyles: () => ({}),
+      buildSharedStyles: () => ({ "& .first-column": { px: 1 } }),
     });
 
     expect(styles.minWidth).toBe(
@@ -65,5 +100,9 @@ describe("PairwiseMatrix layout", () => {
         6 * EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH + ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH
       )
     );
+    expect(styles["& .MuiDataGrid-cell.pairwise-grid-cell, & .MuiDataGrid-cell.diagonal-cell"]).toEqual({
+      px: 0,
+    });
+    expect(styles["& .first-column"]).toEqual({ px: 1 });
   });
 });
