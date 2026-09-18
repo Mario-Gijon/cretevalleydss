@@ -13,6 +13,7 @@ from issue_scenario_lab.scenarios.consensus_first_round import (
     PARAMETERS,
     STAGE,
     THRESHOLD,
+    _canonical_submitted_payload,
     _domain,
     _finite,
     _ids,
@@ -345,6 +346,10 @@ def generate(
             submitted = IssuesApi(sessions.client_for(alias)).submit_evaluation(issue_id, STAGE, payload)
             if not isinstance(submitted, dict) or submitted.get("completed") is not True or submitted.get("consensusPhase") != 0:
                 raise ScenarioLabError("phase-zero submission is incompatible")
+        canonical_phase_zero_payloads = [
+            _canonical_submitted_payload(IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE), issue_id, 0)
+            for alias in aliases[1:]
+        ]
         phase_zero_collective = _collective(phase_zero_contexts[0], (0.42, 0.42, 0.41, 0.41, 0.44, 0.44))
         alternative_ids = set(_ids(phase_zero_contexts[0])[0].values())
         phase_zero_result = owner.compute_evaluation(issue_id, STAGE)
@@ -370,7 +375,7 @@ def generate(
                 IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE),
                 issue_id,
                 1,
-                phase_zero_payloads[index],
+                canonical_phase_zero_payloads[index],
                 phase_zero_collective,
             )
             for index, alias in enumerate(aliases[1:])

@@ -107,6 +107,16 @@ def _empty(phase: int, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     }
 
 
+def _canonicalize(value: Any) -> Any:
+    if isinstance(value, float):
+        return round(value, 3)
+    if isinstance(value, dict):
+        return {key: _canonicalize(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_canonicalize(item) for item in value]
+    return value
+
+
 class FakeClient:
     def __init__(self, alias: str, state: dict[str, Any]) -> None:
         self.alias, self.state = alias, state
@@ -130,12 +140,19 @@ class FakeClient:
         if path.endswith("/evaluations/alternativeEvaluation") and method == "GET":
             phase = self.state["phase"]
             self.state["gets"].append((self.alias, phase))
-            return _empty(phase, self.state["payloads"].get(self.alias))
+            submitted = self.state["submitted"].get(self.alias)
+            response = _empty(phase, submitted["payload"] if submitted else None)
+            if submitted and submitted["phase"] == phase:
+                response.update(completed=True, submittedAt="now")
+            return response
         if path.endswith("/submit"):
             phase = self.state["phase"]
             self.state["submits"].append((self.alias, phase, json["payload"]))
             self.state["submit_snapshots"].append(deepcopy(json["payload"]))
-            self.state["payloads"][self.alias] = json["payload"]
+            canonical = _canonicalize(json["payload"])
+            self.state["payloads"][self.alias] = canonical
+            self.state["submitted"][self.alias] = {"phase": phase, "payload": canonical}
+            self.state["canonical_payloads"].append(canonical)
             return {
                 "completed": True,
                 "stage": "alternativeEvaluation",
@@ -359,6 +376,8 @@ class FakeSessions:
             "submit_snapshots": [],
             "computes": [],
             "payloads": {},
+            "submitted": {},
+            "canonical_payloads": [],
         }
         self.clients = {alias: FakeClient(alias, self.state) for alias in self.users}
 
@@ -392,7 +411,20 @@ def test_four_round_flow_validates_finished_evidence_before_manifest(tmp_path: P
     assert [sessions.clients["owner"]._result(phase)["rawOutput"]["collective_evaluations"] for phase in range(4)] == [
         _raw_collective(phase) for phase in range(4)
     ]
-    assert sessions.state["gets"] == [(alias, phase) for phase in range(4) for alias in ("expert_a", "expert_b")]
+    expected_gets = [
+        (alias, phase)
+        for phase in range(4)
+        for _ in range(2)
+        for alias in ("expert_a", "expert_b")
+    ]
+    assert sessions.state["gets"] == expected_gets
+    assert any(
+        value == 0.1
+        for payload in sessions.state["canonical_payloads"]
+        for matrix in payload.values()
+        for row in matrix.values()
+        for value in row.values()
+    )
     assert [phase for _, phase, _ in sessions.state["submits"]] == [0, 0, 1, 1, 2, 2, 3, 3]
     assert [payload for _, _, payload in sessions.state["submits"]] == sessions.state["submit_snapshots"]
     assert sessions.state["computes"] == [0, 1, 2, 3]
@@ -429,6 +461,8 @@ def test_four_round_flow_validates_finished_evidence_before_manifest(tmp_path: P
                 ("expert_b", "GET", "/issues/issue/evaluations/alternativeEvaluation"),
                 ("expert_a", "POST", "/issues/issue/evaluations/alternativeEvaluation/submit"),
                 ("expert_b", "POST", "/issues/issue/evaluations/alternativeEvaluation/submit"),
+                ("expert_a", "GET", "/issues/issue/evaluations/alternativeEvaluation"),
+                ("expert_b", "GET", "/issues/issue/evaluations/alternativeEvaluation"),
                 ("owner", "POST", "/issues/issue/evaluations/alternativeEvaluation/compute"),
             ]
         )

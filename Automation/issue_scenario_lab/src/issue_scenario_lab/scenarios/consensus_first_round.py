@@ -232,6 +232,30 @@ def _validate_carried(payload: Any, context: dict[str, Any], previous_payload: A
     _validate_pairwise(payload, set(criteria.values()), set(alternatives.values()))
 
 
+def _canonical_submitted_payload(response: Any, issue_id: str, phase: int) -> dict[str, Any]:
+    if (
+        not isinstance(response, dict)
+        or response.get("stage") != STAGE
+        or response.get("structureKey") != "alternativePairwiseByCriterion"
+        or response.get("completed") is not True
+        or not response.get("submittedAt")
+        or response.get("consensusPhase") != phase
+    ):
+        raise ScenarioLabError("submitted pairwise evaluation response is incompatible")
+    context, payload = response.get("decisionContext"), response.get("payload")
+    if (
+        not isinstance(context, dict)
+        or _id(context.get("issue") or {}) != issue_id
+        or (context.get("issue") or {}).get("currentStage") != STAGE
+        or (context.get("issue") or {}).get("isConsensus") is not True
+        or (context.get("consensus") or {}).get("phase") != phase
+    ):
+        raise ScenarioLabError("submitted pairwise evaluation context is incompatible")
+    alternatives, criteria = _ids(context)
+    _validate_pairwise(payload, set(criteria.values()), set(alternatives.values()))
+    return payload
+
+
 def _pairwise(context: dict[str, Any], *, expert_b: bool) -> dict[str, Any]:
     alternatives, criteria = _ids(context)
     b, p, u = alternatives["Balanced choice"], alternatives["Premium choice"], alternatives["Budget choice"]

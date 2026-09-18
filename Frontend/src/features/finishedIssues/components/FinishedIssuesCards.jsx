@@ -104,20 +104,18 @@ const FinishedIssueTopAlternatives = ({ topAlternatives = [] }) => {
                     #{rank}
                   </Typography>
 
-                  <Tooltip title={name} placement="top" arrow>
-                    <Typography
-                      variant="caption"
-                      noWrap
-                      sx={{
-                        minWidth: 0,
-                        flex: 1,
-                        color: alpha(theme.palette.common.white, isFirst ? 0.94 : 0.76),
-                        fontWeight: isFirst ? 900 : 800,
-                      }}
-                    >
-                      {name}
-                    </Typography>
-                  </Tooltip>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{
+                      minWidth: 0,
+                      flex: 1,
+                      color: alpha(theme.palette.common.white, isFirst ? 0.94 : 0.76),
+                      fontWeight: isFirst ? 900 : 800,
+                    }}
+                  >
+                    {name}
+                  </Typography>
                 </Stack>
 
               </Box>

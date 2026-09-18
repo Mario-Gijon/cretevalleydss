@@ -123,8 +123,17 @@ describe("FinishedIssuesCards", () => {
       })],
     });
 
-    expect(screen.getByText("A very long alternative name that remains available through the card tooltip"))
-      .toBeInTheDocument();
+    const alternativeName = screen.getByText(
+      "A very long alternative name that remains available through the card tooltip"
+    );
+
+    expect(alternativeName).toBeInTheDocument();
+    fireEvent.mouseOver(alternativeName);
+    expect(
+      screen.queryByRole("tooltip", {
+        name: "A very long alternative name that remains available through the card tooltip",
+      })
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Finished alternatives"));
     expect(onOpenDetails).toHaveBeenCalledWith(expect.objectContaining({

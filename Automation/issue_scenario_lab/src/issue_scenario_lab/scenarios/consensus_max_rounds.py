@@ -14,6 +14,7 @@ from issue_scenario_lab.scenarios.consensus_first_round import (
     PARAMETERS,
     STAGE,
     THRESHOLD,
+    _canonical_submitted_payload,
     _domain,
     _finite,
     _ids,
@@ -690,6 +691,12 @@ def generate(
                     or submitted.get("currentStage") != STAGE
                 ):
                     raise ScenarioLabError("consensus phase submission is incompatible")
+            canonical_payloads = {
+                alias: _canonical_submitted_payload(
+                    IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE), issue_id, phase
+                )
+                for alias in aliases[1:]
+            }
             collective = _collective(phase_contexts[0], PHASE_COLLECTIVE_VALUES[phase])
             keys = _validate_compute(
                 owner.compute_evaluation(issue_id, STAGE),
@@ -705,7 +712,7 @@ def generate(
             collectives.append(collective)
             live_suggestion_keys.append(keys)
             previous_collective = collective
-            previous_payloads = dict(zip(aliases[1:], payloads, strict=True))
+            previous_payloads = canonical_payloads
             if phase < 3:
                 active_after = [item for item in _items(owner.active_issues(), "issues") if _id(item) == issue_id]
                 if len(active_after) != 1:
