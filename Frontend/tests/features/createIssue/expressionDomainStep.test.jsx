@@ -50,7 +50,7 @@ describe("ExpressionDomainStep supported-domain guidance", () => {
   it("shows supported domains without repeating the model name", () => {
     renderStep();
 
-    expect(screen.getByText("Supported expression domains", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("Selected model supports", { exact: true })).toBeInTheDocument();
     expect(screen.getByText("Numeric continuous [0, 1]", { exact: true })).toBeInTheDocument();
     expect(screen.queryByText("Range-guided method", { exact: true })).not.toBeInTheDocument();
   });

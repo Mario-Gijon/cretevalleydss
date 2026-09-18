@@ -6,7 +6,6 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText,
   Stack,
   Typography,
   useMediaQuery,
@@ -38,9 +37,26 @@ const DetailBlock = ({ title, children }) => (
 const EducationalList = ({ items, icon, color }) => (
   <List component="ul" dense disablePadding sx={{ py: 0 }}>
     {items.map((item) => (
-      <ListItem key={item} component="li" disableGutters sx={{ alignItems: "flex-start", py: 0.2 }}>
-        <ListItemIcon sx={{ minWidth: 30, color, mt: 0.1 }}>{icon}</ListItemIcon>
-        <ListItemText primary={item} primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} />
+      <ListItem
+        key={item}
+        component="li"
+        disableGutters
+        sx={{ alignItems: "center", py: 0.2 }}
+      >
+        <ListItemIcon
+          sx={{
+            minWidth: 30,
+            color,
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </ListItemIcon>
+        <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.5, m: 0 }}>
+          {item}
+        </Typography>
       </ListItem>
     ))}
   </List>

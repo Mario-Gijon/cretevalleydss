@@ -3,7 +3,7 @@ import {
   EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
 } from "../../../shared/evaluationMatrixSizing.js";
 
-export const pairwiseMatrixSx = { container: { width: "100%", minWidth: 0, overflowX: "auto" } };
+export const pairwiseMatrixSx = { container: { width: "100%", minWidth: 0 } };
 
 export const buildPairwiseMatrixSx = ({ theme, alternativeCount, buildSharedStyles }) => ({
   ...buildSharedStyles(theme),

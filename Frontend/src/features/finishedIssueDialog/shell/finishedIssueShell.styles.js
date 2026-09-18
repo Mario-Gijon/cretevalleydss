@@ -24,18 +24,22 @@ export const finishedIssueHeaderSx = {
 
 export const finishedIssueHeaderIdentitySx = {
   minWidth: 0,
-  flex: { xs: "0 0 auto", lg: "1 1 360px" },
+  flex: "1 1 auto",
 };
 
 export const finishedIssueHeaderControlsSx = {
-  flex: { xs: "0 0 auto", lg: "1 1 520px" },
-  width: { xs: "100%", lg: "auto" },
-  minWidth: 0,
+  flexShrink: 0,
 };
 
 export const finishedIssueHeaderTitleSx = {
   minWidth: 0,
   letterSpacing: "-0.035em",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: { xs: 2, lg: 1 },
+  whiteSpace: { xs: "normal", lg: "nowrap" },
 };
 
 export const finishedIssueTabsAccentSx = {

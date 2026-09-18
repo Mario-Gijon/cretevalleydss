@@ -15,6 +15,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import TuneIcon from "@mui/icons-material/Tune";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { CreateExpressionDomainDialog } from "./components/CreateExpressionDomainDialog";
@@ -270,23 +271,6 @@ export const ExpressionDomainStep = () => {
             </Stack>
           </Stack>
 
-          {supportedDomainLabels.length > 0 ? (
-            <Stack spacing={0.35} sx={{ pl: { xs: 0, sm: 5.8 } }}>
-              <Typography variant="caption" sx={{ fontWeight: 950 }}>
-                Supported expression domains
-              </Typography>
-              {supportedDomainLabels.map((label) => (
-                <Typography
-                  key={label}
-                  variant="caption"
-                  sx={{ color: "text.secondary", fontWeight: 800 }}
-                >
-                  {label}
-                </Typography>
-              ))}
-            </Stack>
-          ) : null}
-
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={1}
@@ -316,6 +300,62 @@ export const ExpressionDomainStep = () => {
               Manage domains
             </Button>
           </Stack>
+
+          {supportedDomainLabels.length > 0 ? (
+            <Box
+              sx={{
+                gap: 1,
+                width: { xs: "100%", sm: "fit-content" },
+                maxWidth: "100%",
+                p: 1,
+                borderRadius: 2,
+                border: `1px solid ${alpha(theme.palette.info.main, 0.18)}`,
+                background: alpha(theme.palette.info.main, 0.045),
+              }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <InfoOutlinedIcon
+                  sx={{
+                    flexShrink: 0,
+                    fontSize: 18,
+                    color: alpha(theme.palette.info.main, 0.85),
+                  }}
+                />
+                <Typography variant="caption" sx={{ fontWeight: 950 }}>
+                  Selected model supports
+                </Typography>
+              </Stack>
+
+              <Stack
+                direction="row"
+                spacing={0.6}
+                useFlexGap
+                flexWrap="wrap"
+                justifyContent="flex-start"
+                sx={{ mt: 0.45 }}
+              >
+                {supportedDomainLabels.map((label) => (
+                  <Box
+                    key={label}
+                    component="span"
+                    sx={{
+                      px: 0.75,
+                      py: 0.3,
+                      borderRadius: 1.25,
+                      border: `1px solid ${alpha(theme.palette.info.main, 0.22)}`,
+                      background: alpha(theme.palette.info.main, 0.07),
+                      color: "text.secondary",
+                      fontSize: "0.72rem",
+                      fontWeight: 800,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {label}
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          ) : null}
         </Stack>
 
         <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />

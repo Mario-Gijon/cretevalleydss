@@ -2,6 +2,14 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import Cell from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/components/Cell.jsx";
+import {
+  buildPairwiseMatrixSx,
+  pairwiseMatrixSx,
+} from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/styles/PairwiseMatrix.styles.js";
+import {
+  ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
+  EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
+} from "../../../../../src/features/decisionPlugins/evaluations/shared/evaluationMatrixSizing.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const expressionDomain = {
@@ -37,5 +45,25 @@ describe("PairwiseMatrix Cell", () => {
     );
 
     expect(screen.getByText("Neutral")).toBeInTheDocument();
+  });
+});
+
+describe("PairwiseMatrix layout", () => {
+  it("leaves horizontal scrolling to DataGrid while preserving the matrix minimum width", () => {
+    expect(pairwiseMatrixSx.container).toMatchObject({ width: "100%", minWidth: 0 });
+    expect(pairwiseMatrixSx.container).not.toHaveProperty("overflowX");
+
+    const styles = buildPairwiseMatrixSx({
+      theme: {},
+      alternativeCount: 6,
+      buildSharedStyles: () => ({}),
+    });
+
+    expect(styles.minWidth).toBe(
+      Math.max(
+        500,
+        6 * EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH + ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH
+      )
+    );
   });
 });

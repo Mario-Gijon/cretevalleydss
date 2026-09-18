@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { navbarPages } from "../../../src/components/ResponsiveNavbar/constants/ResponsiveNavbar.constants";
 import { ModelsView } from "../../../src/features/models";
+import { filterCatalogModels } from "../../../src/features/models/logic/modelCatalog";
 import { renderWithProviders } from "../../setup/renderWithProviders";
 
 const decisionModel = {
@@ -55,6 +56,25 @@ const renderModelsView = (issuesValue = {}) =>
       ...issuesValue,
     },
   });
+
+describe("filterCatalogModels", () => {
+  const models = [
+    { displayName: "BORDA", smallDescription: "Supports bounded evaluations." },
+    { displayName: "PROMETHEE VI", smallDescription: "Uses bounds for preference thresholds." },
+  ];
+
+  it("matches a query contained in the model name", () => {
+    expect(filterCatalogModels(models, "bo").map((model) => model.displayName)).toEqual(["BORDA"]);
+  });
+
+  it("does not match a query found only in the description", () => {
+    expect(filterCatalogModels(models, "bounds")).toEqual([]);
+  });
+
+  it("matches model names case-insensitively", () => {
+    expect(filterCatalogModels(models, "prom").map((model) => model.displayName)).toEqual(["PROMETHEE VI"]);
+  });
+});
 
 describe("ModelsView", () => {
   it("keeps the Models navigation enabled", () => {

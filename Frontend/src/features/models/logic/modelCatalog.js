@@ -21,7 +21,7 @@ export const getModelDescription = (model = {}) =>
   asText(model?.smallDescription) || asText(model?.extendedDescription);
 
 /**
- * Filtra un catálogo mediante contenido dirigido a usuarios.
+ * Filtra un catálogo por nombre de presentación dirigido a usuarios.
  *
  * @param {Array<object>} models Modelos de una familia del catálogo.
  * @param {string} query Texto de búsqueda.
@@ -35,10 +35,7 @@ export const filterCatalogModels = (models, query) => {
   }
 
   return asList(models).filter((model) =>
-    [getModelDisplayName(model), getModelDescription(model)]
-      .join(" ")
-      .toLocaleLowerCase()
-      .includes(normalizedQuery)
+    getModelDisplayName(model).toLocaleLowerCase().includes(normalizedQuery)
   );
 };
 
