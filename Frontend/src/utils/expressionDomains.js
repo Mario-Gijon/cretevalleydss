@@ -87,6 +87,133 @@ export const normalizeSupportedExpressionDomains = (
           : {},
     }));
 
+const formatSupportedNumber = (value) =>
+  typeof value === "number" && Number.isFinite(value) ? String(value) : null;
+
+const formatSupportedList = (values) => {
+  const normalized = values
+    .filter((value) => typeof value === "string" && value.trim())
+    .map((value) => value.trim());
+
+  if (normalized.length === 0) return "";
+  if (normalized.length === 1) return normalized[0];
+  if (normalized.length === 2) return `${normalized[0]} or ${normalized[1]}`;
+  return `${normalized.slice(0, -1).join(", ")}, or ${normalized.at(-1)}`;
+};
+
+const formatSupportedLabelCounts = (value) => {
+  const counts = (Array.isArray(value) ? value : [value])
+    .filter((count) => Number.isInteger(count) && count > 0)
+    .map(String);
+
+  if (counts.length === 0) return "";
+  return `${formatSupportedList(counts)} ${counts.length === 1 ? "label" : "labels"}`;
+};
+
+const formatSupportedMembershipFunctions = (value, metadata) => {
+  const values = Array.isArray(value) ? value : [value];
+  const labels = values
+    .map((candidate) =>
+      metadata.compatibilityConstraintFields
+        .find((field) => field.key === "membershipFunction")
+        ?.options?.find((option) => option.value === candidate)?.label
+    )
+    .filter(Boolean)
+    .map((label) => label.toLocaleLowerCase());
+
+  return labels.length > 0 ? formatSupportedList(labels) : "";
+};
+
+export const formatSupportedExpressionDomainEntry = (entry) => {
+  if (!isPlainObject(entry)) return null;
+
+  const typeKey = String(entry.typeKey || "").trim();
+  const metadata = getExpressionDomainTypeMetadata(typeKey);
+  if (!metadata) return null;
+
+  const constraints = isPlainObject(entry.constraints) ? entry.constraints : {};
+  let label = metadata.label;
+
+  const min = formatSupportedNumber(constraints.min);
+  const max = formatSupportedNumber(constraints.max);
+  if (min !== null && max !== null) {
+    label += ` [${min}, ${max}]`;
+  }
+
+  if (typeKey === "numericDiscrete") {
+    const step = formatSupportedNumber(constraints.step);
+    if (step !== null) label += ` (step ${step})`;
+  }
+
+  if (typeKey === "linguisticOrdinal" || typeKey === "linguistic2Tuple") {
+    const labelCounts = formatSupportedLabelCounts(constraints.labelCount);
+    if (labelCounts) label += ` (${labelCounts})`;
+  }
+
+  if (typeKey === "linguisticFuzzy") {
+    const memberships = formatSupportedMembershipFunctions(
+      constraints.membershipFunction,
+      metadata
+    );
+    if (memberships) label += ` (${memberships} membership)`;
+
+    const labelCounts = formatSupportedLabelCounts(constraints.labelCount);
+    if (labelCounts) {
+      label += memberships ? ` (${labelCounts})` : ` (${labelCounts})`;
+    }
+  }
+
+  return label;
+};
+
+export const formatSupportedExpressionDomainLabels = (
+  supportedExpressionDomains
+) =>
+  normalizeSupportedExpressionDomains(supportedExpressionDomains)
+    .map(formatSupportedExpressionDomainEntry)
+    .filter(Boolean);
+
+export const formatSupportedExpressionDomainRequirement = ({
+  modelName,
+  supportedExpressionDomains,
+}) => {
+  const labels = formatSupportedExpressionDomainLabels(supportedExpressionDomains);
+  const safeModelName = String(modelName || "This model").trim() || "This model";
+
+  if (labels.length === 0) return "";
+
+  const entries = normalizeSupportedExpressionDomains(supportedExpressionDomains).filter(
+    (entry) => formatSupportedExpressionDomainEntry(entry)
+  );
+  const firstEntry = entries[0];
+  const firstConstraints = isPlainObject(firstEntry?.constraints)
+    ? firstEntry.constraints
+    : {};
+  const min = formatSupportedNumber(firstConstraints.min);
+  const max = formatSupportedNumber(firstConstraints.max);
+
+  if (labels.length === 1 && firstEntry?.typeKey === "numericContinuous" && min !== null && max !== null) {
+    return `${safeModelName} requires a Numeric continuous domain from ${min} to ${max}. Create a compatible expression domain to continue.`;
+  }
+
+  if (labels.length === 1 && firstEntry?.typeKey === "linguisticFuzzy") {
+    const memberships = formatSupportedMembershipFunctions(
+      firstConstraints.membershipFunction,
+      getExpressionDomainTypeMetadata(firstEntry.typeKey)
+    );
+    if (memberships) {
+      return `${safeModelName} requires a Fuzzy linguistic domain with ${memberships} membership. Create a compatible expression domain to continue.`;
+    }
+  }
+
+  if (labels.length === 1) {
+    const article = /^[aeiou]/i.test(labels[0]) ? "an" : "a";
+    return `${safeModelName} requires ${article} ${labels[0]} domain. Create a compatible expression domain to continue.`;
+  }
+
+  return `${safeModelName} requires one of the supported expression domains: ${formatSupportedList(labels)}. Create a compatible expression domain to continue.`;
+};
+
 export const expressionDomainMatchesSupportedEntry = (
   domain,
   supportedEntry

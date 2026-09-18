@@ -10,6 +10,10 @@ const decisionModel = {
   apiModelKey: "generic-decision-method",
   displayName: "Balanced choice method",
   smallDescription: "Compares alternatives across the criteria that matter to you.",
+  supportedExpressionDomains: [
+    { typeKey: "numericContinuous", constraints: { min: 0, max: 1 } },
+    { typeKey: "numericDiscrete", constraints: {} },
+  ],
   modelSection: {
     whatItDoes: "Combines the evaluation of each alternative into a clear comparison.",
     whenToUse: "Use it when you need to compare several alternatives with the same criteria.",
@@ -23,6 +27,7 @@ const weightingModel = {
   apiModelKey: "generic-weighting-method",
   displayName: "Priority weighting method",
   smallDescription: "Helps set the relative importance of your criteria.",
+  supportedExpressionDomains: [],
   modelSection: {
     whatItDoes: "Captures the importance of each criterion before alternatives are compared.",
     whenToUse: "Use it when criteria should not all have the same influence.",
@@ -153,6 +158,9 @@ describe("ModelsView", () => {
       within(dialog).getByText("Combines the evaluation of each alternative into a clear comparison.")
     ).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "When should I use it?" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Expression domains" })).toBeInTheDocument();
+    expect(within(dialog).getByText("Numeric continuous [0, 1]", { exact: true })).toBeInTheDocument();
+    expect(within(dialog).getByText("Numeric discrete", { exact: true })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Advantages" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Limitations" })).toBeInTheDocument();
 
@@ -172,6 +180,17 @@ describe("ModelsView", () => {
     );
 
     expect(screen.queryByRole("link", { name: "Further information" })).not.toBeInTheDocument();
+  });
+
+  it("omits expression-domain guidance for criteria weighting models", async () => {
+    const user = userEvent.setup();
+    renderModelsView();
+
+    await user.click(
+      screen.getByRole("button", { name: "Learn about Priority weighting method" })
+    );
+
+    expect(screen.queryByRole("heading", { name: "Expression domains" })).not.toBeInTheDocument();
   });
 
   it("keeps a catalog model usable when its educational metadata is unavailable", async () => {

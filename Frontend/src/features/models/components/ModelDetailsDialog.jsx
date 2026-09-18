@@ -15,6 +15,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { AppDialog } from "../../../components/StyledComponents/AppDialog";
 import {
@@ -23,6 +24,7 @@ import {
   getMoreInfoUrl,
   hasModelEducation,
 } from "../logic/modelCatalog";
+import { formatSupportedExpressionDomainLabels } from "../../../utils/expressionDomains";
 
 const DetailBlock = ({ title, children }) => (
   <Stack spacing={0.65}>
@@ -65,6 +67,9 @@ const ModelDetailsDialog = ({ model, open, onClose }) => {
   const whenToUse = typeof section.whenToUse === "string" ? section.whenToUse.trim() : "";
   const advantages = getEducationalList(section.advantages);
   const limitations = getEducationalList(section.limitations);
+  const supportedDomainLabels = formatSupportedExpressionDomainLabels(
+    model.supportedExpressionDomains
+  );
   const moreInfoUrl = getMoreInfoUrl(model.moreInfoUrl);
 
   return (
@@ -114,6 +119,16 @@ const ModelDetailsDialog = ({ model, open, onClose }) => {
                 </DetailBlock>
               ) : null}
 
+              {supportedDomainLabels.length > 0 ? (
+                <DetailBlock title="Expression domains">
+                  <EducationalList
+                    items={supportedDomainLabels}
+                    icon={<InfoOutlinedIcon fontSize="small" />}
+                    color={alpha(theme.palette.info.main, 0.82)}
+                  />
+                </DetailBlock>
+              ) : null}
+
               {advantages.length > 0 ? (
                 <DetailBlock title="Advantages">
                   <EducationalList
@@ -148,6 +163,16 @@ const ModelDetailsDialog = ({ model, open, onClose }) => {
               </Typography>
             </Box>
           )}
+
+          {!hasModelEducation && supportedDomainLabels.length > 0 ? (
+            <DetailBlock title="Expression domains">
+              <EducationalList
+                items={supportedDomainLabels}
+                icon={<InfoOutlinedIcon fontSize="small" />}
+                color={alpha(theme.palette.info.main, 0.82)}
+              />
+            </DetailBlock>
+          ) : null}
         </Stack>
       </DialogContent>
 

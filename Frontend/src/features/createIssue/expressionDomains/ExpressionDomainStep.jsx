@@ -32,7 +32,11 @@ import {
   resolveExpressionDomainOptions,
 } from "../../../utils/domainAssignments.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import { formatExpressionDomainDisplayLabel } from "../../../utils/expressionDomains";
+import {
+  formatExpressionDomainDisplayLabel,
+  formatSupportedExpressionDomainLabels,
+  formatSupportedExpressionDomainRequirement,
+} from "../../../utils/expressionDomains";
 
 const normalizeDomainId = (value) => String(value || "").trim();
 
@@ -148,6 +152,14 @@ export const ExpressionDomainStep = () => {
     [selectedModel, globalDomains, expressionDomains]
   );
 
+  const supportedDomainLabels = useMemo(
+    () =>
+      formatSupportedExpressionDomainLabels(
+        selectedModel?.supportedExpressionDomains
+      ),
+    [selectedModel]
+  );
+
   const requiresHomogeneousExpressionDomains =
     selectedModel?.requiresHomogeneousExpressionDomains === true;
   const mode = requiresHomogeneousExpressionDomains
@@ -258,6 +270,23 @@ export const ExpressionDomainStep = () => {
             </Stack>
           </Stack>
 
+          {supportedDomainLabels.length > 0 ? (
+            <Stack spacing={0.35} sx={{ pl: { xs: 0, sm: 5.8 } }}>
+              <Typography variant="caption" sx={{ fontWeight: 950 }}>
+                Supported expression domains
+              </Typography>
+              {supportedDomainLabels.map((label) => (
+                <Typography
+                  key={label}
+                  variant="caption"
+                  sx={{ color: "text.secondary", fontWeight: 800 }}
+                >
+                  {label}
+                </Typography>
+              ))}
+            </Stack>
+          ) : null}
+
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={1}
@@ -293,8 +322,16 @@ export const ExpressionDomainStep = () => {
 
         {!hasCompatibleDomains ? (
           <Alert severity="warning">
-            No compatible expression domains were found for the selected model. Create a compatible
-            expression domain or adjust the model selection.
+            <Typography component="div" variant="body2" sx={{ fontWeight: 900 }}>
+              No compatible expression domains found.
+            </Typography>
+            <Typography component="div" variant="body2">
+              {formatSupportedExpressionDomainRequirement({
+                modelName: selectedModel?.displayName || selectedModel?.name,
+                supportedExpressionDomains: selectedModel?.supportedExpressionDomains,
+              }) ||
+                "Create a compatible expression domain or adjust the model selection."}
+            </Typography>
           </Alert>
         ) : (
           <Stack spacing={1.45}>
