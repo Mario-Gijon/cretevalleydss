@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import ExpressionDomainEvaluationInput from "../../../src/features/expressionDomains/ExpressionDomainEvaluationInput.jsx";
@@ -40,6 +40,18 @@ const linguistic2TupleDomain = {
       { key: "low", label: "Low", index: 0 },
       { key: "high", label: "High", index: 1 },
     ],
+  },
+};
+
+const numericDiscreteDomain = {
+  _id: "domain-nd-1",
+  id: "domain-nd-1",
+  name: "Numeric discrete",
+  typeKey: "numericDiscrete",
+  definition: {
+    min: -1,
+    max: 10,
+    step: 0.5,
   },
 };
 
@@ -100,7 +112,11 @@ describe("ExpressionDomainEvaluationInput", () => {
       />
     );
 
-    expect(screen.getByRole("spinbutton")).toBeInTheDocument();
+    const input = screen.getByRole("textbox");
+
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveAttribute("inputmode", "decimal");
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
   });
 
   it("supports compact numeric rendering without helper text while keeping error state", () => {
@@ -113,10 +129,69 @@ describe("ExpressionDomainEvaluationInput", () => {
       />
     );
 
-    const input = screen.getByRole("spinbutton");
+    const input = screen.getByRole("textbox");
 
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByText("Value must be between 0 and 10.")).not.toBeInTheDocument();
+  });
+
+  it("keeps continuous numeric text input numeric and rejects invalid text", () => {
+    const onChange = vi.fn();
+
+    renderWithProviders(
+      <ExpressionDomainEvaluationInput
+        expressionDomain={numericContinuousDomain}
+        value=""
+        onChange={onChange}
+      />
+    );
+
+    const input = screen.getByRole("textbox");
+
+    fireEvent.change(input, { target: { value: "-" } });
+    expect(input).toHaveValue("-");
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: "0." } });
+    expect(input).toHaveValue("0.");
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: "0.7" } });
+    expect(onChange).toHaveBeenLastCalledWith(0.7);
+    expect(typeof onChange.mock.lastCall[0]).toBe("number");
+
+    fireEvent.change(input, { target: { value: "0.7a" } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(input).toHaveValue("0.7");
+  });
+
+  it("uses text input for numericDiscrete while preserving numeric validation", () => {
+    const onChange = vi.fn();
+
+    renderWithProviders(
+      <ExpressionDomainEvaluationInput
+        expressionDomain={numericDiscreteDomain}
+        value=""
+        onChange={onChange}
+      />
+    );
+
+    const input = screen.getByRole("textbox");
+
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveAttribute("inputmode", "decimal");
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "1.5" } });
+    expect(onChange).toHaveBeenLastCalledWith(1.5);
+    expect(typeof onChange.mock.lastCall[0]).toBe("number");
+
+    fireEvent.change(input, { target: { value: "1.5x" } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(input).toHaveValue("1.5");
+
+    fireEvent.change(input, { target: { value: "1.25" } });
+    expect(screen.getByText("Value must follow step 0.5.")).toBeInTheDocument();
   });
 
   it("forwards an optional collective value to the registered input", () => {
