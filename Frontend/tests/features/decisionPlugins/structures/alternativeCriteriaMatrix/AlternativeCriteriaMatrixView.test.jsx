@@ -91,7 +91,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    fireEvent.change(screen.getAllByRole("spinbutton")[0], {
+    fireEvent.change(screen.getAllByRole("textbox")[0], {
       target: { value: "8" },
     });
     expect(setEvaluation).toHaveBeenCalledWith({
@@ -110,7 +110,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    screen.getAllByRole("spinbutton").forEach((input) => {
+    screen.getAllByRole("textbox").forEach((input) => {
       expect(input).toBeDisabled();
     });
   });
@@ -141,7 +141,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
     expect(screen.getByText("7.2")).toBeInTheDocument();
     expect(screen.getByTitle("High — [0.6, 0.8, 1]")).toBeInTheDocument();
   });
@@ -272,7 +272,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       );
 
       expect(screen.getByRole("alert")).toHaveTextContent("Collective payload cell");
-      expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
       unmount();
     }
   });
@@ -306,7 +306,7 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Collective payload contains unknown alternative rows."
     );
-    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
     unmount();
 
     renderWithProviders(
@@ -333,7 +333,7 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Collective alternative row contains unknown criterion cells."
     );
-    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
   });
 
   it("displays non-matching fuzzy vectors completely and does not nearest-match outside epsilon", () => {
