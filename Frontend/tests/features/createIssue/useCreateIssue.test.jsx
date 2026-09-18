@@ -54,6 +54,7 @@ import {
   globalContinuousDomainFixture,
   basicCreateIssueModelFixture,
 } from "../../mocks/fixtures/createIssue.fixtures.js";
+import { CREATE_ISSUE_DRAFT_VERSION } from "../../../src/features/createIssue/logic/createIssueDraftState.js";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
 
@@ -131,6 +132,7 @@ describe("useCreateIssue", () => {
     localStorage.setItem(
       LOCAL_STORAGE_KEY,
       JSON.stringify({
+        draftVersion: CREATE_ISSUE_DRAFT_VERSION,
         activeStep: 2,
         selectedModel: basicCreateIssueModelFixture,
         alternatives: ["Stored A"],
@@ -284,6 +286,7 @@ describe("useCreateIssue", () => {
     localStorage.setItem(
       LOCAL_STORAGE_KEY,
       JSON.stringify({
+        draftVersion: CREATE_ISSUE_DRAFT_VERSION,
         selectedModel: basicCreateIssueModelFixture,
         paramValues: { threshold: 0.85, criterionScores: { custom: true } },
         criteriaWeightingConfig: { mode: "custom-draft" },
@@ -560,6 +563,7 @@ describe("useCreateIssue", () => {
     });
 
     await waitFor(() => {
+      expect(localStorage.getItem(LOCAL_STORAGE_KEY)).toBeNull();
       expect(createIssue).toHaveBeenCalledWith(
         expect.objectContaining({
           issueName: "Budget planning",
@@ -580,6 +584,25 @@ describe("useCreateIssue", () => {
       expect(setLoading).not.toHaveBeenCalledWith(false);
       expect(window.requestAnimationFrame).not.toHaveBeenCalled();
     });
+  });
+
+  it("keeps the draft when issue creation fails", async () => {
+    createIssue.mockResolvedValue({
+      success: false,
+      message: "Issue creation failed.",
+    });
+    const { result } = renderCreateIssueHook();
+
+    await fillValidState(result);
+    await waitFor(() => {
+      expect(localStorage.getItem(LOCAL_STORAGE_KEY)).not.toBeNull();
+    });
+
+    await act(async () => {
+      await result.current.handleComplete();
+    });
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEY)).not.toBeNull();
   });
 
   it("sends the selected expected finalization date in the create request", async () => {

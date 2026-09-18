@@ -20,6 +20,7 @@ import {
 } from "../logic/createIssueFieldValidation";
 import {
   buildStoredCreateIssueData,
+  clearStoredCreateIssueData,
   persistStoredCreateIssueData,
   readStoredCreateIssueData,
   resolveInitialConsensusMaxPhases,
@@ -67,7 +68,7 @@ const criteriaTreeHasMissingIds = (items) => {
 };
 
 const getCreateIssueModelIdentity = (model) =>
-  model?._id || model?.id || model?.apiModelKey || model?.name || null;
+  model?._id || model?.id || model?.apiModelKey || null;
 
 /**
  * Gestiona el estado y reglas del flujo createIssue.
@@ -471,7 +472,7 @@ export const useCreateIssue = () => {
 
     if (result.success) {
       setIssueCreated(result);
-      /* localStorage.removeItem(LOCAL_STORAGE_KEY); */
+      clearStoredCreateIssueData(LOCAL_STORAGE_KEY);
       navigate("/dashboard", { replace: true });
       return;
     }
