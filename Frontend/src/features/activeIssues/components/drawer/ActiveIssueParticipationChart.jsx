@@ -2,6 +2,11 @@ import { Box, Typography } from "@mui/material";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip } from "chart.js";
 
+import {
+  ACTIVE_ISSUE_PARTICIPATION_STATUS_META,
+  resolveActiveIssuesToneColor,
+} from "../../logic/activeIssuesMeta";
+
 ChartJS.register(ArcElement, Tooltip);
 
 /**
@@ -40,22 +45,21 @@ const ActiveIssueParticipationChart = ({
       ? Math.round((Number(participated) / totalSafe) * 100)
       : 0;
 
+  const participationStatuses = [
+    ACTIVE_ISSUE_PARTICIPATION_STATUS_META.participated,
+    ACTIVE_ISSUE_PARTICIPATION_STATUS_META.notEvaluated,
+    ACTIVE_ISSUE_PARTICIPATION_STATUS_META.pending,
+    ACTIVE_ISSUE_PARTICIPATION_STATUS_META.declined,
+  ];
+
   const data = {
-    labels: [
-      "Participated",
-      "Accepted (not evaluated)",
-      "Pending",
-      "Declined",
-    ],
+    labels: participationStatuses.map((status) => status.label),
     datasets: [
       {
         data: [participated, notEvaluated, pending, declined],
-        backgroundColor: [
-          "rgba(76, 175, 80, 0.80)",
-          "rgba(255, 193, 7, 0.80)",
-          "rgba(2, 136, 209, 0.80)",
-          "rgba(244, 67, 54, 0.80)",
-        ],
+        backgroundColor: participationStatuses.map(
+          (status) => resolveActiveIssuesToneColor(status.tone).dot
+        ),
         borderWidth: 0,
         cutout: "80%",
         spacing: 1,

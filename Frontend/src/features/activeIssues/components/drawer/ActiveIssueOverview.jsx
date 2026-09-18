@@ -22,7 +22,10 @@ import CalculateIcon from "@mui/icons-material/Calculate";
 import GavelIcon from "@mui/icons-material/Gavel";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
-import { stageLabel } from "../../logic/activeIssuesMeta";
+import {
+  ACTIVE_ISSUE_PARTICIPATION_STATUS_META,
+  stageLabel,
+} from "../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../ActiveIssuesPill";
 import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 import ActiveIssueParticipationChart from "./ActiveIssueParticipationChart";
@@ -447,14 +450,22 @@ const ActiveIssueOverview = ({
             >
               <List disablePadding dense>
                 {[
-                  { label: "Participated", value: participatedExperts, tone: "success" },
                   {
-                    label: "Accepted (not evaluated)",
-                    value: notEvaluatedExperts,
-                    tone: "info",
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.participated,
+                    value: participatedExperts,
                   },
-                  { label: "Pending invitations", value: pendingExperts, tone: "warning" },
-                  { label: "Declined", value: declinedExperts, tone: "error" },
+                  {
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.notEvaluated,
+                    value: notEvaluatedExperts,
+                  },
+                  {
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.pending,
+                    value: pendingExperts,
+                  },
+                  {
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.declined,
+                    value: declinedExperts,
+                  },
                 ].map((row) => (
                   <ListItem
                     key={row.label}
