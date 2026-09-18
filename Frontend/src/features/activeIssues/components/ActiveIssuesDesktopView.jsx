@@ -104,8 +104,8 @@ const ActiveIssuesDesktopView = ({
           <Box sx={{ minWidth: 0, height: "100%" }}>
             <TaskCenter
               variant="rail"
-              height="100%"
-              minHeight="100%"
+              height="auto"
+              minHeight={0}
               tasksCount={tasksCount}
               taskCenter={taskCenter}
               taskType={taskType}

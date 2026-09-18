@@ -7,7 +7,10 @@ import {
   pairwiseMatrixSx,
 } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/styles/PairwiseMatrix.styles.js";
 import { cellSx } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/styles/Cell.styles.js";
-import { buildEvaluationMatrixDataGridSx } from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
+import {
+  buildEvaluationMatrixDataGridSx,
+  evaluationMatrixInputBoundarySx,
+} from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
 import {
   ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
   EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
@@ -51,27 +54,21 @@ describe("PairwiseMatrix Cell", () => {
 });
 
 describe("PairwiseMatrix layout", () => {
-  it("keeps inner evaluation outlines transparent with restrained editable feedback", () => {
-    expect(cellSx.inputBoundary["& .MuiOutlinedInput-notchedOutline"]).toEqual({
-      borderColor: "transparent",
-    });
-    expect(
-      cellSx.inputBoundary["& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline"]
-    ).toEqual({ borderColor: "rgba(103, 221, 218, 0.35)" });
-    expect(
-      cellSx.inputBoundary["& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline"]
-    ).toEqual({ borderColor: "rgba(103, 221, 218, 0.65)" });
+  it("leaves Expression Domain control borders to the plugin implementation", () => {
+    expect(cellSx.inputBoundary).toMatchObject(evaluationMatrixInputBoundarySx);
     expect(
       cellSx.inputBoundary[
-        "& .MuiOutlinedInput-root.Mui-disabled:hover .MuiOutlinedInput-notchedOutline"
+        "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline"
       ]
     ).toEqual({ borderColor: "transparent" });
   });
 
   it("keeps row and column separators on the shared DataGrid cell geometry", () => {
     const sharedCellStyles = buildEvaluationMatrixDataGridSx({
-      palette: { common: { white: "#fff" } },
-      text: { primary: "#fff", disabled: "#999" },
+      palette: {
+        common: { white: "#fff" },
+        text: { primary: "#fff", disabled: "#999" },
+      },
     })["& .MuiDataGrid-cell"];
 
     expect(sharedCellStyles).toMatchObject({

@@ -18,6 +18,44 @@ export const findStoredEvaluation = async ({
   }).session(session);
 };
 
+export const findPreviousCompletedEvaluation = async ({
+  issueId,
+  userId,
+  stage,
+  consensusPhase,
+  structureKey,
+  session = null,
+}) => {
+  if (!Number.isInteger(consensusPhase) || consensusPhase <= 0) {
+    return null;
+  }
+
+  const previousConsensusPhase = consensusPhase - 1;
+  const previousEvaluation = await findStoredEvaluation({
+    issueId,
+    userId,
+    stage,
+    consensusPhase: previousConsensusPhase,
+    session,
+  });
+
+  if (!previousEvaluation?.completed) {
+    return null;
+  }
+
+  const submittedRevision = await IssueEvaluationRevision.findOne({
+    issue: issueId,
+    evaluation: previousEvaluation._id,
+    expert: userId,
+    stage,
+    consensusPhase: previousConsensusPhase,
+    action: "submitted",
+    structureKey,
+  }).session(session);
+
+  return submittedRevision ? previousEvaluation : null;
+};
+
 export const upsertIssueEvaluation = async ({
   issueId,
   userId,

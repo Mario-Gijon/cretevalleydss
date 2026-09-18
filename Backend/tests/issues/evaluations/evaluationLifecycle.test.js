@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
@@ -56,6 +57,45 @@ const buildAlternativeMatrixPayload = ({
   );
 };
 
+const createCompletedEvaluationWithSubmittedRevision = async ({
+  issueId,
+  expertId,
+  stage,
+  consensusPhase,
+  structureKey,
+  payload,
+}) => {
+  const evaluation = await createIssueEvaluationFixture({
+    issueId,
+    expertId,
+    stage,
+    consensusPhase,
+    payload,
+    completed: true,
+  });
+  const occurredAt = new Date();
+
+  await IssueEvaluationRevision.create({
+    issue: issueId,
+    evaluation: evaluation._id,
+    expert: expertId,
+    actorType: "user",
+    actorUser: expertId,
+    stage,
+    consensusPhase,
+    action: "submitted",
+    structureKey,
+    rawPayload: payload,
+    normalizedPayload: payload,
+    decisionContext: {},
+    submittedAt: occurredAt,
+    occurredAt,
+    correlationId: `carry-forward-${String(evaluation._id)}`,
+  });
+
+  return evaluation;
+};
+
 const createCriteriaWeightingEvaluationFixture = async ({
   owner = null,
   expert = null,
@@ -104,6 +144,8 @@ const createAlternativeEvaluationFixture = async ({
   consensusPhase = 0,
   entryPhase = 0,
   invitationStatus = "accepted",
+  evaluationStructureKey = "alternativeCriteriaMatrix",
+  isConsensus = false,
 } = {}) => {
   const resolvedOwner = owner ?? (await createConfirmedUser());
   const resolvedExpert = expert ?? (await createConfirmedUser());
@@ -113,7 +155,8 @@ const createAlternativeEvaluationFixture = async ({
     active,
     currentStage,
     consensusPhase,
-    evaluationStructureKey: "alternativeCriteriaMatrix",
+    evaluationStructureKey,
+    isConsensus,
   });
   const domain = await createIssueExpressionDomainSnapshotFixture({
     issueId: issue._id,
@@ -145,6 +188,22 @@ const createAlternativeEvaluationFixture = async ({
     alternatives,
     leafCriteria,
   };
+};
+
+const buildPairwisePayload = ({ alternatives, leafCriteria, upperValue, lowerValue }) => {
+  const [firstAlternative, secondAlternative] = alternatives;
+  const firstAlternativeId = String(firstAlternative._id);
+  const secondAlternativeId = String(secondAlternative._id);
+
+  return Object.fromEntries(
+    leafCriteria.map((criterion) => [
+      String(criterion._id),
+      {
+        [firstAlternativeId]: { [secondAlternativeId]: upperValue },
+        [secondAlternativeId]: { [firstAlternativeId]: lowerValue },
+      },
+    ])
+  );
 };
 
 const expectEvaluationOpsRejected = async ({
@@ -805,6 +864,205 @@ describe("get evaluation payload behavior", () => {
 
     expect(result.consensusPhase).toBe(1);
     expect(result.completed).toBe(false);
+    expect(result.payload[firstAlternativeId][criterionId]).toBe("");
+  });
+
+  it("carries forward only the same expert's completed previous consensus evaluation", async () => {
+    const { issue, expert, alternatives, leafCriteria } =
+      await createAlternativeEvaluationFixture({
+        consensusPhase: 1,
+        isConsensus: true,
+      });
+    const otherExpert = await createConfirmedUser();
+    const firstAlternativeId = String(alternatives[0]._id);
+    const criterionId = String(leafCriteria[0]._id);
+
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: otherExpert._id,
+      invitationStatus: "accepted",
+      entryPhase: 0,
+      entryStage: "alternativeEvaluation",
+    });
+
+    await createCompletedEvaluationWithSubmittedRevision({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      structureKey: "alternativeCriteriaMatrix",
+      payload: buildAlternativeMatrixPayload({
+        alternatives,
+        leafCriteria,
+        valuesByAlternativeId: { [firstAlternativeId]: 4 },
+      }),
+    });
+    await createCompletedEvaluationWithSubmittedRevision({
+      issueId: issue._id,
+      expertId: otherExpert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      structureKey: "alternativeCriteriaMatrix",
+      payload: buildAlternativeMatrixPayload({
+        alternatives,
+        leafCriteria,
+        valuesByAlternativeId: { [firstAlternativeId]: 9 },
+      }),
+    });
+
+    const expertPayload = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+    const otherExpertPayload = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: otherExpert._id,
+      stage: "alternativeEvaluation",
+    });
+
+    expect(expertPayload.payload[firstAlternativeId][criterionId]).toBe(4);
+    expect(otherExpertPayload.payload[firstAlternativeId][criterionId]).toBe(9);
+    expect(
+      await IssueEvaluation.countDocuments({
+        issue: issue._id,
+        stage: "alternativeEvaluation",
+        consensusPhase: 1,
+      })
+    ).toBe(0);
+  });
+
+  it("prefers a current-phase draft and keeps the previous phase immutable", async () => {
+    const { issue, expert, alternatives, leafCriteria } =
+      await createAlternativeEvaluationFixture({
+        consensusPhase: 2,
+        isConsensus: true,
+      });
+    const firstAlternativeId = String(alternatives[0]._id);
+    const criterionId = String(leafCriteria[0]._id);
+    const phaseZeroPayload = buildAlternativeMatrixPayload({
+      alternatives,
+      leafCriteria,
+      valuesByAlternativeId: { [firstAlternativeId]: 2 },
+    });
+    const phaseOnePayload = buildAlternativeMatrixPayload({
+      alternatives,
+      leafCriteria,
+      valuesByAlternativeId: { [firstAlternativeId]: 5 },
+    });
+
+    await createCompletedEvaluationWithSubmittedRevision({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      structureKey: "alternativeCriteriaMatrix",
+      payload: phaseZeroPayload,
+    });
+    await createCompletedEvaluationWithSubmittedRevision({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+      structureKey: "alternativeCriteriaMatrix",
+      payload: phaseOnePayload,
+    });
+
+    const carriedForward = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+    expect(carriedForward.payload[firstAlternativeId][criterionId]).toBe(5);
+
+    const currentPhasePayload = buildAlternativeMatrixPayload({
+      alternatives,
+      leafCriteria,
+      valuesByAlternativeId: { [firstAlternativeId]: 7 },
+    });
+    await saveIssueEvaluationDraft({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+      payload: currentPhasePayload,
+    });
+
+    const currentPhase = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+    const previousPhase = await IssueEvaluation.findOne({
+      issue: issue._id,
+      expert: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+    }).lean();
+
+    expect(currentPhase.payload[firstAlternativeId][criterionId]).toBe(7);
+    expect(previousPhase.payload[firstAlternativeId][criterionId]).toBe(5);
+  });
+
+  it("carries forward a valid pairwise payload through its registered structure", async () => {
+    const { issue, expert, alternatives, leafCriteria } =
+      await createAlternativeEvaluationFixture({
+        consensusPhase: 1,
+        isConsensus: true,
+        evaluationStructureKey: "alternativePairwiseByCriterion",
+      });
+    const firstAlternativeId = String(alternatives[0]._id);
+    const secondAlternativeId = String(alternatives[1]._id);
+    const criterionId = String(leafCriteria[0]._id);
+    const previousPayload = buildPairwisePayload({
+      alternatives,
+      leafCriteria,
+      upperValue: 6,
+      lowerValue: 4,
+    });
+
+    await createCompletedEvaluationWithSubmittedRevision({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      structureKey: "alternativePairwiseByCriterion",
+      payload: previousPayload,
+    });
+
+    const result = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+
+    expect(result.payload[criterionId][firstAlternativeId][secondAlternativeId]).toBe(6);
+    expect(result.payload[criterionId][secondAlternativeId][firstAlternativeId]).toBe(4);
+  });
+
+  it("falls back to the structure default when the previous payload is incompatible", async () => {
+    const { issue, expert, alternatives, leafCriteria } =
+      await createAlternativeEvaluationFixture({
+        consensusPhase: 1,
+        isConsensus: true,
+      });
+    const firstAlternativeId = String(alternatives[0]._id);
+    const criterionId = String(leafCriteria[0]._id);
+
+    await createCompletedEvaluationWithSubmittedRevision({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      structureKey: "alternativeCriteriaMatrix",
+      payload: { incompatible: true },
+    });
+
+    const result = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+
     expect(result.payload[firstAlternativeId][criterionId]).toBe("");
   });
 

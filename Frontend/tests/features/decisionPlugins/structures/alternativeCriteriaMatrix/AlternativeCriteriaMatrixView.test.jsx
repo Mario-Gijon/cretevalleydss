@@ -2,6 +2,8 @@ import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import AlternativeCriteriaMatrixView from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
+import { cellSx } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/styles/Cell.styles.js";
+import { evaluationMatrixInputBoundarySx } from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const numericDomain = {
@@ -65,6 +67,10 @@ const buildMatrixPayload = () => ({
 });
 
 describe("AlternativeCriteriaMatrixView", () => {
+  it("uses the shared transparent outlined-input rule inside matrix cells", () => {
+    expect(cellSx.inputBoundary).toMatchObject(evaluationMatrixInputBoundarySx);
+  });
+
   it("updates a canonical cell and disables it in read-only mode", () => {
     const setEvaluation = vi.fn();
     const decisionContext = buildDecisionContext([

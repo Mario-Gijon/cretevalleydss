@@ -211,7 +211,6 @@ const TaskCenterRail = ({
             ref={railRef}
             sx={{
               flex: 1,
-              height: "100%",
               display: "flex",
               alignItems: "stretch",
               gap: 1,
@@ -237,7 +236,6 @@ const TaskCenterRail = ({
                     minWidth: 240,
                     maxWidth: 280,
                     flex: "0 0 auto",
-                    height: "100%",
                     display: "flex",
                     flexDirection: "column",
                     scrollSnapAlign: "start",
@@ -356,22 +354,6 @@ const TaskCenterRail = ({
             })}
           </Box>
         )}
-
-        <Box
-          sx={{
-            pointerEvents: "none",
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: 18,
-            background: `linear-gradient(to right, ${alpha(
-              theme.palette.background.paper,
-              0.45
-            )}, transparent)`,
-            opacity: railItems.length ? 1 : 0,
-          }}
-        />
 
       </Box>
     </Paper>
