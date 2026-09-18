@@ -1,7 +1,12 @@
 import { buildDecisionContext } from "./buildDecisionContext.js";
 import { loadIssueEvaluationContext } from "./loadIssueEvaluationContext.js";
 import { loadPreviousCollectiveReference } from "./loadPreviousCollectiveReference.js";
-import { findStoredEvaluation } from "./issueEvaluationPersistence.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
+import {
+  cloneSerializable,
+  findAuthoritativeCurrentEvaluation,
+  findPreviousCompletedEvaluation,
+} from "./issueEvaluationPersistence.js";
 
 export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
   const { issue, structure } = await loadIssueEvaluationContext({
@@ -10,11 +15,12 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     stage,
   });
 
-  const storedEvaluation = await findStoredEvaluation({
+  const currentEvaluation = await findAuthoritativeCurrentEvaluation({
     issueId: issue._id,
     userId,
     stage,
     consensusPhase: issue.consensusPhase,
+    allowSystemGenerated: issue.simulateConsensus === true,
   });
 
   const decisionContext = await buildDecisionContext({
@@ -24,13 +30,42 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     consensusPhase: issue.consensusPhase,
   });
 
-  const payload = await structure.get({
+  let payload;
+
+  if (currentEvaluation) {
     // An absent evaluation document is semantically different from a stored
     // (and potentially malformed) empty payload. Structures own the former
     // case; they must still validate every persisted payload strictly.
-    payload: storedEvaluation ? storedEvaluation.payload : null,
-    decisionContext,
-  });
+    payload = await structure.get({
+      payload: currentEvaluation.payload,
+      decisionContext,
+    });
+  } else {
+    const previousEvaluation =
+      issue.isConsensus === true &&
+      stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION
+        ? await findPreviousCompletedEvaluation({
+            issueId: issue._id,
+            userId,
+            stage,
+            consensusPhase: issue.consensusPhase,
+            structureKey: structure.key,
+          })
+        : null;
+
+    if (previousEvaluation) {
+      try {
+        payload = await structure.get({
+          payload: cloneSerializable(previousEvaluation.payload),
+          decisionContext,
+        });
+      } catch {
+        payload = await structure.get({ payload: null, decisionContext });
+      }
+    } else {
+      payload = await structure.get({ payload: null, decisionContext });
+    }
+  }
 
   const previousCollective = await loadPreviousCollectiveReference({
     issue,
@@ -44,7 +79,7 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     decisionContext,
     payload,
     collectivePayload: previousCollective?.collectiveEvaluations ?? null,
-    completed: storedEvaluation?.completed ?? false,
-    submittedAt: storedEvaluation?.submittedAt ?? null,
+    completed: currentEvaluation?.completed ?? false,
+    submittedAt: currentEvaluation?.submittedAt ?? null,
   };
 };

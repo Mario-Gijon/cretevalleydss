@@ -6,7 +6,23 @@ import { styled } from "@mui/material/styles";
  *
  * @type {number}
  */
-export const FINISHED_ISSUE_CARD_HEIGHT = 250;
+export const FINISHED_ISSUE_CARD_HEIGHT = 328;
+
+export const getFinishedTopAlternativesWidgetSx = () => ({
+  minHeight: { xs: 0, md: 84 },
+  py: 0.05,
+});
+
+/**
+ * Fixed desktop card-grid slot used while pagination is visible.
+ * Finished issue cards use Grid spacing 2: two row gaps at lg and one at xl.
+ */
+export const getFinishedIssuesDesktopGridHeightSx = (theme) => ({
+  height: {
+    lg: `calc(${FINISHED_ISSUE_CARD_HEIGHT * 3}px + ${theme.spacing(4)})`,
+    xl: `calc(${FINISHED_ISSUE_CARD_HEIGHT * 2}px + ${theme.spacing(2)})`,
+  },
+});
 
 /**
  * Tarjeta glass para cada issue finalizado en el listado.

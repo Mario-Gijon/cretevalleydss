@@ -28,6 +28,13 @@ def _create_complete_existing_model(project_root: Path, model_key: str = "demo_m
     return model_root
 
 
+def _write_preview_files(project_root: Path, files: list[dict[str, str]]) -> None:
+    for file in files:
+        target_path = project_root / file["path"]
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(file["content"], encoding="utf-8")
+
+
 def _build_non_model_package_payload() -> dict[str, object]:
     return {
         "model": {
@@ -108,10 +115,18 @@ def test_evaluation_structure_preview_reports_expected_paths_without_writing_fil
         assert not (project_root / relative_path).exists()
 
     contents = {item["path"]: item["content"] for item in body["files"]}
-    backend = contents[preview_paths[0]]
-    backend_get = contents[preview_paths[1]]
-    backend_save = contents[preview_paths[2]]
-    frontend = contents[preview_paths[4]]
+    backend = contents[
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/index.js"
+    ]
+    backend_get = contents[
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.get.js"
+    ]
+    backend_save = contents[
+        "Backend/modules/decisionPlugins/evaluations/structures/pairwiseMatrix/pairwiseMatrix.save.js"
+    ]
+    frontend = contents[
+        "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix/PairwiseMatrixView.jsx"
+    ]
 
     assert "get: getPairwiseMatrixPayload" in backend
     assert "save: savePairwiseMatrixPayload" in backend
@@ -241,20 +256,15 @@ def test_creator_criteria_weighting_package_scaffolds_explicit_creator_operation
     assert "remapCreatorWeightingCriterionIds," in backend_index
     assert 'from "./operations/remapCriterionIds.js";' in backend_index
     assert "remapCriterionIds: remapCreatorWeightingCriterionIds," in backend_index
-    assert "ModelForge does not guess evaluation payload shapes" in initialization_file[
-        "content"
-    ]
+    assert "throw new Error" in initialization_file["content"]
     assert "must be implemented before creator-side use" in initialization_file[
         "content"
     ]
     remapping_content = remapping_file["content"]
+    assert "payload" in remapping_content
     assert "criterionIdMap" in remapping_content
-    assert "temporary criterion IDs" in remapping_content
-    assert "persisted criterion IDs" in remapping_content
-    assert "ModelForge does not guess" in remapping_content
-    assert "must be implemented before creator-side use" in remapping_content
-    assert "explicitly return payload unchanged" in remapping_content
     assert "throw new Error" in remapping_content
+    assert "must be implemented before creator-side use" in remapping_content
 
 
 def test_manual_creator_weighting_package_keeps_special_editor_without_initializer(
@@ -533,14 +543,24 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert 'key: "scoreRange"' in parameter_backend_index_source
     assert "scoreRangeParameterStructure" in parameter_backend_index_source
     assert "validateScoreRangeParameter" in parameter_backend_validate_source
-    assert 'parameterStructureKey: "scoreRange"' in parameter_backend_validate_source
-    assert "typeKey" in parameter_backend_validate_source
+    assert "parameterStructureKey" not in parameter_backend_validate_source
+    assert "typeKey" not in parameter_backend_validate_source
     assert "scoreRangeParameterField" in parameter_frontend_index_source
     assert "ScoreRangeParameterField" in parameter_field_source
-    assert "parameter.label" in parameter_field_source
-    assert "typeKey" in parameter_field_source
+    assert "parameter," in parameter_field_source
+    assert "value," in parameter_field_source
+    assert "onChange," in parameter_field_source
+    assert "error," in parameter_field_source
+    assert "disabled," in parameter_field_source
+    assert "parameterContext," in parameter_field_source
+    assert "scoreRange is under development." in parameter_field_source
+    assert "typeKey" not in parameter_field_source
     assert "ScoreRangeParameterReadOnly" in parameter_readonly_source
-    assert "typeKey" in parameter_readonly_source
+    assert "parameter," in parameter_readonly_source
+    assert "value," in parameter_readonly_source
+    assert "parameterContext," in parameter_readonly_source
+    assert "scoreRange is under development." in parameter_readonly_source
+    assert "typeKey" not in parameter_readonly_source
     for generated_source in (
         parameter_backend_validate_source,
         parameter_field_source,
@@ -649,9 +669,14 @@ def test_delete_scaffold_asset_removes_generated_evaluation_structure_from_temp_
         project_root
         / "Frontend/src/features/decisionPlugins/evaluations/structures/pairwiseMatrix"
     )
-    backend_dir.mkdir(parents=True)
-    frontend_dir.mkdir(parents=True)
-    (backend_dir / "index.js").write_text("// generated\n", encoding="utf-8")
+    with client_factory(project_root) as client:
+        preview_response = client.post(
+            "/scaffold/evaluation-structure/preview",
+            json={"evaluationStructureKey": "pairwiseMatrix"},
+        )
+
+    assert preview_response.status_code == 200
+    _write_preview_files(project_root, preview_response.json()["files"])
 
     with client_factory(project_root) as client:
         response = client.delete("/scaffold/assets/evaluationStructure/pairwiseMatrix")
@@ -684,9 +709,14 @@ def test_delete_scaffold_asset_removes_generated_parameter_structure_from_temp_r
         project_root
         / "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange"
     )
-    backend_dir.mkdir(parents=True)
-    frontend_dir.mkdir(parents=True)
-    (backend_dir / "index.js").write_text("// generated\n", encoding="utf-8")
+    with client_factory(project_root) as client:
+        preview_response = client.post(
+            "/scaffold/parameter/preview",
+            json={"parameterStructureKey": "scoreRange"},
+        )
+
+    assert preview_response.status_code == 200
+    _write_preview_files(project_root, preview_response.json()["files"])
 
     with client_factory(project_root) as client:
         response = client.delete("/scaffold/assets/parameterStructure/scoreRange")

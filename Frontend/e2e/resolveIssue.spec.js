@@ -100,19 +100,19 @@ test("resolve issue smoke: an owner resolves an expert-evaluated issue with Bord
 
   await page
     .getByRole("group", { name: "E2E Resolve Alpha — E2E Resolve Quality" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("9");
   await page
     .getByRole("group", { name: "E2E Resolve Alpha — E2E Resolve Reliability" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("8");
   await page
     .getByRole("group", { name: "E2E Resolve Beta — E2E Resolve Quality" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("4");
   await page
     .getByRole("group", { name: "E2E Resolve Beta — E2E Resolve Reliability" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("5");
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   const submitDialog = page.getByRole("dialog", { name: "Submit evaluations?" });
@@ -170,7 +170,6 @@ test("resolve issue smoke: an owner resolves an expert-evaluated issue with Bord
   });
   await page.getByRole("heading", { name: issueName, exact: true }).click();
   await expect(finishedIssueDialog).toBeVisible();
-  await expect(finishedIssueDialog.getByText("Finished issue", { exact: true })).toBeVisible();
   await expect(finishedIssueHeading).toBeVisible();
   await expect(
     finishedIssueDialog.getByRole("tab", { name: "Summary", exact: true })

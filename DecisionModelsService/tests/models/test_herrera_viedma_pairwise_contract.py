@@ -9,6 +9,7 @@ from models.herrera_viedma_crp.examples import (
 from models.herrera_viedma_crp.executor import (
     _input,
     _normalize_pairwise_collective_evaluations,
+    execute_herrera_viedma,
 )
 from models.herrera_viedma_crp.run import _build_suggested_pairwise_payload
 from schemas.model_requests import GenericModelExecutionRequest
@@ -82,3 +83,22 @@ def test_herrera_viedma_collective_output_uses_direct_values() -> None:
             "alt-b": {"alt-a": 0.3},
         }
     }
+
+
+def test_herrera_viedma_plots_preserve_expert_identity_order() -> None:
+    request = GenericModelExecutionRequest.model_validate(_request_payload())
+
+    result = execute_herrera_viedma(request)
+
+    assert result["success"] is True
+    plots = result["data"]["plotsGraphic"]
+    raw_plots = result["data"]["rawOutput"]["plots_graphic"]
+
+    assert len(plots["expert_points"]) == 2
+    assert plots["expert_ids"] == ["expert-ana", "expert-luis"]
+    assert plots["expert_labels"] == ["Ana Torres", "Luis Romero"]
+    assert plots["expert_emails"] == [
+        "ana.torres@example.com",
+        "luis.romero@example.com",
+    ]
+    assert raw_plots == plots

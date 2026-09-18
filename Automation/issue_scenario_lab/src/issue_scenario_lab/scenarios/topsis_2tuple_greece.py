@@ -9,7 +9,7 @@ from typing import Any
 
 from issue_scenario_lab.api.issues import IssuesApi
 from issue_scenario_lab.api.session_pool import SessionPool
-from issue_scenario_lab.errors import ManifestError, ScenarioLabError
+from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.models import GeneratedIssue
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.no_consensus_basic import _id, _items
@@ -76,7 +76,13 @@ def validate_fixture(data: dict[str, Any]) -> None:
         if not isinstance(row, dict) or set(row) != set(criterion_keys):
             raise ScenarioLabError(f"fixture alternative evaluation row {alternative} must contain every criterion exactly once")
         for value in row.values():
-            if not isinstance(value, dict) or set(value) != {"label", "alpha"} or value.get("label") not in EXPECTED_LINGUISTIC_LABELS or not isinstance(value.get("alpha"), (int, float)) or not math.isfinite(float(value["alpha"])):
+            if (
+                not isinstance(value, dict)
+                or set(value) != {"label", "alpha"}
+                or value.get("label") not in EXPECTED_LINGUISTIC_LABELS
+                or not isinstance(value.get("alpha"), (int, float))
+                or not math.isfinite(float(value["alpha"]))
+            ):
                 raise ScenarioLabError("fixture linguistic values require a supported human-readable label and numeric alpha")
     domain = data.get("expressionDomain")
     if not isinstance(domain, dict) or domain.get("typeKey") != "linguistic2Tuple" or domain.get("labelCount") != 5:
@@ -118,7 +124,13 @@ def resolve_linguistic_label_keys(context: dict[str, Any]) -> dict[str, str]:
     return {label: resolved[label.casefold()] for label in EXPECTED_LINGUISTIC_LABELS}
 
 
-def build_linguistic_matrix(data: dict[str, Any], *, criteria: dict[str, str], alternatives: dict[str, str], context: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
+def build_linguistic_matrix(
+    data: dict[str, Any],
+    *,
+    criteria: dict[str, str],
+    alternatives: dict[str, str],
+    context: dict[str, Any],
+) -> dict[str, dict[str, dict[str, Any]]]:
     label_keys = resolve_linguistic_label_keys(context)
     return {
         alternatives[item["name"]]: {
@@ -131,9 +143,22 @@ def build_linguistic_matrix(data: dict[str, Any], *, criteria: dict[str, str], a
 
 
 def _model(models: Any, key: str, kind: str, structure: str) -> dict[str, Any]:
-    entries = [*_items(models.get("models") if isinstance(models, dict) else []), *_items(models.get("criteriaWeightingModels") if isinstance(models, dict) else [])]
+    entries = [
+        *_items(models.get("models") if isinstance(models, dict) else []),
+        *_items(
+            models.get("criteriaWeightingModels")
+            if isinstance(models, dict)
+            else []
+        ),
+    ]
     item = next((entry for entry in entries if entry.get("apiModelKey") == key), None)
-    if not item or not _id(item) or item.get("modelKind") != kind or item.get("evaluationStructureKey") != structure or item.get("publicUsable") is False:
+    if (
+        not item
+        or not _id(item)
+        or item.get("modelKind") != kind
+        or item.get("evaluationStructureKey") != structure
+        or item.get("publicUsable") is False
+    ):
         raise ScenarioLabError(f"required model {key} is unavailable or incompatible")
     return item
 
@@ -148,20 +173,77 @@ def _domain(domains: Any, expected: dict[str, Any]) -> dict[str, Any]:
     raise ScenarioLabError("no compatible linguistic2Tuple expression domain is available")
 
 
-def _issue_payload(data: dict[str, Any], *, name: str, model_id: str, domain_id: str, expert_emails: list[str]) -> dict[str, Any]:
-    leaves = [{"id": f"criterion-{item['key']}", "name": item["name"], "type": item["type"], "children": []} for item in data["criteria"]]
-    return {"issueName": name, "issueDescription": data["issue"]["description"], "selectedModelId": model_id,
-            "alternatives": [{"name": item["name"], "description": item.get("description", "")} for item in data["alternatives"]],
-            "criteria": [{"id": "criteria-root", "name": "Greece decision criteria", "type": "group", "children": leaves}],
-            "addedExperts": [{"email": email, "weight": 1 / len(expert_emails)} for email in expert_emails], "expressionDomainConfig": {"mode": "global", "globalDomainId": domain_id}, "closureDate": None,
-            "isConsensus": False, "simulateConsensus": False, "paramValues": {}, "criteriaWeightingParameters": {},
-            "criteriaWeightingConfig": {"mode": "expertApiModel", "source": "experts", "method": "apiModel", "criteriaWeightingModelKey": WEIGHTING_MODEL_KEY, "payload": {}}}
+def _issue_payload(
+    data: dict[str, Any],
+    *,
+    name: str,
+    model_id: str,
+    domain_id: str,
+    expert_emails: list[str],
+) -> dict[str, Any]:
+    leaves = [
+        {
+            "id": f"criterion-{item['key']}",
+            "name": item["name"],
+            "type": item["type"],
+            "children": [],
+        }
+        for item in data["criteria"]
+    ]
+    return {
+        "issueName": name,
+        "issueDescription": data["issue"]["description"],
+        "selectedModelId": model_id,
+        "alternatives": [
+            {"name": item["name"], "description": item.get("description", "")}
+            for item in data["alternatives"]
+        ],
+        "criteria": [
+            {
+                "id": "criteria-root",
+                "name": "Greece decision criteria",
+                "type": "group",
+                "children": leaves,
+            }
+        ],
+        "addedExperts": [
+            {"email": email, "weight": 1 / len(expert_emails)}
+            for email in expert_emails
+        ],
+        "expressionDomainConfig": {"mode": "global", "globalDomainId": domain_id},
+        "closureDate": None,
+        "isConsensus": False,
+        "simulateConsensus": False,
+        "paramValues": {},
+        "criteriaWeightingParameters": {},
+        "criteriaWeightingConfig": {
+            "mode": "expertApiModel",
+            "source": "experts",
+            "method": "apiModel",
+            "criteriaWeightingModelKey": WEIGHTING_MODEL_KEY,
+            "payload": {},
+        },
+    }
 
 
-def _context_maps(response: Any, issue_id: str, *, stage: str, structure: str, model_key: str) -> tuple[dict[str, str], dict[str, str], dict[str, Any]]:
+def _context_maps(
+    response: Any,
+    issue_id: str,
+    *,
+    stage: str,
+    structure: str,
+    model_key: str,
+) -> tuple[dict[str, str], dict[str, str], dict[str, Any]]:
     context = response.get("decisionContext") if isinstance(response, dict) else None
     issue = context.get("issue") if isinstance(context, dict) else None
-    if not isinstance(context, dict) or not isinstance(issue, dict) or _id(issue) != issue_id or response.get("stage") != stage or response.get("structureKey") != structure or issue.get("currentStage") != stage:
+    if (
+        not isinstance(context, dict)
+        or not isinstance(issue, dict)
+        or _id(issue) != issue_id
+        or response.get("stage") != stage
+        or response.get("structureKey") != structure
+        or issue.get("currentStage") != stage
+    ):
         raise ScenarioLabError(f"{stage} response is incompatible with the persisted issue")
     model = context.get("model")
     if not isinstance(model, dict) or model.get("apiModelKey") != model_key:
@@ -184,7 +266,12 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
     data = load_fixture(fixture_path)
     participants = data["participants"]
     aliases = (owner_alias, *participants["criteriaWeightingExperts"])
-    if owner_alias != participants["creator"] or any(alias not in sessions.users for alias in aliases) or len({sessions.users[alias].email.casefold() for alias in aliases}) != len(aliases):
+    if (
+        owner_alias != participants["creator"]
+        or any(alias not in sessions.users for alias in aliases)
+        or len({sessions.users[alias].email.casefold() for alias in aliases})
+        != len(aliases)
+    ):
         raise ScenarioLabError("topsis-2tuple-greece requires configured distinct aliases: owner, expert_a, expert_b, expert_c, expert_d, expert_e")
     generation_id, issue_id = secrets.token_hex(5), None
     issue_name = f"[AUTO:{generation_id}] {data['issue']['name']}"
@@ -192,7 +279,15 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         for alias in aliases:
             sessions.login(alias)
         owner = IssuesApi(sessions.client_for(owner_alias))
-        main, weighting = _model(owner.models(), MAIN_MODEL_KEY, "issue", "alternativeCriteriaMatrix"), _model(owner.models(), WEIGHTING_MODEL_KEY, "criteriaWeighting", "criteriaPreferenceOrder")
+        main = _model(
+            owner.models(), MAIN_MODEL_KEY, "issue", "alternativeCriteriaMatrix"
+        )
+        weighting = _model(
+            owner.models(),
+            WEIGHTING_MODEL_KEY,
+            "criteriaWeighting",
+            "criteriaPreferenceOrder",
+        )
         if weighting.get("supportsExpertCriteriaWeighting") is not True:
             raise ScenarioLabError("preference_order_criteria_weights does not support expert criteria weighting")
         domain = _domain(owner.expression_domains(), data["expressionDomain"])
@@ -228,7 +323,13 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
             )
             _active_issue(owner, issue_id)
             post_removal = alternative_api.evaluation(issue_id, ALTERNATIVE_STAGE)
-            _, _, post_removal_context = _context_maps(post_removal, issue_id, stage=ALTERNATIVE_STAGE, structure="alternativeCriteriaMatrix", model_key=MAIN_MODEL_KEY)
+            _, _, post_removal_context = _context_maps(
+                post_removal,
+                issue_id,
+                stage=ALTERNATIVE_STAGE,
+                structure="alternativeCriteriaMatrix",
+                model_key=MAIN_MODEL_KEY,
+            )
             if post_removal_context.get("modelParameters", {}).get("weights") != finalized_weights:
                 raise ScenarioLabError(f"participant removal {position} changed finalized collective criterion weights")
         active = _active_issue(owner, issue_id)
@@ -236,7 +337,13 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         if isinstance(progress, dict) and progress.get("totalAccepted") not in (None, 1):
             raise ScenarioLabError("participant removal did not leave exactly one accepted expert")
         response = alternative_api.evaluation(issue_id, ALTERNATIVE_STAGE)
-        criteria, alternatives, context = _context_maps(response, issue_id, stage=ALTERNATIVE_STAGE, structure="alternativeCriteriaMatrix", model_key=MAIN_MODEL_KEY)
+        criteria, alternatives, context = _context_maps(
+            response,
+            issue_id,
+            stage=ALTERNATIVE_STAGE,
+            structure="alternativeCriteriaMatrix",
+            model_key=MAIN_MODEL_KEY,
+        )
         current_weights = (context.get("modelParameters") or {}).get("weights")
         if current_weights != finalized_weights:
             raise ScenarioLabError("participant removal changed finalized collective criterion weights")
@@ -250,9 +357,25 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         historical_weights = [entry for entry in _items((detail.get("evaluations") or {}).get("individual"), "") if entry.get("stage") == CRITERIA_STAGE]
         if len(active_participants) != 1 or len(historical_weights) != 5:
             raise ScenarioLabError("finished issue does not preserve one active participant and five historical weight submissions")
-        entry = GeneratedIssue(generationId=generation_id, scenarioId=SCENARIO_ID, issueId=issue_id, issueName=issue_name, ownerAlias=owner_alias, visibleUserAliases=[owner_alias, remaining])
+        entry = GeneratedIssue(
+            generationId=generation_id,
+            scenarioId=SCENARIO_ID,
+            issueId=issue_id,
+            issueName=issue_name,
+            ownerAlias=owner_alias,
+            visibleUserAliases=[owner_alias, remaining],
+        )
         store.add(entry)
-        return GenerationResult(generation_id, issue_id, issue_name, owner_alias, tuple(participants["criteriaWeightingExperts"]), str(store.path), finalized_weights, remaining)
+        return GenerationResult(
+            generation_id,
+            issue_id,
+            issue_name,
+            owner_alias,
+            tuple(participants["criteriaWeightingExperts"]),
+            str(store.path),
+            finalized_weights,
+            remaining,
+        )
     except Exception as error:
         if issue_id:
             raise ScenarioLabError(f"{SCENARIO_ID} failed after issue creation (generationId={generation_id}, issueId={issue_id}): {error}") from error

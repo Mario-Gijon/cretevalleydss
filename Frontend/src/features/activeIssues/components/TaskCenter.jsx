@@ -28,6 +28,7 @@ import TaskCenterPanel from "./TaskCenterPanel";
  * @param {number} props.minHeight Altura mínima del panel.
  * @param {string} props.variant Variante visual del componente.
  * @param {boolean} props.showHeader Indica si se muestra el encabezado del panel.
+ * @param {boolean} props.embedded Renderiza el panel sin superficie visual propia.
  * @returns {JSX.Element}
  */
 const TaskCenter = ({
@@ -40,6 +41,7 @@ const TaskCenter = ({
   minHeight = 260,
   variant = "panel",
   showHeader = true,
+  embedded = false,
 }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
@@ -163,6 +165,7 @@ const TaskCenter = ({
       groupsFiltered={groupsFiltered}
       openItem={openItem}
       showHeader={showHeader}
+      embedded={embedded}
     />
   );
 };

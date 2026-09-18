@@ -60,10 +60,12 @@ describe("FinishedIssueDialogHeader", () => {
     expect(screen.queryByLabelText("Open issue actions")).not.toBeInTheDocument();
   });
 
-  it("provides only issue actions on mobile and closes the menu after each action", () => {
+  it("keeps close directly visible and moves only remove into the compact actions menu", () => {
     mobile = true;
     renderHeader();
     const actionsButton = screen.getByLabelText("Open issue actions");
+    const closeButton = screen.getByLabelText("Close Finished Issue");
+    expect(closeButton).toBeInTheDocument();
     expect(screen.queryByTestId("TaskAltIcon")).not.toBeInTheDocument();
 
     fireEvent.click(actionsButton);
@@ -72,13 +74,12 @@ describe("FinishedIssueDialogHeader", () => {
     expect(screen.queryByText("Scenario")).not.toBeInTheDocument();
     expect(screen.queryByText("Add model")).not.toBeInTheDocument();
     expect(screen.getByText("Remove issue")).toBeInTheDocument();
-    expect(screen.getByText("Close dialog")).toBeInTheDocument();
+    expect(screen.queryByText("Close dialog")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Remove issue"));
     expect(contextValue.setOpenRemoveConfirmDialog).toHaveBeenCalledWith(true);
 
-    fireEvent.click(actionsButton);
-    fireEvent.click(screen.getByText("Close dialog"));
+    fireEvent.click(closeButton);
     expect(contextValue.handleCloseFinishedIssueDialog).toHaveBeenCalledOnce();
   });
 

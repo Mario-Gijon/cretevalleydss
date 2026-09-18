@@ -66,7 +66,7 @@ def test_model_package_preview_rejects_malformed_payload(
     assert "issue or criteriaWeighting" in detail[0]["msg"]
 
 
-def test_model_package_preview_emits_canonical_number_global_metadata(
+def test_model_package_preview_emits_generic_parameter_scaffold_for_number_global_key(
     client_factory,
     project_root: Path,
     valid_model_package_payload: dict[str, object],
@@ -117,15 +117,8 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
     }
     backend_validation = generated_files[
         "Backend/modules/decisionPlugins/modelParameters/structures/"
-        "numberGlobal/validateAndNormalize.js"
+        "numberGlobal/validate.js"
     ]
-    backend_definition = generated_files[
-        "Backend/modules/decisionPlugins/modelParameters/structures/"
-        "numberGlobal/validateDefinition.js"
-    ]
-    assert "parameter === null" in backend_definition
-    assert 'typeof parameter !== "object"' in backend_definition
-    assert "Array.isArray(parameter)" in backend_definition
     backend_index = generated_files[
         "Backend/modules/decisionPlugins/modelParameters/structures/"
         "numberGlobal/index.js"
@@ -134,16 +127,20 @@ def test_model_package_preview_emits_canonical_number_global_metadata(
         "Frontend/src/features/decisionPlugins/modelParameters/fields/"
         "numberGlobal/NumberGlobalParameterField.jsx"
     ]
-    assert "Number.isInteger(normalizedValue)" in backend_validation
-    assert "normalizeNumberValue(value)" in backend_validation
-    assert "Math.trunc" not in backend_validation
-    assert "validateNumberGlobalDefinition" not in backend_validation
-    assert "validateNumberGlobalDefinition" in backend_definition
-    assert "validateDefinition: validateNumberGlobalDefinition" in backend_index
-    assert "onChange(event.target.value)" in frontend_field
-    assert 'step: isInteger ? 1 : "any"' in frontend_field
-    assert "handleTwoDecimals" not in frontend_field
-    assert "Math.trunc" not in frontend_field
+    assert "value," in backend_validation
+    assert "parameter," in backend_validation
+    assert "context," in backend_validation
+    assert 'message: "numberGlobal is under development."' in backend_validation
+    assert "validateAndNormalize: validateNumberGlobalParameter" in backend_index
+    assert "validateDefinition" not in backend_index
+    assert "parameter," in frontend_field
+    assert "value," in frontend_field
+    assert "onChange," in frontend_field
+    assert "error," in frontend_field
+    assert "disabled," in frontend_field
+    assert "parameterContext," in frontend_field
+    assert "numberGlobal is under development." in frontend_field
+    assert "onChange(event.target.value)" not in frontend_field
 
 
 def test_model_package_preview_omits_number_global_defaults_when_not_provided(

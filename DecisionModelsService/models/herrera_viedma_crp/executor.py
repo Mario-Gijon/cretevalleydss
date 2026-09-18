@@ -23,6 +23,26 @@ def _expert_key(expert: dict[str, Any], index: int) -> str:
     return f"expert_{index + 1}"
 
 
+def _identity_value(value: Any) -> str | None:
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _expert_identity(expert: dict[str, Any], index: int) -> dict[str, str | None]:
+    expert_id = _identity_value(expert.get("id"))
+    email = _identity_value(expert.get("email"))
+    name = _identity_value(expert.get("name"))
+
+    return {
+        "id": expert_id,
+        "email": email,
+        "label": name or email or expert_id or f"Expert {index + 1}",
+    }
+
+
 def _finite_number(value: Any, field: str) -> float:
     number = float(value)
 
@@ -144,6 +164,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
     weights = _weights(payload, len(criteria))
     matrices: dict[str, dict[str, list[list[float]]]] = {}
+    expert_identities: list[dict[str, str | None]] = []
     seen_expert_keys: set[str] = set()
 
     criteria_count = len(criterion_ids)
@@ -259,9 +280,11 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
         seen_expert_keys.add(expert_key)
 
         matrices[expert_key] = {criterion_ids[0]: expert_matrix}
+        expert_identities.append(_expert_identity(expert, expert_index))
 
     return {
         "matrices": matrices,
+        "expert_identities": expert_identities,
         "alternative_ids": alternative_ids,
         "alternative_names": alternative_names,
         "criterion_ids": criterion_ids,
@@ -342,6 +365,7 @@ def _output(
     alternative_ids: list[str],
     alternative_names: list[str],
     aggregated_criterion_id: str,
+    expert_identities: list[dict[str, str | None]],
 ) -> dict[str, Any]:
     safe_run_result = _to_json_compatible(run_result)
 
@@ -392,6 +416,13 @@ def _output(
     plots_graphic = safe_run_result.get("plots_graphic")
     if not isinstance(plots_graphic, dict):
         plots_graphic = {}
+    else:
+        plots_graphic = dict(plots_graphic)
+
+    plots_graphic["expert_ids"] = [identity["id"] for identity in expert_identities]
+    plots_graphic["expert_labels"] = [identity["label"] for identity in expert_identities]
+    plots_graphic["expert_emails"] = [identity["email"] for identity in expert_identities]
+    safe_run_result["plots_graphic"] = plots_graphic
 
     safe_run_result["suggested_next_evaluations"] = _normalize_suggested_next_evaluations(
         source=safe_run_result.get("suggested_next_evaluations"),
@@ -448,6 +479,7 @@ def execute_herrera_viedma(
                 alternative_ids=execution_input["alternative_ids"],
                 alternative_names=execution_input["alternative_names"],
                 aggregated_criterion_id=execution_input["aggregated_criterion_id"],
+                expert_identities=execution_input["expert_identities"],
             ),
         )
     except Exception as error:

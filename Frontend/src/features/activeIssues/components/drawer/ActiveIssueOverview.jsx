@@ -22,7 +22,10 @@ import CalculateIcon from "@mui/icons-material/Calculate";
 import GavelIcon from "@mui/icons-material/Gavel";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
-import { stageLabel } from "../../logic/activeIssuesMeta";
+import {
+  ACTIVE_ISSUE_PARTICIPATION_STATUS_META,
+  stageLabel,
+} from "../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../ActiveIssuesPill";
 import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 import ActiveIssueParticipationChart from "./ActiveIssueParticipationChart";
@@ -32,14 +35,21 @@ import { getEvaluationStructureDisplayLabel } from "../../../decisionPlugins/eva
 
 const ActiveIssueInfoRow = ({ label, value }) => {
   return (
-    <Stack
-      direction={{ xs: "column", sm: "row" }}
-      spacing={{ xs: 0.2, sm: 1 }}
-      sx={{ alignItems: { xs: "stretch", sm: "baseline" } }}
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "minmax(0, 1fr)",
+          sm: "180px minmax(0, 1fr)",
+        },
+        columnGap: { sm: 1.25 },
+        rowGap: { xs: 0.2, sm: 0 },
+        alignItems: "baseline",
+      }}
     >
       <Typography
         variant="caption"
-        sx={{ color: "text.secondary", fontWeight: 950, minWidth: { sm: 150 } }}
+        sx={{ color: "text.secondary", fontWeight: 950, minWidth: 0 }}
       >
         {label}
       </Typography>
@@ -50,7 +60,7 @@ const ActiveIssueInfoRow = ({ label, value }) => {
       >
         {value ?? "—"}
       </Typography>
-    </Stack>
+    </Box>
   );
 };
 
@@ -323,7 +333,7 @@ const ActiveIssueOverview = ({
             <ActiveIssueInfoRow label="Creator" value={selectedIssue?.creator} />
             <ActiveIssueInfoRow label="Description" value={selectedIssue?.description} />
             <ActiveIssueInfoRow label="Creation date" value={selectedIssue?.creationDate} />
-            <ActiveIssueInfoRow label="Closure date" value={deadlineLabel} />
+            <ActiveIssueInfoRow label="Expected finalization date" value={deadlineLabel} />
             <ActiveIssueInfoRow
               label="Stage"
               value={stageLabel(selectedIssue?.currentStage)}
@@ -440,14 +450,22 @@ const ActiveIssueOverview = ({
             >
               <List disablePadding dense>
                 {[
-                  { label: "Participated", value: participatedExperts, tone: "success" },
                   {
-                    label: "Accepted (not evaluated)",
-                    value: notEvaluatedExperts,
-                    tone: "info",
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.participated,
+                    value: participatedExperts,
                   },
-                  { label: "Pending invitations", value: pendingExperts, tone: "warning" },
-                  { label: "Declined", value: declinedExperts, tone: "error" },
+                  {
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.notEvaluated,
+                    value: notEvaluatedExperts,
+                  },
+                  {
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.pending,
+                    value: pendingExperts,
+                  },
+                  {
+                    ...ACTIVE_ISSUE_PARTICIPATION_STATUS_META.declined,
+                    value: declinedExperts,
+                  },
                 ].map((row) => (
                   <ListItem
                     key={row.label}

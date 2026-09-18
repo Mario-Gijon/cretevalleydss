@@ -12,6 +12,7 @@ import FinishedIssuesPagination from "./FinishedIssuesPagination";
 import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
 import EmptyState from "../../../components/StyledComponents/EmptyState";
 import { useFinishedIssuesView } from "../hooks/useFinishedIssuesView";
+import { getFinishedIssuesDesktopGridHeightSx } from "../styles/finishedIssues.styles";
 
 /**
  * Pantalla del feature de issues finalizados.
@@ -109,16 +110,25 @@ const FinishedIssuesView = () => {
             <Box sx={{ gridArea: "issues", minWidth: 0, width: "100%" }}>
               {noMatchingIssues ? emptyFilteredState : (
                 <>
-                  <FinishedIssuesCards
-                    issues={paginatedIssues}
-                    isLgUp={isLgUp}
-                    isMobile={isMobile}
-                    onOpenDetails={openDetails}
-                  />
+                  <Box
+                    sx={
+                      pageCount > 1
+                        ? getFinishedIssuesDesktopGridHeightSx(theme)
+                        : undefined
+                    }
+                  >
+                    <FinishedIssuesCards
+                      issues={paginatedIssues}
+                      isLgUp={isLgUp}
+                      isMobile={isMobile}
+                      onOpenDetails={openDetails}
+                    />
+                  </Box>
                   <FinishedIssuesPagination
                     page={page}
                     pageCount={pageCount}
                     onChange={setPage}
+                    sx={{ mt: { xs: 1.25, lg: 4 } }}
                   />
                 </>
               )}

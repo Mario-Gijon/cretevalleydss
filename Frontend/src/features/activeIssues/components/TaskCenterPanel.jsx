@@ -47,6 +47,7 @@ import {
  * @param {Array} props.groupsFiltered Grupos visibles.
  * @param {Function} props.openItem Abre una tarea.
  * @param {boolean} props.showHeader Indica si se muestra el encabezado del panel.
+ * @param {boolean} props.embedded Renderiza el panel sin superficie visual propia.
  * @returns {JSX.Element}
  */
 const TaskCenterPanel = ({
@@ -61,17 +62,23 @@ const TaskCenterPanel = ({
   groupsFiltered,
   openItem,
   showHeader = true,
+  embedded = false,
 }) => {
   const theme = useTheme();
   const scrollbarSx = getTaskCenterScrollbarSx(theme);
+  const PanelSurface = embedded ? Box : Paper;
 
   return (
-    <Paper
-      elevation={0}
+    <PanelSurface
+      {...(embedded ? {} : { elevation: 0 })}
       sx={{
-        borderRadius: 5,
-        p: isSmDown ? 1.35 : 1.75,
-        ...getTaskCenterGlassSx(theme),
+        ...(embedded
+          ? {}
+          : {
+              borderRadius: 5,
+              p: isSmDown ? 1.35 : 1.75,
+              ...getTaskCenterGlassSx(theme),
+            }),
         height: resolvedHeight,
         maxHeight: resolvedMaxHeight,
         minHeight,
@@ -121,7 +128,10 @@ const TaskCenterPanel = ({
         </Stack>
       ) : null}
 
-      <FormControl size="small" sx={{ mb: 1.1, mt: 0.25 }}>
+      <FormControl
+        size="small"
+        sx={{ mb: 1.1, mt: 0.25, ...(embedded ? { width: "100%" } : {}) }}
+      >
         <InputLabel color="secondary">Task type</InputLabel>
         <Select
           value={taskType}
@@ -304,7 +314,7 @@ const TaskCenterPanel = ({
           )}
         </Box>
       </Box>
-    </Paper>
+    </PanelSurface>
   );
 };
 

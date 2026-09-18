@@ -30,6 +30,16 @@ export const IssuesGridCard = styled(Paper)(({ theme }) => ({
 export const ISSUES_GRID_CARD_HEIGHT = 262;
 
 /**
+ * Altura fija del slot de tarjetas de escritorio para mantener estable la paginacion.
+ */
+export const getActiveIssuesDesktopGridHeightSx = (theme) => ({
+  height: {
+    lg: `calc(${ISSUES_GRID_CARD_HEIGHT * 3}px + ${theme.spacing(3)})`,
+    xl: `calc(${ISSUES_GRID_CARD_HEIGHT * 2}px + ${theme.spacing(1.5)})`,
+  },
+});
+
+/**
  * Devuelve el color de la barra de deadline según el progreso.
  *
  * @param {Object} theme Tema actual.

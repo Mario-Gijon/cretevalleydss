@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalScatterChart", () => ({
@@ -222,7 +222,8 @@ describe("VisualizationsPanel", () => {
     /></ThemeProvider>);
 
     expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
-    expect(screen.getByText("Alternative-evaluation visualizations are not available for this execution.")).toBeInTheDocument();
+    expect(screen.getAllByTestId("visualization-unavailable-state")).toHaveLength(2);
+    expect(screen.queryByText("Expected behaviour")).not.toBeInTheDocument();
   });
 
   it("omits model-specific visualizations when no selected execution provides descriptors", () => {
@@ -312,7 +313,11 @@ describe("VisualizationsPanel", () => {
   it("keeps a missing execution slot while rendering other ranking charts", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis: rankingAnalysis() }, { key: "missing", displayLabel: "Missing" }, { key: "test-2", displayLabel: "Test 2", genericAnalysis: rankingAnalysis() }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
 
-    expect(screen.getByText("Ranking evolution is not available for this execution.")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("ranking-evolution-comparison")).getByText(
+        "Visualization not applicable for this execution"
+      )
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Alpha")).toHaveLength(2);
   });
 
@@ -332,7 +337,11 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByLabelText(/Alpha: initial rank 1, final rank 2, best rank 1, worst rank 3, total movement 5/)).toBeInTheDocument();
     expect(screen.getAllByText("Ranking similarity between rounds")).toHaveLength(2);
     expect(screen.getByLabelText("Initial to Round 1: -1.00")).toBeInTheDocument();
-    expect(screen.getByText("Ranking similarity is not available for this execution.")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("ranking-temporal-card")).getAllByTestId(
+        "visualization-unavailable-state"
+      )
+    ).toHaveLength(2);
   });
 
   it("hides future visualization sections when persisted analyses do not provide them", () => {

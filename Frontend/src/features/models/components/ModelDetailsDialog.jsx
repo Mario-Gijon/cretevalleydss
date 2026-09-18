@@ -6,7 +6,6 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText,
   Stack,
   Typography,
   useMediaQuery,
@@ -15,6 +14,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { AppDialog } from "../../../components/StyledComponents/AppDialog";
 import {
@@ -23,6 +23,7 @@ import {
   getMoreInfoUrl,
   hasModelEducation,
 } from "../logic/modelCatalog";
+import { formatSupportedExpressionDomainLabels } from "../../../utils/expressionDomains";
 
 const DetailBlock = ({ title, children }) => (
   <Stack spacing={0.65}>
@@ -36,9 +37,26 @@ const DetailBlock = ({ title, children }) => (
 const EducationalList = ({ items, icon, color }) => (
   <List component="ul" dense disablePadding sx={{ py: 0 }}>
     {items.map((item) => (
-      <ListItem key={item} component="li" disableGutters sx={{ alignItems: "flex-start", py: 0.2 }}>
-        <ListItemIcon sx={{ minWidth: 30, color, mt: 0.1 }}>{icon}</ListItemIcon>
-        <ListItemText primary={item} primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} />
+      <ListItem
+        key={item}
+        component="li"
+        disableGutters
+        sx={{ alignItems: "center", py: 0.2 }}
+      >
+        <ListItemIcon
+          sx={{
+            minWidth: 30,
+            color,
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </ListItemIcon>
+        <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.5, m: 0 }}>
+          {item}
+        </Typography>
       </ListItem>
     ))}
   </List>
@@ -65,6 +83,9 @@ const ModelDetailsDialog = ({ model, open, onClose }) => {
   const whenToUse = typeof section.whenToUse === "string" ? section.whenToUse.trim() : "";
   const advantages = getEducationalList(section.advantages);
   const limitations = getEducationalList(section.limitations);
+  const supportedDomainLabels = formatSupportedExpressionDomainLabels(
+    model.supportedExpressionDomains
+  );
   const moreInfoUrl = getMoreInfoUrl(model.moreInfoUrl);
 
   return (
@@ -114,6 +135,16 @@ const ModelDetailsDialog = ({ model, open, onClose }) => {
                 </DetailBlock>
               ) : null}
 
+              {supportedDomainLabels.length > 0 ? (
+                <DetailBlock title="Expression domains">
+                  <EducationalList
+                    items={supportedDomainLabels}
+                    icon={<InfoOutlinedIcon fontSize="small" />}
+                    color={alpha(theme.palette.info.main, 0.82)}
+                  />
+                </DetailBlock>
+              ) : null}
+
               {advantages.length > 0 ? (
                 <DetailBlock title="Advantages">
                   <EducationalList
@@ -148,6 +179,16 @@ const ModelDetailsDialog = ({ model, open, onClose }) => {
               </Typography>
             </Box>
           )}
+
+          {!hasModelEducation && supportedDomainLabels.length > 0 ? (
+            <DetailBlock title="Expression domains">
+              <EducationalList
+                items={supportedDomainLabels}
+                icon={<InfoOutlinedIcon fontSize="small" />}
+                color={alpha(theme.palette.info.main, 0.82)}
+              />
+            </DetailBlock>
+          ) : null}
         </Stack>
       </DialogContent>
 

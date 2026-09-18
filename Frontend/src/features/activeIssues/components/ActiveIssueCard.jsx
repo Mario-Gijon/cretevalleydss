@@ -1,4 +1,12 @@
-import { Box, Divider, Grid, Stack, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Divider,
+  Grid,
+  LinearProgress,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -7,25 +15,24 @@ import {
   getNextActionMeta,
   resolveActiveIssuesToneColor,
 } from "../logic/activeIssuesMeta";
-import { computeIssueDeadlineProgress } from "../logic/activeIssueDeadline";
 import ActiveIssuesPill from "./ActiveIssuesPill";
 import {
   buildIssueWorkflowSteps,
   resolveIssueCurrentStepKey,
 } from "../logic/activeIssueWorkflow";
+import { computeIssueDeadlineProgress } from "../logic/activeIssueDeadline";
 import {
   ISSUES_GRID_CARD_HEIGHT,
   IssuesGridCard,
-  getIssueDeadlineColorByProgress,
   issuesGridHideScrollbarSx,
 } from "../styles/ActiveIssuesGrid.styles";
 
 const ActiveIssueDeadlineBar = ({ issue }) => {
   const theme = useTheme();
 
-  const hasServerDeadline = issue.ui.deadline.hasDeadline;
+  const hasExpectedFinalization = issue?.ui?.deadline?.hasDeadline === true;
 
-  if (!hasServerDeadline) {
+  if (!hasExpectedFinalization) {
     return (
       <Box
         sx={{
@@ -38,81 +45,65 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
       >
         <CalendarMonthIcon sx={{ fontSize: 16, opacity: 0.75 }} />
         <Typography variant="caption" sx={{ fontWeight: 950 }}>
-          No deadline
+          No expected finalization date
         </Typography>
       </Box>
     );
   }
 
-  const data = computeIssueDeadlineProgress(issue);
-  const progress = data?.progress ?? 0;
-  const daysLeft = data?.daysLeft;
-  const label = data?.label || issue.closureDate;
-  const barColor = getIssueDeadlineColorByProgress(theme, progress);
-
-  const tooltip =
-    typeof daysLeft === "number"
-      ? `${label} • ${daysLeft <= 0 ? "Expired" : `${daysLeft} day(s) left`}`
-      : String(label);
+  const label = issue.closureDate;
+  const deadlineProgress = computeIssueDeadlineProgress(issue);
 
   return (
-    <Tooltip title={tooltip} placement="top" arrow>
-      <Box sx={{ mt: 0.9 }}>
-        <Stack
-          direction="row"
-          spacing={0.8}
-          sx={{ alignItems: "center", mb: 0.6 }}
-        >
-          <CalendarMonthIcon
-            sx={{ fontSize: 16, color: alpha(theme.palette.common.white, 0.72) }}
-          />
+    <Box sx={{ mt: 0.9 }}>
+      <Stack
+        direction="row"
+        spacing={0.8}
+        sx={{ alignItems: "center", mb: 0.6 }}
+      >
+        <CalendarMonthIcon
+          sx={{ fontSize: 16, color: alpha(theme.palette.common.white, 0.72) }}
+        />
 
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 950,
-              color: alpha(theme.palette.common.white, 0.82),
-            }}
-          >
-            {label}
-          </Typography>
-
-          <Box sx={{ flex: 1 }} />
-
-          {typeof daysLeft === "number" ? (
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 950,
-                color: alpha(theme.palette.common.white, 0.72),
-              }}
-            >
-              {daysLeft <= 0 ? "Expired" : `${daysLeft}d`}
-            </Typography>
-          ) : null}
-        </Stack>
-
-        <Box
+        <Typography
+          variant="caption"
           sx={{
-            height: 9,
-            borderRadius: 999,
-            bgcolor: alpha(theme.palette.common.white, 0.08),
-            border: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
-            overflow: "hidden",
+            fontWeight: 950,
+            color: alpha(theme.palette.common.white, 0.82),
           }}
         >
-          <Box
-            sx={{
-              height: "100%",
-              width: `${Math.round(progress * 100)}%`,
-              bgcolor: barColor,
-              boxShadow: `0 0 18px ${alpha(barColor, 0.25)}`,
-              transition: "width 220ms ease, background 220ms ease",
-            }}
-          />
-        </Box>
-      </Box>
-    </Tooltip>
+          Expected finalization
+        </Typography>
+
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 900,
+            color: alpha(theme.palette.common.white, 0.72),
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </Typography>
+      </Stack>
+
+      <LinearProgress
+        aria-label="Expected finalization progress"
+        variant="determinate"
+        value={deadlineProgress?.progress ?? 0}
+        sx={{
+          height: 3,
+          borderRadius: 999,
+          bgcolor: alpha(theme.palette.common.white, 0.12),
+          "& .MuiLinearProgress-bar": {
+            borderRadius: 999,
+            bgcolor: alpha(theme.palette.secondary.main, 0.8),
+          },
+        }}
+      />
+    </Box>
   );
 };
 

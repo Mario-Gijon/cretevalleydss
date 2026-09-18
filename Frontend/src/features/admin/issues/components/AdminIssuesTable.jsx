@@ -57,7 +57,7 @@ export default function AdminIssuesTable({ issues, isMdDown, onOpenDetail }) {
                   "Status",
                   "Experts",
                   "Progress",
-                  "Closure",
+                  "Expected finalization",
                 ].map((head) => (
                   <TableCell
                     key={head}

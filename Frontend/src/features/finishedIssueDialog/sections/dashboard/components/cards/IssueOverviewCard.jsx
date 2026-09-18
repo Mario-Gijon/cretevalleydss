@@ -52,7 +52,8 @@ const IssueOverviewCard = ({ overview, onViewMore }) => (
             <MetadataRow icon={<AccountCircleRoundedIcon sx={{ fontSize: 16 }} />} label="Owner" value={overview.owner || overview.ownerEmail || "—"} />
             <MetadataRow icon={<LayersRoundedIcon sx={{ fontSize: 16 }} />} label="Base model" value={overview.baseModelName || "—"} />
             <MetadataRow icon={<CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />} label="Created" value={readableDate(overview.creationDate)} />
-            <MetadataRow icon={<EventAvailableRoundedIcon sx={{ fontSize: 16 }} />} label="Finished" value={readableDate(overview.closureDate)} />
+            <MetadataRow icon={<EventAvailableRoundedIcon sx={{ fontSize: 16 }} />} label="Expected finalization" value={readableDate(overview.expectedFinalizationDate ?? overview.closureDate)} />
+            <MetadataRow icon={<EventAvailableRoundedIcon sx={{ fontSize: 16 }} />} label="Finished" value={readableDate(overview.finishedAt)} />
           </Stack>
           <Stack spacing={0.55}>
             <MetadataRow icon={<TimelineRoundedIcon sx={{ fontSize: 16 }} />} label="Consensus" value={overview.consensusEnabled ? "Enabled" : "Disabled"} />

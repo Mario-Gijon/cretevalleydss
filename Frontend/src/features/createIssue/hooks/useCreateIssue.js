@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -20,10 +20,12 @@ import {
 } from "../logic/createIssueFieldValidation";
 import {
   buildStoredCreateIssueData,
+  clearStoredCreateIssueData,
   persistStoredCreateIssueData,
   readStoredCreateIssueData,
   resolveInitialConsensusMaxPhases,
   resolveInitialConsensusThreshold,
+  resolveInitialClosureDate,
   resolveInitialCriteriaWeightingConfig,
   resolveInitialExpressionDomainConfig,
 } from "../logic/createIssueDraftState";
@@ -64,6 +66,9 @@ const criteriaTreeHasMissingIds = (items) => {
     return criteriaTreeHasMissingIds(criterion?.children);
   });
 };
+
+const getCreateIssueModelIdentity = (model) =>
+  model?._id || model?.id || model?.apiModelKey || null;
 
 /**
  * Gestiona el estado y reglas del flujo createIssue.
@@ -111,7 +116,9 @@ export const useCreateIssue = () => {
   );
   const [issueNameError, setIssueNameError] = useState("");
   const [issueDescriptionError, setIssueDescriptionError] = useState(false);
-  const [closureDate, setClosureDate] = useState(null);
+  const [closureDate, setClosureDate] = useState(() =>
+    resolveInitialClosureDate(storedData)
+  );
   const [closureDateError, setClosureDateError] = useState(false);
   const [consensusMaxPhases, setConsensusMaxPhases] = useState(
     resolveInitialConsensusMaxPhases(storedData)
@@ -134,6 +141,9 @@ export const useCreateIssue = () => {
         storedData.selectedModel || null
       ),
     })
+  );
+  const previousSelectedModelIdentityRef = useRef(
+    getCreateIssueModelIdentity(storedData.selectedModel)
   );
   const effectiveIsConsensus = selectedModel?.supportsConsensus === true;
   const modelSupportsConsensusSimulation =
@@ -204,6 +214,15 @@ export const useCreateIssue = () => {
   }, [criteria]);
 
   useEffect(() => {
+    const selectedModelIdentity = getCreateIssueModelIdentity(selectedModel);
+    const previousSelectedModelIdentity = previousSelectedModelIdentityRef.current;
+
+    if (selectedModelIdentity === previousSelectedModelIdentity) {
+      return;
+    }
+
+    previousSelectedModelIdentityRef.current = selectedModelIdentity;
+
     if (selectedModel) {
       const leafCriteria = getLeafCriteria(criteria);
       try {
@@ -363,7 +382,7 @@ export const useCreateIssue = () => {
     if (selectedDate) {
       if (closureDateObj.isBefore(today.add(2, "day"), "day")) {
         setClosureDateError(true);
-        showSnackbarAlert("Closure date is not valid", "error");
+        showSnackbarAlert("Expected finalization date is not valid", "error");
         return true;
       }
     }
@@ -453,7 +472,7 @@ export const useCreateIssue = () => {
 
     if (result.success) {
       setIssueCreated(result);
-      /* localStorage.removeItem(LOCAL_STORAGE_KEY); */
+      clearStoredCreateIssueData(LOCAL_STORAGE_KEY);
       navigate("/dashboard", { replace: true });
       return;
     }

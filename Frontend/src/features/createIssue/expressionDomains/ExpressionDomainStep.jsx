@@ -15,6 +15,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import TuneIcon from "@mui/icons-material/Tune";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { CreateExpressionDomainDialog } from "./components/CreateExpressionDomainDialog";
@@ -32,7 +33,11 @@ import {
   resolveExpressionDomainOptions,
 } from "../../../utils/domainAssignments.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import { formatExpressionDomainDisplayLabel } from "../../../utils/expressionDomains";
+import {
+  formatExpressionDomainDisplayLabel,
+  formatSupportedExpressionDomainLabels,
+  formatSupportedExpressionDomainRequirement,
+} from "../../../utils/expressionDomains";
 
 const normalizeDomainId = (value) => String(value || "").trim();
 
@@ -146,6 +151,14 @@ export const ExpressionDomainStep = () => {
   const { allDomains, defaultDomainId } = useMemo(
     () => resolveExpressionDomainOptions(selectedModel, globalDomains, expressionDomains),
     [selectedModel, globalDomains, expressionDomains]
+  );
+
+  const supportedDomainLabels = useMemo(
+    () =>
+      formatSupportedExpressionDomainLabels(
+        selectedModel?.supportedExpressionDomains
+      ),
+    [selectedModel]
   );
 
   const requiresHomogeneousExpressionDomains =
@@ -287,14 +300,78 @@ export const ExpressionDomainStep = () => {
               Manage domains
             </Button>
           </Stack>
+
+          {supportedDomainLabels.length > 0 ? (
+            <Box
+              sx={{
+                gap: 1,
+                width: { xs: "100%", sm: "fit-content" },
+                maxWidth: "100%",
+                p: 1,
+                borderRadius: 2,
+                border: `1px solid ${alpha(theme.palette.info.main, 0.18)}`,
+                background: alpha(theme.palette.info.main, 0.045),
+              }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <InfoOutlinedIcon
+                  sx={{
+                    flexShrink: 0,
+                    fontSize: 18,
+                    color: alpha(theme.palette.info.main, 0.85),
+                  }}
+                />
+                <Typography variant="caption" sx={{ fontWeight: 950 }}>
+                  Selected model supports
+                </Typography>
+              </Stack>
+
+              <Stack
+                direction="row"
+                spacing={0.6}
+                useFlexGap
+                flexWrap="wrap"
+                justifyContent="flex-start"
+                sx={{ mt: 0.45 }}
+              >
+                {supportedDomainLabels.map((label) => (
+                  <Box
+                    key={label}
+                    component="span"
+                    sx={{
+                      px: 0.75,
+                      py: 0.3,
+                      borderRadius: 1.25,
+                      border: `1px solid ${alpha(theme.palette.info.main, 0.22)}`,
+                      background: alpha(theme.palette.info.main, 0.07),
+                      color: "text.secondary",
+                      fontSize: "0.72rem",
+                      fontWeight: 800,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {label}
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          ) : null}
         </Stack>
 
         <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
 
         {!hasCompatibleDomains ? (
           <Alert severity="warning">
-            No compatible expression domains were found for the selected model. Create a compatible
-            expression domain or adjust the model selection.
+            <Typography component="div" variant="body2" sx={{ fontWeight: 900 }}>
+              No compatible expression domains found.
+            </Typography>
+            <Typography component="div" variant="body2">
+              {formatSupportedExpressionDomainRequirement({
+                modelName: selectedModel?.displayName || selectedModel?.name,
+                supportedExpressionDomains: selectedModel?.supportedExpressionDomains,
+              }) ||
+                "Create a compatible expression domain or adjust the model selection."}
+            </Typography>
           </Alert>
         ) : (
           <Stack spacing={1.45}>

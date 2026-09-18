@@ -1,4 +1,80 @@
 import { isPlainObject } from "../../../utils/common/objects";
+import dayjs from "dayjs";
+
+export const CREATE_ISSUE_DRAFT_VERSION = 1;
+
+const EMPTY_EXPRESSION_DOMAIN_CONFIG = {
+  mode: "global",
+  globalDomainId: "",
+};
+
+const hasStableModelIdentity = (model) =>
+  isPlainObject(model) &&
+  [model._id, model.id, model.apiModelKey].some(
+    (value) => typeof value === "string" && value.trim() !== ""
+  );
+
+const removeStoredCreateIssueData = (storageKey) => {
+  try {
+    localStorage.removeItem(storageKey);
+  } catch {
+    // Storage can be unavailable or read-only; the draft is already unusable.
+  }
+};
+
+const normalizeCurrentCreateIssueDraft = (draft) => {
+  if (
+    !isPlainObject(draft) ||
+    draft.draftVersion !== CREATE_ISSUE_DRAFT_VERSION ||
+    (draft.selectedModel !== null &&
+      draft.selectedModel !== undefined &&
+      !hasStableModelIdentity(draft.selectedModel))
+  ) {
+    return null;
+  }
+
+  return {
+    draftVersion: CREATE_ISSUE_DRAFT_VERSION,
+    activeStep:
+      Number.isInteger(draft.activeStep) && draft.activeStep >= 0
+        ? draft.activeStep
+        : 0,
+    completed: isPlainObject(draft.completed) ? draft.completed : {},
+    selectedModel: draft.selectedModel || null,
+    showConsensusModels: draft.showConsensusModels === true,
+    isConsensus: draft.isConsensus === true,
+    alternatives: Array.isArray(draft.alternatives) ? draft.alternatives : [],
+    criteria: Array.isArray(draft.criteria) ? draft.criteria : [],
+    addedExperts: Array.isArray(draft.addedExperts)
+      ? draft.addedExperts.filter((expert) => typeof expert === "string")
+      : [],
+    expertWeights: isPlainObject(draft.expertWeights)
+      ? draft.expertWeights
+      : null,
+    expertWeightsCustomized: draft.expertWeightsCustomized === true,
+    issueName: typeof draft.issueName === "string" ? draft.issueName : "",
+    issueDescription:
+      typeof draft.issueDescription === "string" ? draft.issueDescription : "",
+    expressionDomainConfig: isPlainObject(draft.expressionDomainConfig)
+      ? draft.expressionDomainConfig
+      : { ...EMPTY_EXPRESSION_DOMAIN_CONFIG },
+    paramValues: isPlainObject(draft.paramValues) ? draft.paramValues : {},
+    criteriaWeightingConfig: isPlainObject(draft.criteriaWeightingConfig)
+      ? draft.criteriaWeightingConfig
+      : null,
+    closureDate:
+      typeof draft.closureDate === "string" || draft.closureDate === null
+        ? draft.closureDate
+        : null,
+    ...(Object.hasOwn(draft, "consensusMaxPhases")
+      ? { consensusMaxPhases: draft.consensusMaxPhases }
+      : {}),
+    ...(Object.hasOwn(draft, "consensusThreshold")
+      ? { consensusThreshold: draft.consensusThreshold }
+      : {}),
+    simulateConsensus: draft.simulateConsensus === true,
+  };
+};
 
 export const normalizeStoredConsensusThreshold = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -39,14 +115,18 @@ export const readStoredCreateIssueData = (storageKey) => {
 
   try {
     const raw = localStorage.getItem(storageKey);
-    const parsed = raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
 
-    if (!parsed || typeof parsed !== "object") {
-      return {};
+    const parsed = JSON.parse(raw);
+    const normalized = normalizeCurrentCreateIssueDraft(parsed);
+
+    if (!normalized) {
+      removeStoredCreateIssueData(storageKey);
     }
 
-    return parsed;
+    return normalized || {};
   } catch {
+    removeStoredCreateIssueData(storageKey);
     return {};
   }
 };
@@ -54,10 +134,30 @@ export const readStoredCreateIssueData = (storageKey) => {
 export const persistStoredCreateIssueData = (storageKey, data) => {
   if (typeof window === "undefined") return;
 
-  localStorage.setItem(storageKey, JSON.stringify(data));
+  try {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        ...data,
+        draftVersion: CREATE_ISSUE_DRAFT_VERSION,
+      })
+    );
+  } catch {
+    // A storage failure should not prevent the Create Issue flow from working.
+  }
+};
+
+export const clearStoredCreateIssueData = (storageKey) => {
+  if (typeof window === "undefined") return;
+
+  removeStoredCreateIssueData(storageKey);
 };
 
 export const resolveInitialConsensusMaxPhases = (storedData) => {
+  if (Object.hasOwn(storedData, "consensusMaxPhases") && storedData.consensusMaxPhases === null) {
+    return null;
+  }
+
   const storedConsensusMaxPhases = normalizeStoredConsensusMaxPhases(
     storedData.consensusMaxPhases
   );
@@ -73,6 +173,17 @@ export const resolveInitialConsensusThreshold = (storedData) => {
   );
 
   return storedConsensusThreshold !== null ? storedConsensusThreshold : 0.7;
+};
+
+export const resolveInitialClosureDate = (storedData) => {
+  const storedClosureDate = storedData?.closureDate;
+  if (!storedClosureDate) {
+    return null;
+  }
+
+  const closureDate = dayjs(storedClosureDate);
+
+  return closureDate.isValid() ? closureDate : null;
 };
 
 export const resolveInitialExpressionDomainConfig = (storedData) =>
@@ -112,6 +223,7 @@ export const buildStoredCreateIssueData = ({
   consensusThreshold,
   simulateConsensus,
 }) => ({
+  draftVersion: CREATE_ISSUE_DRAFT_VERSION,
   activeStep,
   completed,
   selectedModel,

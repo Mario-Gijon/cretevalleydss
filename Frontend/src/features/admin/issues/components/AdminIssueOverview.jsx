@@ -90,7 +90,7 @@ export default function AdminIssueOverview({
               value={detailView.alternativeEvaluationStructureLabel}
             />
             <AdminIssueInfoRow label="Creation date" value={issueDetail?.creationDate || "—"} />
-            <AdminIssueInfoRow label="Closure date" value={issueDetail?.closureDate || "—"} />
+            <AdminIssueInfoRow label="Expected finalization date" value={issueDetail?.closureDate || "—"} />
           </Stack>
 
           <Divider sx={{ opacity: 0.12, my: 1.4 }} />

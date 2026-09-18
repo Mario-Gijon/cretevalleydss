@@ -97,19 +97,19 @@ test("alternative evaluation smoke: an invited expert can submit a matrix evalua
 
   await page
     .getByRole("group", { name: "E2E Alt Alpha — E2E Alt Cost" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("3");
   await page
     .getByRole("group", { name: "E2E Alt Alpha — E2E Alt Quality" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("8");
   await page
     .getByRole("group", { name: "E2E Alt Beta — E2E Alt Cost" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("7");
   await page
     .getByRole("group", { name: "E2E Alt Beta — E2E Alt Quality" })
-    .getByRole("spinbutton")
+    .getByRole("textbox")
     .fill("6");
 
   await page.getByRole("button", { name: "Submit", exact: true }).click();

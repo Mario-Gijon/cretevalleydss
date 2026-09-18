@@ -1,4 +1,4 @@
-import { Box, Pagination } from "@mui/material";
+import IssuePagination from "../../../components/IssuePagination/IssuePagination";
 
 /**
  * Paginación local de los issues activos.
@@ -7,23 +7,18 @@ import { Box, Pagination } from "@mui/material";
  * @param {number} props.page Página actual.
  * @param {number} props.pageCount Número total de páginas.
  * @param {Function} props.onChange Callback de cambio de página.
+ * @param {Object} props.sx Estilos adicionales del contenedor.
  * @returns {JSX.Element|null}
  */
-const ActiveIssuesPagination = ({ page, pageCount, onChange }) => {
-  if (pageCount <= 1) return null;
-
+const ActiveIssuesPagination = ({ page, pageCount, onChange, sx }) => {
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", mt: 1.25 }}>
-      <Pagination
-        page={page}
-        count={pageCount}
-        size="small"
-        color="secondary"
-        shape="rounded"
-        aria-label="Active issues pages"
-        onChange={(_, nextPage) => onChange(nextPage)}
-      />
-    </Box>
+    <IssuePagination
+      page={page}
+      pageCount={pageCount}
+      onChange={onChange}
+      ariaLabel="Active issues pages"
+      sx={sx}
+    />
   );
 };
 

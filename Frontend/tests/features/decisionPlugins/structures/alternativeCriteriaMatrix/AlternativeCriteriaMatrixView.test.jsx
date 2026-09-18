@@ -2,6 +2,8 @@ import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import AlternativeCriteriaMatrixView from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
+import { cellSx } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/styles/Cell.styles.js";
+import { evaluationMatrixInputBoundarySx } from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const numericDomain = {
@@ -65,6 +67,10 @@ const buildMatrixPayload = () => ({
 });
 
 describe("AlternativeCriteriaMatrixView", () => {
+  it("uses the shared transparent outlined-input rule inside matrix cells", () => {
+    expect(cellSx.inputBoundary).toMatchObject(evaluationMatrixInputBoundarySx);
+  });
+
   it("updates a canonical cell and disables it in read-only mode", () => {
     const setEvaluation = vi.fn();
     const decisionContext = buildDecisionContext([
@@ -85,7 +91,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    fireEvent.change(screen.getAllByRole("spinbutton")[0], {
+    fireEvent.change(screen.getAllByRole("textbox")[0], {
       target: { value: "8" },
     });
     expect(setEvaluation).toHaveBeenCalledWith({
@@ -104,7 +110,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    screen.getAllByRole("spinbutton").forEach((input) => {
+    screen.getAllByRole("textbox").forEach((input) => {
       expect(input).toBeDisabled();
     });
   });
@@ -135,7 +141,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
     expect(screen.getByText("7.2")).toBeInTheDocument();
     expect(screen.getByTitle("High — [0.6, 0.8, 1]")).toBeInTheDocument();
   });
@@ -266,7 +272,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       );
 
       expect(screen.getByRole("alert")).toHaveTextContent("Collective payload cell");
-      expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
       unmount();
     }
   });
@@ -300,7 +306,7 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Collective payload contains unknown alternative rows."
     );
-    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
     unmount();
 
     renderWithProviders(
@@ -327,7 +333,7 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Collective alternative row contains unknown criterion cells."
     );
-    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0);
   });
 
   it("displays non-matching fuzzy vectors completely and does not nearest-match outside epsilon", () => {

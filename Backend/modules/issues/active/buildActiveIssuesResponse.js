@@ -16,7 +16,7 @@ const ACTIVE_ROLE_OPTIONS = [
 const ACTIVE_SORT_OPTIONS = [
   { value: "name", label: "Name" },
   { value: "creationDate", label: "Creation Date" },
-  { value: "deadlineDate", label: "Deadline Date" },
+  { value: "deadlineDate", label: "Expected finalization date" },
 ];
 
 export const getEmptyTasksByType = () =>

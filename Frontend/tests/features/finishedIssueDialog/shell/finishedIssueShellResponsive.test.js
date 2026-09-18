@@ -3,21 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   finishedIssueHeaderControlsSx,
   finishedIssueHeaderIdentitySx,
+  finishedIssueHeaderTitleSx,
 } from "../../../../src/features/finishedIssueDialog/shell/finishedIssueShell.styles.js";
 
 describe("finished issue shell responsive styles", () => {
-  it("uses natural-height header children before the desktop breakpoint", () => {
-    expect(finishedIssueHeaderIdentitySx.flex).toEqual({
-      xs: "0 0 auto",
-      lg: "1 1 360px",
-    });
-    expect(finishedIssueHeaderControlsSx.flex).toEqual({
-      xs: "0 0 auto",
-      lg: "1 1 520px",
-    });
-    expect(finishedIssueHeaderControlsSx.width).toEqual({
-      xs: "100%",
-      lg: "auto",
-    });
+  it("keeps the title flexible and the action controls fixed in the top row", () => {
+    expect(finishedIssueHeaderIdentitySx.flex).toBe("1 1 auto");
+    expect(finishedIssueHeaderControlsSx.flexShrink).toBe(0);
+    expect(finishedIssueHeaderTitleSx.WebkitLineClamp).toEqual({ xs: 2, lg: 1 });
+    expect(finishedIssueHeaderTitleSx.whiteSpace).toEqual({ xs: "normal", lg: "nowrap" });
   });
 });

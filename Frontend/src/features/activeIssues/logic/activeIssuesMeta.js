@@ -18,6 +18,16 @@ export const resolveActiveIssuesToneColor = (tone) => {
   return { dot: "#0288d1", text: "info.main" };
 };
 
+export const ACTIVE_ISSUE_PARTICIPATION_STATUS_META = Object.freeze({
+  participated: Object.freeze({ label: "Participated", tone: "success" }),
+  notEvaluated: Object.freeze({
+    label: "Accepted (not evaluated)",
+    tone: "info",
+  }),
+  pending: Object.freeze({ label: "Pending invitations", tone: "warning" }),
+  declined: Object.freeze({ label: "Declined", tone: "error" }),
+});
+
 const toTitleCase = (value) => {
   return (value || "")
     .replace(/([a-z])([A-Z])/g, "$1 $2")

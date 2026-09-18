@@ -3,8 +3,13 @@ from copy import deepcopy
 import pytest
 
 from issue_scenario_lab.errors import ScenarioLabError
-from issue_scenario_lab.scenarios.topsis_2tuple_greece import build_linguistic_matrix, load_fixture, removal_aliases, resolve_linguistic_label_keys, validate_fixture
-
+from issue_scenario_lab.scenarios.topsis_2tuple_greece import (
+    build_linguistic_matrix,
+    load_fixture,
+    removal_aliases,
+    resolve_linguistic_label_keys,
+    validate_fixture,
+)
 
 EXPECTED_RANKINGS = {
     "expert_a": ["c5", "c6", "c4", "c7", "c1", "c2", "c3"],
@@ -36,8 +41,15 @@ def test_greece_fixture_preserves_real_questionnaire_criteria_rankings_and_sites
     assert data["criteriaWeighting"]["rankings"] == EXPECTED_RANKINGS
     assert removal_aliases(data) == ["expert_b", "expert_c", "expert_d", "expert_e"]
     assert [alternative["key"] for alternative in data["alternatives"]] == ["saint_george", "plati", "kaminaki", "tzermiado"]
-    assert all(set(row) == {"c1", "c2", "c3", "c4", "c5", "c6", "c7"} for row in data["alternativeEvaluation"]["evaluations"].values())
-    assert all("labelKey" not in value and value["label"] in {"Very low", "Low", "Medium", "High", "Very high"} for row in data["alternativeEvaluation"]["evaluations"].values() for value in row.values())
+    assert all(
+        set(row) == {"c1", "c2", "c3", "c4", "c5", "c6", "c7"}
+        for row in data["alternativeEvaluation"]["evaluations"].values()
+    )
+    assert all(
+        "labelKey" not in value and value["label"] in {"Very low", "Low", "Medium", "High", "Very high"}
+        for row in data["alternativeEvaluation"]["evaluations"].values()
+        for value in row.values()
+    )
     assert all(value["alpha"] == 0 for row in data["alternativeEvaluation"]["evaluations"].values() for value in row.values())
 
 

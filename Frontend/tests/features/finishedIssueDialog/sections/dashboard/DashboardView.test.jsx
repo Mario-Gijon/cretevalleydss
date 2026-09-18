@@ -63,7 +63,7 @@ describe("DashboardView", () => {
     expect(screen.getByText("Runs generated")).toBeInTheDocument();
     expect(screen.getByText("1 submission")).toBeInTheDocument();
     expect(screen.getAllByTestId("summary-card-icon")).toHaveLength(4);
-    expect(screen.getAllByTestId("overview-metadata-icon")).toHaveLength(7);
+    expect(screen.getAllByTestId("overview-metadata-icon")).toHaveLength(8);
     expect(screen.queryByText("Best option")).not.toBeInTheDocument();
     expect(screen.queryByText("Top score")).not.toBeInTheDocument();
     expect(screen.queryByText("Evaluation coverage")).not.toBeInTheDocument();

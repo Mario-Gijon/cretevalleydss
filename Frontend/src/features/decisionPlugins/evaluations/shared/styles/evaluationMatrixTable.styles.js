@@ -5,6 +5,12 @@ const bodyCellBg = "#11111128";
 const diagonalCellBg = "#000000";
 const cellBorder = "1px solid rgba(255,255,255,0.075)";
 
+export const evaluationMatrixInputBoundarySx = {
+  "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline": {
+    borderColor: "transparent",
+  },
+};
+
 export const buildEvaluationMatrixDataGridSx = (theme) => ({
   width: "100%", maxWidth: "none", minWidth: 0, border: `1px solid ${alpha(theme.palette.common.white, 0.075)}`, backgroundColor: bodyCellBg,
   "& .MuiDataGrid-main": { overflow: "hidden", backgroundColor: bodyCellBg },
@@ -12,7 +18,7 @@ export const buildEvaluationMatrixDataGridSx = (theme) => ({
   "& .MuiDataGrid-columnHeader": { backgroundColor: headerBg, borderRight: cellBorder },
   "& .MuiDataGrid-columnHeader:last-of-type": { borderRight: "none" },
   "& .MuiDataGrid-columnHeaderTitle": { fontWeight: 800, color: theme.palette.text.primary },
-  "& .MuiDataGrid-cell": { alignItems: "center", backgroundColor: bodyCellBg, borderRight: cellBorder, borderBottom: cellBorder },
+  "& .MuiDataGrid-cell": { alignItems: "center", boxSizing: "border-box", backgroundColor: bodyCellBg, borderRight: cellBorder, borderBottom: cellBorder, backgroundClip: "padding-box" },
   "& .MuiDataGrid-cell:last-of-type": { borderRight: "none" },
   "& .MuiDataGrid-row": { backgroundColor: bodyCellBg },
   "& .MuiDataGrid-row:hover": { backgroundColor: bodyCellBg },

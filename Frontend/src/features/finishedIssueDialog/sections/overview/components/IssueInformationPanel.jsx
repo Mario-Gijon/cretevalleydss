@@ -145,6 +145,20 @@ const IssueInformationPanel = ({ data }) => {
               label="Creation date"
               value={formatDate(data.general.creationDate)}
             />
+            {data.general.closureDate ? (
+              <InformationRow
+                icon={<CalendarMonthRoundedIcon fontSize="small" />}
+                label="Expected finalization date"
+                value={formatDate(data.general.closureDate)}
+              />
+            ) : null}
+            {finished && data.general.finishedAt ? (
+              <InformationRow
+                icon={<CheckCircleRoundedIcon fontSize="small" />}
+                label="Finalized at"
+                value={formatDate(data.general.finishedAt)}
+              />
+            ) : null}
             <InformationRow
               icon={<CheckCircleRoundedIcon fontSize="small" />}
               label="Status"

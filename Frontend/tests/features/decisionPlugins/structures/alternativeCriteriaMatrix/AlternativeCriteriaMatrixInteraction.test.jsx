@@ -99,11 +99,11 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    expect(screen.getByRole("spinbutton")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeInTheDocument();
     expect(
       screen.getByRole("group", { name: "Option A — Cost" })
-    ).toContainElement(screen.getByRole("spinbutton"));
+    ).toContainElement(screen.getByRole("textbox"));
   });
 
   it("marks an invalid numeric cell without showing helper text", () => {
@@ -118,7 +118,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    const input = screen.getByRole("spinbutton");
+    const input = screen.getByRole("textbox");
 
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByText("Value must be between 0 and 10.")).not.toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("AlternativeCriteriaMatrixView", () => {
       />
     );
 
-    fireEvent.change(screen.getByRole("spinbutton"), {
+    fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "7" },
     });
 

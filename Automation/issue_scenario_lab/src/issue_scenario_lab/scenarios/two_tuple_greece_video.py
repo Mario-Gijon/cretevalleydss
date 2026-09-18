@@ -51,7 +51,10 @@ def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
         or any(len(row) != 18 for matrix in data.get("sourceValuesByExpert", {}).values() for row in matrix.values())
     ):
         raise ScenarioLabError("two-tuple Greece video fixture must contain an 18-column source matrix")
-    if set(data.get("sourceValuesByExpert", {})) != set(experts) or any(set(matrix) != {item["key"] for item in data["alternatives"]} for matrix in data["sourceValuesByExpert"].values()):
+    if set(data.get("sourceValuesByExpert", {})) != set(experts) or any(
+        set(matrix) != {item["key"] for item in data["alternatives"]}
+        for matrix in data["sourceValuesByExpert"].values()
+    ):
         raise ScenarioLabError("source matrix must contain every authoritative alternative")
     if data.get("expressionDomain", {}).get("labels") != list(EXPECTED_LABELS):
         raise ScenarioLabError("two-tuple Greece video fixture must declare the ordered five-label linguistic scale")
@@ -167,6 +170,10 @@ def _payload(data: dict[str, Any], *, name: str, model_id: str, domain_id: str, 
     }
 
 
+def _issue_name(generation_id: str, fixture_name: str) -> str:
+    return f"[AUTO:{generation_id}] {fixture_name}"
+
+
 def _context(response: Any, issue_id: str, stage: str, model_key: str) -> dict[str, Any]:
     context = response.get("decisionContext") if isinstance(response, dict) else None
     issue = context.get("issue") if isinstance(context, dict) else None
@@ -184,11 +191,17 @@ def _context(response: Any, issue_id: str, stage: str, model_key: str) -> dict[s
     return context
 
 
-def _active_issue(api: IssuesApi, issue_id: str) -> dict[str, Any]:
+def _active_issue(api: IssuesApi, issue_id: str, issue_name: str) -> dict[str, Any]:
     issue = next((item for item in _items(api.active_issues(), "issues") if _id(item) == issue_id), None)
-    if not issue:
+    if not issue or issue.get("name") != issue_name:
         raise ScenarioLabError("generated issue is no longer visible as active")
     return issue
+
+
+def _validate_finished_issue(detail: Any, issue_id: str, issue_name: str) -> None:
+    issue = detail.get("issue") if isinstance(detail, dict) else None
+    if not isinstance(issue, dict) or _id(issue) != issue_id or issue.get("name") != issue_name:
+        raise ScenarioLabError("finished issue does not preserve the generated issue identity and name")
 
 
 def _parent_ids(data: dict[str, Any], context: dict[str, Any]) -> dict[str, str]:
@@ -278,7 +291,14 @@ def _label_keys(context: dict[str, Any]) -> dict[str, str]:
     return resolved
 
 
-def _matrix(data: dict[str, Any], context: dict[str, Any], *, expert_alias: str, alternatives: dict[str, str], criteria: dict[str, str]) -> dict[str, dict[str, dict[str, Any]]]:
+def _matrix(
+    data: dict[str, Any],
+    context: dict[str, Any],
+    *,
+    expert_alias: str,
+    alternatives: dict[str, str],
+    criteria: dict[str, str],
+) -> dict[str, dict[str, dict[str, Any]]]:
     labels = _label_keys(context)
     ordered_labels = [label.casefold() for label in EXPECTED_LABELS]
     leaves = _fixture_leaves(data)
@@ -391,8 +411,7 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
     ):
         raise ScenarioLabError("two-tuple-greece-video requires configured distinct aliases: owner, expert_a, expert_b, expert_c, expert_d, expert_e")
     generation_id, issue_id = secrets.token_hex(5), None
-    #issue_name = f"[AUTO:{generation_id}] {data['issue']['name']}"
-    issue_name = f"{data['issue']['name']}"
+    issue_name = _issue_name(generation_id, data["issue"]["name"])
     try:
         for alias in aliases:
             sessions.login(alias)
@@ -408,6 +427,7 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
         issue_id = _id(next((item for item in _items(owner.active_issues(), "issues") if item.get("name") == issue_name), {}))
         if not issue_id:
             raise ScenarioLabError("created issue could not be resolved from active issues")
+        _active_issue(owner, issue_id, issue_name)
         for alias in experts:
             IssuesApi(sessions.client_for(alias)).respond_to_invitation(issue_id, "accepted")
         parent_ids: dict[str, str] | None = None
@@ -443,10 +463,21 @@ def generate(sessions: SessionPool, store: ManifestStore, *, owner_alias: str = 
             expert_api = IssuesApi(sessions.client_for(alias))
             expert_context = _context(expert_api.evaluation(issue_id, ALTERNATIVE_STAGE), issue_id, ALTERNATIVE_STAGE, MODEL_KEY)
             expert_alternatives, expert_criteria = _leaf_context_maps(data, expert_context, expected_leaf)
-            expert_api.submit_evaluation(issue_id, ALTERNATIVE_STAGE, _matrix(data, expert_context, expert_alias=alias, alternatives=expert_alternatives, criteria=expert_criteria))
+            expert_api.submit_evaluation(
+                issue_id,
+                ALTERNATIVE_STAGE,
+                _matrix(
+                    data,
+                    expert_context,
+                    expert_alias=alias,
+                    alternatives=expert_alternatives,
+                    criteria=expert_criteria,
+                ),
+            )
         finished = owner.compute_evaluation(issue_id, ALTERNATIVE_STAGE)
         _validate_finished(finished, alternatives, criterion_ids)
         detail = owner.finished_issue(issue_id)
+        _validate_finished_issue(detail, issue_id, issue_name)
         _validate_finished_audit(detail, data, sessions, parent_ids, parent_weights)
         entry = GeneratedIssue(
             generationId=generation_id,

@@ -211,7 +211,6 @@ const TaskCenterRail = ({
             ref={railRef}
             sx={{
               flex: 1,
-              height: "100%",
               display: "flex",
               alignItems: "stretch",
               gap: 1,
@@ -237,7 +236,6 @@ const TaskCenterRail = ({
                     minWidth: 240,
                     maxWidth: 280,
                     flex: "0 0 auto",
-                    height: "100%",
                     display: "flex",
                     flexDirection: "column",
                     scrollSnapAlign: "start",
@@ -285,7 +283,7 @@ const TaskCenterRail = ({
                       <Stack
                         direction="row"
                         spacing={0.8}
-                        sx={{ alignItems: "center", minWidth: 0 }}
+                        sx={{ alignItems: "center", minWidth: 0, flex: 1 }}
                       >
                         <Box
                           sx={{
@@ -311,29 +309,17 @@ const TaskCenterRail = ({
                           {item.groupTitle}
                         </Typography>
                       </Stack>
-                    </Stack>
 
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: 980, mt: 1.8, lineHeight: 1.1 }}
-                      title={item.issueName}
-                    >
-                      {item.issueName}
-                    </Typography>
-
-                    <Box sx={{ flex: 1 }} />
-
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      sx={{ alignItems: "center", mt: 0.55 }}
-                    >
                       {deadlineMini ? (
                         <Tooltip title={deadlineTooltip || ""}>
                           <Stack
                             direction="row"
                             spacing={0.35}
-                            sx={{ alignItems: "center" }}
+                            sx={{
+                              alignItems: "center",
+                              flexShrink: 0,
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             <CalendarMonthIcon
                               sx={{ fontSize: 14, opacity: 0.7 }}
@@ -343,6 +329,7 @@ const TaskCenterRail = ({
                               sx={{
                                 color: "text.secondary",
                                 fontWeight: 950,
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {deadlineMini}
@@ -351,28 +338,22 @@ const TaskCenterRail = ({
                         </Tooltip>
                       ) : null}
                     </Stack>
+
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 980, mt: 1.8, lineHeight: 1.1, fontSize: "0.82rem" }}
+                      title={item.issueName}
+                    >
+                      {item.issueName}
+                    </Typography>
+
+                    <Box sx={{ flex: 1 }} />
                   </Box>
                 </Box>
               );
             })}
           </Box>
         )}
-
-        <Box
-          sx={{
-            pointerEvents: "none",
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: 18,
-            background: `linear-gradient(to right, ${alpha(
-              theme.palette.background.paper,
-              0.45
-            )}, transparent)`,
-            opacity: railItems.length ? 1 : 0,
-          }}
-        />
 
       </Box>
     </Paper>
