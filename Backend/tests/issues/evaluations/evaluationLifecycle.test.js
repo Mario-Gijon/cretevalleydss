@@ -96,6 +96,45 @@ const createCompletedEvaluationWithSubmittedRevision = async ({
   return evaluation;
 };
 
+const createGeneratedEvaluationWithRevision = async ({
+  issueId,
+  expertId,
+  stage,
+  consensusPhase,
+  structureKey,
+  payload,
+}) => {
+  const evaluation = await createIssueEvaluationFixture({
+    issueId,
+    expertId,
+    stage,
+    consensusPhase,
+    payload,
+    completed: true,
+  });
+  const occurredAt = new Date();
+
+  await IssueEvaluationRevision.create({
+    issue: issueId,
+    evaluation: evaluation._id,
+    expert: expertId,
+    actorType: "system",
+    actorUser: null,
+    stage,
+    consensusPhase,
+    action: "generated",
+    structureKey,
+    rawPayload: payload,
+    normalizedPayload: payload,
+    decisionContext: {},
+    submittedAt: null,
+    occurredAt,
+    correlationId: `generated-carry-forward-${String(evaluation._id)}`,
+  });
+
+  return evaluation;
+};
+
 const createCriteriaWeightingEvaluationFixture = async ({
   owner = null,
   expert = null,
@@ -146,6 +185,7 @@ const createAlternativeEvaluationFixture = async ({
   invitationStatus = "accepted",
   evaluationStructureKey = "alternativeCriteriaMatrix",
   isConsensus = false,
+  simulateConsensus = false,
 } = {}) => {
   const resolvedOwner = owner ?? (await createConfirmedUser());
   const resolvedExpert = expert ?? (await createConfirmedUser());
@@ -157,6 +197,7 @@ const createAlternativeEvaluationFixture = async ({
     consensusPhase,
     evaluationStructureKey,
     isConsensus,
+    simulateConsensus,
   });
   const domain = await createIssueExpressionDomainSnapshotFixture({
     issueId: issue._id,
@@ -1001,6 +1042,71 @@ describe("get evaluation payload behavior", () => {
 
     expect(currentPhase.payload[firstAlternativeId][criterionId]).toBe(7);
     expect(previousPhase.payload[firstAlternativeId][criterionId]).toBe(5);
+  });
+
+  it("ignores manual current-phase system records but preserves simulated generated evaluations", async () => {
+    const manual = await createAlternativeEvaluationFixture({
+      consensusPhase: 1,
+      isConsensus: true,
+    });
+    const simulated = await createAlternativeEvaluationFixture({
+      consensusPhase: 1,
+      isConsensus: true,
+      simulateConsensus: true,
+    });
+
+    for (const fixture of [manual, simulated]) {
+      const firstAlternativeId = String(fixture.alternatives[0]._id);
+      const previousPayload = buildAlternativeMatrixPayload({
+        alternatives: fixture.alternatives,
+        leafCriteria: fixture.leafCriteria,
+        valuesByAlternativeId: { [firstAlternativeId]: 4 },
+      });
+      const generatedPayload = buildAlternativeMatrixPayload({
+        alternatives: fixture.alternatives,
+        leafCriteria: fixture.leafCriteria,
+        valuesByAlternativeId: { [firstAlternativeId]: 8 },
+      });
+
+      await createCompletedEvaluationWithSubmittedRevision({
+        issueId: fixture.issue._id,
+        expertId: fixture.expert._id,
+        stage: "alternativeEvaluation",
+        consensusPhase: 0,
+        structureKey: "alternativeCriteriaMatrix",
+        payload: previousPayload,
+      });
+      await createGeneratedEvaluationWithRevision({
+        issueId: fixture.issue._id,
+        expertId: fixture.expert._id,
+        stage: "alternativeEvaluation",
+        consensusPhase: 1,
+        structureKey: "alternativeCriteriaMatrix",
+        payload: generatedPayload,
+      });
+    }
+
+    const manualPayload = await getIssueEvaluationPayload({
+      issueId: manual.issue._id,
+      userId: manual.expert._id,
+      stage: "alternativeEvaluation",
+    });
+    const simulatedPayload = await getIssueEvaluationPayload({
+      issueId: simulated.issue._id,
+      userId: simulated.expert._id,
+      stage: "alternativeEvaluation",
+    });
+    const manualFirstAlternativeId = String(manual.alternatives[0]._id);
+    const simulatedFirstAlternativeId = String(simulated.alternatives[0]._id);
+    const manualCriterionId = String(manual.leafCriteria[0]._id);
+    const simulatedCriterionId = String(simulated.leafCriteria[0]._id);
+
+    expect(manualPayload.completed).toBe(false);
+    expect(manualPayload.payload[manualFirstAlternativeId][manualCriterionId]).toBe(4);
+    expect(simulatedPayload.completed).toBe(true);
+    expect(
+      simulatedPayload.payload[simulatedFirstAlternativeId][simulatedCriterionId]
+    ).toBe(8);
   });
 
   it("carries forward a valid pairwise payload through its registered structure", async () => {

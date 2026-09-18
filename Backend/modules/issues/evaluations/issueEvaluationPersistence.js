@@ -18,6 +18,69 @@ export const findStoredEvaluation = async ({
   }).session(session);
 };
 
+const findLatestRevision = async ({
+  issueId,
+  userId,
+  stage,
+  consensusPhase,
+  session = null,
+}) => {
+  return IssueEvaluationRevision.findOne({
+    issue: issueId,
+    expert: userId,
+    stage,
+    consensusPhase,
+  })
+    .sort({ occurredAt: -1, _id: -1 })
+    .session(session);
+};
+
+export const findAuthoritativeCurrentEvaluation = async ({
+  issueId,
+  userId,
+  stage,
+  consensusPhase,
+  allowSystemGenerated = false,
+  session = null,
+}) => {
+  const evaluation = await findStoredEvaluation({
+    issueId,
+    userId,
+    stage,
+    consensusPhase,
+    session,
+  });
+
+  if (!evaluation) {
+    return null;
+  }
+
+  const latestRevision = await findLatestRevision({
+    issueId,
+    userId,
+    stage,
+    consensusPhase,
+    session,
+  });
+
+  // Evaluations created before immutable revisions were introduced are
+  // historical expert-owned state and remain authoritative. When revision
+  // evidence exists, it distinguishes user work from generated suggestions.
+  if (!latestRevision || latestRevision.actorType === "user") {
+    return evaluation;
+  }
+
+  if (
+    allowSystemGenerated === true &&
+    latestRevision?.actorType === "system" &&
+    latestRevision.action === "generated"
+  ) {
+    return evaluation;
+  }
+
+  return null;
+};
+
 export const findPreviousCompletedEvaluation = async ({
   issueId,
   userId,
@@ -87,23 +150,6 @@ export const upsertIssueEvaluation = async ({
       session,
     }
   );
-};
-
-const findLatestRevision = async ({
-  issueId,
-  userId,
-  stage,
-  consensusPhase,
-  session = null,
-}) => {
-  return IssueEvaluationRevision.findOne({
-    issue: issueId,
-    expert: userId,
-    stage,
-    consensusPhase,
-  })
-    .sort({ occurredAt: -1, _id: -1 })
-    .session(session);
 };
 
 /**

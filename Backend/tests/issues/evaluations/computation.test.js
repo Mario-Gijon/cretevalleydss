@@ -9,6 +9,11 @@ import { IssueEvent } from "../../../models/IssueEvents.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Participation } from "../../../models/Participations.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
+import {
+  getIssueEvaluationPayload,
+  saveIssueEvaluationDraft,
+  submitIssueEvaluation,
+} from "../../../modules/issues/evaluations/index.js";
 import { writeIssueStateSnapshot } from "../../../modules/issues/stateSnapshots/issueStateSnapshot.js";
 import { serializePhaseResults } from "../../../modules/issues/finished/finishedPayload/serializers/serializePhaseResults.js";
 import {
@@ -1286,6 +1291,283 @@ describe("consensus compute lifecycle", () => {
       currentConsensusPhase: 1,
       nextConsensusPhase: 2,
     });
+  });
+
+  it("carries a submitted pairwise evaluation into the next manual consensus round", async () => {
+    const {
+      owner,
+      issue,
+      acceptedExperts: [expert],
+      alternatives,
+      leafCriteria,
+    } = await createAlternativeComputeFixture({
+      acceptedExpertCount: 1,
+      issueOverrides: {
+        isConsensus: true,
+        simulateConsensus: false,
+        evaluationStructureKey: "alternativePairwiseByCriterion",
+        consensusThreshold: 0.95,
+        consensusMaxPhases: 3,
+      },
+    });
+    const [firstAlternative, secondAlternative] = alternatives;
+    const criterionId = String(leafCriteria[0]._id);
+    const firstAlternativeId = String(firstAlternative._id);
+    const secondAlternativeId = String(secondAlternative._id);
+    const phaseZeroPayload = {
+      [criterionId]: {
+        [firstAlternativeId]: { [secondAlternativeId]: 6 },
+        [secondAlternativeId]: { [firstAlternativeId]: 4 },
+      },
+    };
+
+    await submitIssueEvaluation({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+      payload: phaseZeroPayload,
+    });
+
+    const phaseZeroEvaluation = await IssueEvaluation.findOne({
+      issue: issue._id,
+      expert: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+    }).lean();
+    const phaseZeroRevision = await IssueEvaluationRevision.findOne({
+      issue: issue._id,
+      evaluation: phaseZeroEvaluation._id,
+      expert: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      action: "submitted",
+    }).lean();
+
+    expect(phaseZeroEvaluation).toMatchObject({
+      completed: true,
+      payload: phaseZeroPayload,
+    });
+    expect(phaseZeroEvaluation.submittedAt).toBeInstanceOf(Date);
+    expect(phaseZeroRevision).toMatchObject({
+      actorType: "user",
+      structureKey: "alternativePairwiseByCriterion",
+    });
+
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient: createHttpClientMock(
+        buildModelSuccessResponse(
+          buildAlternativeServiceResult({
+            alternatives,
+            leafCriteria,
+            consensusMeasure: 0.5,
+            collectiveEvaluations: {
+              [criterionId]: {
+                [firstAlternativeId]: { [secondAlternativeId]: 7 },
+                [secondAlternativeId]: { [firstAlternativeId]: 3 },
+              },
+            },
+          })
+        )
+      ),
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const advancedIssue = await Issue.findById(issue._id).lean();
+    const advancedParticipation = await Participation.findOne({
+      issue: issue._id,
+      expert: expert._id,
+    }).lean();
+    const phaseOneEvaluations = await IssueEvaluation.find({
+      issue: issue._id,
+      expert: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+    }).lean();
+    const phaseOneRevisions = await IssueEvaluationRevision.find({
+      issue: issue._id,
+      expert: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+    }).lean();
+
+    expect(advancedIssue).toMatchObject({
+      consensusPhase: 1,
+      active: true,
+      currentStage: "alternativeEvaluation",
+    });
+    expect(advancedParticipation.evaluationCompleted).toBe(false);
+    expect(phaseOneEvaluations).toEqual([]);
+    expect(phaseOneRevisions).toEqual([]);
+
+    const roundOnePayload = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+
+    expect(roundOnePayload).toMatchObject({
+      consensusPhase: 1,
+      completed: false,
+      collectivePayload: {
+        [criterionId]: {
+          [firstAlternativeId]: { [secondAlternativeId]: 7 },
+          [secondAlternativeId]: { [firstAlternativeId]: 3 },
+        },
+      },
+    });
+    expect(
+      roundOnePayload.payload[criterionId][firstAlternativeId][secondAlternativeId]
+    ).toBe(6);
+    expect(
+      roundOnePayload.payload[criterionId][secondAlternativeId][firstAlternativeId]
+    ).toBe(4);
+
+    const phaseOnePayload = {
+      [criterionId]: {
+        [firstAlternativeId]: { [secondAlternativeId]: 7 },
+        [secondAlternativeId]: { [firstAlternativeId]: 3 },
+      },
+    };
+    await saveIssueEvaluationDraft({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+      payload: phaseOnePayload,
+    });
+    const reopenedRoundOnePayload = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+
+    expect(
+      reopenedRoundOnePayload.payload[criterionId][firstAlternativeId][secondAlternativeId]
+    ).toBe(7);
+
+    await submitIssueEvaluation({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+      payload: phaseOnePayload,
+    });
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient: createHttpClientMock(
+        buildModelSuccessResponse(
+          buildAlternativeServiceResult({
+            alternatives,
+            leafCriteria,
+            consensusMeasure: 0.6,
+          })
+        )
+      ),
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const phaseZeroAfterRoundOne = await IssueEvaluation.findById(
+      phaseZeroEvaluation._id
+    ).lean();
+    const roundTwoPayload = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+
+    expect(
+      phaseZeroAfterRoundOne.payload[criterionId][firstAlternativeId][secondAlternativeId]
+    ).toBe(6);
+    expect(roundTwoPayload.consensusPhase).toBe(2);
+    expect(
+      roundTwoPayload.payload[criterionId][firstAlternativeId][secondAlternativeId]
+    ).toBe(7);
+    expect(
+      roundTwoPayload.payload[criterionId][secondAlternativeId][firstAlternativeId]
+    ).toBe(3);
+  });
+
+  it("carries each expert's own alternative matrix into the next manual round", async () => {
+    const {
+      owner,
+      issue,
+      acceptedExperts: [firstExpert, secondExpert],
+      alternatives,
+      leafCriteria,
+    } = await createAlternativeComputeFixture({
+      issueOverrides: {
+        isConsensus: true,
+        simulateConsensus: false,
+        consensusThreshold: 0.95,
+        consensusMaxPhases: 3,
+      },
+    });
+    const firstAlternativeId = String(alternatives[0]._id);
+    const criterionId = String(leafCriteria[0]._id);
+    const firstExpertPayload = buildAlternativeMatrixPayload({
+      alternatives,
+      leafCriteria,
+      valuesByAlternativeId: {
+        [firstAlternativeId]: 8,
+        [String(alternatives[1]._id)]: 2,
+      },
+    });
+    const secondExpertPayload = buildAlternativeMatrixPayload({
+      alternatives,
+      leafCriteria,
+      valuesByAlternativeId: {
+        [firstAlternativeId]: 5,
+        [String(alternatives[1]._id)]: 5,
+      },
+    });
+
+    await submitIssueEvaluation({
+      issueId: issue._id,
+      userId: firstExpert._id,
+      stage: "alternativeEvaluation",
+      payload: firstExpertPayload,
+    });
+    await submitIssueEvaluation({
+      issueId: issue._id,
+      userId: secondExpert._id,
+      stage: "alternativeEvaluation",
+      payload: secondExpertPayload,
+    });
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient: createHttpClientMock(
+        buildModelSuccessResponse(
+          buildAlternativeServiceResult({
+            alternatives,
+            leafCriteria,
+            consensusMeasure: 0.5,
+          })
+        )
+      ),
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const [firstRoundOnePayload, secondRoundOnePayload] = await Promise.all([
+      getIssueEvaluationPayload({
+        issueId: issue._id,
+        userId: firstExpert._id,
+        stage: "alternativeEvaluation",
+      }),
+      getIssueEvaluationPayload({
+        issueId: issue._id,
+        userId: secondExpert._id,
+        stage: "alternativeEvaluation",
+      }),
+    ]);
+
+    expect(firstRoundOnePayload.consensusPhase).toBe(1);
+    expect(firstRoundOnePayload.payload[firstAlternativeId][criterionId]).toBe(8);
+    expect(secondRoundOnePayload.payload[firstAlternativeId][criterionId]).toBe(5);
   });
 
   it("finalizes a consensus issue when the max phase limit is reached", async () => {

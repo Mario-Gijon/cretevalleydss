@@ -4,8 +4,8 @@ import { loadPreviousCollectiveReference } from "./loadPreviousCollectiveReferen
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import {
   cloneSerializable,
+  findAuthoritativeCurrentEvaluation,
   findPreviousCompletedEvaluation,
-  findStoredEvaluation,
 } from "./issueEvaluationPersistence.js";
 
 export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
@@ -15,11 +15,12 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     stage,
   });
 
-  const storedEvaluation = await findStoredEvaluation({
+  const currentEvaluation = await findAuthoritativeCurrentEvaluation({
     issueId: issue._id,
     userId,
     stage,
     consensusPhase: issue.consensusPhase,
+    allowSystemGenerated: issue.simulateConsensus === true,
   });
 
   const decisionContext = await buildDecisionContext({
@@ -31,12 +32,12 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
 
   let payload;
 
-  if (storedEvaluation) {
+  if (currentEvaluation) {
     // An absent evaluation document is semantically different from a stored
     // (and potentially malformed) empty payload. Structures own the former
     // case; they must still validate every persisted payload strictly.
     payload = await structure.get({
-      payload: storedEvaluation.payload,
+      payload: currentEvaluation.payload,
       decisionContext,
     });
   } else {
@@ -78,7 +79,7 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     decisionContext,
     payload,
     collectivePayload: previousCollective?.collectiveEvaluations ?? null,
-    completed: storedEvaluation?.completed ?? false,
-    submittedAt: storedEvaluation?.submittedAt ?? null,
+    completed: currentEvaluation?.completed ?? false,
+    submittedAt: currentEvaluation?.submittedAt ?? null,
   };
 };
