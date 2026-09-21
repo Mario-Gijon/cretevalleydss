@@ -185,7 +185,7 @@ export const leaveActiveIssue = async ({
     Participation.findOne({
       issue: issue._id,
       expert: userId,
-    }),
+    }).populate("expert", "name"),
     session
   );
 
@@ -247,7 +247,7 @@ export const leaveActiveIssue = async ({
     actorUserId: userId,
     issue,
     type: "participantLeft",
-    message: "An expert voluntarily left your issue.",
+    message: `${participation.expert?.name || "An expert"} has left this issue.`,
     eventKey: `participant-left:${participation._id}`,
     session,
   });

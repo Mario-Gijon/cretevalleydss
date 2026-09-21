@@ -1301,7 +1301,7 @@ export const computeIssueEvaluationStage = async ({
           actorUserId: userId,
           participations,
           type: "consensusRoundAvailable",
-          message: `Consensus round ${issue.consensusPhase + 1} requires your evaluation.`,
+          message: `${formatConsensusRoundLabel(issue.consensusPhase)} requires your evaluation.`,
           eventKey: `consensus-round-available:${issue.consensusPhase}`,
           session: persistSession,
         });

@@ -48,7 +48,7 @@ export const respondToIssueInvitation = async ({
   const participation = await Participation.findOne({
     issue: issue._id,
     expert: userId,
-  }).session(session);
+  }).populate("expert", "name").session(session);
 
   if (!participation) {
     throw createNotFoundError(
@@ -146,7 +146,7 @@ export const respondToIssueInvitation = async ({
       actorUserId: userId,
       issue,
       type: "invitationDeclined",
-      message: "An invited expert declined participation in this issue.",
+      message: `${participation.expert?.name || "An invited expert"} declined participation in this issue.`,
       eventKey: `invitation-declined:${participation._id}`,
       session,
     });

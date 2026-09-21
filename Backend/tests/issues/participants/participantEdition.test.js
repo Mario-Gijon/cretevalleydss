@@ -390,6 +390,43 @@ describe("editIssueExperts", () => {
     expect((await IssueStateSnapshot.findById(snapshot._id).lean()).state).toEqual(original);
   });
 
+  it("notifies a removed expert when the creator removes them, without notifying the creator", async () => {
+    const owner = await createConfirmedUser({ email: "remove-owner@example.com" });
+    const retained = await createConfirmedUser({ email: "remove-retained@example.com" });
+    const removed = await createConfirmedUser({ name: "Removed Expert", email: "remove-subject@example.com" });
+    const issue = await createIssueFixture({ ownerId: owner._id, currentStage: "alternativeEvaluation" });
+    await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Criterion"] });
+    await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
+    await createParticipationFixture({ issueId: issue._id, expertId: removed._id, invitationStatus: "accepted" });
+
+    await editIssueExperts({ issueId: issue._id, userId: owner._id, expertsToAdd: [], expertsToRemove: [removed.email] });
+
+    expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "participantRemoved" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(0);
+    const removedNotification = await Notification.findOne({ issue: issue._id, expert: removed._id }).lean();
+    expect(removedNotification.message).toContain("issue creator");
+  });
+
+  it("notifies the removed expert and creator on administrator removal, excluding the administrator", async () => {
+    const owner = await createConfirmedUser({ email: "admin-remove-owner@example.com" });
+    const admin = await createConfirmedUser({ email: "admin-remove-actor@example.com" });
+    const retained = await createConfirmedUser({ email: "admin-remove-retained@example.com" });
+    const removed = await createConfirmedUser({ name: "Jordan Smith", email: "admin-remove-subject@example.com" });
+    const issue = await createIssueFixture({ ownerId: owner._id, currentStage: "alternativeEvaluation" });
+    await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Criterion"] });
+    await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
+    await createParticipationFixture({ issueId: issue._id, expertId: removed._id, invitationStatus: "accepted" });
+
+    await editIssueExperts({ issueId: issue._id, userId: owner._id, actorUserId: admin._id, expertsToAdd: [], expertsToRemove: [removed.email] });
+
+    expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "participantRemoved" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, type: "participantRemovedByAdministrator" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: admin._id })).toBe(0);
+    const ownerNotification = await Notification.findOne({ issue: issue._id, expert: owner._id }).lean();
+    expect(ownerNotification.message).toContain("Jordan Smith");
+    expect(ownerNotification.message).toContain("administrator");
+  });
+
   it("rejects removing the final expert without changing their timeline record", async () => {
     const owner = await createConfirmedUser({
       email: "owner@example.com",

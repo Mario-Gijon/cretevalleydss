@@ -10,8 +10,9 @@ import { createIssueEventOperationMetadata } from "../events/index.js";
 import { createWorkflowNotification } from "../notifications/index.js";
 import { Participation } from "../../../models/Participations.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
+import { formatConsensusRoundLabel } from "../shared/formatConsensusRoundLabel.js";
 
-const notifyOwnerWhenEvaluationPhaseCompletes = async ({
+export const notifyOwnerWhenEvaluationPhaseCompletes = async ({
   issue,
   stage,
   actorUserId,
@@ -42,14 +43,17 @@ const notifyOwnerWhenEvaluationPhaseCompletes = async ({
 
   const isConsensusRound =
     stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION && issue.isConsensus === true;
-  const phaseLabel = `consensus round ${issue.consensusPhase + 1}`;
+  const phaseLabel = formatConsensusRoundLabel(issue.consensusPhase);
+  const consensusCompletionMessage = issue.consensusPhase === 0
+    ? `All required experts completed the ${phaseLabel}. You can compute consensus.`
+    : `All required experts completed ${phaseLabel}. You can compute consensus again.`;
   await createWorkflowNotification({
     recipientId: issue.ownerId,
     actorUserId,
     issue,
     type: isConsensusRound ? "consensusRoundCompleted" : `${stage}Completed`,
     message: isConsensusRound
-      ? `All required experts completed ${phaseLabel}. You can compute consensus again.`
+      ? consensusCompletionMessage
       : stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
         ? "All required criteria-weight evaluations have been submitted. You can compute the next step."
         : "All required alternative evaluations have been submitted. You can resolve the next step.",

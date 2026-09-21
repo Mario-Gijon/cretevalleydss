@@ -15,7 +15,7 @@ setupMongoDbTestHooks();
 
 describe("respondToIssueInvitation", () => {
   it("pending participant can accept invitation", async () => {
-    const owner = await createConfirmedUser();
+    const owner = await createConfirmedUser({ name: "Issue Creator" });
     const expert = await createConfirmedUser();
     const issue = await createIssueFixture({
       ownerId: owner._id,
@@ -62,7 +62,7 @@ describe("respondToIssueInvitation", () => {
   });
 
   it("pending participant can decline invitation", async () => {
-    const owner = await createConfirmedUser();
+    const owner = await createConfirmedUser({ name: "Issue Creator" });
     const expert = await createConfirmedUser();
     const issue = await createIssueFixture({
       ownerId: owner._id,
@@ -98,6 +98,7 @@ describe("respondToIssueInvitation", () => {
       type: "invitationDeclined",
     }).lean();
     expect(ownerNotifications).toHaveLength(1);
+    expect(ownerNotifications[0].message).toContain(expert.name);
     expect(await Notification.countDocuments({
       issue: issue._id,
       expert: expert._id,

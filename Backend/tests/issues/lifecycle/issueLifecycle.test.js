@@ -321,6 +321,11 @@ describe("issue lifecycle", () => {
     });
     await createParticipationFixture({
       issueId: issue._id,
+      expertId: owner._id,
+      invitationStatus: "accepted",
+    });
+    await createParticipationFixture({
+      issueId: issue._id,
       expertId: participant._id,
       invitationStatus: "accepted",
       evaluationCompleted: false,
@@ -388,6 +393,13 @@ describe("issue lifecycle", () => {
         stage: "alternativeEvaluation",
       }),
     ]);
+    const ownerNotification = await Notification.findOne({
+      issue: issue._id,
+      expert: owner._id,
+      type: "participantLeft",
+    }).lean();
+    expect(ownerNotification.message).toBe(`${participant.name} has left this issue.`);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: participant._id })).toBe(0);
   });
 
   it("accepted participant leaving a consensus issue preserves only completed previous-phase alternative evaluations", async () => {

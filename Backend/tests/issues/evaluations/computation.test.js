@@ -7,6 +7,7 @@ import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js
 import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
 import { IssueEvent } from "../../../models/IssueEvents.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
+import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
 import {
@@ -1291,6 +1292,50 @@ describe("consensus compute lifecycle", () => {
       currentConsensusPhase: 1,
       nextConsensusPhase: 2,
     });
+  });
+
+  it("notifies experts that Round 1 requires participation after phase-zero consensus fails", async () => {
+    const { owner, issue, acceptedExperts, alternatives, leafCriteria } =
+      await createAlternativeComputeFixture({
+        consensusPhase: 0,
+        issueOverrides: {
+          isConsensus: true,
+          consensusThreshold: 0.95,
+          consensusMaxPhases: 3,
+        },
+      });
+    await createCompletedAlternativeEvaluations({
+      issueId: issue._id,
+      experts: acceptedExperts,
+      alternatives,
+      leafCriteria,
+      consensusPhase: 0,
+    });
+    const httpClient = createHttpClientMock(
+      buildModelSuccessResponse(
+        buildAlternativeServiceResult({
+          alternatives,
+          leafCriteria,
+          consensusMeasure: 0.5,
+        })
+      )
+    );
+
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const expertNotifications = await Notification.find({
+      issue: issue._id,
+      type: "consensusRoundAvailable",
+    }).lean();
+    expect(expertNotifications).toHaveLength(acceptedExperts.length);
+    expect(expertNotifications.every(({ message }) => message === "Round 1 requires your evaluation.")).toBe(true);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(0);
   });
 
   it("carries a submitted pairwise evaluation into the next manual consensus round", async () => {

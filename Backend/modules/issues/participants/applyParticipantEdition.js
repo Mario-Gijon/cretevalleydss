@@ -183,7 +183,7 @@ export const removeExpertsFromActiveIssue = async ({
         actorUserId,
         issue,
         type: "participantRemovedByAdministrator",
-        message: "An expert was removed from your issue by an administrator.",
+        message: `${expertUser.name || "An expert"} was removed from your issue by an administrator.`,
         eventKey: `participant-removed-owner:${participation._id}`,
         session,
       });
