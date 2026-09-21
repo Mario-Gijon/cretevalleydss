@@ -557,6 +557,30 @@ const notifyEvaluationPhaseAvailable = async ({
     session,
   });
 
+const notifyExpertsIssueFinished = async ({
+  issue,
+  actorUserId,
+  participations,
+  session = null,
+}) => {
+  if (
+    issue.currentStage !== ISSUE_STAGES.FINISHED ||
+    issue.active !== false
+  ) {
+    return;
+  }
+
+  await notifyAcceptedExperts({
+    issue,
+    actorUserId,
+    participations,
+    type: "issueFinished",
+    message: "The issue has been completed. The final results are now available.",
+    eventKey: "issue-finished",
+    session,
+  });
+};
+
 const saveStageResult = async ({
   issue,
   stage,
@@ -1019,6 +1043,12 @@ const computeSimulatedAlternativeConsensusRounds = async ({
             await issue.save({ session: roundSession });
             await writeIssueStageChanged({ issue, previousState: previousLifecycleState, actorType: "user", actorUser, occurredAt: applicationOccurredAt, correlationId, cause: lifecycleMetadata.finalizationReason ?? "modelComputed", session: roundSession });
             await writeIssueEvent({ issueId: issue._id, eventType: ISSUE_EVENT_TYPES.ISSUE_FINISHED, actorType: "user", actorUser, stage: issue.currentStage, phase: issue.consensusPhase, occurredAt: applicationOccurredAt, correlationId, previousState: previousLifecycleState, nextState: snapshotIssueLifecycle(issue), details: { finalPhase: currentPhase, isConsensus: true, finalizationReason: lifecycleMetadata.finalizationReason ?? null, finalExecutionAttemptId: executionAttemptId }, session: roundSession });
+            await notifyExpertsIssueFinished({
+              issue,
+              actorUserId: actorUser,
+              participations: acceptedParticipations,
+              session: roundSession,
+            });
           }
         },
       });
@@ -1355,6 +1385,12 @@ export const computeIssueEvaluationStage = async ({
             finalizationReason: lifecycleMetadata?.finalizationReason ?? "modelComputed",
             finalExecutionAttemptId: toIdString(computeResult.executionAttempt._id),
           },
+          session: persistSession,
+        });
+        await notifyExpertsIssueFinished({
+          issue,
+          actorUserId: userId,
+          participations,
           session: persistSession,
         });
       }

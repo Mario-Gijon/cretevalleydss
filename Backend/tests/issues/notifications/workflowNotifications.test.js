@@ -62,6 +62,39 @@ describe("workflow notifications", () => {
     expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(1);
   });
 
+  it("keeps issue-finished notifications idempotent and filters non-accepted participants", async () => {
+    const owner = await createConfirmedUser();
+    const accepted = await createConfirmedUser();
+    const pending = await createConfirmedUser();
+    const declined = await createConfirmedUser();
+    const issue = await createIssueFixture({ ownerId: owner._id, active: false, currentStage: "finished" });
+    const participations = await Promise.all([
+      createParticipationFixture({ issueId: issue._id, expertId: owner._id, invitationStatus: "accepted" }),
+      createParticipationFixture({ issueId: issue._id, expertId: accepted._id, invitationStatus: "accepted" }),
+      createParticipationFixture({ issueId: issue._id, expertId: pending._id, invitationStatus: "pending" }),
+      createParticipationFixture({ issueId: issue._id, expertId: declined._id, invitationStatus: "declined" }),
+    ]);
+    const event = {
+      issue,
+      actorUserId: owner._id,
+      participations,
+      type: "issueFinished",
+      message: "The issue has been completed. The final results are now available.",
+      eventKey: "issue-finished",
+    };
+
+    await notifyAcceptedExperts(event);
+    await notifyAcceptedExperts(event);
+
+    const finalNotifications = await Notification.find({ issue: issue._id, type: "issueFinished" }).lean();
+    expect(finalNotifications).toHaveLength(1);
+    expect(String(finalNotifications[0].expert)).toBe(String(accepted._id));
+    expect(finalNotifications[0].requiresAction).toBe(false);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: pending._id })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: declined._id })).toBe(0);
+  });
+
   it("notifies the creator only after the last required criteria-weight evaluation", async () => {
     const owner = await createConfirmedUser();
     const first = await createConfirmedUser();

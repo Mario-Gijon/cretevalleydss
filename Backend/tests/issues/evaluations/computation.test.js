@@ -809,6 +809,51 @@ describe("criteria weighting compute orchestration", () => {
 });
 
 describe("alternative compute orchestration", () => {
+  it("notifies only accepted non-owner experts when a standard issue finishes", async () => {
+    const { owner, issue, acceptedExperts, alternatives, leafCriteria } =
+      await createAlternativeComputeFixture({ acceptedExpertCount: 2 });
+    const declined = await createConfirmedUser({ email: "declined-finalize@example.com" });
+    const outsider = await createConfirmedUser({ email: "outsider-finalize@example.com" });
+    await createParticipationFixture({ issueId: issue._id, expertId: owner._id, invitationStatus: "accepted", evaluationCompleted: true });
+    await createParticipationFixture({ issueId: issue._id, expertId: declined._id, invitationStatus: "declined" });
+    await createCompletedAlternativeEvaluations({
+      issueId: issue._id,
+      experts: [owner, ...acceptedExperts],
+      alternatives,
+      leafCriteria,
+    });
+    await Notification.create([
+      { expert: owner._id, issue: issue._id, type: "ownerHistory", message: "Keep creator history", requiresAction: false },
+      { expert: acceptedExperts[0]._id, issue: issue._id, type: "alternativeEvaluationAvailable", message: "Keep expert history", requiresAction: false },
+    ]);
+    const httpClient = createHttpClientMock(
+      buildModelSuccessResponse(buildAlternativeServiceResult({ alternatives, leafCriteria }))
+    );
+
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const completionNotifications = await Notification.find({ issue: issue._id, type: "issueFinished" }).lean();
+    expect(completionNotifications.map(({ expert }) => String(expert)).sort()).toEqual(
+      acceptedExperts.map(({ _id }) => String(_id)).sort()
+    );
+    expect(completionNotifications.every(({ message, requiresAction, eventKey }) =>
+      message === "The issue has been completed. The final results are now available." &&
+      requiresAction === false && eventKey === "issue-finished"
+    )).toBe(true);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, type: "issueFinished" })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: declined._id, type: "issueFinished" })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: outsider._id, type: "issueFinished" })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, message: "Keep creator history" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: acceptedExperts[0]._id, message: "Keep expert history" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: acceptedExperts[0]._id })).toBe(2);
+  });
+
   it("loads only current-phase completed evaluations, includes expression domains, persists the stage result, and finishes non-consensus issues", async () => {
     const {
       owner,
@@ -1223,6 +1268,9 @@ describe("consensus compute lifecycle", () => {
       consensusReached: true,
       finalizationReason: "consensusReached",
     });
+    expect(await Notification.countDocuments({ issue: issue._id, type: "issueFinished" })).toBe(acceptedExperts.length);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, type: "issueFinished" })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, type: "consensusRoundAvailable" })).toBe(0);
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 1 })).toBe(0);
   });
 
@@ -1292,6 +1340,8 @@ describe("consensus compute lifecycle", () => {
       currentConsensusPhase: 1,
       nextConsensusPhase: 2,
     });
+    expect(await Notification.countDocuments({ issue: issue._id, type: "consensusRoundAvailable" })).toBe(acceptedExperts.length);
+    expect(await Notification.countDocuments({ issue: issue._id, type: "issueFinished" })).toBe(0);
   });
 
   it("notifies experts that Round 1 requires participation after phase-zero consensus fails", async () => {
@@ -1668,6 +1718,8 @@ describe("consensus compute lifecycle", () => {
       currentConsensusPhase: 3,
       nextConsensusPhase: 3,
     });
+    expect(await Notification.countDocuments({ issue: issue._id, type: "issueFinished" })).toBe(acceptedExperts.length);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, type: "issueFinished" })).toBe(0);
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id, snapshotType: "consensusPhaseStart", consensusPhase: 4 })).toBe(0);
   });
 });
@@ -1875,6 +1927,9 @@ describe("simulated consensus orchestration", () => {
     expect(storedIssue.currentStage).toBe("finished");
     expect(storedIssue.active).toBe(false);
     expect(storedIssue.consensusPhase).toBe(1);
+    const finishedNotifications = await Notification.find({ issue: issue._id, type: "issueFinished" }).lean();
+    expect(finishedNotifications).toHaveLength(acceptedExperts.length);
+    expect(finishedNotifications.every(({ eventKey }) => eventKey === "issue-finished")).toBe(true);
     expect(result).toMatchObject({
       stage: "alternativeEvaluation",
       structureKey: "alternativeCriteriaMatrix",
