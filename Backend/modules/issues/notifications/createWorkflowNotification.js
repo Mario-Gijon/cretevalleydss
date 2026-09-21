@@ -39,6 +39,17 @@ export const createWorkflowNotification = async ({
   );
 };
 
+export const clearIssueNotificationsForUser = async ({
+  userId,
+  issue,
+  session = null,
+}) => {
+  const issueId = toIdString(issue?._id || issue);
+  if (!userId || !issueId) return { deletedCount: 0 };
+
+  return Notification.deleteMany({ expert: userId, issue: issueId }).session(session);
+};
+
 export const notifyAcceptedExperts = async ({
   issue,
   actorUserId,

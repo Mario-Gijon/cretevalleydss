@@ -400,12 +400,18 @@ describe("editIssueExperts", () => {
     await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
     await createParticipationFixture({ issueId: issue._id, expertId: removed._id, invitationStatus: "accepted" });
     await Notification.create({ expert: removed._id, issue: issue._id, type: "invitation", message: "Old invitation", requiresAction: true });
+    await Notification.create({ expert: removed._id, issue: issue._id, type: "consensusRoundAvailable", message: "Round 1 requires your evaluation.", requiresAction: false });
+    await Notification.create({ expert: removed._id, issue: issue._id, type: "alternativeEvaluationAvailable", message: "Alternative evaluation is now available. Your participation is required.", requiresAction: false });
+    await Notification.create({ expert: retained._id, issue: issue._id, type: "alternativeEvaluationAvailable", message: "Keep this notification", requiresAction: false });
 
     await editIssueExperts({ issueId: issue._id, userId: owner._id, expertsToAdd: [], expertsToRemove: [removed.email] });
 
     expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "participantRemoved" })).toBe(1);
-    expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "invitation" })).toBe(0);
+    const removedNotifications = await Notification.find({ issue: issue._id, expert: removed._id }).lean();
+    expect(removedNotifications).toHaveLength(1);
+    expect(removedNotifications[0].type).toBe("participantRemoved");
     expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: retained._id, message: "Keep this notification" })).toBe(1);
     const removedNotification = await Notification.findOne({ issue: issue._id, expert: removed._id }).lean();
     expect(removedNotification.message).toContain("issue creator");
     expect(removedNotification.requiresAction).toBe(false);
@@ -427,7 +433,9 @@ describe("editIssueExperts", () => {
     await editIssueExperts({ issueId: issue._id, userId: owner._id, actorUserId: admin._id, expertsToAdd: [], expertsToRemove: [removed.email] });
 
     expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "participantRemoved" })).toBe(1);
-    expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "invitation" })).toBe(0);
+    const removedNotifications = await Notification.find({ issue: issue._id, expert: removed._id }).lean();
+    expect(removedNotifications).toHaveLength(1);
+    expect(removedNotifications[0].type).toBe("participantRemoved");
     expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, type: "participantRemovedByAdministrator" })).toBe(1);
     expect(await Notification.countDocuments({ issue: issue._id, expert: admin._id })).toBe(0);
     const ownerNotification = await Notification.findOne({ issue: issue._id, expert: owner._id }).lean();
@@ -446,12 +454,15 @@ describe("editIssueExperts", () => {
     await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
     await createParticipationFixture({ issueId: issue._id, expertId: invitee._id, invitationStatus: "pending" });
     await Notification.create({ expert: invitee._id, issue: issue._id, type: "invitation", message: "Old invitation", requiresAction: true });
+    await Notification.create({ expert: invitee._id, issue: issue._id, type: "consensusRoundAvailable", message: "Stale round notice", requiresAction: false });
+    await Notification.create({ expert: invitee._id, issue: issue._id, type: "alternativeEvaluationAvailable", message: "Stale evaluation notice", requiresAction: false });
 
     await editIssueExperts({ issueId: issue._id, userId: owner._id, expertsToAdd: [], expertsToRemove: [invitee.email] });
 
-    expect(await Notification.countDocuments({ issue: issue._id, expert: invitee._id, type: "invitation" })).toBe(0);
-    expect(await Notification.countDocuments({ issue: issue._id, expert: invitee._id, type: "participantRemoved" })).toBe(0);
-    const withdrawal = await Notification.findOne({ issue: issue._id, expert: invitee._id, type: "invitationWithdrawn" }).lean();
+    const inviteeNotifications = await Notification.find({ issue: issue._id, expert: invitee._id }).lean();
+    expect(inviteeNotifications).toHaveLength(1);
+    expect(inviteeNotifications[0].type).toBe("invitationWithdrawn");
+    const withdrawal = inviteeNotifications[0];
     expect(withdrawal.message).toBe("Your invitation to this issue was withdrawn by the issue creator.");
     expect(withdrawal.requiresAction).toBe(false);
     expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(0);
@@ -470,8 +481,10 @@ describe("editIssueExperts", () => {
 
     await editIssueExperts({ issueId: issue._id, userId: owner._id, actorUserId: admin._id, expertsToAdd: [], expertsToRemove: [invitee.email] });
 
-    expect(await Notification.countDocuments({ issue: issue._id, expert: invitee._id, type: "invitation" })).toBe(0);
-    const inviteeNotification = await Notification.findOne({ issue: issue._id, expert: invitee._id, type: "invitationWithdrawn" }).lean();
+    const inviteeNotifications = await Notification.find({ issue: issue._id, expert: invitee._id }).lean();
+    expect(inviteeNotifications).toHaveLength(1);
+    expect(inviteeNotifications[0].type).toBe("invitationWithdrawn");
+    const inviteeNotification = inviteeNotifications[0];
     expect(inviteeNotification.message).toBe("Your invitation to this issue was withdrawn by an administrator.");
     const ownerNotification = await Notification.findOne({ issue: issue._id, expert: owner._id, type: "invitationWithdrawnByAdministrator" }).lean();
     expect(ownerNotification.message).toBe("Taylor Jones's invitation was withdrawn by an administrator.");

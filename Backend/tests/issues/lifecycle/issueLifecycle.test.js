@@ -333,6 +333,12 @@ describe("issue lifecycle", () => {
       entryPhase: 1,
       entryStage: "alternativeEvaluation",
     });
+    await Notification.create([
+      { expert: participant._id, issue: issue._id, type: "invitation", message: "Old invitation", requiresAction: true },
+      { expert: participant._id, issue: issue._id, type: "alternativeEvaluationAvailable", message: "Alternative evaluation is now available.", requiresAction: false },
+      { expert: participant._id, issue: issue._id, type: "consensusRoundAvailable", message: "Round 1 requires your evaluation.", requiresAction: false },
+      { expert: owner._id, issue: issue._id, type: "alternativeEvaluationAvailable", message: "Creator's unrelated notification", requiresAction: false },
+    ]);
     await createIssueEvaluationFixture({
       issueId: issue._id,
       expertId: participant._id,
@@ -400,6 +406,8 @@ describe("issue lifecycle", () => {
     }).lean();
     expect(ownerNotification.message).toBe(`${participant.name} has left this issue.`);
     expect(await Notification.countDocuments({ issue: issue._id, expert: participant._id })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, type: "participantLeft" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, message: "Creator's unrelated notification" })).toBe(1);
   });
 
   it("accepted participant leaving a consensus issue preserves only completed previous-phase alternative evaluations", async () => {

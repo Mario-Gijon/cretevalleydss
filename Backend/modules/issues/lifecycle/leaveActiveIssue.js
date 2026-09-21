@@ -18,7 +18,10 @@ import {
   snapshotParticipation,
   writeIssueEvent,
 } from "../events/index.js";
-import { createWorkflowNotification } from "../notifications/index.js";
+import {
+  clearIssueNotificationsForUser,
+  createWorkflowNotification,
+} from "../notifications/index.js";
 
 const requireNonEmptyId = (value, field) => {
   const id = toIdString(value);
@@ -203,6 +206,8 @@ export const leaveActiveIssue = async ({
     expertId: userId,
     session,
   });
+
+  await clearIssueNotificationsForUser({ userId, issue, session });
 
   await applyOptionalSession(
     Participation.deleteOne({ _id: participation._id }),

@@ -14,7 +14,10 @@ import {
 } from "../events/index.js";
 
 import { sameId } from "../../../utils/common/ids.js";
-import { createWorkflowNotification } from "../notifications/index.js";
+import {
+  clearIssueNotificationsForUser,
+  createWorkflowNotification,
+} from "../notifications/index.js";
 
 export const addExpertsToActiveIssue = async ({
   issue,
@@ -165,13 +168,11 @@ export const removeExpertsFromActiveIssue = async ({
       session,
     });
 
-    // The invitation UI derives its response status from Participation. Once
-    // that record is gone, retaining its invitation would make it actionable.
-    await Notification.deleteMany({
-      issue: issue._id,
-      expert: expertUser._id,
-      type: "invitation",
-    }).session(session);
+    await clearIssueNotificationsForUser({
+      userId: expertUser._id,
+      issue,
+      session,
+    });
     await Participation.deleteOne({ _id: participation._id }).session(session);
 
     await createWorkflowNotification({

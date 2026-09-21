@@ -14,6 +14,7 @@ export {
   removeNotificationForUser,
 } from "./removeNotificationForUser.js";
 export {
+  clearIssueNotificationsForUser,
   createWorkflowNotification,
   notifyAcceptedExperts,
 } from "./createWorkflowNotification.js";
