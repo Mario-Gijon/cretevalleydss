@@ -156,6 +156,8 @@ export const removeExpertsFromActiveIssue = async ({
 
     if (!participation) continue;
     const previousState = snapshotParticipation(participation);
+    const removedByOwner = sameId(actorUserId, issue.ownerId);
+    const wasAccepted = participation.invitationStatus === "accepted";
 
     await cleanupIssueEvaluationsForExpertExit({
       issue,
@@ -163,18 +165,28 @@ export const removeExpertsFromActiveIssue = async ({
       session,
     });
 
+    // The invitation UI derives its response status from Participation. Once
+    // that record is gone, retaining its invitation would make it actionable.
+    await Notification.deleteMany({
+      issue: issue._id,
+      expert: expertUser._id,
+      type: "invitation",
+    }).session(session);
     await Participation.deleteOne({ _id: participation._id }).session(session);
 
-    const removedByOwner = sameId(actorUserId, issue.ownerId);
     await createWorkflowNotification({
       recipientId: expertUser._id,
       actorUserId,
       issue,
-      type: "participantRemoved",
-      message: removedByOwner
-        ? "You were removed from this issue by the issue creator."
-        : "You were removed from this issue by an administrator.",
-      eventKey: `participant-removed:${participation._id}`,
+      type: wasAccepted ? "participantRemoved" : "invitationWithdrawn",
+      message: wasAccepted
+        ? removedByOwner
+          ? "You were removed from this issue by the issue creator."
+          : "You were removed from this issue by an administrator."
+        : removedByOwner
+          ? "Your invitation to this issue was withdrawn by the issue creator."
+          : "Your invitation to this issue was withdrawn by an administrator.",
+      eventKey: `${wasAccepted ? "participant-removed" : "invitation-withdrawn"}:${participation._id}`,
       session,
     });
     if (!removedByOwner) {
@@ -182,12 +194,18 @@ export const removeExpertsFromActiveIssue = async ({
         recipientId: issue.ownerId,
         actorUserId,
         issue,
-        type: "participantRemovedByAdministrator",
-        message: `${expertUser.name || "An expert"} was removed from your issue by an administrator.`,
-        eventKey: `participant-removed-owner:${participation._id}`,
+        type: wasAccepted ? "participantRemovedByAdministrator" : "invitationWithdrawnByAdministrator",
+        message: wasAccepted
+          ? `${expertUser.name || "An expert"} was removed from your issue by an administrator.`
+          : `${expertUser.name || "An expert"}'s invitation was withdrawn by an administrator.`,
+        eventKey: `${wasAccepted ? "participant-removed-owner" : "invitation-withdrawn-owner"}:${participation._id}`,
         session,
       });
     }
+
+    const removalReason = removedByOwner
+      ? "Expelled by owner"
+      : "Expelled by administrator";
 
     await writeIssueEvent({
       issueId: issue._id,
@@ -201,7 +219,7 @@ export const removeExpertsFromActiveIssue = async ({
       phase: currentPhase,
       occurredAt,
       correlationId,
-      reason: "Expelled by owner",
+      reason: removalReason,
       previousState,
       nextState: null,
       details: {},
@@ -213,7 +231,7 @@ export const removeExpertsFromActiveIssue = async ({
       userId: expertUser._id,
       phase: currentPhase,
       stage: stageForLog,
-      reason: "Expelled by owner",
+      reason: removalReason,
       session,
     });
   }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueEvent } from "../../../models/IssueEvents.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
@@ -398,13 +399,18 @@ describe("editIssueExperts", () => {
     await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Criterion"] });
     await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
     await createParticipationFixture({ issueId: issue._id, expertId: removed._id, invitationStatus: "accepted" });
+    await Notification.create({ expert: removed._id, issue: issue._id, type: "invitation", message: "Old invitation", requiresAction: true });
 
     await editIssueExperts({ issueId: issue._id, userId: owner._id, expertsToAdd: [], expertsToRemove: [removed.email] });
 
     expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "participantRemoved" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "invitation" })).toBe(0);
     expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(0);
     const removedNotification = await Notification.findOne({ issue: issue._id, expert: removed._id }).lean();
     expect(removedNotification.message).toContain("issue creator");
+    expect(removedNotification.requiresAction).toBe(false);
+    expect((await ExitUserIssue.findOne({ issue: issue._id, user: removed._id }).lean()).reason).toBe("Expelled by owner");
+    expect((await IssueEvent.findOne({ issue: issue._id, eventType: "participation.removed" }).lean()).reason).toBe("Expelled by owner");
   });
 
   it("notifies the removed expert and creator on administrator removal, excluding the administrator", async () => {
@@ -416,15 +422,60 @@ describe("editIssueExperts", () => {
     await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Criterion"] });
     await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
     await createParticipationFixture({ issueId: issue._id, expertId: removed._id, invitationStatus: "accepted" });
+    await Notification.create({ expert: removed._id, issue: issue._id, type: "invitation", message: "Old invitation", requiresAction: true });
 
     await editIssueExperts({ issueId: issue._id, userId: owner._id, actorUserId: admin._id, expertsToAdd: [], expertsToRemove: [removed.email] });
 
     expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "participantRemoved" })).toBe(1);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: removed._id, type: "invitation" })).toBe(0);
     expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id, type: "participantRemovedByAdministrator" })).toBe(1);
     expect(await Notification.countDocuments({ issue: issue._id, expert: admin._id })).toBe(0);
     const ownerNotification = await Notification.findOne({ issue: issue._id, expert: owner._id }).lean();
     expect(ownerNotification.message).toContain("Jordan Smith");
     expect(ownerNotification.message).toContain("administrator");
+    expect((await ExitUserIssue.findOne({ issue: issue._id, user: removed._id }).lean()).reason).toBe("Expelled by administrator");
+    expect((await IssueEvent.findOne({ issue: issue._id, eventType: "participation.removed" }).lean()).reason).toBe("Expelled by administrator");
+  });
+
+  it("withdraws a pending invitation when the creator removes the invitee", async () => {
+    const owner = await createConfirmedUser({ email: "withdraw-owner@example.com" });
+    const retained = await createConfirmedUser({ email: "withdraw-retained@example.com" });
+    const invitee = await createConfirmedUser({ email: "withdraw-invitee@example.com" });
+    const issue = await createIssueFixture({ ownerId: owner._id, currentStage: "alternativeEvaluation" });
+    await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Criterion"] });
+    await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
+    await createParticipationFixture({ issueId: issue._id, expertId: invitee._id, invitationStatus: "pending" });
+    await Notification.create({ expert: invitee._id, issue: issue._id, type: "invitation", message: "Old invitation", requiresAction: true });
+
+    await editIssueExperts({ issueId: issue._id, userId: owner._id, expertsToAdd: [], expertsToRemove: [invitee.email] });
+
+    expect(await Notification.countDocuments({ issue: issue._id, expert: invitee._id, type: "invitation" })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: invitee._id, type: "participantRemoved" })).toBe(0);
+    const withdrawal = await Notification.findOne({ issue: issue._id, expert: invitee._id, type: "invitationWithdrawn" }).lean();
+    expect(withdrawal.message).toBe("Your invitation to this issue was withdrawn by the issue creator.");
+    expect(withdrawal.requiresAction).toBe(false);
+    expect(await Notification.countDocuments({ issue: issue._id, expert: owner._id })).toBe(0);
+  });
+
+  it("withdraws a pending invitation by an administrator and informs the creator", async () => {
+    const owner = await createConfirmedUser({ email: "withdraw-admin-owner@example.com" });
+    const admin = await createConfirmedUser({ email: "withdraw-admin-actor@example.com" });
+    const retained = await createConfirmedUser({ email: "withdraw-admin-retained@example.com" });
+    const invitee = await createConfirmedUser({ name: "Taylor Jones", email: "withdraw-admin-invitee@example.com" });
+    const issue = await createIssueFixture({ ownerId: owner._id, currentStage: "alternativeEvaluation" });
+    await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Criterion"] });
+    await createParticipationFixture({ issueId: issue._id, expertId: retained._id, invitationStatus: "accepted" });
+    await createParticipationFixture({ issueId: issue._id, expertId: invitee._id, invitationStatus: "pending" });
+    await Notification.create({ expert: invitee._id, issue: issue._id, type: "invitation", message: "Old invitation", requiresAction: true });
+
+    await editIssueExperts({ issueId: issue._id, userId: owner._id, actorUserId: admin._id, expertsToAdd: [], expertsToRemove: [invitee.email] });
+
+    expect(await Notification.countDocuments({ issue: issue._id, expert: invitee._id, type: "invitation" })).toBe(0);
+    const inviteeNotification = await Notification.findOne({ issue: issue._id, expert: invitee._id, type: "invitationWithdrawn" }).lean();
+    expect(inviteeNotification.message).toBe("Your invitation to this issue was withdrawn by an administrator.");
+    const ownerNotification = await Notification.findOne({ issue: issue._id, expert: owner._id, type: "invitationWithdrawnByAdministrator" }).lean();
+    expect(ownerNotification.message).toBe("Taylor Jones's invitation was withdrawn by an administrator.");
+    expect(await Notification.countDocuments({ issue: issue._id, expert: admin._id })).toBe(0);
   });
 
   it("rejects removing the final expert without changing their timeline record", async () => {
