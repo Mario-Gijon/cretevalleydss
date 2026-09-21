@@ -7,6 +7,56 @@ import {
   persistIssueEvaluationOperation,
 } from "./issueEvaluationPersistence.js";
 import { createIssueEventOperationMetadata } from "../events/index.js";
+import { createWorkflowNotification } from "../notifications/index.js";
+import { Participation } from "../../../models/Participations.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
+
+const notifyOwnerWhenEvaluationPhaseCompletes = async ({
+  issue,
+  stage,
+  actorUserId,
+  session,
+}) => {
+  const participations = await Participation.find({ issue: issue._id })
+    .select("invitationStatus weightsCompleted evaluationCompleted")
+    .session(session)
+    .lean();
+  const accepted = participations.filter(
+    ({ invitationStatus }) => invitationStatus === "accepted"
+  );
+  const hasPendingInvitation = participations.some(
+    ({ invitationStatus }) => invitationStatus === "pending"
+  );
+  const completionField =
+    stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
+      ? "weightsCompleted"
+      : "evaluationCompleted";
+
+  if (
+    hasPendingInvitation ||
+    accepted.length === 0 ||
+    !accepted.every((participation) => participation[completionField] === true)
+  ) {
+    return;
+  }
+
+  const isConsensusRound =
+    stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION && issue.isConsensus === true;
+  const phaseLabel = `consensus round ${issue.consensusPhase + 1}`;
+  await createWorkflowNotification({
+    recipientId: issue.ownerId,
+    actorUserId,
+    issue,
+    type: isConsensusRound ? "consensusRoundCompleted" : `${stage}Completed`,
+    message: isConsensusRound
+      ? `All required experts completed ${phaseLabel}. You can compute consensus again.`
+      : stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
+        ? "All required criteria-weight evaluations have been submitted. You can compute the next step."
+        : "All required alternative evaluations have been submitted. You can resolve the next step.",
+    eventKey: `phase-completed:${stage}:${issue.consensusPhase}`,
+    session,
+  });
+};
 
 export const submitIssueEvaluation = async ({
   issueId,
@@ -80,6 +130,13 @@ export const submitIssueEvaluation = async ({
     actorUser: userId,
     occurredAt: eventMetadata.occurredAt,
     correlationId: eventMetadata.correlationId,
+    session,
+  });
+
+  await notifyOwnerWhenEvaluationPhaseCompletes({
+    issue,
+    stage,
+    actorUserId: userId,
     session,
   });
 

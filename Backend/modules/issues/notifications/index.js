@@ -13,3 +13,7 @@ export {
 export {
   removeNotificationForUser,
 } from "./removeNotificationForUser.js";
+export {
+  createWorkflowNotification,
+  notifyAcceptedExperts,
+} from "./createWorkflowNotification.js";

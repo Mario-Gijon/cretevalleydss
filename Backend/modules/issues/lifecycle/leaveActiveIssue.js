@@ -18,6 +18,7 @@ import {
   snapshotParticipation,
   writeIssueEvent,
 } from "../events/index.js";
+import { createWorkflowNotification } from "../notifications/index.js";
 
 const requireNonEmptyId = (value, field) => {
   const id = toIdString(value);
@@ -238,6 +239,16 @@ export const leaveActiveIssue = async ({
     phase: currentPhase,
     stage: stageForLog,
     reason: "Left by user",
+    session,
+  });
+
+  await createWorkflowNotification({
+    recipientId: issue.ownerId,
+    actorUserId: userId,
+    issue,
+    type: "participantLeft",
+    message: "An expert voluntarily left your issue.",
+    eventKey: `participant-left:${participation._id}`,
     session,
   });
 

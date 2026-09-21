@@ -18,6 +18,7 @@ import {
   writeParticipationCompletionChanged,
   writeIssueEvent,
 } from "../events/index.js";
+import { createWorkflowNotification } from "./createWorkflowNotification.js";
 
 export const respondToIssueInvitation = async ({
   issueId,
@@ -39,7 +40,7 @@ export const respondToIssueInvitation = async ({
 
   const issue = await getIssueByIdOrThrow(issueId, {
     select:
-      "_id name currentStage consensusPhase criteriaWeightsStructureKey",
+      "_id name ownerId currentStage consensusPhase criteriaWeightsStructureKey",
     lean: false,
     session,
   });
@@ -136,6 +137,18 @@ export const respondToIssueInvitation = async ({
     await writeIssueEvent({
       ...eventBase,
       eventType: ISSUE_EVENT_TYPES.PARTICIPATION_ENTERED,
+    });
+  }
+
+  if (action === "declined") {
+    await createWorkflowNotification({
+      recipientId: issue.ownerId,
+      actorUserId: userId,
+      issue,
+      type: "invitationDeclined",
+      message: "An invited expert declined participation in this issue.",
+      eventKey: `invitation-declined:${participation._id}`,
+      session,
     });
   }
 

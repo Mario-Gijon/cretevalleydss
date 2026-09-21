@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Participation } from "../../../models/Participations.js";
+import { Notification } from "../../../models/Notifications.js";
 import { respondToIssueInvitation } from "../../../modules/issues/notifications/respondToIssueInvitation.js";
 import {
   createConfirmedUser,
@@ -91,6 +92,17 @@ describe("respondToIssueInvitation", () => {
       message: `Invitation to issue ${issue.name} declined`,
     });
     expect(participation.invitationStatus).toBe("declined");
+    const ownerNotifications = await Notification.find({
+      issue: issue._id,
+      expert: owner._id,
+      type: "invitationDeclined",
+    }).lean();
+    expect(ownerNotifications).toHaveLength(1);
+    expect(await Notification.countDocuments({
+      issue: issue._id,
+      expert: expert._id,
+      type: "invitationDeclined",
+    })).toBe(0);
   });
 
   it("rejects invalid action", async () => {

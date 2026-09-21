@@ -14,6 +14,7 @@ import {
 } from "../events/index.js";
 
 import { sameId } from "../../../utils/common/ids.js";
+import { createWorkflowNotification } from "../notifications/index.js";
 
 export const addExpertsToActiveIssue = async ({
   issue,
@@ -163,6 +164,30 @@ export const removeExpertsFromActiveIssue = async ({
     });
 
     await Participation.deleteOne({ _id: participation._id }).session(session);
+
+    const removedByOwner = sameId(actorUserId, issue.ownerId);
+    await createWorkflowNotification({
+      recipientId: expertUser._id,
+      actorUserId,
+      issue,
+      type: "participantRemoved",
+      message: removedByOwner
+        ? "You were removed from this issue by the issue creator."
+        : "You were removed from this issue by an administrator.",
+      eventKey: `participant-removed:${participation._id}`,
+      session,
+    });
+    if (!removedByOwner) {
+      await createWorkflowNotification({
+        recipientId: issue.ownerId,
+        actorUserId,
+        issue,
+        type: "participantRemovedByAdministrator",
+        message: "An expert was removed from your issue by an administrator.",
+        eventKey: `participant-removed-owner:${participation._id}`,
+        session,
+      });
+    }
 
     await writeIssueEvent({
       issueId: issue._id,

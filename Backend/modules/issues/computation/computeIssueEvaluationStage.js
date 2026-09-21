@@ -45,6 +45,7 @@ import {
   writeParticipationCompletionChanged,
 } from "../events/index.js";
 import { tryGenerateFinishedIssueExecutionAnalysis } from "../resultsAnalysis/index.js";
+import { notifyAcceptedExperts } from "../notifications/index.js";
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
@@ -536,6 +537,25 @@ const applyCriteriaWeightingIssueUpdates = async ({
     await writeIssueStateSnapshot({ issue, snapshotType: "consensusPhaseStart", occurredAt, correlationId, sourceEvent: phaseStartEvent._id, sourceExecutionAttempt: executionAttempt?._id ?? null, session });
   }
 };
+
+const notifyEvaluationPhaseAvailable = async ({
+  issue,
+  actorUserId,
+  participations,
+  type,
+  message,
+  eventKey,
+  session,
+}) =>
+  notifyAcceptedExperts({
+    issue,
+    actorUserId,
+    participations,
+    type,
+    message,
+    eventKey,
+    session,
+  });
 
 const saveStageResult = async ({
   issue,
@@ -1161,6 +1181,15 @@ export const computeIssueEvaluationStage = async ({
           correlationId: eventMetadata.correlationId,
           session: persistSession,
         });
+        await notifyEvaluationPhaseAvailable({
+          issue,
+          actorUserId: userId,
+          participations,
+          type: "alternativeEvaluationAvailable",
+          message: "Alternative evaluation is now available. Your participation is required.",
+          eventKey: `phase-available:alternativeEvaluation:${issue.consensusPhase}`,
+          session: persistSession,
+        });
         appliedStageResult = stageResult;
       },
     }); } catch (error) { await markExecutionApplicationFailed({ attemptId: computeResult.executionAttempt._id, error }); throw error; }
@@ -1265,6 +1294,15 @@ export const computeIssueEvaluationStage = async ({
           actorUser: userId,
           occurredAt: applicationOccurredAt,
           correlationId: eventMetadata.correlationId,
+          session: persistSession,
+        });
+        await notifyEvaluationPhaseAvailable({
+          issue,
+          actorUserId: userId,
+          participations,
+          type: "consensusRoundAvailable",
+          message: `Consensus round ${issue.consensusPhase + 1} requires your evaluation.`,
+          eventKey: `consensus-round-available:${issue.consensusPhase}`,
           session: persistSession,
         });
       }
