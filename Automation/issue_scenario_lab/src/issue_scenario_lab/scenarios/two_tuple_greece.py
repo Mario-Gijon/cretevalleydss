@@ -27,7 +27,7 @@ COST_CHILD_KEYS = frozenset({
     "c6_maintenance_cost",
     "c6_long_term_potential",
 })
-INVERTED_SOURCE_KEY = "c6_long_term_potential"
+INVERTED_SOURCE_KEYS = frozenset({"c6_long_term_potential", "c7_landowner_cooperation"})
 
 
 def _finite(value: Any) -> bool:
@@ -291,10 +291,10 @@ def _source_level(criterion_key: str, raw: Any) -> Any:
     if criterion_key == "c3_clustering_possible":
         return {"Yes": 5, "Unsure": 3, "No": 1}[raw]
     # The source values for the first three C6 children were entered as
-    # cost-oriented expert judgements already. Only the benefit-oriented
-    # long-term potential source value needs conversion for this stored cost
-    # branch.
-    return 6 - raw if criterion_key == INVERTED_SOURCE_KEY else raw
+    # cost-oriented expert judgements already. The benefit-oriented long-term
+    # potential and risk-oriented landowner-cooperation source values need
+    # conversion before submission.
+    return 6 - raw if criterion_key in INVERTED_SOURCE_KEYS else raw
 
 
 def _matrix(data: dict[str, Any], context: dict[str, Any], *, alternatives: dict[str, str], criteria: dict[str, str]) -> dict[str, dict[str, dict[str, Any]]]:

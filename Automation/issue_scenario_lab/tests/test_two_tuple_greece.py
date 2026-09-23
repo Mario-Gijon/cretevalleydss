@@ -29,7 +29,7 @@ def _submitted_level(cell):
     return int(cell["labelKey"].removeprefix("level-"))
 
 
-def test_greece_tree_persists_c6_as_an_all_cost_branch():
+def test_greece_tree_persists_c6_as_an_all_cost_branch_and_c7_as_benefit():
     data = load_fixture()
     tree = _tree(data)
 
@@ -38,6 +38,9 @@ def test_greece_tree_persists_c6_as_an_all_cost_branch():
     c6 = next(parent for parent in tree if parent["id"] == "criterion-c6")
     assert c6["type"] == "cost"
     assert [child["type"] for child in c6["children"]] == ["cost"] * 4
+    c7 = next(parent for parent in tree if parent["id"] == "criterion-c7")
+    assert c7["type"] == "benefit"
+    assert next(child for child in c7["children"] if child["id"] == "criterion-c7_landowner_cooperation")["type"] == "benefit"
     assert all(
         child["type"] == "benefit"
         for parent in tree
@@ -46,7 +49,7 @@ def test_greece_tree_persists_c6_as_an_all_cost_branch():
     )
 
 
-def test_greece_matrix_preserves_cost_sources_and_inverts_only_long_term_potential():
+def test_greece_matrix_preserves_cost_sources_and_inverts_only_designated_sources():
     data = load_fixture()
     inputs = _matrix_inputs(data)
     matrix = _matrix(data, **inputs)
@@ -62,13 +65,23 @@ def test_greece_matrix_preserves_cost_sources_and_inverts_only_long_term_potenti
             assert _submitted_level(submitted[key]) == source[index_by_key[key]]
         long_term_raw = source[index_by_key["c6_long_term_potential"]]
         assert _submitted_level(submitted["c6_long_term_potential"]) == 6 - long_term_raw
+        landowner_raw = source[index_by_key["c7_landowner_cooperation"]]
+        assert _submitted_level(submitted["c7_landowner_cooperation"]) == 6 - landowner_raw
         clustering_raw = source[index_by_key["c3_clustering_possible"]]
         assert _submitted_level(submitted["c3_clustering_possible"]) == {"Yes": 5, "Unsure": 3, "No": 1}[clustering_raw]
+        for child in leaves:
+            if child["key"] not in {"c3_clustering_possible", "c6_long_term_potential", "c7_landowner_cooperation"}:
+                assert _submitted_level(submitted[child["key"]]) == source[index_by_key[child["key"]]]
 
 
 @pytest.mark.parametrize("raw, expected", [(1, 5), (2, 4), (3, 3), (4, 2), (5, 1)])
 def test_long_term_potential_uses_the_symmetric_five_label_inversion(raw, expected):
     assert _source_level("c6_long_term_potential", raw) == expected
+
+
+@pytest.mark.parametrize("raw, expected", [(1, 5), (2, 4), (3, 3), (4, 2), (5, 1)])
+def test_landowner_cooperation_uses_the_symmetric_five_label_inversion(raw, expected):
+    assert _source_level("c7_landowner_cooperation", raw) == expected
 
 
 @pytest.mark.parametrize("raw", [1, 2, 3, 4, 5])
