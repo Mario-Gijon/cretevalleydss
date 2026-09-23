@@ -20,6 +20,14 @@ MODEL_KEY = "two_tuple"
 WEIGHTING_KEY = "preference_order_criteria_weights"
 FIXTURE_PATH = Path(__file__).parents[3] / "data" / "two_tuple_greece.json"
 EXPECTED_LABELS = ("Very Low", "Low", "Medium", "High", "Very High")
+COST_PARENT_KEY = "c6"
+COST_CHILD_KEYS = frozenset({
+    "c6_land_rent",
+    "c6_installation_cost",
+    "c6_maintenance_cost",
+    "c6_long_term_potential",
+})
+INVERTED_SOURCE_KEY = "c6_long_term_potential"
 
 
 def _finite(value: Any) -> bool:
@@ -94,7 +102,7 @@ def _validate_main_model(model: dict[str, Any]) -> None:
         "publicUsable": model.get("publicUsable") is True,
         "evaluationStructureKey": model.get("evaluationStructureKey") == "alternativeCriteriaMatrix",
         "requiresHomogeneousExpressionDomains": model.get("requiresHomogeneousExpressionDomains") is True,
-        "usesCriterionTypes": model.get("usesCriterionTypes") is False,
+        "usesCriterionTypes": model.get("usesCriterionTypes") is True,
         "usesCriteriaWeights": model.get("usesCriteriaWeights") is True,
         "usesExpertWeights": model.get("usesExpertWeights") is True,
     }
@@ -121,7 +129,8 @@ def _domain(domains: Any) -> dict[str, Any]:
 
 
 def _leaf_node(child: dict[str, Any]) -> dict[str, Any]:
-    node = {"id": f"criterion-{child['key']}", "name": child["name"], "type": "benefit", "children": []}
+    criterion_type = "cost" if child["key"] in COST_CHILD_KEYS else "benefit"
+    node = {"id": f"criterion-{child['key']}", "name": child["name"], "type": criterion_type, "children": []}
     if child.get("description") is not None:
         node["description"] = child["description"]
     return node
@@ -132,7 +141,7 @@ def _tree(data: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "id": f"criterion-{parent['key']}",
             "name": parent["name"],
-            "type": "group",
+            "type": "cost" if parent["key"] == COST_PARENT_KEY else "benefit",
             "children": [_leaf_node(child) for child in parent["children"]],
         }
         for parent in data["parents"]
@@ -278,6 +287,16 @@ def _label_keys(context: dict[str, Any]) -> dict[str, str]:
     return resolved
 
 
+def _source_level(criterion_key: str, raw: Any) -> Any:
+    if criterion_key == "c3_clustering_possible":
+        return {"Yes": 5, "Unsure": 3, "No": 1}[raw]
+    # The source values for the first three C6 children were entered as
+    # cost-oriented expert judgements already. Only the benefit-oriented
+    # long-term potential source value needs conversion for this stored cost
+    # branch.
+    return 6 - raw if criterion_key == INVERTED_SOURCE_KEY else raw
+
+
 def _matrix(data: dict[str, Any], context: dict[str, Any], *, alternatives: dict[str, str], criteria: dict[str, str]) -> dict[str, dict[str, dict[str, Any]]]:
     labels = _label_keys(context)
     ordered_labels = [label.casefold() for label in EXPECTED_LABELS]
@@ -288,9 +307,7 @@ def _matrix(data: dict[str, Any], context: dict[str, Any], *, alternatives: dict
         for parent in data["parents"]:
             for child in parent["children"]:
                 raw = data["sourceValues"][alternative["key"]][leaves.index(child)]
-                level = 6 - raw if child["key"] in {"c6_land_rent", "c6_installation_cost", "c6_maintenance_cost"} else raw
-                if child["key"] == "c3_clustering_possible":
-                    level = {"Yes": 5, "Unsure": 3, "No": 1}[raw]
+                level = _source_level(child["key"], raw)
                 if not isinstance(level, (int, float)) or not 1 <= level <= 5:
                     raise ScenarioLabError("source matrix contains an invalid preference level")
                 row[criteria[child["key"]]] = {"labelKey": labels[ordered_labels[int(level) - 1]], "alpha": 0}
