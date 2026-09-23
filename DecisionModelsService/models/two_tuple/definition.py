@@ -34,7 +34,7 @@ MODEL_DEFINITION = ModelDefinition(
     uses_criteria_weights=True,
     uses_expert_weights=True,
     uses_fuzzy_criteria_weights=False,
-    uses_criterion_types=False,
+    uses_criterion_types=True,
     supported_expression_domains=[{"typeKey": "linguistic2Tuple", "constraints": {}}],
     parameters=[
         {

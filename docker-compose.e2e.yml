@@ -1,4 +1,4 @@
-name: cretevalley-e2e
+sudo docker compose -f docker-compose.dev.yml up --buildname: cretevalley-e2e
 
 services:
   mongo-e2e:
