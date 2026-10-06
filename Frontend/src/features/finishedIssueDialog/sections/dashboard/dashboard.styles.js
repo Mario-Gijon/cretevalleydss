@@ -1,29 +1,61 @@
+import { finishedIssueScrollbarSx } from "../../shared/styles/finishedIssueScrollbar.styles.js";
+
 export const dashboardRootSx = {
   display: "grid",
   width: "100%",
   minWidth: 0,
-  gap: { xs: 2.5, md: 3 },
+  gap: { xs: 1.5, md: 1.75 },
 };
 
-export const sectionTitleSx = { mb: 1.25, fontWeight: 600 };
+export const summaryPanelSx = {
+  width: "100%",
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+  p: { xs: 1.45, md: 1.75, xl: 1.9 },
+  borderRadius: 3,
+  border: "1px solid rgba(85, 199, 216, 0.20)",
+  bgcolor: "rgba(8, 18, 29, 0.92)",
+  background: "linear-gradient(150deg, rgba(27, 111, 145, 0.16), rgba(8, 18, 29, 0.95) 46%)",
+  boxShadow: "0 15px 36px rgba(0,0,0,0.18)",
+};
+
+export const summaryPanelHeaderSx = {
+  display: "flex",
+  alignItems: "center",
+  gap: 0.9,
+  mb: 1.3,
+};
+
+export const summaryPanelIconSx = {
+  width: 31,
+  height: 31,
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+  borderRadius: 1.3,
+  color: "secondary.light",
+  bgcolor: "rgba(52, 170, 199, 0.12)",
+  border: "1px solid rgba(89, 213, 218, 0.13)",
+};
+
+export const sectionTitleSx = { fontWeight: 600 };
 
 export const issueSummaryGridSx = {
   display: "grid",
   gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
-  borderTop: "1px solid rgba(255,255,255,0.10)",
-  borderBottom: "1px solid rgba(255,255,255,0.10)",
+  columnGap: { xs: 0, sm: 1.5, lg: 0 },
 };
 
 export const summaryValueSx = {
   minWidth: 0,
-  py: 1.25,
-  px: { xs: 0, sm: 1.5 },
+  py: { xs: 0.9, sm: 1.05 },
+  px: { xs: 0, sm: 1.2, lg: 1.5 },
   borderBottom: { xs: "1px solid rgba(255,255,255,0.07)", sm: "none" },
   "&:nth-of-type(odd)": { borderRight: { sm: "1px solid rgba(255,255,255,0.08)", lg: "none" } },
-  "@media (min-width:1200px)": {
-    "&:not(:last-of-type)": { borderRight: "1px solid rgba(255,255,255,0.08)" },
-    "&:nth-of-type(2n)": { borderRight: "1px solid rgba(255,255,255,0.08)" },
-  },
+  "&:nth-of-type(-n+2)": { borderBottom: { sm: "1px solid rgba(255,255,255,0.07)" } },
+  "&:last-of-type": { borderBottom: "none" },
+  "@media (min-width:1200px)": { "&:not(:last-of-type)": { borderRight: "1px solid rgba(255,255,255,0.08)" } },
 };
 
 export const rankingViewportSx = {
@@ -32,9 +64,10 @@ export const rankingViewportSx = {
   maxHeight: { xs: 320, md: 420 },
   overflowY: "auto",
   overflowX: "hidden",
-  borderTop: "1px solid rgba(255,255,255,0.10)",
-  borderBottom: "1px solid rgba(255,255,255,0.10)",
-  scrollbarWidth: "thin",
+  border: "1px solid rgba(255,255,255,0.07)",
+  borderRadius: 1.65,
+  bgcolor: "rgba(255,255,255,0.022)",
+  ...finishedIssueScrollbarSx,
 };
 
 export const rankingHeaderSx = {
@@ -47,7 +80,7 @@ export const rankingHeaderSx = {
   gap: 1,
   px: 1,
   py: 0.75,
-  bgcolor: "background.paper",
+  bgcolor: "rgba(8, 18, 29, 0.98)",
   borderBottom: "1px solid rgba(255,255,255,0.10)",
 };
 
@@ -70,14 +103,12 @@ export const firstRankingRowSx = {
 export const findingsGridSx = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))",
-  gap: 1.25,
+  gap: { xs: 0.8, md: 1.4 },
 };
 
 export const findingSx = {
   minWidth: 0,
-  p: 1.25,
-  borderLeft: "2px solid rgba(83, 198, 214, 0.42)",
-  bgcolor: "rgba(255,255,255,0.025)",
+  py: 0.2,
 };
 
 // Legacy preview styles remain for reusable dashboard cards still covered by
