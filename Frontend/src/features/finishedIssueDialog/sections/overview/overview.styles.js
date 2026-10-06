@@ -376,10 +376,11 @@ export const overviewExpertDetailsSx = {
   gap: 0.9,
   px: { xs: 1.4, md: 2.1 },
   py: { xs: 0.9, md: 1.1 },
-  borderTop: "1px solid rgba(255,255,255,0.06)",
   bgcolor: "rgba(255,255,255,0.012)",
   textAlign: "left",
 };
+
+export const overviewDataRowSeparator = "1px solid rgba(85, 199, 216, 0.10)";
 
 export const overviewExpertSubmissionGridSx = {
   display: "grid",

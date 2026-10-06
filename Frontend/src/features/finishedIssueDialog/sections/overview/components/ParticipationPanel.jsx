@@ -26,6 +26,7 @@ import {
   overviewExpertDetailsSx,
   overviewExpertSubmissionBlockSx,
   overviewExpertSubmissionGridSx,
+  overviewDataRowSeparator,
   overviewParticipationChartSx,
 } from "../overview.styles";
 import OverviewPanel from "./OverviewPanel";
@@ -195,7 +196,7 @@ const ParticipationPanel = ({ participation, participationSummary }) => {
             <TableHead>
               <TableRow>
                 {["Expert", "Invitation", "Criteria weighting", "Alternative evaluation", "Participation"].map((heading) => (
-                  <TableCell key={heading} align={heading === "Expert" ? "left" : "center"} sx={{ fontSize: "0.72rem", fontWeight: "fontWeightBold", whiteSpace: "nowrap", bgcolor: "rgba(10, 25, 38, 0.98)" }}>{heading}</TableCell>
+                  <TableCell key={heading} align={heading === "Expert" ? "left" : "center"} sx={{ fontSize: "0.72rem", fontWeight: "fontWeightBold", whiteSpace: "nowrap", bgcolor: "rgba(10, 25, 38, 0.98)", borderBottom: 0 }}>{heading}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
@@ -206,8 +207,17 @@ const ParticipationPanel = ({ participation, participationSummary }) => {
               const invitationStatus = statusForInvitation(expert.invitation);
               const criteriaStatus = statusForStage(expert.criteriaWeighting);
               const alternativeStatus = statusForStage(expert.alternativeEvaluation);
+              const isLastExpert = index === rows.length - 1;
               return (
-                <TableBody key={key}>
+                <TableBody
+                  key={key}
+                  sx={{
+                    "& .MuiTableCell-root": { borderBottom: 0 },
+                    "& > .MuiTableRow-root:last-of-type > .MuiTableCell-root": {
+                      borderBottom: isLastExpert ? 0 : overviewDataRowSeparator,
+                    },
+                  }}
+                >
                   <TableRow
                     hover
                     tabIndex={0}

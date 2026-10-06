@@ -14,6 +14,7 @@ import {
   issueInfoSharedViewportSx,
   issueInfoExpertTableViewportSx,
   overviewExpertDetailsSx,
+  overviewDataRowSeparator,
   issueInfoTableViewportSx,
   issueDescriptionItemSx,
 } from "../../../../../src/features/finishedIssueDialog/sections/overview/overview.styles.js";
@@ -146,7 +147,9 @@ describe("Issue info view", () => {
     expect(issueInfoSharedViewportSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", minHeight: 0, maxHeight: { xs: 360, lg: 320, xl: 360 } });
     expect(issueInfoTableViewportSx).toMatchObject({ overflow: "auto", width: "100%", minWidth: 0 });
     expect(issueInfoExpertTableViewportSx).toMatchObject({ overflow: "auto", width: "100%", minWidth: 0 });
-    expect(overviewExpertDetailsSx).toMatchObject({ borderTop: "1px solid rgba(255,255,255,0.06)", bgcolor: "rgba(255,255,255,0.012)" });
+    expect(overviewExpertDetailsSx).toMatchObject({ bgcolor: "rgba(255,255,255,0.012)" });
     expect(overviewExpertDetailsSx.border).toBeUndefined();
+    expect(overviewExpertDetailsSx.borderTop).toBeUndefined();
+    expect(overviewDataRowSeparator).toBe("1px solid rgba(85, 199, 216, 0.10)");
   });
 });

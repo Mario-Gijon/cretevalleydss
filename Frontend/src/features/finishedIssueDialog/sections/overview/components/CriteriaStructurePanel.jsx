@@ -16,7 +16,7 @@ import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 
-import { issueInfoTableViewportSx } from "../overview.styles";
+import { issueInfoTableViewportSx, overviewDataRowSeparator } from "../overview.styles";
 import OverviewPanel from "./OverviewPanel";
 
 const formatWeight = (value) => {
@@ -66,11 +66,18 @@ const CriteriaStructurePanel = ({ data }) => {
             <TableHead>
               <TableRow>
                 {["Criterion", "Type", "Weight"].map((heading) => (
-                  <TableCell key={heading} align={heading === "Criterion" ? "left" : "center"} sx={{ fontSize: "0.72rem", fontWeight: "fontWeightBold", whiteSpace: "nowrap", bgcolor: "rgba(10, 25, 38, 0.98)" }}>{heading}</TableCell>
+                  <TableCell key={heading} align={heading === "Criterion" ? "left" : "center"} sx={{ fontSize: "0.72rem", fontWeight: "fontWeightBold", whiteSpace: "nowrap", bgcolor: "rgba(10, 25, 38, 0.98)", borderBottom: 0 }}>{heading}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
-            <TableBody>
+            <TableBody
+              sx={{
+                "& .MuiTableCell-root": { borderBottom: 0 },
+                "& > .MuiTableRow-root:not(:last-of-type) > .MuiTableCell-root": {
+                  borderBottom: overviewDataRowSeparator,
+                },
+              }}
+            >
               {rows.map(({ criterion, depth, children }) => {
                 const hasChildren = children.length > 0;
                 const id = String(criterion.id);
