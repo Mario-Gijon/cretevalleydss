@@ -18,6 +18,13 @@ const execution = (ranking, modelName = "Scenario Model") => ({
   standardizedOutput: { rankedAlternatives: ranking },
 });
 
+const buildPerformanceFinding = (scores) => {
+  const alternatives = scores.map((_, index) => ({ id: `alternative-${index}`, name: `Alternative ${index + 1}` }));
+  const ranking = scores.map((score, index) => ({ alternativeId: `alternative-${index}`, score }));
+  const data = buildDashboardData({ payload: { ...payload, alternatives }, selectedExecution: execution(ranking) });
+  return data.findings.find(({ kind }) => kind === "overview");
+};
+
 describe("buildDashboardData summary view model", () => {
   it("builds canonical counts, including leaf criteria and historical experts", () => {
     const data = buildDashboardData({ payload, selectedExecution: execution([]) });
@@ -86,6 +93,33 @@ describe("buildDashboardData summary view model", () => {
         text: "Among the 2 ranked alternatives, this option occupies the final position with a final score of 2.9454.",
       },
     ]);
+  });
+
+  it("adds a one-decimal share of the observed range for a normal five-item ranking", () => {
+    const finding = buildPerformanceFinding([3.0744, 2.9454, 2.8, 2.6, 2.5169]);
+    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.1290 score units, representing 23.1% of the observed score range.");
+    expect(finding.items[1]).toBe("Final scores range from 2.5169 to 3.0744 across 5 ranked alternatives.");
+  });
+
+  it("keeps the absolute gap only for exactly two alternatives", () => {
+    const finding = buildPerformanceFinding([3.0744, 2.9454]);
+    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.1290 score units.");
+    expect(finding.items[0]).not.toContain("%");
+  });
+
+  it("omits contextual percentage when the observed range is zero", () => {
+    const finding = buildPerformanceFinding([4.5, 4.5, 4.5]);
+    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.0000 score units.");
+    expect(finding.items[0]).not.toContain("%");
+  });
+
+  it.each([
+    ["missing score", [3.5, 3, null, 2]],
+    ["non-finite score", [3.5, 3, Number.POSITIVE_INFINITY]],
+  ])("omits contextual percentage when the ranking has a %s", (_label, scores) => {
+    const finding = buildPerformanceFinding(scores);
+    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.5000 score units.");
+    expect(finding.items[0]).not.toContain("%");
   });
 
   it("does not report a score difference when either score is missing or non-numeric", () => {

@@ -21,7 +21,23 @@ const buildFindings = (ranking) => {
 
   const overviewItems = [];
   if (ranking.length > 1 && Number.isFinite(first.score) && Number.isFinite(ranking[1].score)) {
-    overviewItems.push(`The difference between the first and second alternatives is ${Math.abs(first.score - ranking[1].score).toFixed(4)} score units.`);
+    const leaderGap = first.score - ranking[1].score;
+    const absoluteGapText = `The difference between the first and second alternatives is ${Math.abs(leaderGap).toFixed(4)} score units`;
+    const scoresAreOrderedDescending = ranking.every((entry, index) => (
+      Number.isFinite(entry.score) && (index === 0 || ranking[index - 1].score >= entry.score)
+    ));
+    const observedRange = first.score - last.score;
+    const canContextualizeGap = ranking.length >= 3 &&
+      Number.isFinite(last.score) &&
+      scoresAreOrderedDescending &&
+      observedRange > 0;
+
+    if (canContextualizeGap) {
+      const gapSharePercent = (leaderGap / observedRange) * 100;
+      overviewItems.push(`${absoluteGapText}, representing ${gapSharePercent.toFixed(1)}% of the observed score range.`);
+    } else {
+      overviewItems.push(`${absoluteGapText}.`);
+    }
   }
 
   if (ranking.every((entry) => Number.isFinite(entry.score))) {
