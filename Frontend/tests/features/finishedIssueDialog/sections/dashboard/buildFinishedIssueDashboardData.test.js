@@ -45,14 +45,14 @@ describe("buildDashboardData summary view model", () => {
       payload: { ...payload, alternatives: [{ id: "a", name: "Solo" }] },
       selectedExecution: execution([{ alternativeId: "a", score: 4 }]),
     });
-    expect(data.findings).toEqual([{ title: "Top-ranked alternative", text: "Solo ranks first with a score of 4." }]);
+    expect(data.findings).toEqual([{ kind: "winner", title: "Recommended alternative", text: "Solo ranks first with a score of 4." }]);
   });
 
   it("reports the absolute score difference without interpreting its size", () => {
     const data = buildDashboardData({ payload, selectedExecution: execution([
       { alternativeId: "a", score: 3.0744 }, { alternativeId: "b", score: 2.9454 },
     ]) });
-    expect(data.findings[1]).toEqual({ title: "First and second", text: "The first two alternatives differ by 0.1290 score units." });
+    expect(data.findings[1]).toEqual({ kind: "gap", title: "Result gap", text: "The first two alternatives differ by 0.1290 score units." });
   });
 
   it("does not report a score difference when either score is missing or non-numeric", () => {
@@ -60,7 +60,7 @@ describe("buildDashboardData summary view model", () => {
       const data = buildDashboardData({ payload, selectedExecution: execution([
         { alternativeId: "a", score: scores[0] }, { alternativeId: "b", score: scores[1] },
       ]) });
-      expect(data.findings.map(({ title }) => title)).toEqual(["Top-ranked alternative", "Last-ranked alternative"]);
+      expect(data.findings.map(({ kind }) => kind)).toEqual(["winner", "last"]);
     }
   });
 });

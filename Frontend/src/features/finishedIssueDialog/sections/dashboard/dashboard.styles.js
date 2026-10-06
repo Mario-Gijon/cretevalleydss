@@ -39,6 +39,13 @@ export const summaryPanelIconSx = {
   border: "1px solid rgba(89, 213, 218, 0.13)",
 };
 
+export const summaryHeaderIconSx = (tone = "cyan") => ({
+  ...summaryPanelIconSx,
+  color: tone === "gold" ? "#e8c66a" : "secondary.light",
+  bgcolor: tone === "gold" ? "rgba(232, 198, 106, 0.09)" : "rgba(52, 170, 199, 0.12)",
+  borderColor: tone === "gold" ? "rgba(232, 198, 106, 0.14)" : "rgba(89, 213, 218, 0.13)",
+});
+
 export const sectionTitleSx = { fontWeight: 600 };
 
 export const issueSummaryGridSx = {
@@ -48,6 +55,9 @@ export const issueSummaryGridSx = {
 };
 
 export const summaryValueSx = {
+  display: "flex",
+  alignItems: "center",
+  gap: 1,
   minWidth: 0,
   py: { xs: 0.9, sm: 1.05 },
   px: { xs: 0, sm: 1.2, lg: 1.5 },
@@ -56,6 +66,18 @@ export const summaryValueSx = {
   "&:nth-of-type(-n+2)": { borderBottom: { sm: "1px solid rgba(255,255,255,0.07)" } },
   "&:last-of-type": { borderBottom: "none" },
   "@media (min-width:1200px)": { "&:not(:last-of-type)": { borderRight: "1px solid rgba(255,255,255,0.08)" } },
+};
+
+export const summaryValueIconSx = {
+  width: 31,
+  height: 31,
+  display: "grid",
+  placeItems: "center",
+  flex: "0 0 31px",
+  borderRadius: 1.3,
+  color: "secondary.light",
+  bgcolor: "rgba(52, 170, 199, 0.10)",
+  border: "1px solid rgba(89, 213, 218, 0.12)",
 };
 
 export const rankingViewportSx = {
@@ -70,34 +92,93 @@ export const rankingViewportSx = {
   ...finishedIssueScrollbarSx,
 };
 
-export const rankingHeaderSx = {
+const rankingGridColumns = (showBars) => ({
+  xs: "1.75rem minmax(0, 1fr) minmax(4rem, auto)",
+  sm: showBars
+    ? "2rem minmax(0, 1.3fr) minmax(5rem, 0.9fr) minmax(4.5rem, auto)"
+    : "2rem minmax(0, 1fr) minmax(4.5rem, auto)",
+});
+
+export const rankingHeaderSx = (showBars) => ({
   position: "sticky",
   top: 0,
   zIndex: 1,
   display: "grid",
-  gridTemplateColumns: "2.5rem minmax(0, 1fr) minmax(4.5rem, auto)",
+  gridTemplateColumns: rankingGridColumns(showBars),
   alignItems: "center",
   gap: 1,
   px: 1,
   py: 0.75,
   bgcolor: "rgba(8, 18, 29, 0.98)",
   borderBottom: "1px solid rgba(255,255,255,0.10)",
-};
+});
 
-export const rankingRowSx = {
+export const rankingRowSx = (showBars) => ({
   display: "grid",
-  gridTemplateColumns: "2.5rem minmax(0, 1fr) minmax(4.5rem, auto)",
+  gridTemplateColumns: rankingGridColumns(showBars),
   alignItems: "start",
   gap: 1,
   px: 1,
   py: 0.9,
   borderBottom: "1px solid rgba(255,255,255,0.055)",
   "&:last-child": { borderBottom: 0 },
-};
+});
 
 export const firstRankingRowSx = {
-  bgcolor: "rgba(63, 203, 207, 0.055)",
-  "& [role=cell]:nth-of-type(2)": { fontWeight: 600 },
+  bgcolor: "rgba(66, 194, 139, 0.045)",
+  "& [role=cell]:nth-of-type(2)": { fontWeight: 600, color: "text.primary" },
+};
+
+export const rankingMarkerSx = (index) => ({
+  width: 26,
+  height: 26,
+  display: "grid",
+  placeItems: "center",
+  borderRadius: 1,
+  fontVariantNumeric: "tabular-nums",
+  fontWeight: 600,
+  color: index === 0 ? "success.light" : index < 3 ? "secondary.light" : "text.secondary",
+  bgcolor: index === 0 ? "rgba(66, 194, 139, 0.10)" : index < 3 ? "rgba(52, 170, 199, 0.09)" : "rgba(255,255,255,0.045)",
+});
+
+export const rankingBarTrackSx = {
+  height: 9,
+  width: "100%",
+  overflow: "hidden",
+  borderRadius: 99,
+  bgcolor: "rgba(3, 12, 20, 0.62)",
+  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.25)",
+};
+
+export const rankingBarSx = (index, width) => ({
+  width: `${Math.max(0, Math.min(100, width))}%`,
+  height: "100%",
+  borderRadius: 99,
+  bgcolor: index === 0 ? "success.main" : "secondary.main",
+  transition: "width 180ms ease",
+});
+
+export const rankingBarCellSx = { display: { xs: "none", sm: "flex" }, alignItems: "center", minWidth: 0 };
+
+export const findingCardSx = (kind) => {
+  const colors = {
+    winner: { fg: "success.light", bg: "rgba(66, 194, 139, 0.065)", border: "rgba(66, 194, 139, 0.19)" },
+    gap: { fg: "secondary.light", bg: "rgba(52, 170, 199, 0.065)", border: "rgba(89, 213, 218, 0.18)" },
+    last: { fg: "#c3a6e8", bg: "rgba(151, 110, 201, 0.075)", border: "rgba(177, 137, 220, 0.20)" },
+  };
+  const color = colors[kind] || colors.gap;
+  return {
+    display: "grid",
+    gridTemplateColumns: "31px minmax(0, 1fr)",
+    alignItems: "start",
+    gap: 1,
+    minWidth: 0,
+    p: { xs: 1, md: 1.15 },
+    borderRadius: 1.6,
+    border: `1px solid ${color.border}`,
+    bgcolor: color.bg,
+    "& .finding-icon": { color: color.fg, mt: 0.1 },
+  };
 };
 
 export const findingsGridSx = {

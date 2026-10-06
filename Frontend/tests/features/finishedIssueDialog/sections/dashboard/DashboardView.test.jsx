@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import DashboardView from "../../../../../src/features/finishedIssueDialog/sections/dashboard/components/DashboardView";
@@ -23,10 +23,12 @@ describe("DashboardView Summary", () => {
     expect(screen.getByRole("heading", { name: "Issue summary" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Final result" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Key findings" })).toBeInTheDocument();
-    expect(screen.getByText("Alternatives").parentElement).toHaveTextContent("1");
-    expect(screen.getByText("Criteria").parentElement).toHaveTextContent("1");
-    expect(screen.getByText("Experts").parentElement).toHaveTextContent("1");
-    expect(screen.getByText("Evaluation model").parentElement).toHaveTextContent("Linguistic Model");
+    expect(screen.getByText("Alternatives")).toBeInTheDocument();
+    expect(screen.getByText("Criteria")).toBeInTheDocument();
+    expect(screen.getByText("Experts")).toBeInTheDocument();
+    expect(screen.getByText("Evaluation model")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Issue summary" })).getAllByText("1")).toHaveLength(3);
+    expect(screen.getByText("Linguistic Model")).toBeInTheDocument();
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.queryByText("Issue title")).not.toBeInTheDocument();
     expect(screen.queryByText("Issue description")).not.toBeInTheDocument();
@@ -45,5 +47,23 @@ describe("DashboardView Summary", () => {
     renderView({ issueSummary: { alternativesCount: 0, criteriaCount: 0, expertsCount: 0, modelName: "—" }, result: { available: false, ranking: [] }, findings: [] });
     expect(screen.getByText("No final result is available.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Key findings" })).not.toBeInTheDocument();
+  });
+
+  it("shows score bars only for finite, non-negative, descending scores with a positive leader", () => {
+    const renderRanking = (scores) => {
+      const ranking = scores.map((score, index) => ({ id: `a${index}`, name: `Alternative ${index + 1}`, position: index + 1, score, formattedScore: Number.isFinite(score) ? String(score) : "—" }));
+      const data = { issueSummary: { alternativesCount: ranking.length, criteriaCount: 1, expertsCount: 1, modelName: "Model" }, result: { available: true, ranking }, findings: [] };
+      return renderView(data);
+    };
+
+    const { unmount } = renderRanking([3, 2, 0]);
+    expect(screen.getByRole("columnheader", { name: "Score visualization" })).toBeInTheDocument();
+    unmount();
+
+    for (const unsafeScores of [[3, -1], [0, 0], [2, 3], [2, null]]) {
+      const result = renderRanking(unsafeScores);
+      expect(screen.queryByRole("columnheader", { name: "Score visualization" })).not.toBeInTheDocument();
+      result.unmount();
+    }
   });
 });
