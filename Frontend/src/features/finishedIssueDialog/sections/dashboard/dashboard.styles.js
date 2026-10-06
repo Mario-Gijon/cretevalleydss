@@ -51,7 +51,8 @@ export const sectionTitleSx = { fontWeight: 600 };
 export const issueSummaryGridSx = {
   display: "grid",
   gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
-  columnGap: { xs: 0, sm: 1.5, lg: 0 },
+  columnGap: { xs: 0, sm: 2, lg: 0 },
+  rowGap: { xs: 0.75, sm: 1 },
 };
 
 export const summaryValueSx = {
@@ -61,11 +62,9 @@ export const summaryValueSx = {
   minWidth: 0,
   py: { xs: 0.9, sm: 1.05 },
   px: { xs: 0, sm: 1.2, lg: 1.5 },
-  borderBottom: { xs: "1px solid rgba(255,255,255,0.07)", sm: "none" },
-  "&:nth-of-type(odd)": { borderRight: { sm: "1px solid rgba(255,255,255,0.08)", lg: "none" } },
-  "&:nth-of-type(-n+2)": { borderBottom: { sm: "1px solid rgba(255,255,255,0.07)" } },
-  "&:last-of-type": { borderBottom: "none" },
-  "@media (min-width:1200px)": { "&:not(:last-of-type)": { borderRight: "1px solid rgba(255,255,255,0.08)" } },
+  "@media (min-width:1200px)": {
+    "&:not(:last-of-type)": { borderRight: "1px solid rgba(255,255,255,0.08)" },
+  },
 };
 
 export const summaryValueIconSx = {
@@ -134,7 +133,7 @@ export const rankingMarkerSx = (index) => ({
   height: 26,
   display: "grid",
   placeItems: "center",
-  borderRadius: 1,
+  borderRadius: "50%",
   fontVariantNumeric: "tabular-nums",
   fontWeight: 600,
   color: index === 0 ? "success.light" : index < 3 ? "secondary.light" : "text.secondary",
@@ -142,7 +141,7 @@ export const rankingMarkerSx = (index) => ({
 });
 
 export const rankingBarTrackSx = {
-  height: 9,
+  height: 15,
   width: "100%",
   overflow: "hidden",
   borderRadius: 99,
@@ -162,11 +161,11 @@ export const rankingBarCellSx = { display: { xs: "none", sm: "flex" }, alignItem
 
 export const findingCardSx = (kind) => {
   const colors = {
-    winner: { fg: "success.light", bg: "rgba(66, 194, 139, 0.065)", border: "rgba(66, 194, 139, 0.19)" },
-    gap: { fg: "secondary.light", bg: "rgba(52, 170, 199, 0.065)", border: "rgba(89, 213, 218, 0.18)" },
+    winner: { fg: "success.light", bg: "rgba(66, 194, 139, 0.085)", border: "rgba(66, 194, 139, 0.26)" },
+    overview: { fg: "secondary.light", bg: "rgba(52, 170, 199, 0.055)", border: "rgba(89, 213, 218, 0.17)" },
     last: { fg: "#c3a6e8", bg: "rgba(151, 110, 201, 0.075)", border: "rgba(177, 137, 220, 0.20)" },
   };
-  const color = colors[kind] || colors.gap;
+  const color = colors[kind] || colors.overview;
   return {
     display: "grid",
     gridTemplateColumns: "31px minmax(0, 1fr)",
@@ -174,6 +173,7 @@ export const findingCardSx = (kind) => {
     gap: 1,
     minWidth: 0,
     p: { xs: 1, md: 1.15 },
+    height: "100%",
     borderRadius: 1.6,
     border: `1px solid ${color.border}`,
     bgcolor: color.bg,
@@ -187,10 +187,34 @@ export const findingsGridSx = {
   gap: { xs: 0.8, md: 1.4 },
 };
 
-export const findingSx = {
-  minWidth: 0,
-  py: 0.2,
+export const findingListSx = {
+  m: 0,
+  pl: 2.1,
+  display: "grid",
+  gap: 0.55,
+  color: "text.secondary",
+  "& li": { pl: 0.2, lineHeight: 1.5 },
 };
+
+export const findingHeadlineSx = {
+  mt: 0.35,
+  fontSize: "1.02rem",
+  lineHeight: 1.4,
+  fontWeight: 600,
+  overflowWrap: "break-word",
+};
+
+export const findingBodySx = {
+  mt: 0.65,
+  color: "text.secondary",
+  lineHeight: 1.55,
+  overflowWrap: "break-word",
+};
+
+export const findingTitleSx = (kind) => ({
+  fontWeight: 600,
+  color: kind === "winner" ? "success.light" : kind === "last" ? "#c3a6e8" : "secondary.light",
+});
 
 // Legacy preview styles remain for reusable dashboard cards still covered by
 // their own feature tests; the Summary view no longer imports them.

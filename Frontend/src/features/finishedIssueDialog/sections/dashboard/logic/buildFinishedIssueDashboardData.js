@@ -8,29 +8,40 @@ const buildFindings = (ranking) => {
 
   const first = ranking[0];
   const last = ranking.at(-1);
+  const rankedCount = ranking.length;
+  const rankedNoun = rankedCount === 1 ? "alternative" : "alternatives";
   const findings = [{
     kind: "winner",
     title: "Recommended alternative",
+    headline: first.name,
     text: first.formattedScore === "—"
-      ? `${first.name} ranks first.`
-      : `${first.name} ranks first with a score of ${first.formattedScore}.`,
+      ? `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies first place in the final ranking.`
+      : `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies first place with a final score of ${first.formattedScore}.`,
   }];
 
+  const overviewItems = [];
   if (ranking.length > 1 && Number.isFinite(first.score) && Number.isFinite(ranking[1].score)) {
-    findings.push({
-      kind: "gap",
-      title: "Result gap",
-      text: `The first two alternatives differ by ${Math.abs(first.score - ranking[1].score).toFixed(4)} score units.`,
-    });
+    overviewItems.push(`The difference between the first and second alternatives is ${Math.abs(first.score - ranking[1].score).toFixed(4)} score units.`);
+  }
+
+  if (ranking.every((entry) => Number.isFinite(entry.score))) {
+    const lowest = ranking.reduce((current, entry) => entry.score < current.score ? entry : current);
+    const highest = ranking.reduce((current, entry) => entry.score > current.score ? entry : current);
+    overviewItems.push(`Final scores range from ${lowest.formattedScore} to ${highest.formattedScore} across ${rankedCount} ranked ${rankedNoun}.`);
+  }
+
+  if (overviewItems.length) {
+    findings.push({ kind: "overview", title: "Performance overview", items: overviewItems });
   }
 
   if (ranking.length > 1) {
     findings.push({
       kind: "last",
       title: "Lower-ranked alternative",
+      headline: last.name,
       text: last.formattedScore === "—"
-        ? `${last.name} is the last-ranked alternative.`
-        : `${last.name} is the last-ranked alternative with a score of ${last.formattedScore}.`,
+        ? `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies the final position in the ranking.`
+        : `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies the final position with a final score of ${last.formattedScore}.`,
     });
   }
 

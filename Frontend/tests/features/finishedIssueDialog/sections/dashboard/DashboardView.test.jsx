@@ -29,7 +29,8 @@ describe("DashboardView Summary", () => {
     expect(screen.getByText("Evaluation model")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Issue summary" })).getAllByText("1")).toHaveLength(3);
     expect(screen.getByText("Linguistic Model")).toBeInTheDocument();
-    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Final result" })).getByRole("cell", { name: "Alpha" })).toBeInTheDocument();
+    expect(screen.getByRole("list")).toBeInTheDocument();
     expect(screen.queryByText("Issue title")).not.toBeInTheDocument();
     expect(screen.queryByText("Issue description")).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

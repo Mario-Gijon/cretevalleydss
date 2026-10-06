@@ -27,6 +27,10 @@ import {
   rankingBarCellSx,
   findingsGridSx,
   findingCardSx,
+  findingListSx,
+  findingHeadlineSx,
+  findingBodySx,
+  findingTitleSx,
 } from "../dashboard.styles.js";
 
 const SummaryValue = ({ icon, label, value }) => (
@@ -51,8 +55,17 @@ const FindingCard = ({ finding }) => {
     <Box sx={findingCardSx(finding.kind)}>
       <FindingIcon className="finding-icon" sx={{ fontSize: 21 }} aria-hidden="true" />
       <Box sx={{ minWidth: 0 }}>
-        <Typography variant="subtitle2">{finding.title}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.45, overflowWrap: "break-word" }}>{finding.text}</Typography>
+        <Typography variant="subtitle2" sx={findingTitleSx(finding.kind)}>{finding.title}</Typography>
+        {finding.kind === "overview" ? (
+          <Box component="ul" sx={findingListSx}>
+            {finding.items.map((item) => <Box component="li" key={item}><Typography variant="body2">{item}</Typography></Box>)}
+          </Box>
+        ) : (
+          <>
+            <Typography variant="body1" sx={findingHeadlineSx}>{finding.headline}</Typography>
+            <Typography variant="body2" sx={findingBodySx}>{finding.text}</Typography>
+          </>
+        )}
       </Box>
     </Box>
   );

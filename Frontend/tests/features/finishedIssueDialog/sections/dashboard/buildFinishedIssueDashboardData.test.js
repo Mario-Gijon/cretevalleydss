@@ -40,19 +40,52 @@ describe("buildDashboardData summary view model", () => {
     expect(data.findings).toEqual([]);
   });
 
-  it("creates only valid findings for a single alternative", () => {
+  it("creates structured narrative findings for one alternative without inventing a last place", () => {
     const data = buildDashboardData({
       payload: { ...payload, alternatives: [{ id: "a", name: "Solo" }] },
       selectedExecution: execution([{ alternativeId: "a", score: 4 }]),
     });
-    expect(data.findings).toEqual([{ kind: "winner", title: "Recommended alternative", text: "Solo ranks first with a score of 4." }]);
+    expect(data.findings).toEqual([
+      {
+        kind: "winner",
+        title: "Recommended alternative",
+        headline: "Solo",
+        text: "Among the 1 ranked alternative, this option occupies first place with a final score of 4.",
+      },
+      {
+        kind: "overview",
+        title: "Performance overview",
+        items: ["Final scores range from 4 to 4 across 1 ranked alternative."],
+      },
+    ]);
   });
 
-  it("reports the absolute score difference without interpreting its size", () => {
+  it("builds factual winner, score difference/range, and last-place findings", () => {
     const data = buildDashboardData({ payload, selectedExecution: execution([
       { alternativeId: "a", score: 3.0744 }, { alternativeId: "b", score: 2.9454 },
     ]) });
-    expect(data.findings[1]).toEqual({ kind: "gap", title: "Result gap", text: "The first two alternatives differ by 0.1290 score units." });
+    expect(data.findings).toEqual([
+      {
+        kind: "winner",
+        title: "Recommended alternative",
+        headline: "Alternative A",
+        text: "Among the 2 ranked alternatives, this option occupies first place with a final score of 3.0744.",
+      },
+      {
+        kind: "overview",
+        title: "Performance overview",
+        items: [
+          "The difference between the first and second alternatives is 0.1290 score units.",
+          "Final scores range from 2.9454 to 3.0744 across 2 ranked alternatives.",
+        ],
+      },
+      {
+        kind: "last",
+        title: "Lower-ranked alternative",
+        headline: "Alternative B",
+        text: "Among the 2 ranked alternatives, this option occupies the final position with a final score of 2.9454.",
+      },
+    ]);
   });
 
   it("does not report a score difference when either score is missing or non-numeric", () => {
