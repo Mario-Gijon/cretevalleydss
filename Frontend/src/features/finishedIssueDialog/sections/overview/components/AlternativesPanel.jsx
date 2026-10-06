@@ -1,11 +1,11 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import ViewInArRoundedIcon from "@mui/icons-material/ViewInArRounded";
 
 import {
   overviewAlternativeRowSx,
   overviewInformationIconSx,
-  overviewScrollableListSx,
+  issueInfoSharedViewportSx,
 } from "../overview.styles";
 import OverviewPanel from "./OverviewPanel";
 
@@ -16,7 +16,7 @@ const AlternativesPanel = ({ alternatives }) => (
     count={alternatives.length}
   >
     {alternatives.length ? (
-      <Stack data-testid="overview-alternatives-list" spacing={0.75} sx={overviewScrollableListSx}>
+      <Stack data-testid="overview-alternatives-list" spacing={0.75} sx={issueInfoSharedViewportSx}>
         {alternatives.map((alternative) => (
           <Box key={alternative.id} sx={overviewAlternativeRowSx}>
             <Box sx={overviewInformationIconSx()}>
@@ -32,21 +32,23 @@ const AlternativesPanel = ({ alternatives }) => (
                 {alternative.name}
               </Typography>
               {alternative.description ? (
-                <Typography
-                  variant="caption"
-                  title={alternative.description}
-                  sx={{
-                    mt: 0.15,
-                    color: "text.secondary",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {alternative.description}
-                </Typography>
+                <Tooltip title={alternative.description} placement="top" describeChild>
+                  <Typography
+                    tabIndex={0}
+                    variant="caption"
+                    sx={{
+                      mt: 0.15,
+                      color: "text.secondary",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {alternative.description}
+                  </Typography>
+                </Tooltip>
               ) : null}
             </Box>
           </Box>

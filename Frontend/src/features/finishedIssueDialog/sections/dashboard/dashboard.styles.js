@@ -183,7 +183,7 @@ export const findingCardSx = (kind) => {
 
 export const findingsGridSx = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))",
+  gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(3, minmax(0, 1fr))" },
   gap: { xs: 0.8, md: 1.4 },
 };
 

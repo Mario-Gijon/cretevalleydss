@@ -1,6 +1,46 @@
 export const overviewRootSx = {
   width: "100%",
   minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: { xs: 1.5, md: 1.75 },
+};
+
+export const issueInfoColumnsSx = {
+  display: "grid",
+  width: "100%",
+  minWidth: 0,
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    lg: "repeat(2, minmax(0, 1fr))",
+  },
+  gap: { xs: 1.5, md: 1.75 },
+  alignItems: "stretch",
+  "& > *": { minWidth: 0, minHeight: 0 },
+};
+
+export const issueInfoParticipationGridSx = {
+  display: "grid",
+  width: "100%",
+  minWidth: 0,
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    md: "190px minmax(0, 1fr)",
+  },
+  gap: { xs: 1, md: 1.5 },
+  alignItems: "stretch",
+  "& > *": { minWidth: 0, minHeight: 0 },
+};
+
+export const issueInformationGridSx = {
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    sm: "repeat(2, minmax(0, 1fr))",
+    lg: "repeat(3, minmax(0, 1fr))",
+  },
+  gap: 0.8,
+  minWidth: 0,
 };
 
 export const overviewTopGridSx = {
@@ -113,6 +153,13 @@ export const overviewInformationRowSx = {
   bgcolor: "rgba(255,255,255,0.018)",
 };
 
+export const issueDescriptionItemSx = {
+  ...overviewInformationRowSx,
+  gridColumn: "1 / -1",
+  alignItems: "flex-start",
+  mt: 1,
+};
+
 export const overviewInformationIconSx = (tone = "cyan") => ({
   width: 28,
   height: 28,
@@ -176,6 +223,31 @@ export const overviewAlternativeRowSx = {
 import { finishedIssueScrollbarSx } from "../../shared/styles/finishedIssueScrollbar.styles.js";
 
 export const overviewScrollableSurfaceSx = finishedIssueScrollbarSx;
+
+export const issueInfoSharedViewportSx = {
+  ...overviewScrollableSurfaceSx,
+  minHeight: 0,
+  maxHeight: { xs: 360, lg: 320, xl: 360 },
+  overflowY: "auto",
+  overflowX: "hidden",
+  pr: 0.35,
+};
+
+export const issueInfoTableViewportSx = {
+  ...overviewScrollableSurfaceSx,
+  width: "100%",
+  minWidth: 0,
+  maxHeight: { xs: 360, md: 320, xl: 360 },
+  overflow: "auto",
+};
+
+export const issueInfoExpertTableViewportSx = {
+  ...overviewScrollableSurfaceSx,
+  width: "100%",
+  minWidth: 0,
+  maxHeight: { xs: 320, md: 320, xl: 360 },
+  overflow: "auto",
+};
 
 export const overviewScrollableListSx = {
   ...overviewScrollableSurfaceSx,
@@ -288,13 +360,42 @@ export const overviewParticipantRowSx = {
 };
 
 export const overviewParticipationChartSx = {
-  minHeight: 218,
+  minHeight: 190,
+  width: "100%",
   display: "grid",
   placeItems: "center",
   p: 1,
   borderRadius: 1.8,
   border: "1px solid rgba(255,255,255,0.075)",
   bgcolor: "rgba(4, 12, 21, 0.30)",
+};
+
+export const overviewExpertDetailsSx = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 0.9,
+  px: { xs: 1.4, md: 2.1 },
+  py: { xs: 0.9, md: 1.1 },
+  borderTop: "1px solid rgba(255,255,255,0.06)",
+  bgcolor: "rgba(255,255,255,0.012)",
+  textAlign: "left",
+};
+
+export const overviewExpertSubmissionGridSx = {
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    sm: "repeat(auto-fit, minmax(min(100%, 190px), 220px))",
+  },
+  justifyContent: "start",
+  gap: { xs: 0.7, sm: 0.9 },
+  minWidth: 0,
+};
+
+export const overviewExpertSubmissionBlockSx = {
+  minWidth: 0,
+  px: 0.35,
+  py: 0.2,
 };
 
 export const overviewConfigRowSx = {

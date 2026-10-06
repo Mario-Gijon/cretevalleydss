@@ -7,7 +7,7 @@ import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 
 const TAB_LABELS = {
   dashboard: "Summary",
-  overview: "Overview",
+  overview: "Issue info",
   "results-analysis": "Results analysis",
   evaluations: "Evaluations",
   models: "Models",

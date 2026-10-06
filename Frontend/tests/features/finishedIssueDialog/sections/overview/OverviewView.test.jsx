@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-chartjs-2", () => ({
@@ -7,13 +7,15 @@ vi.mock("react-chartjs-2", () => ({
 }));
 
 import OverviewView from "../../../../../src/features/finishedIssueDialog/sections/overview/components/OverviewView";
-import { buildOverviewData, buildOverviewPreview } from "../../../../../src/features/finishedIssueDialog/sections/overview/logic/buildFinishedIssueOverviewData.js";
+import { buildOverviewData } from "../../../../../src/features/finishedIssueDialog/sections/overview/logic/buildFinishedIssueOverviewData.js";
 import {
-  overviewCriteriaViewportSx,
-  overviewCriterionRowSx,
-  overviewCriterionSurfaceSx,
-  overviewParticipationListSx,
-  overviewScrollableListSx,
+  issueInfoColumnsSx,
+  issueInfoParticipationGridSx,
+  issueInfoSharedViewportSx,
+  issueInfoExpertTableViewportSx,
+  overviewExpertDetailsSx,
+  issueInfoTableViewportSx,
+  issueDescriptionItemSx,
 } from "../../../../../src/features/finishedIssueDialog/sections/overview/overview.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
@@ -21,230 +23,130 @@ const renderView = (data) => render(
   <ThemeProvider theme={createTheme()}><OverviewView data={data} /></ThemeProvider>
 );
 
-describe("OverviewView", () => {
-  it("keeps criteria connectors at one CSS pixel instead of MUI ratio sizing", () => {
-    const nested = overviewCriterionRowSx(1, false);
-    expect(nested["&::before"]).toMatchObject({ width: "1px", left: -15, top: -10, bottom: -10, bgcolor: "rgba(76, 201, 211, 0.20)" });
-    expect(nested["&::after"]).toMatchObject({ height: "1px", left: -15, top: 23, width: 12, bgcolor: "rgba(76, 201, 211, 0.30)" });
-    expect(overviewCriterionRowSx(0, false)["&::before"]).toBeUndefined();
-    expect(overviewCriterionRowSx(0, false)["&::after"]).toBeUndefined();
-    expect(overviewCriterionRowSx(2, false)).toMatchObject({ width: "calc(100% - 4.3rem)", minWidth: 0 });
-    expect(overviewCriterionSurfaceSx).toMatchObject({ width: "100%", minWidth: 0 });
-    expect(overviewCriteriaViewportSx.overflow).toBe("auto");
-  });
+const dataFor = (payload = buildFinishedIssuePayloadFixture(), rows = []) => ({
+  ...buildOverviewData(payload),
+  expertParticipation: { rows },
+});
 
-  it("renders the approved provider-free factual Overview composition", () => {
-    renderView(buildOverviewData(buildFinishedIssuePayloadFixture()));
-
-    expect(screen.getByRole("heading", { name: "Issue information" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Alternatives" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Criteria structure" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Experts & participation" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Configuration & domains" })).not.toBeInTheDocument();
-    ["Model", "Consensus", "Alternative evaluation", "Criteria weighting", "Domain assignments"].forEach((label) => {
+describe("Issue info view", () => {
+  it("renders the four panels in the intended structure and only configuration fields", () => {
+    renderView(dataFor());
+    ["Issue information", "Alternatives", "Expert participation", "Criteria structure"].forEach((title) => {
+      expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    });
+    ["Evaluation model", "Alternative evaluation", "Criteria weighting", "Weighting level", "Created", "Finalized", "Description"].forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
-    expect(screen.getByText("Finished issue")).toBeInTheDocument();
+    expect(screen.queryByText("Domain assignments")).not.toBeInTheDocument();
+    expect(screen.queryByText("Status")).not.toBeInTheDocument();
+    expect(screen.getByText("Base model")).toBeInTheDocument();
     expect(screen.getByText("Canonical fixture")).toBeInTheDocument();
-    expect(screen.getByLabelText("Participated")).toBeInTheDocument();
-    expect(screen.getByLabelText("Did not participate")).toBeInTheDocument();
     expect(screen.getByTestId("participation-chart")).toHaveTextContent("1,1");
-    expect(screen.getByText("2 experts")).toBeInTheDocument();
-    expect(screen.queryByText("1 / 2 participated")).not.toBeInTheDocument();
-
-    ["Issue information", "Alternatives", "Criteria structure", "Experts & participation"].forEach((title) => {
-      const heading = screen.getByRole("heading", { name: title });
-      expect(heading.previousElementSibling?.previousElementSibling).toBeNull();
-    });
+    expect(issueDescriptionItemSx).toMatchObject({ gridColumn: "1 / -1", alignItems: "flex-start" });
+    expect(screen.getByTestId("issue-description-item")).toHaveTextContent("DescriptionCanonical fixture");
+    expect(screen.queryByText("Owner")).not.toBeInTheDocument();
+    expect(screen.queryByText("Consensus")).not.toBeInTheDocument();
+    expect(screen.queryByText("Expected finalization date")).not.toBeInTheDocument();
   });
 
-  it("keeps the expected finalization date distinct from the actual finished timestamp", () => {
+  it("formats day-first Created and ISO Finalized dates as MMM D, YYYY without changing raw values", () => {
     const payload = buildFinishedIssuePayloadFixture();
-    payload.lifecycle.closureDate = "2026-01-02";
-    payload.lifecycle.finishedAt = "2026-01-04T15:30:00.000Z";
-
-    const data = buildOverviewData(payload);
-
-    expect(data.general).toMatchObject({
-      closureDate: "2026-01-02",
-      finishedAt: "2026-01-04T15:30:00.000Z",
-    });
+    payload.lifecycle.creationDate = "23-09-2026";
+    payload.lifecycle.finishedAt = "2026-09-23T15:30:00.000Z";
+    const data = dataFor(payload);
     renderView(data);
-    expect(screen.getByText("Expected finalization date")).toBeInTheDocument();
-    expect(screen.getByText("Finalized at")).toBeInTheDocument();
+    expect(screen.getAllByText("Sep 23, 2026")).toHaveLength(2);
+    expect(data.general.creationDate).toBe("23-09-2026");
+    expect(data.general.finishedAt).toBe("2026-09-23T15:30:00.000Z");
   });
 
-  it("renders arbitrary-depth criteria, resolves weights and domains, and collapses parents", () => {
+  it("renders alternative names and descriptions while omitting missing descriptions", () => {
     const payload = buildFinishedIssuePayloadFixture();
-    payload.criteria = {
-      rootIds: ["root"],
-      finalWeights: { byCriterionId: { leaf: 0.625 } },
-      nodes: [
-        { id: "root", name: "Root", childIds: ["second"], isLeaf: false },
-        { id: "second", name: "Second", parentId: "root", childIds: ["third"], isLeaf: false },
-        { id: "third", name: "Third", parentId: "second", childIds: ["fourth"], isLeaf: false },
-        { id: "fourth", name: "Fourth", parentId: "third", childIds: ["leaf"], isLeaf: false },
-        { id: "leaf", name: "Leaf", parentId: "fourth", childIds: [], isLeaf: true, type: "cost", expressionDomainId: "domain-1" },
-      ],
-    };
-    renderView(buildOverviewData(payload));
+    payload.alternatives = [
+      { id: "a", name: "Named option", description: "A clear explanation." },
+      { id: "b", name: "Name only" },
+    ];
+    renderView(dataFor(payload));
+    expect(screen.getByText("Named option")).toBeInTheDocument();
+    expect(screen.getByText("A clear explanation.")).toBeInTheDocument();
+    expect(screen.getByText("Name only")).toBeInTheDocument();
+  });
 
-    expect(screen.getAllByText("Leaf").length).toBeGreaterThan(0);
+  it("keeps compact status icons and allows full-process and other rows to expand into ordered details", async () => {
+    renderView(dataFor(undefined, [
+      { expertId: "full", name: "Full Expert", participationLabel: "Full process", invitation: { status: "accepted", respondedAt: "2026-01-01T00:00:00Z" }, criteriaWeighting: { completed: 1, total: 1 }, alternativeEvaluation: { completed: 1, total: 1 }, events: [
+        { type: "invitationAccepted", occurredAt: "2026-01-01T00:00:00Z" },
+        { type: "entered", stage: "criteriaWeighting", phase: 1, occurredAt: "2026-01-01T00:01:00Z" },
+      ] },
+      { expertId: "partial", name: "Partial Expert", participationLabel: "Removed during alternative evaluation", invitation: { status: "pending" }, criteriaWeighting: { completed: 1, total: 2, submissions: [{ phase: 1, completed: true, submittedAt: "2026-01-01T00:00:00Z" }] }, alternativeEvaluation: { completed: 0, total: 2, submissions: [] }, events: [
+        { type: "invitationAccepted", occurredAt: "2025-12-31T00:00:00Z" },
+        { type: "entered", stage: "criteriaWeighting", phase: 1, occurredAt: "2026-01-01T00:00:00Z" },
+        { type: "removed", stage: "alternativeEvaluation", phase: 2, occurredAt: "2026-01-02T00:00:00Z" },
+      ] },
+    ]));
+    expect(screen.getByText("Full Expert")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand Full Expert details" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Accepted")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Completed")).toHaveLength(2);
+    expect(screen.getByLabelText("Not submitted")).toBeInTheDocument();
+    expect(screen.getByText("Full process").closest(".MuiChip-root")).toBeNull();
+    expect(screen.getByText("Removed during alternative evaluation")).toBeInTheDocument();
+    expect(screen.getByTestId("overview-participant-list")).not.toHaveTextContent(/Jan 1, 2026/);
+    const fullRow = screen.getByRole("row", { name: "Toggle details for Full Expert" });
+    fireEvent.click(fullRow);
+    const fullDetails = screen.getByTestId("expert-detail-area");
+    expect(fullDetails).toHaveTextContent("Submission summary");
+    expect(fullDetails).toHaveTextContent("InvitationStatus: Accepted");
+    expect(fullDetails).toHaveTextContent("Criteria weightingStatus: Submitted");
+    expect(fullDetails).toHaveTextContent("Alternative evaluationStatus: Submitted");
+    expect(within(fullDetails).queryByText("Participation history")).not.toBeInTheDocument();
+    fireEvent.click(within(fullDetails).getByText("Status: Accepted"));
+    expect(fullRow).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(fullRow);
+    expect(fullRow).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(screen.queryByTestId("expert-detail-area")).not.toBeInTheDocument());
+    const partialRow = screen.getByRole("row", { name: "Toggle details for Partial Expert" });
+    fireEvent.click(partialRow);
+    expect(screen.getAllByText("Criteria weighting").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Alternative evaluation").length).toBeGreaterThan(1);
+    const partialDetails = screen.getByTestId("expert-detail-area");
+    expect(partialDetails).toHaveTextContent("Status: Partially submitted");
+    expect(partialDetails).toHaveTextContent("Status: Not submitted");
+    expect(partialDetails).toHaveTextContent(/Date: Jan 1, 2026/);
+    expect(within(partialDetails).getByText("Participation history")).toBeInTheDocument();
+    const history = within(partialDetails).getByText("Participation history").parentElement;
+    expect(history).toHaveTextContent("Removed during alternative evaluation · Round 2");
+    expect(history).not.toHaveTextContent("Invitation accepted");
+    expect(history).not.toHaveTextContent("Joined during criteria weighting");
+    const summary = partialDetails.querySelector("[data-testid='expert-submission-summary']");
+    expect(summary.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders criteria in one hierarchical table with inline descriptions and collapsible parents", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.criteria.nodes[0].description = "A parent criterion explanation.";
+    payload.criteria.nodes[1].description = "A leaf explanation that may be longer than the visible row and remains available from its tooltip.";
+    renderView(dataFor(payload));
+    expect(screen.getByRole("table", { name: "Criteria structure" })).toBeInTheDocument();
+    expect(screen.getByText("Criterion")).toBeInTheDocument();
+    expect(screen.getByText("Weight")).toBeInTheDocument();
+    expect(screen.queryByText("Domain")).not.toBeInTheDocument();
+    expect(screen.queryByText("# Subcriteria")).not.toBeInTheDocument();
+    expect(screen.getByText("A parent criterion explanation.")).toBeInTheDocument();
+    expect(screen.getByText(/A leaf explanation that may be longer/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Overall" }));
+    expect(screen.queryByText("Cost", { selector: "p" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expand Overall" }));
     expect(screen.getByText("Cost")).toBeInTheDocument();
-    expect(screen.getByText("Weight 0.625")).toBeInTheDocument();
-    expect(screen.getAllByText("Crisp").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Collapse Root" }));
-    expect(screen.getByRole("button", { name: "Expand Root" })).toBeInTheDocument();
   });
 
-  it("handles malformed criteria and factual participation states without fabricated values", () => {
-    const payload = buildFinishedIssuePayloadFixture();
-    payload.criteria = {
-      rootIds: ["a"],
-      nodes: [
-        { id: "a", name: "A", parentId: null, childIds: ["b", "missing"], isLeaf: false },
-        { id: "b", name: "B", parentId: "a", childIds: ["a"], isLeaf: false },
-        { id: "orphan", name: "Orphan", parentId: "removed", childIds: [], isLeaf: true, type: "benefit" },
-      ],
-      finalWeights: { byCriterionId: {} },
-    };
-    payload.participants = [
-      { id: "accepted-incomplete", expert: { id: "expert-a", name: "Accepted" }, invitationStatus: "accepted", evaluationCompleted: false },
-      { id: "pending", expert: { id: "expert-p", name: "Pending" }, invitationStatus: "pending", evaluationCompleted: false },
-      { id: "declined", expert: { id: "expert-d", name: "Declined" }, invitationStatus: "declined", evaluationCompleted: false },
-    ];
-    const data = buildOverviewData(payload);
-
-    expect(data.criteria.map((criterion) => criterion.id)).toEqual(["a", "orphan"]);
-    expect(data.participation).toMatchObject({ accepted: 1, completed: 0, pending: 1, declined: 1, completionPercentage: 0 });
-    expect(buildOverviewPreview(data)).toMatchObject({ acceptedParticipantsCount: 0, completedAlternativeEvaluationsCount: 1 });
-    renderView(data);
-    expect(screen.getAllByText("Accepted").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Declined").length).toBeGreaterThan(0);
-  });
-
-  it("classifies non-current historical experts only from their latest terminal audit event", () => {
-    const payload = buildFinishedIssuePayloadFixture();
-    const historical = (id) => ({ expert: { id, name: id }, participated: true, participationKey: "participated" });
-    payload.participantHistory = {
-      records: ["e1", "e2", "e3", "e4", "e5"].map(historical),
-      summary: { total: 5, participated: 5, notParticipated: 0, participatedPercentage: 100 },
-    };
-    payload.participants = [{ id: "p1", expert: { id: "e1", name: "e1" }, invitationStatus: "accepted", evaluationCompleted: true }];
-    payload.evaluations.participation = {
-      experts: [
-        { expertId: "e2", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
-        { expertId: "e3", participationEvents: [{ type: "left", occurredAt: "2026-01-01" }, { type: "removed", occurredAt: "2026-01-02" }] },
-        { expertId: "e4", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
-        { expertId: "e5", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
-      ],
-    };
-
-    expect(buildOverviewData(payload).participation).toMatchObject({
-      currentCount: 1,
-      removedCount: 4,
-      leftCount: 0,
-    });
-
-    payload.participantHistory.records = ["e1", "e2", "e3", "e4"].map(historical);
-    payload.participantHistory.summary.total = 4;
-    payload.participantHistory.summary.participated = 4;
-    payload.participants = ["e1", "e2"].map((id) => ({ id: `p-${id}`, expert: { id, name: id }, invitationStatus: "accepted", evaluationCompleted: true }));
-    payload.evaluations.participation.experts = [
-      { expertId: "e3", participationEvents: [{ type: "removed", occurredAt: "2026-01-01" }] },
-      { expertId: "e4", participationEvents: [{ type: "left", occurredAt: "2026-01-01" }] },
-    ];
-
-    expect(buildOverviewData(payload).participation).toMatchObject({
-      currentCount: 2,
-      removedCount: 1,
-      leftCount: 1,
-    });
-
-    payload.participantHistory.records = ["e1", "e2"].map(historical);
-    payload.participantHistory.summary.total = 2;
-    payload.participantHistory.summary.participated = 1;
-    payload.participants = [{ id: "p-e1", expert: { id: "e1", name: "e1" }, invitationStatus: "accepted", evaluationCompleted: true }];
-    payload.evaluations.participation.experts = [
-      { expertId: "e2", participationEvents: [{ type: "invitationDeclined", occurredAt: "2026-01-01" }] },
-    ];
-
-    expect(buildOverviewData(payload).participation).toMatchObject({
-      currentCount: 1,
-      removedCount: 0,
-      leftCount: 0,
-    });
-  });
-
-  it("shows a humanized weighting level only when criteria weighting is required", () => {
-    const payload = buildFinishedIssuePayloadFixture();
-    payload.configuration.criteriaWeighting = { required: false, level: "leaf" };
-    renderView(buildOverviewData(payload));
-    expect(screen.queryByText("Weighting level")).not.toBeInTheDocument();
-
-    payload.configuration.criteriaWeighting = { required: true, level: "parent" };
-    renderView(buildOverviewData(payload));
-    expect(screen.getByText("Parent criteria")).toBeInTheDocument();
-  });
-
-  it("uses the latest stored alternative-evaluation result and handles zero accepted participants", () => {
-    const payload = buildFinishedIssuePayloadFixture();
-    payload.participants = [{ id: "pending", expert: { id: "expert-p", name: "Pending" }, invitationStatus: "pending", evaluationCompleted: false }];
-    const data = buildOverviewData(payload);
-
-    expect(data.evidence.resultId).toBe("alt-5");
-    expect(data.participation.completionPercentage).toBeNull();
-    renderView(data);
-    expect(screen.queryByLabelText("Participated")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Did not participate")).toBeInTheDocument();
-    expect(screen.getByTestId("participation-chart")).toHaveTextContent("0,1");
-    expect(screen.getByText("alt-5")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Copy result ID" })).toBeEnabled();
-  });
-
-  it("renders unbounded alternatives, participants and deep criteria in internal viewports", () => {
-    const payload = buildFinishedIssuePayloadFixture();
-    payload.alternatives = Array.from({ length: 12 }, (_, index) => ({
-      id: `alternative-${index + 1}`,
-      name: `Alternative ${index + 1}`,
-      description: `Description ${index + 1}`,
-      position: index + 1,
-    }));
-    payload.participants = Array.from({ length: 12 }, (_, index) => ({
-      id: `participant-${index + 1}`,
-      expert: { id: `expert-${index + 1}`, name: `Participant ${index + 1}`, email: `participant-${index + 1}@example.test` },
-      invitationStatus: ["accepted", "pending", "declined"][index % 3],
-      evaluationCompleted: index % 4 === 0,
-    }));
-    payload.expressionDomains = Array.from({ length: 10 }, (_, index) => ({ id: `domain-${index + 1}`, name: `Domain ${index + 1}`, typeKey: "crisp" }));
-    payload.criteria = {
-      rootIds: ["level-1"],
-      finalWeights: { byCriterionId: { "level-6": 1 } },
-      nodes: Array.from({ length: 6 }, (_, index) => ({
-        id: `level-${index + 1}`,
-        name: `Level ${index + 1}`,
-        parentId: index ? `level-${index}` : null,
-        childIds: index < 5 ? [`level-${index + 2}`] : [],
-        isLeaf: index === 5,
-        type: index === 5 ? "benefit" : null,
-        expressionDomainId: index === 5 ? "domain-1" : null,
-      })),
-    };
-
-    renderView(buildOverviewData(payload));
-
-    for (let index = 1; index <= 12; index += 1) {
-      expect(screen.getByText(`Alternative ${index}`)).toBeInTheDocument();
-      expect(screen.getByText(`Participant ${index}`)).toBeInTheDocument();
-    }
-    expect(screen.getAllByText("Level 6").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Alternatives" }).parentElement).toHaveTextContent("12");
-    expect(screen.getByRole("heading", { name: "Experts & participation" }).parentElement).toHaveTextContent("12");
-    expect(screen.getByTestId("overview-participant-list")).not.toContainElement(screen.getByTestId("overview-participation-chart"));
-
-    expect(overviewScrollableListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 360, md: 390, xl: 430 } });
-    expect(overviewParticipationListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 260, md: 218, xl: 250 } });
-    expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", width: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
+  it("contains responsive panel and table overflow within their own viewports", () => {
+    expect(issueInfoColumnsSx.gridTemplateColumns).toEqual({ xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" });
+    expect(issueInfoParticipationGridSx.gridTemplateColumns).toEqual({ xs: "minmax(0, 1fr)", md: "190px minmax(0, 1fr)" });
+    expect(issueInfoSharedViewportSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", minHeight: 0, maxHeight: { xs: 360, lg: 320, xl: 360 } });
+    expect(issueInfoTableViewportSx).toMatchObject({ overflow: "auto", width: "100%", minWidth: 0 });
+    expect(issueInfoExpertTableViewportSx).toMatchObject({ overflow: "auto", width: "100%", minWidth: 0 });
+    expect(overviewExpertDetailsSx).toMatchObject({ borderTop: "1px solid rgba(255,255,255,0.06)", bgcolor: "rgba(255,255,255,0.012)" });
+    expect(overviewExpertDetailsSx.border).toBeUndefined();
   });
 });

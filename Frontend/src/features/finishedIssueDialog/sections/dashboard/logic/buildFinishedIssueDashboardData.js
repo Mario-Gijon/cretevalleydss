@@ -10,19 +10,20 @@ const buildFindings = (ranking) => {
   const last = ranking.at(-1);
   const rankedCount = ranking.length;
   const rankedNoun = rankedCount === 1 ? "alternative" : "alternatives";
+  const winnerContext = rankedCount === 1 ? "as the only alternative" : `among the ${rankedCount} alternatives`;
   const findings = [{
     kind: "winner",
     title: "Recommended alternative",
     headline: first.name,
     text: first.formattedScore === "—"
-      ? `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies first place in the final ranking.`
-      : `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies first place with a final score of ${first.formattedScore}.`,
+      ? `${first.name} is the top-ranked option ${winnerContext}.`
+      : `${first.name} is the top-ranked option ${winnerContext}, with a final score of ${first.formattedScore}.`,
   }];
 
   const overviewItems = [];
   if (ranking.length > 1 && Number.isFinite(first.score) && Number.isFinite(ranking[1].score)) {
     const leaderGap = first.score - ranking[1].score;
-    const absoluteGapText = `The difference between the first and second alternatives is ${Math.abs(leaderGap).toFixed(4)} score units`;
+    const absoluteGapText = `The gap between the top two alternatives is ${Math.abs(leaderGap).toFixed(4)}`;
     const scoresAreOrderedDescending = ranking.every((entry, index) => (
       Number.isFinite(entry.score) && (index === 0 || ranking[index - 1].score >= entry.score)
     ));
@@ -34,7 +35,7 @@ const buildFindings = (ranking) => {
 
     if (canContextualizeGap) {
       const gapSharePercent = (leaderGap / observedRange) * 100;
-      overviewItems.push(`${absoluteGapText}, representing ${gapSharePercent.toFixed(1)}% of the observed score range.`);
+      overviewItems.push(`${absoluteGapText}, representing ${gapSharePercent.toFixed(1)}% of the total spread between the highest and lowest scores.`);
     } else {
       overviewItems.push(`${absoluteGapText}.`);
     }
@@ -43,7 +44,7 @@ const buildFindings = (ranking) => {
   if (ranking.every((entry) => Number.isFinite(entry.score))) {
     const lowest = ranking.reduce((current, entry) => entry.score < current.score ? entry : current);
     const highest = ranking.reduce((current, entry) => entry.score > current.score ? entry : current);
-    overviewItems.push(`Final scores range from ${lowest.formattedScore} to ${highest.formattedScore} across ${rankedCount} ranked ${rankedNoun}.`);
+    overviewItems.push(`Final scores range from ${lowest.formattedScore} to ${highest.formattedScore} across ${rankedCount} ${rankedNoun}.`);
   }
 
   if (overviewItems.length) {
@@ -56,8 +57,8 @@ const buildFindings = (ranking) => {
       title: "Lower-ranked alternative",
       headline: last.name,
       text: last.formattedScore === "—"
-        ? `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies the final position in the ranking.`
-        : `Among the ${rankedCount} ranked ${rankedNoun}, this option occupies the final position with a final score of ${last.formattedScore}.`,
+        ? `${last.name} is the lowest-ranked of the ${rankedCount} ${rankedNoun}.`
+        : `${last.name} is the lowest-ranked of the ${rankedCount} ${rankedNoun}, with a final score of ${last.formattedScore}.`,
     });
   }
 

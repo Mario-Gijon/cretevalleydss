@@ -57,12 +57,12 @@ describe("buildDashboardData summary view model", () => {
         kind: "winner",
         title: "Recommended alternative",
         headline: "Solo",
-        text: "Among the 1 ranked alternative, this option occupies first place with a final score of 4.",
+        text: "Solo is the top-ranked option as the only alternative, with a final score of 4.",
       },
       {
         kind: "overview",
         title: "Performance overview",
-        items: ["Final scores range from 4 to 4 across 1 ranked alternative."],
+        items: ["Final scores range from 4 to 4 across 1 alternative."],
       },
     ]);
   });
@@ -76,40 +76,40 @@ describe("buildDashboardData summary view model", () => {
         kind: "winner",
         title: "Recommended alternative",
         headline: "Alternative A",
-        text: "Among the 2 ranked alternatives, this option occupies first place with a final score of 3.0744.",
+        text: "Alternative A is the top-ranked option among the 2 alternatives, with a final score of 3.0744.",
       },
       {
         kind: "overview",
         title: "Performance overview",
         items: [
-          "The difference between the first and second alternatives is 0.1290 score units.",
-          "Final scores range from 2.9454 to 3.0744 across 2 ranked alternatives.",
+          "The gap between the top two alternatives is 0.1290.",
+          "Final scores range from 2.9454 to 3.0744 across 2 alternatives.",
         ],
       },
       {
         kind: "last",
         title: "Lower-ranked alternative",
         headline: "Alternative B",
-        text: "Among the 2 ranked alternatives, this option occupies the final position with a final score of 2.9454.",
+        text: "Alternative B is the lowest-ranked of the 2 alternatives, with a final score of 2.9454.",
       },
     ]);
   });
 
   it("adds a one-decimal share of the observed range for a normal five-item ranking", () => {
     const finding = buildPerformanceFinding([3.0744, 2.9454, 2.8, 2.6, 2.5169]);
-    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.1290 score units, representing 23.1% of the observed score range.");
-    expect(finding.items[1]).toBe("Final scores range from 2.5169 to 3.0744 across 5 ranked alternatives.");
+    expect(finding.items[0]).toBe("The gap between the top two alternatives is 0.1290, representing 23.1% of the total spread between the highest and lowest scores.");
+    expect(finding.items[1]).toBe("Final scores range from 2.5169 to 3.0744 across 5 alternatives.");
   });
 
   it("keeps the absolute gap only for exactly two alternatives", () => {
     const finding = buildPerformanceFinding([3.0744, 2.9454]);
-    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.1290 score units.");
+    expect(finding.items[0]).toBe("The gap between the top two alternatives is 0.1290.");
     expect(finding.items[0]).not.toContain("%");
   });
 
   it("omits contextual percentage when the observed range is zero", () => {
     const finding = buildPerformanceFinding([4.5, 4.5, 4.5]);
-    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.0000 score units.");
+    expect(finding.items[0]).toBe("The gap between the top two alternatives is 0.0000.");
     expect(finding.items[0]).not.toContain("%");
   });
 
@@ -118,7 +118,7 @@ describe("buildDashboardData summary view model", () => {
     ["non-finite score", [3.5, 3, Number.POSITIVE_INFINITY]],
   ])("omits contextual percentage when the ranking has a %s", (_label, scores) => {
     const finding = buildPerformanceFinding(scores);
-    expect(finding.items[0]).toBe("The difference between the first and second alternatives is 0.5000 score units.");
+    expect(finding.items[0]).toBe("The gap between the top two alternatives is 0.5000.");
     expect(finding.items[0]).not.toContain("%");
   });
 
@@ -128,6 +128,12 @@ describe("buildDashboardData summary view model", () => {
         { alternativeId: "a", score: scores[0] }, { alternativeId: "b", score: scores[1] },
       ]) });
       expect(data.findings.map(({ kind }) => kind)).toEqual(["winner", "last"]);
+      expect(data.findings[0].text).toBe("Alternative A is the top-ranked option among the 2 alternatives.");
     }
+
+    const unavailableLastScore = buildDashboardData({ payload, selectedExecution: execution([
+      { alternativeId: "a", score: 2 }, { alternativeId: "b", score: null },
+    ]) });
+    expect(unavailableLastScore.findings[1].text).toBe("Alternative B is the lowest-ranked of the 2 alternatives.");
   });
 });

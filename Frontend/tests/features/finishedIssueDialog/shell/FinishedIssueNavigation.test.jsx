@@ -24,6 +24,6 @@ describe("FinishedIssueNavigation", () => {
     );
 
     expect(screen.queryByRole("tab", { name: "Consensus" })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Summary", "Overview", "Results analysis", "Evaluations", "Models"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Summary", "Issue info", "Results analysis", "Evaluations", "Models"]);
   });
 });
