@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   Chip,
   FormControl,
   InputLabel,
@@ -13,7 +12,6 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
-import CenterFocusStrongRoundedIcon from "@mui/icons-material/CenterFocusStrongRounded";
 
 import { AnalyticalGraph } from "../../../../../components/analyticalGraphs";
 import { AnalyticalScatterChart } from "../../../graphs/components/AnalyticalScatterChart";
@@ -72,7 +70,7 @@ const EXPERT_COLLECTIVE_DISTANCES_GUIDE = "Each bar measures the distance from o
 const RANKING_STABILITY_GUIDE = getVisualizationReadingGuide({ type: "rankingStability" });
 const RANKING_AGREEMENT_GUIDE = getVisualizationReadingGuide({ type: "rankingAgreement" });
 
-const Header = ({ title, subtitle, resettable, onResetZoom, extraAction }) => (
+const Header = ({ title, subtitle, extraAction }) => (
   <Stack
     direction="row"
     justifyContent="space-between"
@@ -90,7 +88,6 @@ const Header = ({ title, subtitle, resettable, onResetZoom, extraAction }) => (
       </Box>
     </Stack>
     <Stack direction="row" spacing={0.8} alignItems="center">
-      {resettable ? <Button variant="outlined" color="secondary" size="small" startIcon={<CenterFocusStrongRoundedIcon />} onClick={onResetZoom}>Reset zoom</Button> : null}
       {extraAction}
     </Stack>
   </Stack>
@@ -136,10 +133,7 @@ const ConsensusCard = ({ consensus }) => (
   </Box>
 );
 
-const SingleVisualization = ({
-  visualizations,
-  scatterPlotRef,
-}) => {
+const SingleVisualization = ({ visualizations }) => {
   const scatter = visualizations.singleScatter;
   return (
     <Stack spacing={1.4}>
@@ -150,7 +144,6 @@ const SingleVisualization = ({
               <AnalyticalScatterChart
                 data={scatter.data}
                 phase={scatter.sourcePhase}
-                scatterPlotRef={scatterPlotRef}
                 color={RESULTS_ANALYSIS_SLOT_COLORS[0]}
               />
             </Box>
@@ -165,10 +158,7 @@ const SingleVisualization = ({
   );
 };
 
-const ComparisonVisualization = ({
-  comparison,
-  scatterPlotRef,
-}) => {
+const ComparisonVisualization = ({ comparison }) => {
   if (comparison.presentation === "unavailable")
     return (
       <Box sx={{ minWidth: 0 }}>
@@ -235,7 +225,6 @@ const ComparisonVisualization = ({
       <Box sx={expertChartFrameSx}>
         <ComparativeAnalyticalScatterChart
           groups={groups}
-          scatterPlotRef={scatterPlotRef}
         />
       </Box>
     </Box>
@@ -553,11 +542,7 @@ const RankingTemporalSection = ({ executions }) => {
   </Box>;
 };
 
-const ExpertCollectiveRelationship = ({
-  visualizations,
-  scatterPlotRef,
-  onResetZoom,
-}) => {
+const ExpertCollectiveRelationship = ({ visualizations }) => {
   const [representation, setRepresentation] = useState("map");
   const singleProjection = visualizations.mode === "single"
     ? visualizations.canonicalProjections?.[0]
@@ -575,12 +560,10 @@ const ExpertCollectiveRelationship = ({
     visualizations.mode === "comparison" ? (
       <ComparisonVisualization
         comparison={visualizations.expertCollectiveComparison}
-        scatterPlotRef={scatterPlotRef}
       />
     ) : (
       <SingleVisualization
         visualizations={visualizations}
-        scatterPlotRef={scatterPlotRef}
       />
     );
   if (hasSingleExpert) {
@@ -589,8 +572,6 @@ const ExpertCollectiveRelationship = ({
         <Header
           title="Expert–collective relationship"
           subtitle={EXPERT_COLLECTIVE_MAP_GUIDE}
-          resettable={scatterAvailable}
-          onResetZoom={onResetZoom}
         />
         <Box data-testid="single-expert-projection" sx={{ width: "100%", minWidth: 0 }}>
           {map}
@@ -603,8 +584,6 @@ const ExpertCollectiveRelationship = ({
       <Header
         title="Expert–collective relationship"
         subtitle={showBothRepresentations ? null : relationshipGuide}
-        resettable={scatterAvailable && showMap}
-        onResetZoom={onResetZoom}
         extraAction={toggleMode ? <ToggleButtonGroup color="secondary" exclusive size="small" value={representation} onChange={(_, value) => value && setRepresentation(value)} aria-label="Expert collective representation"><ToggleButton value="map">Map</ToggleButton><ToggleButton value="distances">Distances</ToggleButton></ToggleButtonGroup> : null}
       />
       {!scatterAvailable && visualizations.mode !== "comparison" ? map : toggleMode ? (
@@ -687,12 +666,7 @@ const StageVisualizations = ({ executions, stage }) => {
   return <Box><Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>{stage.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>{stage.description}</Typography><Stack spacing={1.4}>{sections.map((section) => <SemanticSection key={section.id} section={section} />)}</Stack></Box>;
 };
 
-const VisualizationsPanel = ({
-  visualizations = {},
-  executions = [],
-  scatterPlotRef,
-  onResetZoom,
-}) => {
+const VisualizationsPanel = ({ visualizations = {}, executions = [] }) => {
   const hasRankingEvolution = executionWithVisualization(
     executions,
     "rankingEvolution",
@@ -727,8 +701,6 @@ const VisualizationsPanel = ({
         >
           <ExpertCollectiveRelationship
             visualizations={visualizations}
-            scatterPlotRef={scatterPlotRef}
-            onResetZoom={onResetZoom}
           />
           {visualizations.consensus?.enabled ? (
             <ConsensusCard consensus={visualizations.consensus} />

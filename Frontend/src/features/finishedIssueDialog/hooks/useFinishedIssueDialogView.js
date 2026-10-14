@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useFinishedIssueData } from "./useFinishedIssueData.js";
@@ -31,7 +31,6 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
     issueId: data.issueId,
     executionOptions: resultsExecutionOptions,
   });
-  const scatterPlotRef = useRef(null);
   const resultsReload = useFinishedIssueResultsReload({ issueId: data.issueId, refreshPayload: data.refreshPayload, showSnackbarAlert });
 
   return {
@@ -54,8 +53,6 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       setActiveView: navigation.setActiveResultsAnalysisView,
     },
     resultsAnalysis: {
-      scatterPlotRef,
-      resetZoom: () => scatterPlotRef.current?.resetZoom?.(),
       selectedPhase: navigation.selectedPhase,
       selection: resultsSelection,
       reload: resultsReload,

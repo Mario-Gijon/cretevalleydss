@@ -1,11 +1,12 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const scatterState = vi.hoisted(() => ({ data: null }));
+const scatterState = vi.hoisted(() => ({ data: null, options: null }));
 
 vi.mock("react-chartjs-2", () => ({
-  Scatter: ({ data }) => {
+  Scatter: ({ data, options }) => {
     scatterState.data = data;
+    scatterState.options = options;
     return <div data-testid="scatter" />;
   },
 }));
@@ -39,5 +40,11 @@ describe("AnalyticalScatterChart", () => {
     expect(collective.pointStyle).toBe("rectRot");
     expect(collective.pointRadius).toBe(10);
     expect(collective.borderWidth).toBe(2);
+    expect(scatterState.options.plugins.zoom).toBeUndefined();
+    expect(scatterState.options.scales.x.min).toBe(-1);
+    expect(scatterState.options.scales.x.max).toBe(1);
+    expect(scatterState.options.scales.y.min).toBe(-1);
+    expect(scatterState.options.scales.y.max).toBe(1);
+    expect(scatterState.options.plugins.tooltip.callbacks.label({ datasetIndex: 0, raw: experts.data[0] })).toContain("Adrian Popescu");
   });
 });

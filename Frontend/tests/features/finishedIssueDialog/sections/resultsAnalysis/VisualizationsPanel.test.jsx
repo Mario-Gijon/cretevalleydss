@@ -24,8 +24,6 @@ describe("VisualizationsPanel", () => {
     render(
       <ThemeProvider theme={createTheme()}>
         <VisualizationsPanel
-          scatterPlotRef={{ current: null }}
-          onResetZoom={vi.fn()}
           visualizations={{
             mode: "single",
             singleScatter: { available: true, sourcePhase: 5, data: { 5: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
@@ -54,8 +52,6 @@ describe("VisualizationsPanel", () => {
     render(
       <ThemeProvider theme={createTheme()}>
         <VisualizationsPanel
-          scatterPlotRef={{ current: null }}
-          onResetZoom={vi.fn()}
           visualizations={{
             mode: "single",
             singleScatter: { available: true, sourcePhase: 0, data: { 0: { expertPoints: [{ label: "Ada Lovelace", x: 0, y: 0 }], collectivePoint: { x: 0, y: 0 } } } },
@@ -249,10 +245,7 @@ describe("VisualizationsPanel", () => {
   });
 
   it("shows scatter and stored distances for multiple experts while harmlessly ignoring alternative relationships", () => {
-    const onResetZoom = vi.fn();
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
-      scatterPlotRef={{ current: null }}
-      onResetZoom={onResetZoom}
       executions={[{
         key: "base",
         displayLabel: "Base",
@@ -270,7 +263,7 @@ describe("VisualizationsPanel", () => {
 
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
     expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Expert 1|Expert 2");
-    expect(screen.getByRole("button", { name: "Reset zoom" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
     expect(screen.queryByText("Alternative relationships")).not.toBeInTheDocument();
     expect(screen.queryByText("Pairwise separation")).not.toBeInTheDocument();
     expect(screen.queryByText("Relationship network")).not.toBeInTheDocument();
@@ -286,8 +279,6 @@ describe("VisualizationsPanel", () => {
 
   it("uses the existing meaningful consensus availability to switch between map and distances", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
-      scatterPlotRef={{ current: null }}
-      onResetZoom={vi.fn()}
       visualizations={{
         mode: "single",
         singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
@@ -300,12 +291,25 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
     expect(screen.getByText(/axes are not geographic coordinates/)).toBeInTheDocument();
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reset zoom" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Distances" }));
     expect(screen.queryByTestId("analytical-scatter")).not.toBeInTheDocument();
     expect(screen.getByTestId("projected-distance-bars")).toBeInTheDocument();
     expect(screen.getByText(/Each bar measures the distance/)).toBeInTheDocument();
     expect(screen.queryByText(/axes are not geographic coordinates/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
+  });
+
+  it("does not render Reset zoom for scenario comparison relationships", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      visualizations={{
+        mode: "comparison",
+        expertCollectiveComparison: { presentation: "unavailable", footerMessage: "Unavailable" },
+        consensus: { enabled: false },
+      }}
+    /></ThemeProvider>);
+
+    expect(screen.getByRole("heading", { name: "Expert–collective relationship" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
   });
 

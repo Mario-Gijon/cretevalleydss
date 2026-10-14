@@ -30,7 +30,7 @@ describe("ResultsAnalysisView", () => {
     it(`renders the shared execution toolbar and selection in ${activeView}`, async () => {
       const user = userEvent.setup();
       const toggleExecution = vi.fn();
-      render(<ResultsAnalysisView data={data} selection={{ ...selection, toggleExecution }} navigation={{ activeView, setActiveView: vi.fn() }} genericAnalysis={{}} scatterPlotRef={{ current: null }} onResetZoom={vi.fn()} />);
+      render(<ResultsAnalysisView data={data} selection={{ ...selection, toggleExecution }} navigation={{ activeView, setActiveView: vi.fn() }} genericAnalysis={{}} />);
 
       expect(screen.getByText("Viewing 1 execution")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /executions/i })).toBeInTheDocument();

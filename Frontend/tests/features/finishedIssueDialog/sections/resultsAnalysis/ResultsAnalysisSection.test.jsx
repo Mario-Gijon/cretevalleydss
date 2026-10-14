@@ -5,8 +5,6 @@ const context = vi.hoisted(() => ({
   dialog: { payload: { issue: { id: "issue" } } },
   resultsAnalysis: {
     selectedPhase: 0,
-    scatterPlotRef: { current: { resetZoom: vi.fn() } },
-    resetZoom: vi.fn(),
     selection: { selectedExecutionKeys: ["base"] },
   },
   resultsAnalysisNavigation: { activeView: "visualizations", setActiveView: vi.fn() },
@@ -34,13 +32,5 @@ describe("ResultsAnalysisSection", () => {
       selectedExecutionKeys: ["base"],
       selectedPhase: 0,
     });
-  });
-
-  it("resets scatter zoom only when the selected phase changes", () => {
-    const { rerender } = render(<ResultsAnalysisSection />);
-    expect(context.resultsAnalysis.scatterPlotRef.current.resetZoom).not.toHaveBeenCalled();
-    context.resultsAnalysis.selectedPhase = 5;
-    rerender(<ResultsAnalysisSection />);
-    expect(context.resultsAnalysis.scatterPlotRef.current.resetZoom).toHaveBeenCalledTimes(1);
   });
 });
