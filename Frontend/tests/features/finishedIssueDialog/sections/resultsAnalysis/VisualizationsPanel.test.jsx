@@ -38,6 +38,18 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("analytical-scatter")).toHaveAttribute("data-phase", "5");
   });
 
+  it("explains the consensus axes before rendering the phase chart", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      visualizations={{ mode: "single", consensus: { enabled: true, available: true, graph: { labels: ["Initial", "Round 1"], data: [0.25, 0.7] } } }}
+    /></ThemeProvider>);
+
+    const title = screen.getByRole("heading", { name: "Consensus evolution" });
+    const guide = screen.getByText(/vertical scale runs from 0% to 100%/);
+    const chart = screen.getByText("Consensus chart");
+    expect(title.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(guide.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("renders only the full-width projection for one coincident expert", () => {
     render(
       <ThemeProvider theme={createTheme()}>
@@ -262,8 +274,10 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByText("Alternative relationships")).not.toBeInTheDocument();
     expect(screen.queryByText("Pairwise separation")).not.toBeInTheDocument();
     expect(screen.queryByText("Relationship network")).not.toBeInTheDocument();
-    expect(screen.queryByText("Map")).not.toBeInTheDocument();
-    expect(screen.queryByText("Distances")).not.toBeInTheDocument();
+    expect(screen.getByText("Map")).toBeInTheDocument();
+    expect(screen.getByText("Distances")).toBeInTheDocument();
+    expect(screen.getByText(/axes are not geographic coordinates/)).toBeInTheDocument();
+    expect(screen.getByText(/projection distances, not geographic distances/)).toBeInTheDocument();
     expect(screen.queryByText("Dispersion chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Bar chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Projected distance to collective")).not.toBeInTheDocument();
@@ -284,11 +298,14 @@ describe("VisualizationsPanel", () => {
 
     expect(screen.getByRole("group", { name: "Expert collective representation" })).toBeInTheDocument();
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
+    expect(screen.getByText(/axes are not geographic coordinates/)).toBeInTheDocument();
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reset zoom" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Distances" }));
     expect(screen.queryByTestId("analytical-scatter")).not.toBeInTheDocument();
     expect(screen.getByTestId("projected-distance-bars")).toBeInTheDocument();
+    expect(screen.getByText(/Each bar measures the distance/)).toBeInTheDocument();
+    expect(screen.queryByText(/axes are not geographic coordinates/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
   });
 
@@ -296,7 +313,7 @@ describe("VisualizationsPanel", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis: rankingAnalysis() }, { key: "test-1", displayLabel: "Test 1", genericAnalysis: rankingAnalysis([2, 1]) }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
 
     expect(screen.getAllByText("Ranking evolution")).toHaveLength(1);
-    expect(screen.getByText("Position changes across consensus phases.")).toBeInTheDocument();
+    expect(screen.getByText(/Each colored line follows one alternative across phases/)).toBeInTheDocument();
     expect(screen.getAllByText("Base")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Test 1")[0]).toBeInTheDocument();
     expect(screen.getAllByTestId("ranking-evolution-divider")).toHaveLength(1);
@@ -333,7 +350,7 @@ describe("VisualizationsPanel", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", color: "#27d5e4", genericAnalysis: futureAnalysis }, { key: "test", displayLabel: "Test", genericAnalysis: { visualizations: [] } }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
 
     expect(screen.queryByText("Process overview")).not.toBeInTheDocument();
-    expect(screen.getByText("Ranking stability")).toBeInTheDocument();
+    expect(screen.getAllByText("Ranking stability")).toHaveLength(2);
     expect(screen.getByLabelText(/Alpha: initial rank 1, final rank 2, best rank 1, worst rank 3, total movement 5/)).toBeInTheDocument();
     expect(screen.getAllByText("Ranking similarity between rounds")).toHaveLength(2);
     expect(screen.getByLabelText("Initial to Round 1: -1.00")).toBeInTheDocument();
@@ -355,8 +372,8 @@ describe("VisualizationsPanel", () => {
     const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
     expect(screen.getByTestId("secondary-visualizations-single-layout")).toBeInTheDocument();
-    expect(screen.getByText("Rank · 1 = best")).toBeInTheDocument();
-    expect(screen.getByText(/1 = same ranking order/)).toBeInTheDocument();
+    expect(screen.getByText(/Best and Worst show the smallest and largest rank numbers/)).toBeInTheDocument();
+    expect(screen.getByText(/near 1 means the order stayed alike/)).toBeInTheDocument();
   });
 
   it("keeps secondary visualizations as separate rows for multiple executions", () => {

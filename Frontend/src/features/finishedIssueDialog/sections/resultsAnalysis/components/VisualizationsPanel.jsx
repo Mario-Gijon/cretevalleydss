@@ -25,9 +25,11 @@ import { buildGenericRankingMovement } from "../logic/buildGenericRankingMovemen
 import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js";
 import { buildVisualizationLayout } from "../logic/modelVisualizationLayout.js";
 import { buildModelAnalysisSections, scopedEntities, visualizationsForScope } from "../logic/modelAnalysisSections.js";
+import { getVisualizationReadingGuide } from "../logic/visualizationReadingGuides.js";
 import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
+import VisualizationReadingGuide from "./VisualizationReadingGuide.jsx";
 
 const cardSx = {
   border: "1px solid rgba(83,198,214,0.16)",
@@ -65,6 +67,11 @@ const unavailableMessage = (reason) => {
   return "No stored expert–collective analytical projection is available for this execution.";
 };
 
+const EXPERT_COLLECTIVE_MAP_GUIDE = "Each dot marks an expert or the collective result in a simplified view of the stored projection. Dots closer together are more similar in this displayed representation; the axes are not geographic coordinates.";
+const EXPERT_COLLECTIVE_DISTANCES_GUIDE = "Each bar measures the distance from one expert's point to the collective point in the stored projection. Shorter bars mean closer positions in that display; these are projection distances, not geographic distances.";
+const RANKING_STABILITY_GUIDE = getVisualizationReadingGuide({ type: "rankingStability" });
+const RANKING_AGREEMENT_GUIDE = getVisualizationReadingGuide({ type: "rankingAgreement" });
+
 const Header = ({ title, subtitle, resettable, onResetZoom, extraAction }) => (
   <Stack
     direction="row"
@@ -79,7 +86,7 @@ const Header = ({ title, subtitle, resettable, onResetZoom, extraAction }) => (
         <Typography variant="h6" component="h2">
           {title}
         </Typography>
-        {subtitle ? <Typography variant="body2" color="text.secondary">{subtitle}</Typography> : null}
+        {subtitle ? <Typography component="p" data-testid="visualization-reading-guide" variant="body2" color="text.secondary">{subtitle}</Typography> : null}
       </Box>
     </Stack>
     <Stack direction="row" spacing={0.8} alignItems="center">
@@ -115,7 +122,7 @@ const GroupChips = ({ group }) => (
 
 const ConsensusCard = ({ consensus }) => (
   <Box sx={cardSx}>
-    <Header title="Consensus evolution" subtitle="Consensus level by phase." />
+    <Header title="Consensus evolution" subtitle="Each line follows consensus across phases from left to right. The vertical scale runs from 0% to 100%: higher values mean more agreement, while a rise or fall shows agreement increasing or decreasing." />
     {consensus.available ? (
       <Box sx={chartFrameSx}>
         <AnalyticalConsensusLineChart data={consensus.graph} />
@@ -300,7 +307,7 @@ const RankingEvolution = ({ executions }) => (
   <Box sx={cardSx}>
     <Header
       title="Ranking evolution"
-      subtitle="Position changes across consensus phases."
+      subtitle="Each colored line follows one alternative across phases from left to right. The vertical position is its rank: 1 is best, so moving toward a smaller number means it rose in the ranking and a larger number means it fell."
     />
     <ExecutionComparisonLayout
       executions={executions}
@@ -355,9 +362,6 @@ const RankingStabilityChart = ({ visualization }) => {
       aria-label="Ranking stability chart"
       sx={{ display: "grid", gap: 0.8, width: "100%" }}
     >
-      <Typography variant="caption" color="text.secondary">
-        Rank · 1 = best
-      </Typography>
       {alternatives.map((alternative, index) => {
         const color =
           RANKING_ALTERNATIVE_COLORS[index % RANKING_ALTERNATIVE_COLORS.length];
@@ -420,9 +424,10 @@ const RankingStabilityChart = ({ visualization }) => {
   );
 };
 
-const RankingStabilityContent = ({ execution, executions }) => {
+const RankingStabilityContent = ({ execution, executions, showHeading = false }) => {
   const visualization = visualizationFor(execution, "rankingStability");
   return <Box data-testid="ranking-stability" sx={{ minWidth: 0 }}>
+    {showHeading ? <Box sx={{ mb: 1 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{RANKING_STABILITY_GUIDE.title}</Typography><VisualizationReadingGuide>{RANKING_STABILITY_GUIDE.text}</VisualizationReadingGuide></Box> : null}
     <ExecutionLabel execution={execution} visible={executions.length > 1} />
     {visualization ? <RankingStabilityChart visualization={visualization} /> : <VisualizationUnavailableState minHeight={130} />}
   </Box>;
@@ -447,14 +452,6 @@ const RankingAgreementChart = ({ visualization, color }) => {
         maxWidth: 560,
       }}
     >
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ gridColumn: "1 / -1" }}
-      >
-        1 = same ranking order · 0 = no monotonic similarity · −1 = reversed
-        ranking order
-      </Typography>
       {transitions.map((entry) => {
         const offset = `${((entry.coefficient + 1) / 2) * 100}%`;
         return (
@@ -527,7 +524,7 @@ const RankingAgreementChart = ({ visualization, color }) => {
 const RankingAgreementContent = ({ execution, executions, showHeading = false }) => {
   const visualization = visualizationFor(execution, "rankingAgreement");
   return <Box data-testid="ranking-agreement" sx={{ minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
-    {showHeading ? <Box sx={{ mb: 1 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Ranking similarity between rounds</Typography><Typography variant="caption" color="text.secondary">How similar the ranking order is from one round to the next.</Typography></Box> : null}
+    {showHeading ? <Box sx={{ mb: 1 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{RANKING_AGREEMENT_GUIDE.title}</Typography><VisualizationReadingGuide>{RANKING_AGREEMENT_GUIDE.text}</VisualizationReadingGuide></Box> : null}
     <ExecutionLabel execution={execution} visible={executions.length > 1} />
     {visualization ? <RankingAgreementChart visualization={visualization} color={execution.color || "#27d5e4"} /> : <VisualizationUnavailableState minHeight={130} />}
   </Box>;
@@ -539,13 +536,14 @@ const RankingTemporalSection = ({ executions }) => {
   if (!hasStability && !hasAgreement) return null;
   const both = hasStability && hasAgreement;
   const groups = executions;
+  const onlyGuide = hasStability ? RANKING_STABILITY_GUIDE : RANKING_AGREEMENT_GUIDE;
   return <Box sx={cardSx} data-testid={executions.length === 1 ? "secondary-visualizations-single-layout" : "ranking-temporal-card"}>
-    <Header title={hasStability ? "Ranking stability" : "Ranking similarity between rounds"} subtitle={hasStability ? "Observed positional range and movement across recorded phases." : "How similar the ranking order is from one round to the next."} />
+    <Header title={both ? "Ranking history" : onlyGuide.title} subtitle={both ? null : onlyGuide.text} />
     <Stack spacing={1.4} divider={groups.length > 1 ? <Box sx={{ borderTop: "1px solid rgba(83,198,214,0.16)" }} /> : null}>
       {groups.map((execution) => <Box key={execution.key} sx={{ minWidth: 0 }}>
         {executions.length > 1 ? <ExecutionLabel execution={execution} /> : null}
         {both ? <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.8fr) 1px minmax(240px, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: { xs: 1.2, md: 0 }, alignItems: "start" }}>
-          <RankingStabilityContent execution={execution} executions={[]} />
+          <RankingStabilityContent execution={execution} executions={[]} showHeading />
           <Box aria-hidden="true" sx={{ display: { xs: "block", md: "none" }, gridColumn: "1 / -1", borderTop: "1px solid rgba(83,198,214,0.18)" }} />
           <Box aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
           <RankingAgreementContent execution={execution} executions={[]} showHeading />
@@ -568,9 +566,11 @@ const ExpertCollectiveRelationship = ({
     singleProjection.expertPoints?.length === 1;
   const toggleMode = Boolean(visualizations.consensus?.available) && !hasSingleExpert;
   const showMap = !toggleMode || representation === "map";
+  const relationshipGuide = showMap ? EXPERT_COLLECTIVE_MAP_GUIDE : EXPERT_COLLECTIVE_DISTANCES_GUIDE;
   const scatterAvailable = visualizations.mode === "comparison"
     ? visualizations.expertCollectiveComparison?.presentation !== "unavailable"
     : visualizations.singleScatter?.available;
+  const showBothRepresentations = !toggleMode && (scatterAvailable || visualizations.mode === "comparison");
   const map =
     visualizations.mode === "comparison" ? (
       <ComparisonVisualization
@@ -588,7 +588,7 @@ const ExpertCollectiveRelationship = ({
       <Box sx={cardSx}>
         <Header
           title="Expert–collective relationship"
-          subtitle="Compare expert positions with the collective result."
+          subtitle={EXPERT_COLLECTIVE_MAP_GUIDE}
           resettable={scatterAvailable}
           onResetZoom={onResetZoom}
         />
@@ -602,7 +602,7 @@ const ExpertCollectiveRelationship = ({
     <Box sx={cardSx}>
       <Header
         title="Expert–collective relationship"
-        subtitle="Compare expert positions with the collective result."
+        subtitle={showBothRepresentations ? null : relationshipGuide}
         resettable={scatterAvailable && showMap}
         onResetZoom={onResetZoom}
         extraAction={toggleMode ? <ToggleButtonGroup color="secondary" exclusive size="small" value={representation} onChange={(_, value) => value && setRepresentation(value)} aria-label="Expert collective representation"><ToggleButton value="map">Map</ToggleButton><ToggleButton value="distances">Distances</ToggleButton></ToggleButtonGroup> : null}
@@ -611,10 +611,10 @@ const ExpertCollectiveRelationship = ({
         showMap ? map : <Box sx={expertChartFrameSx}><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
       ) : (
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: { xs: 1.2, md: 0 }, alignItems: "start" }}>
-          <Box sx={{ minWidth: 0 }}>{map}</Box>
+          <Box sx={{ minWidth: 0 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Map</Typography><VisualizationReadingGuide>{EXPERT_COLLECTIVE_MAP_GUIDE}</VisualizationReadingGuide>{map}</Box>
           <Box aria-hidden="true" sx={{ display: { xs: "block", md: "none" }, borderTop: "1px solid rgba(83,198,214,0.18)" }} />
           <Box aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
-          <Box sx={{ minWidth: 0 }}><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
+          <Box sx={{ minWidth: 0 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Distances</Typography><VisualizationReadingGuide>{EXPERT_COLLECTIVE_DISTANCES_GUIDE}</VisualizationReadingGuide><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
         </Box>
       )}
     </Box>
@@ -662,7 +662,7 @@ const SemanticSection = ({ section }) => {
   const scenarioColumns = visibleEntries.map(() => "minmax(360px, 1fr)").join(" 1px ");
   return <Box data-testid="model-analysis-semantic-section" sx={cardSx}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} sx={{ mb: isSingleton ? 0 : 1.4 }}>
-      {!isSingleton ? <Box><Typography variant="h6" component="h3" sx={{ fontWeight: 900 }}>{section.title}</Typography>{section.description ? <Typography variant="body2" color="text.secondary">{section.description}</Typography> : null}</Box> : null}
+      {!isSingleton ? <Box><Typography variant="h6" component="h3" sx={{ fontWeight: 900 }}>{section.title}</Typography></Box> : null}
       {selectable ? <FormControl size="small" color="secondary" sx={{ minWidth: 190 }}><InputLabel id={`${section.id}-scope-label`}>{selectedEntity?.dimension || "Entity"}</InputLabel><Select labelId={`${section.id}-scope-label`} label={selectedEntity?.dimension || "Entity"} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>{entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}</Select></FormControl> : null}
     </Stack>
     <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>

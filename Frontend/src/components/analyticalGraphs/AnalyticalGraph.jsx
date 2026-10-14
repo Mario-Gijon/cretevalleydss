@@ -2,6 +2,8 @@ import { Alert, Box, Typography } from "@mui/material";
 
 import { resolveAnalyticalGraphRenderer } from "./analyticalGraphRegistry.js";
 import { finishedIssueScrollbarSx } from "../../features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
+import { getVisualizationReadingGuide } from "../../features/finishedIssueDialog/sections/resultsAnalysis/logic/visualizationReadingGuides.js";
+import VisualizationReadingGuide from "../../features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationReadingGuide.jsx";
 
 const graphFrameSx = (chartHeight) => ({ height: chartHeight || { xs: 300, sm: 360 }, minHeight: 0, width: "100%" });
 const HORIZONTAL_SCROLLBAR_GUTTER = 12;
@@ -26,15 +28,19 @@ const AnalyticalGraph = ({ visualization, chartHeight, chartMinWidth, titleVaria
     return <Alert severity="info">This visualization type is not supported.</Alert>;
   }
 
+  const readingGuide = getVisualizationReadingGuide(visualization);
+  const title = typeof visualization.title === "string" && visualization.title.trim()
+    ? visualization.title.trim()
+    : readingGuide.title;
+
   return <Box data-testid={`analytical-graph-${visualization.type}`}>
-    {visualization.title ? <Typography component="h3" variant={titleVariant} sx={titleVariant === "subtitle1" ? { fontWeight: 800 } : undefined}>{visualization.title}</Typography> : null}
-    {visualization.description ? <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{visualization.description}</Typography> : null}
+    <Typography component="h3" variant={titleVariant} sx={titleVariant === "subtitle1" ? { fontWeight: 800 } : undefined}>{title}</Typography>
+    <VisualizationReadingGuide>{readingGuide.text}</VisualizationReadingGuide>
     <Box sx={graphFrameSx(chartHeight)}>
       <Box sx={graphViewportSx}>
         <Box sx={graphContentSx(chartMinWidth)}><Renderer visualization={visualization} /></Box>
       </Box>
     </Box>
-    {visualization.insight ? <Typography variant="body2" sx={{ mt: 1, fontWeight: 700 }}>{visualization.insight}</Typography> : null}
   </Box>;
 };
 

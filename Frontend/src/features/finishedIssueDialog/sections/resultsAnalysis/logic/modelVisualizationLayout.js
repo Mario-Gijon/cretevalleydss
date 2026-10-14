@@ -1,3 +1,8 @@
+import {
+  getPreferenceDistributionMetrics,
+  isIndividualPreferenceDistribution,
+} from "../../../../../components/analyticalGraphs/logic/preferenceDistributionMatrix.js";
+
 const collectionLength = (value) => Array.isArray(value) ? value.length : 0;
 const COMPACT_CHART_HEIGHT = Object.freeze({ xs: 300, sm: 320 });
 const DYNAMIC_CHART_MIN_HEIGHT = 320;
@@ -20,6 +25,9 @@ const dynamicChartHeight = (itemCount, pixelsPerItem, chromeHeight) => {
 
 export const getVisualizationLayout = (visualization) => {
   const data = visualization?.data || {};
+  if (isIndividualPreferenceDistribution(visualization)) {
+    return { span: 1, chartHeight: chartHeight(), chartMinWidth: getPreferenceDistributionMetrics(visualization).chartMinWidth };
+  }
   if (visualization?.type === "bar") {
     const categoryCount = collectionLength(data.categories);
     if (visualization.orientation === "horizontal") {
