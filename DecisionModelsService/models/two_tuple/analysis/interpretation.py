@@ -2,1014 +2,805 @@ from __future__ import annotations
 
 from typing import Any
 
-
-def _number(
-    value: float | int | None,
-    digits: int = 4,
-) -> str:
-    if value is None:
-        return "—"
-    number = float(value)
-    if abs(number) < 10 ** (-(digits + 1)):
-        number = 0.0
-    text = f"{number:.{digits}f}".rstrip("0").rstrip(".")
-    return text or "0"
+from .common import EVIDENCE_TOLERANCE
 
 
-def _percent(
-    value: float | int | None,
-    digits: int = 1,
-) -> str:
-    if value is None:
-        return "—"
-    return f"{float(value) * 100:.{digits}f}%"
-
-
-def _escape(value: Any) -> str:
+def _text(value: Any) -> str:
     return (
-        str(value)
+        str(value or "")
+        .replace("\\", "\\\\")
+        .replace("*", "\\*")
+        .replace("_", "\\_")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
         .replace("|", r"\|")
         .replace("\n", " ")
         .strip()
     )
 
 
-def _bold_names(
-    items: list[dict[str, Any]],
+def _bold(value: Any) -> str:
+    name = _text(value)
+    return f"**{name}**" if name else ""
+
+
+def _names(
+    items: list[dict[str, Any]] | list[str],
     *,
     key: str = "name",
+    noun: str = "alternatives",
+    limit: int = 4,
 ) -> str:
-    names = [
-        f"**{_escape(item.get(key, ''))}**"
-        for item in items
-        if str(item.get(key, "")).strip()
-    ]
-    if not names:
-        return "none"
-    if len(names) == 1:
-        return names[0]
-    if len(names) == 2:
-        return f"{names[0]} and {names[1]}"
-    return ", ".join(names[:-1]) + f", and {names[-1]}"
+    values: list[str] = []
+    for item in items:
+        value = item.get(key) if isinstance(item, dict) else item
+        name = _text(value)
+        if name and name not in values:
+            values.append(name)
+
+    if not values:
+        return ""
+    if len(values) > limit:
+        return f"{len(values)} {noun}"
+
+    bolded = [_bold(value) for value in values]
+    if len(bolded) == 1:
+        return bolded[0]
+    if len(bolded) == 2:
+        return f"{bolded[0]} and {bolded[1]}"
+    return ", ".join(bolded[:-1]) + f", and {bolded[-1]}"
 
 
-def _named_group(
-    items: list[dict[str, Any]],
-    *,
-    key: str,
-    noun: str,
-    list_limit: int = 5,
-) -> str:
-    if not items:
-        return "none"
-    if len(items) <= list_limit:
-        return _bold_names(items, key=key)
-    return f"**{len(items)} {noun}**"
+def _available(value: Any) -> bool:
+    return isinstance(value, dict) and value.get("available") is True
 
 
-def _tuple_text(
-    tuple_value: dict[str, Any] | None,
-) -> str:
-    if not tuple_value:
-        return "—"
-    label = _escape(
-        tuple_value.get("label")
-        or tuple_value.get("labelKey")
-        or "label"
-    )
-    alpha = _number(tuple_value.get("alpha"))
-    return f"**{label} (α = {alpha})**"
+def _leaders(facts: dict[str, Any]) -> list[dict[str, Any]]:
+    result = facts.get("result") or {}
+    leaders = result.get("leadingGroup") or []
+    if leaders:
+        return leaders
+
+    winner = result.get("winner") or {}
+    alternative = winner.get("alternative")
+    return [alternative] if isinstance(alternative, dict) else []
 
 
-def _ranking_text(
-    ranking: list[dict[str, Any]],
-) -> str:
-    return " > ".join(
-        _escape(item["name"])
-        for item in ranking
-    )
+def _leader_description(leaders: list[dict[str, Any]]) -> str:
+    if len(leaders) == 1:
+        return _bold(leaders[0].get("name"))
+    names = _names(leaders)
+    if names:
+        return f"a tie between {names}"
+    return "the leading group"
 
 
-def _method_text(summary: dict[str, Any]) -> str:
-    method = summary["method"]
+def _overall_result(facts: dict[str, Any]) -> str:
+    result = facts.get("result") or {}
+    counts = facts.get("counts") or {}
+    ranking = result.get("technicalRanking") or []
+    winner = result.get("winner") or {}
+    leaders = _leaders(facts)
 
-    if method == "arithmetic_mean":
-        return (
-            "2-tuple arithmetic mean, so every argument enters "
-            "with the same effective coefficient"
-        )
-
-    if method == "weighted_average":
-        return (
-            "2-tuple weighted average using the configured "
-            "argument-importance weights"
-        )
-
-    l2towa = summary.get("l2towa") or {}
-    quantifier = _escape(
-        l2towa.get("quantifier") or "configured quantifier"
-    )
-    return (
-        f"L2TOWA with the **{quantifier}** quantifier, where "
-        "weights belong to descending ordered β positions rather "
-        "than permanently to criteria or evaluators"
-    )
-
-
-def _result_interpretation(
-    facts: dict[str, Any],
-) -> str:
-    counts = facts["counts"]
-    result = facts["result"]
-    ranking = sorted(
-        result["technicalRanking"],
-        key=lambda item: item["technicalRank"],
-    )
-
-    lines = [
-        "### Result interpretation",
-        "",
-        "#### Key takeaways",
-        "",
-    ]
-
-    if counts["alternatives"] == 1:
-        item = ranking[0]
-        lines.extend(
-            [
-                (
-                    f"- Only **{_escape(item['name'])}** was evaluated, "
-                    "so this execution does not support a comparative winner."
-                ),
-                (
-                    f"- Its final assessment is {_tuple_text(item['tuple'])}, "
-                    f"corresponding to **β = {_number(item['beta'])}** on "
-                    "the common linguistic scale."
-                ),
-            ]
-        )
-        return "\n".join(lines)
-
-    winner = result["winner"]
-
-    if winner.get("available"):
-        selected = winner["alternative"]
-        lines.append(
-            (
-                f"- **{_escape(selected['name'])} is the unique leading "
-                f"alternative**. Its final assessment is "
-                f"{_tuple_text(selected['tuple'])}, corresponding to "
-                f"**β = {_number(selected['beta'])}** on the common "
-                "linguistic scale."
-            )
-        )
-    else:
-        leaders = result["leadingGroup"]
-        if winner.get("reason") in {
-            "tied_leading_group",
-            "no_discrimination",
-        }:
-            lines.append(
-                "- The execution does **not** support a unique preferred alternative."
-            )
-            lines.append(
-                f"- The effective leading group is {_bold_names(leaders)}."
-            )
-            lines.append(
-                (
-                    "- The stored technical order is retained for traceability "
-                    "and must not be interpreted as substantive superiority "
-                    "inside an effective tie."
-                )
+    if counts.get("alternatives") == 1 or len(ranking) == 1:
+        only = ranking[0] if ranking else (leaders[0] if leaders else {})
+        name = _bold(only.get("name"))
+        if name:
+            paragraph = (
+                f"Only {name} was evaluated. This describes its assessment "
+                "against the criteria and preferences used; it does not "
+                "compare it with competing alternatives."
             )
         else:
-            lines.append(
-                "- No unique leading alternative is available for this execution."
+            paragraph = (
+                "Only one alternative was evaluated, so this execution does "
+                "not establish a comparative winner."
             )
+        return f"### Overall result\n\n{paragraph}"
 
-    lines.append(
-        f"- Final technical ordering: **{_ranking_text(ranking)}**."
-    )
-
-    closest = result.get("closestAdjacentAlternatives")
-    if closest:
-        gap = closest["betaGap"]
-        pairs = closest["pairs"]
-
-        if pairs:
-            if len(pairs) == 1:
-                pair = pairs[0]
-                lines.append(
-                    (
-                        f"- **{_escape(pair['higherAlternativeName'])}** and "
-                        f"**{_escape(pair['lowerAlternativeName'])}** are the "
-                        "closest adjacent alternatives in the final ordering, "
-                        f"separated by only **{_number(gap)} β units**."
-                    )
-                )
-            else:
-                pair_text = ", ".join(
-                    (
-                        f"{_escape(item['higherAlternativeName'])} / "
-                        f"{_escape(item['lowerAlternativeName'])}"
-                    )
-                    for item in pairs
-                )
-                lines.append(
-                    (
-                        f"- The smallest adjacent separation is "
-                        f"**{_number(gap)} β units**, shared by {pair_text}."
-                    )
-                )
-
-    return "\n".join(lines)
-
-
-def _linguistic_interpretation(
-    facts: dict[str, Any],
-) -> str:
-    linguistic = facts["linguistic2Tuple"]
-    collective = linguistic["collective"]
-    final = linguistic["final"]
-    summary = collective["summary"]
-    final_summary = final["summary"]
-
-    lines = [
-        "### Linguistic 2-tuple interpretation",
-        "",
-        (
-            "- **β** represents position on the common linguistic scale. "
-            "**α** is the symbolic translation around the selected linguistic "
-            "label; it is not uncertainty, confidence, or evaluator disagreement."
-        ),
-    ]
-
-    if summary["translatedValueCount"] == 0:
-        lines.append(
-            (
-                f"- All **{summary['valueCount']}** collective alternative × "
-                "criterion assessments fall exactly on linguistic labels "
-                "(α = 0)."
-            )
+    if _available(winner) and isinstance(winner.get("alternative"), dict):
+        name = _bold(winner["alternative"].get("name"))
+        paragraph = (
+            f"{name} is the preferred alternative in this evaluation. It "
+            "received the strongest overall assessment under the criteria "
+            "and preferences used. This describes the model result, not a "
+            "guarantee of real-world performance."
         )
-    else:
-        lines.append(
-            (
-                f"- Across the collective alternative × criterion matrix, "
-                f"**{summary['translatedValueCount']} of "
-                f"{summary['valueCount']}** values require non-zero symbolic "
-                f"translation ({_percent(summary['translatedShare'])})."
-            )
-        )
-        strongest = collective["strongestTranslations"]
-        if strongest.get("available"):
-            descriptions = [
-                (
-                    f"**{_escape(item['alternativeName'])} × "
-                    f"{_escape(item['criterionName'])}** "
-                    f"({_tuple_text(item['tuple'])}, "
-                    f"β = {_number(item['beta'])})"
-                )
-                for item in strongest["items"]
-            ]
-            lines.append(
-                (
-                    "- Strongest collective symbolic translation: "
-                    + ", ".join(descriptions)
-                    + f", with **|α| = "
-                    f"{_number(strongest['maxAbsoluteAlpha'])}**."
-                )
-            )
-
-    if (
-        summary["translatedValueCount"] == 0
-        and final_summary["translatedValueCount"] > 0
+    elif leaders and (
+        winner.get("reason") in {"tied_leading_group", "no_discrimination"}
+        or len(leaders) > 1
     ):
-        lines.append(
-            (
-                f"- After criteria aggregation, however, "
-                f"**{final_summary['translatedValueCount']} of "
-                f"{final_summary['valueCount']}** final alternative results "
-                "fall between linguistic labels and therefore require "
-                "symbolic translation α. This is a direct consequence of "
-                "aggregating the exact-label criterion positions on the β scale."
+        names = _names(leaders)
+        if names:
+            paragraph = (
+                f"The evaluation leaves {names} tied for the strongest "
+                "overall assessment; it does not establish one as the "
+                "preferred choice."
             )
-        )
-    elif final_summary["translatedValueCount"] == 0:
-        lines.append(
-            "- All final alternative results also fall exactly on linguistic labels."
-        )
+        else:
+            paragraph = (
+                "The evaluation does not establish one preferred choice; "
+                f"{len(leaders)} alternatives share the strongest overall assessment."
+            )
     else:
-        lines.append(
-            (
-                f"- At the final-alternative level, "
-                f"**{final_summary['translatedValueCount']} of "
-                f"{final_summary['valueCount']}** results require non-zero "
-                "symbolic translation."
-            )
+        paragraph = (
+            "The available result does not establish a unique preferred "
+            "alternative."
         )
 
-    return "\n".join(lines)
+    return f"### Overall result\n\n{paragraph}"
 
 
-def _aggregation_interpretation(
-    facts: dict[str, Any],
+def _extreme_names(
+    extreme: dict[str, Any],
 ) -> str:
-    aggregation = facts["aggregation"]
-    expert = aggregation["expertAggregation"]["summary"]
-    criteria = aggregation["criteriaAggregation"]["summary"]
-    evaluators = facts["evaluators"]["items"]
-
-    lines = [
-        "### Aggregation interpretation",
-        "",
-    ]
-
-    if len(evaluators) == 1:
-        only = evaluators[0]
-        lines.append(
-            (
-                f"- Only **{_escape(only['expertLabel'])}** contributed to "
-                "alternative evaluation, so the expert-aggregation stage is "
-                "mathematically trivial: the collective alternative × criterion "
-                "matrix is identical to that evaluator's submitted matrix."
-            )
-        )
-    else:
-        lines.append(
-            (
-                f"- Evaluator assessments were combined using "
-                f"**{_method_text(expert)}**."
-            )
-        )
-
-    if criteria["method"] == "weighted_average":
-        lines.append(
-            (
-                "- Collective criterion assessments were then combined using "
-                "a **2-tuple weighted average with the configured "
-                "criterion-importance weights**."
-            )
-        )
-    else:
-        lines.append(
-            (
-                f"- Collective criterion assessments were then combined using "
-                f"**{_method_text(criteria)}**."
-            )
-        )
-
-    if expert["method"] == "l2towa" and len(evaluators) > 1:
-        lines.append(
-            (
-                "- In evaluator L2TOWA, an OWA coefficient belongs to the "
-                "assessment's **ordered β position in that specific cell**, "
-                "not to a permanent evaluator identity."
-            )
-        )
-
-    if criteria["method"] == "l2towa":
-        lines.append(
-            (
-                "- In criteria L2TOWA, an OWA coefficient belongs to the "
-                "**ordered β position for that alternative**. A criterion can "
-                "therefore occupy different positions for different alternatives."
-            )
-        )
-
-    if criteria["method"] == "weighted_average":
-        traces = aggregation["criteriaAggregation"]["trace"]["alternatives"]
-        if traces:
-            first_sources = traces[0]["sources"]
-            weighted = [
-                {
-                    "name": source["criterionName"],
-                    "weight": source["effectiveWeight"],
-                }
-                for source in first_sources
-            ]
-            weighted.sort(
-                key=lambda item: -float(item["weight"])
-            )
-            top_weight = weighted[0]["weight"]
-            top = [
-                item
-                for item in weighted
-                if abs(
-                    float(item["weight"])
-                    - float(top_weight)
-                ) <= 1e-12
-            ]
-            lines.append(
-                (
-                    "- At the **leaf-criterion level used by this 2-tuple "
-                    "aggregation**, the largest effective criterion importance "
-                    "weight belongs to "
-                    + _bold_names(top)
-                    + f" at **{_percent(top_weight)}**."
-                )
-            )
-
-    lines.append(
-        (
-            "- The aggregation traces in the visual analysis show how each "
-            "executed β input and effective coefficient contributes to the "
-            "corresponding final β."
-        )
+    return _names(
+        extreme.get("evaluators") or [],
+        key="expertLabel",
+        noun="experts",
     )
 
-    return "\n".join(lines)
+
+def _personal_leading_group(
+    evaluator: dict[str, Any],
+) -> list[dict[str, Any]]:
+    personal = evaluator.get("personalResult") or {}
+    return personal.get("leadingGroup") or []
 
 
-def _evaluator_interpretation(
+def _personal_ranking_observation(
     facts: dict[str, Any],
-) -> str:
-    evaluators = facts["evaluators"]
-    items = evaluators["items"]
-
-    lines = [
-        "### Evaluator interpretation",
-        "",
-    ]
-
-    if len(items) == 1:
-        lines.append(
-            (
-                "- With only one evaluator, cross-evaluator alignment, "
-                "disagreement, LOEO, and evaluator-weight comparison are not "
-                "meaningful for this execution."
-            )
-        )
-        return "\n".join(lines)
-
-    closest = evaluators["closestToCollective"]
-    farthest = evaluators["farthestFromCollective"]
-
-    if closest.get("available"):
-        names = _bold_names(
-            closest["evaluators"],
-            key="expertLabel",
-        )
-        lines.append(
-            (
-                f"- Closest evaluator profile to the collective matrix: "
-                f"{names}, at mean absolute β distance "
-                f"**{_number(closest['value'])}**."
-            )
-        )
-
-    if farthest.get("available"):
-        names = _bold_names(
-            farthest["evaluators"],
-            key="expertLabel",
-        )
-        lines.append(
-            (
-                f"- Farthest evaluator profile from the collective matrix: "
-                f"{names}, at mean absolute β distance "
-                f"**{_number(farthest['value'])}**."
-            )
-        )
-
-    disagreement = evaluators["cellDisagreement"]
-    if disagreement["availability"].get("available"):
-        strongest = disagreement["strongestDisagreement"]
-        if strongest["items"]:
-            descriptions = [
-                (
-                    f"**{_escape(item['alternativeName'])} × "
-                    f"{_escape(item['criterionName'])}**"
-                )
-                for item in strongest["items"]
-            ]
-            lines.append(
-                (
-                    "- Strongest observed evaluator disagreement: "
-                    + ", ".join(descriptions)
-                    + f", with mean absolute distance "
-                    f"**{_number(strongest['value'])} β units**."
-                )
-            )
-
-    differing = [
-        item
-        for item in items
-        if not item["alignmentWithCollective"][
-            "technicalRankingMatchesCollective"
-        ]
-    ]
-    if differing:
-        lines.append(
-            (
-                f"- **{len(differing)} of {len(items)}** evaluators produce "
-                "a personal technical ranking different from the collective "
-                "ordering when the same configured criteria aggregation is "
-                "applied to their own matrix."
-            )
-        )
-    else:
-        lines.append(
-            "- Every evaluator's personal technical ranking matches the collective ordering."
-        )
-
-    return "\n".join(lines)
-
-
-def _robustness_group_text(
-    group: dict[str, Any],
-    *,
-    identity: str,
-) -> list[str]:
-    if not group["availability"].get("available"):
-        reason = group["availability"].get("reason")
-        if reason == "single_criterion":
-            return [
-                "- LOCO is unavailable because the execution has only one criterion."
-            ]
-        if reason == "single_evaluator":
-            return [
-                "- LOEO is unavailable because the execution has only one evaluator."
-            ]
-        if reason == "single_alternative":
-            return [
-                (
-                    f"- Leave-one-{identity}-out ranking diagnostics are "
-                    "not meaningful with only one alternative."
-                )
-            ]
-        return [
-            f"- Leave-one-{identity}-out analysis is unavailable."
-        ]
-
-    items = [
-        item
-        for item in group["items"]
-        if item.get("available")
-    ]
-    if not items:
-        return [
-            f"- No valid leave-one-{identity}-out counterfactual could be computed."
-        ]
-
-    ranking_changes = [
-        item
-        for item in items
-        if item["impact"]["technicalRankingChanged"]
-    ]
-    unchanged_count = len(items) - len(ranking_changes)
-    winner_changes = (
-        group["winnerStateChangingEvaluators"]
-        if identity == "evaluator"
-        else group["winnerStateChangingCriteria"]
-    )
-
-    if identity == "criterion":
-        noun_singular = "criterion"
-        noun_plural = "criteria"
-        winner_key = "name"
-    else:
-        noun_singular = "evaluator"
-        noun_plural = "evaluators"
-        winner_key = "expertLabel"
-
-    lines = []
-
-    if ranking_changes:
-        lines.append(
-            (
-                f"- The technical ordering remains unchanged after removing "
-                f"**{unchanged_count} of {len(items)} {noun_plural}**; "
-                f"removing the other **{len(ranking_changes)}** produces some "
-                "technical rank displacement."
-            )
-        )
-    else:
-        lines.append(
-            (
-                f"- The technical ordering is stable across all "
-                f"**{len(items)}** available single-{noun_singular} removals."
-            )
-        )
-
-    if winner_changes:
-        lines.append(
-            (
-                "- More importantly, the semantic winner state changes only "
-                f"when removing {_bold_names(winner_changes, key=winner_key)}."
-            )
-        )
-    else:
-        lines.append(
-            (
-                f"- None of the available single-{noun_singular} removals "
-                "changes the semantic winner state."
-            )
-        )
-
-    return lines
-
-
-def _robustness_interpretation(
-    facts: dict[str, Any],
-) -> str:
-    robustness = facts["robustness"]
-
-    lines = [
-        "### Robustness diagnostics",
-        "",
-        (
-            "- These are **counterfactual diagnostics**, not additional rules "
-            "of the 2-tuple linguistic model."
-        ),
-    ]
-    lines.extend(
-        _robustness_group_text(
-            robustness["leaveOneCriterionOut"],
-            identity="criterion",
-        )
-    )
-    lines.extend(
-        _robustness_group_text(
-            robustness["leaveOneEvaluatorOut"],
-            identity="evaluator",
-        )
-    )
-
-    return "\n".join(lines)
-
-
-def _nearest_weight_change(
-    group: dict[str, Any],
-    *,
-    identity_key: str,
-    label_key: str,
-) -> tuple[list[str], float] | None:
-    candidates: list[tuple[str, float]] = []
-
-    for item in group.get("items") or []:
-        if not item.get("available"):
-            continue
-        nearest = item["summary"][
-            "nearestObservedInteriorWinnerStateChange"
-        ]
-        if not nearest.get("available"):
-            continue
-        distance = nearest.get("absoluteWeightChange")
-        if not isinstance(distance, (int, float)):
-            continue
-        label = str(item.get(label_key) or item.get(identity_key) or "")
-        candidates.append((label, float(distance)))
-
-    if not candidates:
+    evaluators: list[dict[str, Any]],
+) -> str | None:
+    if (facts.get("counts") or {}).get("alternatives") == 1:
         return None
 
-    minimum = min(distance for _, distance in candidates)
-    labels = [
-        label
-        for label, distance in candidates
-        if abs(distance - minimum) <= 1e-12
+    capabilities = (facts.get("evaluators") or {}).get("capabilities") or {}
+    if not _available(capabilities.get("comparePersonalAndCollectiveRanking")):
+        return None
+
+    complete = [
+        item
+        for item in evaluators
+        if isinstance(item.get("alignmentWithCollective"), dict)
+        and isinstance(
+            item["alignmentWithCollective"].get(
+                "semanticLeadingGroupMatchesCollective"
+            ),
+            bool,
+        )
     ]
-    return labels, minimum
+    if not complete:
+        return None
+
+    leaders = _leaders(facts)
+    unique_collective_leader = len(leaders) == 1
+    different_leaders = [
+        item
+        for item in complete
+        if not item["alignmentWithCollective"][
+            "semanticLeadingGroupMatchesCollective"
+        ]
+    ]
+    different_order = [
+        item
+        for item in complete
+        if not item["alignmentWithCollective"].get(
+            "technicalRankingMatchesCollective"
+        )
+    ]
+
+    if different_leaders:
+        observations: list[str] = []
+        for evaluator in different_leaders[:2]:
+            expert_name = _bold(evaluator.get("expertLabel"))
+            personal_leaders = _personal_leading_group(evaluator)
+            personal_names = _names(personal_leaders)
+            if not expert_name or not personal_names:
+                continue
+
+            if unique_collective_leader:
+                collective_clause = (
+                    f"the collective result favored {_bold(leaders[0].get('name'))}"
+                )
+            else:
+                collective_clause = (
+                    "the collective evaluation left "
+                    f"{_names(leaders)} tied for the lead"
+                )
+
+            if len(personal_leaders) == 1:
+                personal_clause = f"favored {personal_names}"
+            else:
+                personal_clause = f"shared the lead between {personal_names}"
+            observations.append(
+                f"{expert_name}'s personal assessment {personal_clause}, "
+                f"while {collective_clause}"
+            )
+
+        if observations:
+            if len(different_leaders) > len(observations):
+                observations.append(
+                    f"the leading result also differed for "
+                    f"{len(different_leaders) - len(observations)} other experts"
+                )
+            return ". ".join(observations) + "."
+        return None
+
+    if different_order:
+        different_order_names = _names(
+            different_order,
+            key="expertLabel",
+            noun="experts",
+        )
+        if unique_collective_leader:
+            return (
+                f"The personal ordering from {different_order_names} differed "
+                "below the preferred option, but those assessments still "
+                f"favored {_bold(leaders[0].get('name'))}."
+            )
+        return (
+            f"The personal ordering from {different_order_names} differed, "
+            "but their assessments retained the collective leading group."
+        )
+
+    if unique_collective_leader:
+        return (
+            "Each expert's personal assessment also favored "
+            f"{_bold(leaders[0].get('name'))}, matching the collective result."
+        )
+    if leaders:
+        return "The experts' personal assessments retained the collective leading group."
+    return None
 
 
-def _sensitivity_group_text(
-    group: dict[str, Any],
+def _cell_observation(
+    evaluators: dict[str, Any],
+) -> str | None:
+    disagreement = evaluators.get("cellDisagreement") or {}
+    strongest = disagreement.get("strongestDisagreement") or {}
+    if not _available(disagreement.get("availability")):
+        return None
+    if float(strongest.get("value") or 0.0) <= EVIDENCE_TOLERANCE:
+        return None
+
+    items = strongest.get("items") or []
+    descriptions: list[str] = []
+    for item in items:
+        alternative = _text(item.get("alternativeName"))
+        criterion = _text(item.get("criterionName"))
+        description = (alternative, criterion)
+        if alternative and criterion and description not in descriptions:
+            descriptions.append(description)
+
+    if not descriptions:
+        return None
+
+    selected = descriptions[:2]
+    cells = [
+        f"{_bold(alternative)}'s {_bold(criterion)} assessment"
+        for alternative, criterion in selected
+    ]
+    if len(cells) == 1:
+        cell_text = cells[0]
+    else:
+        cell_text = f"{cells[0]} and {cells[1]}"
+    if len(descriptions) > len(selected):
+        cell_text += " and other assessment cells"
+
+    return (
+        "The clearest differences from the collective assessment appeared "
+        f"in {cell_text}."
+    )
+
+
+def _expert_interpretation(
+    facts: dict[str, Any],
+) -> str | None:
+    evaluator_data = facts.get("evaluators") or {}
+    items = evaluator_data.get("items") or []
+    evaluator_count = (facts.get("counts") or {}).get(
+        "evaluators",
+        len(items),
+    )
+
+    if evaluator_count == 1 or len(items) == 1:
+        expert_name = _bold(items[0].get("expertLabel")) if items else ""
+        who = f"{expert_name}'s alternative evaluations" if expert_name else "One expert's alternative evaluations"
+        return (
+            "### Expert perspectives\n\n"
+            f"Only {who} are represented, so this result cannot show "
+            "agreement or disagreement between different experts."
+        )
+
+    if not items:
+        return None
+
+    observations: list[str] = []
+    closest = evaluator_data.get("closestToCollective") or {}
+    farthest = evaluator_data.get("farthestFromCollective") or {}
+    closest_names = _extreme_names(closest) if _available(closest) else ""
+    farthest_names = _extreme_names(farthest) if _available(farthest) else ""
+
+    if closest_names and farthest_names:
+        observations.append(
+            f"The evaluations from {closest_names} were closest to the "
+            f"collective assessment; those from {farthest_names} differed "
+            "most across the assessed cells."
+        )
+    elif closest_names:
+        observations.append(
+            f"The evaluations from {closest_names} were closest to the collective "
+            "assessment across the assessed cells."
+        )
+    elif farthest_names:
+        observations.append(
+            f"The evaluations from {farthest_names} differed most from the "
+            "collective assessment across the assessed cells."
+        )
+    elif (
+        closest.get("reason") == "no_variation"
+        and farthest.get("reason") == "no_variation"
+    ):
+        observations.append(
+            "The experts' overall distances from the collective assessment "
+            "were equivalent, so the evidence does not identify one as "
+            "closer or farther."
+        )
+
+    if closest_names or farthest_names:
+        observations.append(
+            "These profile comparisons cover the alternative-and-criterion "
+            "assessments; distance alone does not show a different personal ranking."
+        )
+
+    ranking_observation = _personal_ranking_observation(facts, items)
+    if ranking_observation:
+        observations.append(ranking_observation)
+
+    cell_observation = _cell_observation(evaluator_data)
+    if cell_observation:
+        observations.append(cell_observation)
+
+    if not observations:
+        return None
+    return "### Expert perspectives\n\n" + " ".join(observations)
+
+
+def _item_label(item: dict[str, Any], kind: str) -> str:
+    key = "expertLabel" if kind == "evaluator" else "name"
+    name = item.get(key)
+    if not name:
+        name = item.get("expertKey" if kind == "evaluator" else "criterionId")
+    return _bold(name)
+
+
+def _counterfactual_lead(
+    item: dict[str, Any],
     *,
     kind: str,
-    evaluator_count: int,
-) -> list[str]:
-    if not group["availability"].get("available"):
-        reason = group["availability"].get("reason")
+) -> str:
+    result = item.get("counterfactualResult") or {}
+    winner = result.get("winner") or {}
+    leaders = result.get("leadingGroup") or []
+    removed = _item_label(item, kind)
 
-        if kind == "evaluator" and evaluator_count == 1:
-            return [
-                (
-                    "- Evaluator-weight sensitivity is not meaningful here: "
-                    "only one evaluator contributed to alternative evaluation."
-                )
-            ]
-        if reason == "criteria_aggregation_not_weighted_average":
-            return [
-                (
-                    "- Criterion-weight sensitivity is not applicable because "
-                    "the selected criteria aggregation does not use "
-                    "criterion-importance weights."
-                )
-            ]
-        if reason == "expert_aggregation_not_weighted_average":
-            return [
-                (
-                    "- Evaluator-weight sensitivity is not applicable because "
-                    "the selected expert aggregation does not use "
-                    "evaluator-importance weights."
-                )
-            ]
-        if reason == "single_criterion":
-            return [
-                "- Criterion-weight sensitivity is unavailable with one criterion."
-            ]
-        if reason == "single_evaluator":
-            return [
-                "- Evaluator-weight sensitivity is unavailable with one evaluator."
-            ]
-        if reason == "single_alternative":
-            return [
-                "- Weight sensitivity is not interpreted competitively with one alternative."
-            ]
-        return [
-            f"- {kind.capitalize()} weight sensitivity is unavailable."
-        ]
+    if _available(winner) and isinstance(winner.get("alternative"), dict):
+        target = _bold(winner["alternative"].get("name"))
+        return (
+            f"Removing {removed} changed the preferred alternative to "
+            f"{target} in this check."
+        )
+    if len(leaders) > 1:
+        target = _names(leaders)
+        return (
+            f"Removing {removed} left {target} tied for the lead in this check."
+        )
+    return (
+        f"Removing {removed} changed the leading result in this check, "
+        "so the analysis no longer identifies the same preferred alternative."
+    )
+
+
+def _robustness_group_observation(
+    group: dict[str, Any] | None,
+    *,
+    kind: str,
+    facts: dict[str, Any],
+) -> tuple[str | None, bool, bool, bool]:
+    if not isinstance(group, dict) or not _available(group.get("availability")):
+        return None, False, False, False
 
     items = [
         item
         for item in group.get("items") or []
-        if item.get("available")
+        if item.get("available") is not False
     ]
     if not items:
-        return [
-            f"- No valid {kind}-weight sensitivity items are available."
+        return None, False, False, False
+
+    changed = [
+        item
+        for item in items
+        if (item.get("impact") or {}).get("winnerStateChanged")
+        or (item.get("impact") or {}).get("semanticLeadingGroupChanged")
+    ]
+    label = "expert" if kind == "evaluator" else "criterion"
+    noun = "expert-removal" if kind == "evaluator" else "criterion-removal"
+
+    if changed:
+        details = [
+            _counterfactual_lead(item, kind=kind)
+            for item in changed[:2]
         ]
+        if len(changed) > len(details):
+            details.append(
+                f"The leading result also changed in {len(changed) - len(details)} other checks."
+            )
+        paragraph = " ".join(details)
+        if kind == "criterion":
+            paragraph += (
+                " This flags sensitivity to the criterion's inclusion; it "
+                "does not establish that the criterion caused the result."
+            )
+        else:
+            paragraph += (
+                " This makes that expert's contribution relevant when "
+                "assessing how stable the recommendation is."
+            )
+        return paragraph, True, False, False
 
-    name_key = "expertLabel" if kind == "evaluator" else "name"
-    noun = "evaluators" if kind == "evaluator" else "criteria"
-
-    interior_items = [
-        item
+    rank_changed = any(
+        (item.get("impact") or {}).get("technicalRankingChanged")
         for item in items
-        if item["summary"][
-            "interiorWinnerStateChangedSampleCount"
-        ] > 0
-    ]
-    endpoint_only_items = [
-        item
-        for item in items
-        if item["summary"][
-            "winnerStateChangesOnlyAtEndpoints"
-        ]
-    ]
-    no_change_items = [
-        item
-        for item in items
-        if item["summary"]["winnerStateChangedSampleCount"] == 0
+    )
+    leaders = _leaders(facts)
+    if len(leaders) == 1:
+        paragraph = (
+            f"{_bold(leaders[0].get('name'))} remained the preferred "
+            f"alternative across the available {noun} checks."
+        )
+        if rank_changed:
+            paragraph += " Some other alternatives changed position."
+    elif leaders:
+        paragraph = (
+            f"The same leading group, {_names(leaders)}, remained in place "
+            f"across the available {noun} checks."
+        )
+        if rank_changed:
+            paragraph += " The stored ordering changed in some checks."
+    else:
+        paragraph = (
+            f"The leading result remained unchanged across the available "
+            f"{label}-removal checks."
+        )
+    return paragraph, True, True, rank_changed
+
+
+def _changed_points(item: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        point
+        for point in item.get("points") or []
+        if (point.get("changesFromBaseline") or {}).get(
+            "winnerStateChanged"
+        )
+        or (point.get("changesFromBaseline") or {}).get(
+            "semanticLeadingGroupChanged"
+        )
     ]
 
-    endpoint_one_only: list[dict[str, Any]] = []
-    endpoint_zero_only: list[dict[str, Any]] = []
-    endpoint_both: list[dict[str, Any]] = []
 
-    for item in endpoint_only_items:
+def _sensitivity_leading_result_change(
+    facts: dict[str, Any],
+    items: list[dict[str, Any]],
+) -> str | None:
+    baseline = _leaders(facts)
+    baseline_ids = tuple(
+        sorted(
+            _text(item.get("alternativeId") or item.get("name"))
+            for item in baseline
+        )
+    )
+    changed_groups: dict[tuple[str, ...], list[dict[str, Any]]] = {}
+
+    for item in items:
+        for point in _changed_points(item):
+            result = point.get("result") or {}
+            leaders = result.get("leadingGroup") or []
+            if not leaders:
+                continue
+            group_ids = tuple(
+                sorted(
+                    _text(leader.get("alternativeId") or leader.get("name"))
+                    for leader in leaders
+                )
+            )
+            changed_groups[group_ids] = leaders
+
+    if len(changed_groups) != 1:
+        return None
+
+    changed_ids, changed_leaders = next(iter(changed_groups.items()))
+    if changed_ids == baseline_ids:
+        return None
+
+    changed_description = _leader_description(changed_leaders)
+    if len(baseline) == 1 and len(changed_leaders) == 1:
+        return (
+            f"The preferred alternative shifted from {_bold(baseline[0].get('name'))} "
+            f"to {_bold(changed_leaders[0].get('name'))}."
+        )
+    return (
+        f"The leading result shifted from {_leader_description(baseline)} "
+        f"to {changed_description}."
+    )
+
+
+def _sensitivity_group_observation(
+    group: dict[str, Any] | None,
+    *,
+    kind: str,
+    facts: dict[str, Any],
+) -> tuple[str | None, bool]:
+    if not isinstance(group, dict) or not _available(group.get("availability")):
+        return None, False
+
+    items = [
+        item
+        for item in group.get("items") or []
+        if item.get("available") is not False and isinstance(item.get("summary"), dict)
+    ]
+    if not items:
+        return None, False
+
+    weight_phrase = (
+        "how much importance each expert received"
+        if kind == "evaluator"
+        else "how much importance each criterion received"
+    )
+    noun = "evaluator-importance" if kind == "evaluator" else "criterion-importance"
+    changed_items: list[dict[str, Any]] = []
+    interior_items: list[dict[str, Any]] = []
+    endpoint_details: list[tuple[dict[str, Any], str]] = []
+    rank_only_items: list[dict[str, Any]] = []
+
+    for item in items:
+        summary = item["summary"]
+        points = _changed_points(item)
+        winner_count = summary.get("winnerStateChangedSampleCount", 0)
+        leader_count = summary.get("semanticLeadingGroupChangedSampleCount", 0)
+        has_change = bool(points) or winner_count > 0 or leader_count > 0
+        if has_change:
+            changed_items.append(item)
+
+        interior = any(
+            0 < float(point.get("variedWeight", 0)) < 1
+            for point in points
+        ) or summary.get("interiorWinnerStateChangedSampleCount", 0) > 0
+        if interior:
+            interior_items.append(item)
+
         endpoints = {
-            change["endpoint"]
-            for change in item["summary"][
-                "endpointWinnerStateChanges"
-            ]
+            "one" if abs(float(point.get("variedWeight", -1)) - 1) <= 1e-9 else "zero"
+            for point in points
+            if abs(float(point.get("variedWeight", -1))) <= 1e-9
+            or abs(float(point.get("variedWeight", -1)) - 1) <= 1e-9
         }
-        if endpoints == {"one"}:
-            endpoint_one_only.append(item)
-        elif endpoints == {"zero"}:
-            endpoint_zero_only.append(item)
-        elif endpoints == {"zero", "one"}:
-            endpoint_both.append(item)
+        endpoints.update(
+            change.get("endpoint")
+            for change in summary.get("endpointWinnerStateChanges") or []
+            if change.get("endpoint") in {"zero", "one"}
+        )
+        if not interior:
+            endpoint_details.extend((item, endpoint) for endpoint in sorted(endpoints))
 
-    lines: list[str] = []
+        if not has_change and summary.get("technicalRankingChangedSampleCount", 0) > 0:
+            rank_only_items.append(item)
+
+    changed_names = _names(
+        changed_items,
+        key="expertLabel" if kind == "evaluator" else "name",
+        noun="experts" if kind == "evaluator" else "criteria",
+    )
+    interior_names = _names(
+        interior_items,
+        key="expertLabel" if kind == "evaluator" else "name",
+        noun="experts" if kind == "evaluator" else "criteria",
+    )
 
     if interior_items:
-        lines.append(
-            (
-                f"- **{len(interior_items)} {noun}** show an interior sampled "
-                "sensitivity of the semantic winner: "
-                f"{_bold_names(interior_items, key=name_key)}."
-            )
+        paragraph = (
+            f"In some interior tested scenarios, changing the importance "
+            f"assigned to {interior_names} changed the leading result. "
+            "This makes the assigned importance worth reviewing."
         )
+        target_change = _sensitivity_leading_result_change(
+            facts,
+            interior_items,
+        )
+        if target_change:
+            paragraph = paragraph.replace(
+                "This makes the assigned importance worth reviewing.",
+                f"{target_change} This makes the assigned importance worth reviewing.",
+            )
+    elif changed_items and endpoint_details:
+        all_weight = [item for item, endpoint in endpoint_details if endpoint == "one"]
+        zero_weight = [item for item, endpoint in endpoint_details if endpoint == "zero"]
+        clauses: list[str] = []
+        name_key = "expertLabel" if kind == "evaluator" else "name"
+        group_noun = "experts" if kind == "evaluator" else "criteria"
+        if all_weight:
+            clauses.append(
+                f"giving all importance to {_names(all_weight, key=name_key, noun=group_noun)}"
+            )
+        if zero_weight:
+            clauses.append(
+                f"giving no importance to {_names(zero_weight, key=name_key, noun=group_noun)}"
+            )
+        paragraph = (
+            "Only extreme tested settings changed the leading result: "
+            + " and ".join(clauses)
+            + "."
+        )
+        if zero_weight:
+            paragraph += " In those checks, the remaining importance was redistributed."
+        target_change = _sensitivity_leading_result_change(
+            facts,
+            changed_items,
+        )
+        if target_change:
+            paragraph += f" {target_change}"
+    elif changed_items:
+        paragraph = (
+            f"The tested {noun} scenarios changed the leading result for "
+            f"{changed_names}."
+        )
+        target_change = _sensitivity_leading_result_change(
+            facts,
+            changed_items,
+        )
+        if target_change:
+            paragraph += f" {target_change}"
     else:
-        lines.append(
-            (
-                f"- No interior sampled {kind}-weight change alters the "
-                "semantic winner state."
-            )
+        paragraph = (
+            "The leading result remained unchanged across the tested "
+            f"changes to {weight_phrase}."
         )
+        if rank_only_items:
+            if len(leaders) == 1:
+                paragraph += " Some other alternatives changed position."
+            else:
+                paragraph += " The stored ordering changed, but the leading group did not."
 
-    identity_key = "expertKey" if kind == "evaluator" else "criterionId"
-    nearest = _nearest_weight_change(
-        group,
-        identity_key=identity_key,
-        label_key=name_key,
-    )
-    if nearest is not None:
-        labels, distance = nearest
-        formatted = [f"**{_escape(label)}**" for label in labels]
-        lines.append(
-            (
-                "- The closest observed interior winner-state change to a "
-                f"configured baseline occurs for {', '.join(formatted)}, "
-                f"after an absolute weight move of **{_number(distance)}**."
-            )
-        )
-
-    noun_singular = (
-        "evaluator"
-        if kind == "evaluator"
-        else "criterion"
-    )
-    noun_plural = (
-        "evaluators"
-        if kind == "evaluator"
-        else "criteria"
-    )
-    weight_label = (
-        "evaluator"
-        if kind == "evaluator"
-        else "criterion"
-    )
-
-    if endpoint_one_only:
-        if len(endpoint_one_only) == 1:
-            lines.append(
-                (
-                    f"- {_bold_names(endpoint_one_only, key=name_key)} "
-                    "changes the winner state only at the extreme endpoint "
-                    f"**w = 1.0**, where that {weight_label} receives all "
-                    f"importance and every other {weight_label} weight "
-                    "becomes zero. This is an extreme endpoint scenario "
-                    "rather than ordinary local sensitivity."
-                )
-            )
-        else:
-            lines.append(
-                (
-                    f"- **{len(endpoint_one_only)} {noun_plural}** change the "
-                    "winner state only at the extreme endpoint **w = 1.0**. "
-                    f"In each such scenario, the selected {weight_label} "
-                    f"receives all importance and every other {weight_label} "
-                    "weight becomes zero. These are extreme endpoint scenarios "
-                    "rather than ordinary local sensitivity."
-                )
-            )
-
-    if endpoint_zero_only:
-        if len(endpoint_zero_only) == 1:
-            lines.append(
-                (
-                    f"- {_bold_names(endpoint_zero_only, key=name_key)} "
-                    "changes the winner state only at **w = 0.0**, where that "
-                    f"{weight_label} is assigned zero importance and the "
-                    f"remaining {noun_plural} weights are redistributed "
-                    "proportionally."
-                )
-            )
-        else:
-            lines.append(
-                (
-                    f"- {_named_group(endpoint_zero_only, key=name_key, noun=noun_plural)} "
-                    "change the winner state only at **w = 0.0**. In each such "
-                    f"scenario, the selected {weight_label} is assigned zero "
-                    f"importance and the remaining {noun_plural} weights are "
-                    "redistributed proportionally."
-                )
-            )
-
-    if endpoint_both:
-        if len(endpoint_both) == 1:
-            lines.append(
-                (
-                    f"- {_bold_names(endpoint_both, key=name_key)} changes "
-                    "the winner state at **both endpoints**: **w = 0.0** "
-                    f"removes that {weight_label} from the weighted "
-                    f"aggregation, whereas **w = 1.0** makes it the only "
-                    f"{weight_label} with non-zero weight."
-                )
-            )
-        else:
-            lines.append(
-                (
-                    f"- {_named_group(endpoint_both, key=name_key, noun=noun_plural)} "
-                    "change the winner state at **both endpoints**. At "
-                    f"**w = 0.0** the selected {weight_label} is removed from "
-                    "the weighted aggregation; at **w = 1.0** it becomes the "
-                    f"only {weight_label} with non-zero weight."
-                )
-            )
-
-    if no_change_items:
-        if len(no_change_items) == 1:
-            lines.append(
-                (
-                    f"- {_bold_names(no_change_items, key=name_key)} shows no "
-                    "sampled winner-state change across the tested weight range."
-                )
-            )
-        else:
-            lines.append(
-                (
-                    f"- {_named_group(no_change_items, key=name_key, noun=noun_plural)} "
-                    "show no sampled winner-state change across the tested "
-                    "weight range."
-                )
-            )
-
-    return lines
+    return paragraph, True
 
 
-def _sensitivity_interpretation(
+def _positional_weight_notes(
     facts: dict[str, Any],
-) -> str:
-    sensitivity = facts["sensitivity"]
-    evaluator_count = facts["counts"]["evaluators"]
-
-    lines = [
-        "### Weight sensitivity",
-        "",
-        (
-            "- Sensitivity is evaluated on a sampled 0–1 grid in steps of "
-            "0.05, plus each exact configured baseline weight. It identifies "
-            "**observed sampled changes**, not exact mathematical breakpoints."
-        ),
-    ]
-    lines.extend(
-        _sensitivity_group_text(
-            sensitivity["criterionWeights"],
-            kind="criterion",
-            evaluator_count=evaluator_count,
+    sensitivity: dict[str, Any],
+) -> list[str]:
+    aggregation = facts.get("aggregation") or {}
+    notes: list[str] = []
+    for kind, stage, group_key in (
+        ("criterion", "criteriaAggregation", "criterionWeights"),
+        ("expert", "expertAggregation", "expertWeights"),
+    ):
+        summary = (
+            (aggregation.get(stage) or {}).get("summary") or {}
         )
-    )
-    lines.extend(
-        _sensitivity_group_text(
-            sensitivity["expertWeights"],
-            kind="evaluator",
-            evaluator_count=evaluator_count,
-        )
-    )
-
-    return "\n".join(lines)
-
-
-def _limits_interpretation(
-    facts: dict[str, Any],
-) -> str:
-    aggregation = facts["aggregation"]
-    expert_method = aggregation["expertAggregation"][
-        "summary"
-    ]["method"]
-    criteria_method = aggregation["criteriaAggregation"][
-        "summary"
-    ]["method"]
-
-    lines = [
-        "### Interpretation limits",
-        "",
-        (
-            "- Final **β** values are positions on the common linguistic "
-            "scale. They are not probabilities, percentages, confidence "
-            "values, or normalized performance scores."
-        ),
-        (
-            "- **α** is symbolic translation around the selected "
-            "linguistic label, not uncertainty."
-        ),
-        (
-            "- Observed criterion β range describes separation among "
-            "the evaluated alternatives. It is not a causal or "
-            "counterfactual importance measure."
-        ),
-        (
-            "- LOCO, LOEO, evaluator-distance, disagreement, and "
-            "weight-sensitivity outputs are application-level "
-            "diagnostics derived from the executed evidence; they "
-            "are not additional normative operators from the "
-            "2-tuple linguistic model."
-        ),
-    ]
-
-    if expert_method == "l2towa" or criteria_method == "l2towa":
-        lines.append(
-            (
-                "- L2TOWA weights are **positional OWA weights after "
-                "descending β ordering**. They must not be interpreted "
-                "as permanent importance weights of the expert or "
-                "criterion occupying that position."
+        group = sensitivity.get(group_key) or {}
+        if (
+            summary.get("method") == "l2towa"
+            and group.get("availability", {}).get("reason")
+            in {
+                "criteria_aggregation_not_weighted_average",
+                "expert_aggregation_not_weighted_average",
+            }
+        ):
+            subject = "criteria" if kind == "criterion" else "experts"
+            singular = "criterion" if kind == "criterion" else "expert"
+            notes.append(
+                f"For {subject} aggregation, weights follow assessment values "
+                f"from highest to lowest, rather than specific {subject}. "
+                f"There is no fixed importance assigned to a named {singular} "
+                "to vary."
             )
+    return notes
+
+
+def _stability_interpretation(
+    facts: dict[str, Any],
+) -> str | None:
+    observations: list[str] = []
+    robustness = facts.get("robustness") or {}
+    robustness_findings: dict[str, tuple[str, bool, bool]] = {}
+    for group_key, kind in (
+        ("leaveOneEvaluatorOut", "evaluator"),
+        ("leaveOneCriterionOut", "criterion"),
+    ):
+        observation, available, stable, rank_changed = _robustness_group_observation(
+            robustness.get(group_key),
+            kind=kind,
+            facts=facts,
+        )
+        if observation and available:
+            robustness_findings[kind] = (observation, stable, rank_changed)
+
+    stable_kinds = {
+        kind
+        for kind, (_, stable, _) in robustness_findings.items()
+        if stable
+    }
+    if stable_kinds == {"evaluator", "criterion"}:
+        leaders = _leaders(facts)
+        if len(leaders) == 1:
+            result_text = f"{_bold(leaders[0].get('name'))} remained the preferred alternative"
+        elif leaders:
+            result_text = (
+                f"The leading group, {_names(leaders)}, remained the same"
+            )
+        else:
+            result_text = "The leading result remained the same"
+        observations.append(
+            f"{result_text} after each available single-expert and "
+            "single-criterion removal."
+        )
+        if any(
+            rank_changed
+            for _, _, rank_changed in robustness_findings.values()
+        ):
+            if len(leaders) == 1:
+                observations.append(
+                    "Other alternatives changed position in some checks."
+                )
+            else:
+                observations.append(
+                    "The stored ordering changed in some checks, but the "
+                    "leading group did not."
+                )
+    else:
+        observations.extend(
+            observation
+            for observation, _, _ in robustness_findings.values()
         )
 
-    return "\n".join(lines)
+    sensitivity = facts.get("sensitivity") or {}
+    has_sensitivity = False
+    for group_key, kind in (
+        ("criterionWeights", "criterion"),
+        ("expertWeights", "evaluator"),
+    ):
+        observation, available = _sensitivity_group_observation(
+            sensitivity.get(group_key),
+            kind=kind,
+            facts=facts,
+        )
+        if observation and available:
+            observations.append(observation)
+            has_sensitivity = True
+
+    observations.extend(_positional_weight_notes(facts, sensitivity))
+    if has_sensitivity:
+        observations.append(
+            "The weight checks are sampled and do not guarantee stability at every possible weighting."
+        )
+
+    if not observations:
+        return None
+    return "### Stability and points to review\n\n" + " ".join(observations)
 
 
 def build_interpretation(
     facts: dict[str, Any],
 ) -> str:
-    """Render validated analysis facts as user-facing Markdown."""
+    """Render a concise, deterministic narrative from validated analysis facts."""
 
     sections = [
-        _result_interpretation(facts),
-        _linguistic_interpretation(facts),
-        _aggregation_interpretation(facts),
-        _evaluator_interpretation(facts),
-        _robustness_interpretation(facts),
-        _sensitivity_interpretation(facts),
-        _limits_interpretation(facts),
+        _overall_result(facts),
+        _expert_interpretation(facts),
+        _stability_interpretation(facts),
     ]
+    return "\n\n".join(section for section in sections if section)
 
-    return "\n\n".join(
-        section
-        for section in sections
-        if section.strip()
-    )
+
+__all__ = ["build_interpretation"]
