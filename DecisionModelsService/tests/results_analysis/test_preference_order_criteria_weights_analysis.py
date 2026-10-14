@@ -94,7 +94,7 @@ def _context(execution):
     }
 
 
-def test_multi_expert_analysis_builds_the_agreed_five_views_and_mcc_facts():
+def test_multi_expert_analysis_builds_preference_and_mcc_views_with_facts():
     expert_1 = {
         "c1": 0.5,
         "c2": 1.0 / 3.0,
@@ -234,6 +234,11 @@ def test_multi_expert_analysis_builds_the_agreed_five_views_and_mcc_facts():
         is True
     )
 
+    assert {
+        item["criterionId"]: item["collectiveWeight"]
+        for item in analysis["facts"]["criteria"]["items"]
+    } == collective
+
     assert abs(
         analysis[
             "facts"
@@ -272,7 +277,6 @@ def test_multi_expert_analysis_builds_the_agreed_five_views_and_mcc_facts():
             "visualizations"
         ]
     ] == [
-        "collective-criterion-importance",
         "individual-preference-distribution",
         "mcc-adjustment-map",
         "mcc-adjustment-effort-by-expert",
@@ -289,6 +293,17 @@ def test_multi_expert_analysis_builds_the_agreed_five_views_and_mcc_facts():
         "criterion-preferences-importance",
         "mcc-consensus-adjustment",
     ]
+
+    assert all(
+        section["visualizations"]
+        for section in analysis["sections"]
+    )
+    assert analysis["sections"][0]["title"] == (
+        "Individual criterion preferences"
+    )
+    assert analysis["sections"][0]["description"] == (
+        "Individual ordinal priorities before collective aggregation."
+    )
 
     assert (
         analysis[
@@ -374,9 +389,17 @@ def test_single_expert_analysis_omits_mcc_section():
             "visualizations"
         ]
     ] == [
-        "collective-criterion-importance",
         "individual-preference-distribution",
     ]
+
+    assert {
+        item["criterionId"]: item["collectiveWeight"]
+        for item in analysis["facts"]["criteria"]["items"]
+    } == {
+        "c1": 0.5,
+        "c2": 1.0 / 3.0,
+        "c3": 1.0 / 6.0,
+    }
 
     assert [
         section["id"]
@@ -387,6 +410,14 @@ def test_single_expert_analysis_omits_mcc_section():
     ] == [
         "criterion-preferences-importance",
     ]
+
+    assert all(
+        section["visualizations"]
+        for section in analysis["sections"]
+    )
+    assert analysis["sections"][0]["title"] == (
+        "Individual criterion preferences"
+    )
 
     assert (
         "MCC consensus adjustment"

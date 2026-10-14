@@ -89,6 +89,12 @@ export const evaluationPluginPanelSx = {
   p: { xs: 1.35, md: 1.65 },
 };
 
+export const evaluationPluginEmptyPanelSx = {
+  display: "flex",
+  flexDirection: "column",
+  height: "100%",
+};
+
 export const evaluationPluginRendererViewportSx = {
   ...localScrollbarSx,
   mt: 1.15,
@@ -101,6 +107,24 @@ export const evaluationPluginRendererViewportSx = {
   borderRadius: 1.8,
   border: "1px solid rgba(255,255,255,0.08)",
   bgcolor: "rgba(3, 10, 17, 0.32)",
+};
+
+export const evaluationPluginEmptyStateSx = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 0.65,
+  flex: "1 1 auto",
+  width: "100%",
+  minWidth: 0,
+  minHeight: { xs: 220, sm: 260 },
+  px: { xs: 1.5, sm: 2.5 },
+  py: 2,
+  textAlign: "center",
+  border: 0,
+  borderRadius: 0,
+  bgcolor: "transparent",
 };
 
 export const evaluationsLowerGridSx = {
@@ -127,6 +151,43 @@ export const evaluationsPanelHeaderSx = {
   gap: 0.8,
   mb: 1.15,
 };
+
+export const expressionDomainGridSx = (domainCount) => ({
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    lg:
+      domainCount > 1
+        ? "repeat(2, minmax(0, 1fr))"
+        : "minmax(0, 1fr)",
+  },
+  gap: 1,
+  minWidth: 0,
+});
+
+export const expressionDomainCardSx = {
+  minWidth: 0,
+  p: 1.1,
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 2,
+  bgcolor: "rgba(3,10,17,0.26)",
+};
+
+export const expressionDomainCriteriaListSx = (criteriaCount) => ({
+  ...(criteriaCount > 5 ? localScrollbarSx : {}),
+  m: 0,
+  mt: 0.55,
+  pl: 2.2,
+  maxHeight: criteriaCount > 5 ? 112 : "none",
+  overflowY: criteriaCount > 5 ? "auto" : "visible",
+  overflowX: "hidden",
+  color: "text.secondary",
+  "& li": {
+    py: 0.15,
+    lineHeight: 1.45,
+    overflowWrap: "anywhere",
+  },
+});
 
 export const evaluationsScrollableSx = (kind) => ({
   ...localScrollbarSx,

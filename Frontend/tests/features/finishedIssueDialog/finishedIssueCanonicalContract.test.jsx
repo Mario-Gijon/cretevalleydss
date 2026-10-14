@@ -55,6 +55,7 @@ describe("Finished Issue canonical contract", () => {
     const { result } = renderHook(() => useFinishedIssueDialogView({ selectedIssue: { id: "issue-1" }, openFinishedIssueDialog: true }));
     await waitFor(() => expect(result.current.dialog.loading).toBe(false));
     expect(getFinishedIssueInfo).toHaveBeenCalledTimes(1);
+    expect(result.current.resultsAnalysisNavigation.activeView).toBe("visualizations");
     expect(result.current.header.selectedPhase).toBe(5);
     expect(result.current.navigation.availableTabs).toEqual(["dashboard", "overview", "results-analysis", "evaluations", "models"]);
     expect(result.current.header.showRounds).toBe(true);
@@ -82,16 +83,25 @@ describe("Finished Issue canonical contract", () => {
     const { result } = renderHook(() => useFinishedIssueDialogView({ selectedIssue: { id: "issue-1" }, openFinishedIssueDialog: true }));
 
     await waitFor(() => expect(result.current.dialog.loading).toBe(false));
+    expect(result.current.resultsAnalysisNavigation.activeView).toBe("visualizations");
     act(() => result.current.resultsAnalysis.selection.addExecution("scenario-ok"));
     expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base", "scenario-ok"]);
 
-    act(() => result.current.resultsAnalysisNavigation.setActiveView("visualizations"));
-    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base", "scenario-ok"]);
     act(() => result.current.resultsAnalysisNavigation.setActiveView("interpretation"));
+    expect(result.current.resultsAnalysisNavigation.activeView).toBe("interpretation");
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base", "scenario-ok"]);
+    act(() => result.current.resultsAnalysisNavigation.setActiveView("visualizations"));
     expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["base", "scenario-ok"]);
     act(() => result.current.resultsAnalysis.selection.removeExecution("base"));
     expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["scenario-ok"]);
     act(() => result.current.resultsAnalysisNavigation.setActiveView("outcome"));
+    expect(result.current.resultsAnalysisNavigation.activeView).toBe("visualizations");
+    expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["scenario-ok"]);
+
+    act(() => result.current.resultsAnalysisNavigation.setActiveView("interpretation"));
+    act(() => result.current.navigation.selectTab("dashboard"));
+    act(() => result.current.navigation.selectTab("results-analysis"));
+    expect(result.current.resultsAnalysisNavigation.activeView).toBe("visualizations");
     expect(result.current.resultsAnalysis.selection.selectedExecutionKeys).toEqual(["scenario-ok"]);
     expect(result.current.runs.selectedExecutionKey).toBe("base");
   });

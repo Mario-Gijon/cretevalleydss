@@ -8,7 +8,6 @@ import {
   evaluationsStageDividerWideSx,
   evaluationsWorkspaceSx,
 } from "../evaluations.styles";
-import EvaluationParticipationPanel from "./EvaluationParticipationPanel";
 import EvaluationPluginPanel from "./EvaluationPluginPanel";
 import EvaluationsEvidenceFooter from "./EvaluationsEvidenceFooter";
 import EvaluationsHeader from "./EvaluationsHeader";
@@ -40,6 +39,8 @@ const EvaluationsView = ({ data, state, actions }) => {
           <EvaluationPluginPanel
             stageData={data.criteriaWeighting}
             showCollective={state.showCollective}
+            expertName={data.selectedExpertName}
+            consensusEnabled={data.consensus.enabled}
           />
 
           {bothStages ? (
@@ -62,16 +63,13 @@ const EvaluationsView = ({ data, state, actions }) => {
           <EvaluationPluginPanel
             stageData={data.alternativeEvaluation}
             showCollective={state.showCollective}
+            expertName={data.selectedExpertName}
+            consensusEnabled={data.consensus.enabled}
           />
         </Box>
       </Box>
 
       <Box sx={evaluationsLowerGridSx}>
-        <EvaluationParticipationPanel
-          participation={data.participation}
-          hasCriteriaWeighting={data.criteriaWeighting.available}
-          hasAlternativeEvaluation={data.alternativeEvaluation.available}
-        />
         <ExpressionDomainsPanel domains={data.domains} />
       </Box>
 

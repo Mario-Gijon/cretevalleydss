@@ -20,6 +20,7 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
   });
   const navigation = useFinishedIssueNavigation({
     payload: data.payload,
+    open: openFinishedIssueDialog,
   });
   const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload, selectedPhase: navigation.selectedPhase });
   const resultsExecutionOptions = useMemo(

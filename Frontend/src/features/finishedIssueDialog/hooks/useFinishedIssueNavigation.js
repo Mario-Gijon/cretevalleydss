@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { selectAlternativePhaseResults } from "../logic/selectFinishedIssueExecution.js";
 import { FINISHED_ISSUE_TABS, FINISHED_ISSUE_VIEWS } from "../shared/logic/finishedIssueNavigation.js";
-import { RESULTS_ANALYSIS_VIEWS } from "../sections/resultsAnalysis";
+import { RESULTS_ANALYSIS_VIEWS, isResultsAnalysisView } from "../sections/resultsAnalysis/logic/resultsAnalysisNavigation.js";
 
-export const useFinishedIssueNavigation = ({ payload }) => {
+export const useFinishedIssueNavigation = ({ payload, open = true }) => {
   const [activeView, setActiveView] = useState(FINISHED_ISSUE_VIEWS.DASHBOARD);
-  const [activeResultsAnalysisView, setActiveResultsAnalysisView] = useState(RESULTS_ANALYSIS_VIEWS.OUTCOME);
+  const [activeResultsAnalysisView, setActiveResultsAnalysisView] = useState(RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS);
   const [selectedPhase, setSelectedPhase] = useState(null);
   const basePhases = useMemo(
     () => selectAlternativePhaseResults(payload).map((result) => result.phase),
@@ -21,9 +21,15 @@ export const useFinishedIssueNavigation = ({ payload }) => {
       setSelectedPhase(basePhases.at(-1) ?? null);
     }
   }, [basePhases, selectedPhase]);
+  useEffect(() => {
+    if (open) setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS);
+  }, [open]);
+  const handleSetActiveResultsAnalysisView = (view) => {
+    if (isResultsAnalysisView(view)) setActiveResultsAnalysisView(view);
+  };
   const handleSelectTab = (tab) => {
     if (tab === FINISHED_ISSUE_TABS.RESULTS_ANALYSIS) {
-      setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
+      setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS);
     }
     setActiveView(tab);
   };
@@ -45,7 +51,7 @@ export const useFinishedIssueNavigation = ({ payload }) => {
     selectedPhase,
     basePhases,
     availableTabs,
-    setActiveResultsAnalysisView,
+    setActiveResultsAnalysisView: handleSetActiveResultsAnalysisView,
     handleChangePhase,
     handleSelectTab,
   };

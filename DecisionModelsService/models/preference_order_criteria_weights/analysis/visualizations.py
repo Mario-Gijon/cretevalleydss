@@ -63,102 +63,6 @@ def _names(
     )
 
 
-def _collective_importance(
-    facts: dict[str, Any],
-) -> dict[str, Any] | None:
-    criteria = facts[
-        "criteria"
-    ]["items"]
-
-    if not criteria:
-        return None
-
-    ordered = sorted(
-        criteria,
-        key=lambda item: (
-            -float(
-                item[
-                    "collectiveWeight"
-                ]
-            ),
-            int(
-                item[
-                    "collectiveRank"
-                ]
-            ),
-            item["name"],
-        ),
-    )
-
-    leaders = facts[
-        "criteria"
-    ]["collectiveLeaders"]
-
-    if len(leaders) == 1:
-        insight = (
-            f"{leaders[0]['name']} "
-            "receives the highest "
-            "collective weight."
-        )
-    else:
-        insight = (
-            f"{_names(leaders)} "
-            "share the highest "
-            "collective weight."
-        )
-
-    return {
-        "key": (
-            "collective-criterion-importance"
-        ),
-        "type": "bar",
-        "title": (
-            "Collective criterion importance"
-        ),
-        "description": (
-            "Final collective importance "
-            "assigned to each criterion after "
-            "the executed preference-order "
-            "weighting workflow."
-        ),
-        "insight": insight,
-        "orientation": "horizontal",
-        "xAxis": {
-            "label": (
-                "Collective criterion weight"
-            )
-        },
-        "yAxis": {
-            "label": "Criterion"
-        },
-        "data": {
-            "categories": [
-                item["name"]
-                for item in ordered
-            ],
-            "series": [
-                {
-                    "key": (
-                        "collective-weight"
-                    ),
-                    "label": (
-                        "Collective weight"
-                    ),
-                    "values": [
-                        _display(
-                            item[
-                                "collectiveWeight"
-                            ]
-                        )
-                        for item
-                        in ordered
-                    ],
-                }
-            ],
-        },
-    }
-
-
 def _individual_preference_distribution(
     facts: dict[str, Any],
 ) -> dict[str, Any] | None:
@@ -751,15 +655,9 @@ def _mcc_effort_by_criterion(
 def build_visualizations(
     facts: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """
-    Build the five agreed
-    model-owned visualizations.
-    """
+    """Build model-owned preference and MCC visualizations."""
 
     visualizations = [
-        _collective_importance(
-            facts
-        ),
         _individual_preference_distribution(
             facts
         ),
@@ -807,7 +705,6 @@ def build_visualization_sections(
     }
 
     preference_keys = (
-        "collective-criterion-importance",
         "individual-preference-distribution",
     )
 
@@ -817,12 +714,11 @@ def build_visualization_sections(
                 "criterion-preferences-importance"
             ),
             "title": (
-                "Criterion preferences & importance"
+                "Individual criterion preferences"
             ),
             "description": (
-                "Individual ordinal priorities "
-                "and the final collective "
-                "criterion importance."
+                "Individual ordinal priorities before "
+                "collective aggregation."
             ),
             "order": 0,
             "presentation": {

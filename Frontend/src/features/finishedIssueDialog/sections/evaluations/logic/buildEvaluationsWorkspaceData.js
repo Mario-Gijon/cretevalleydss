@@ -1,4 +1,5 @@
 import { getExpressionDomainDisplayMeta } from "../../../../../utils/expressionDomains";
+import { isPlainObject } from "../../../../../utils/common/objects";
 import { formatParticipationLabel } from "./formatParticipationLabel";
 import { resolveFinishedExpertIdentity } from "./resolveFinishedExpertIdentity";
 
@@ -99,6 +100,8 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
       collective: null,
       submittedAt: null,
       hasSelectedExpertSubmission: false,
+      hasUsableIndividualEvaluation: false,
+      hasUsableCollectiveEvaluation: false,
       canShowCollective: false,
       renderer: null,
     };
@@ -113,6 +116,10 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
   const individual = individuals.find(
     (entry) => entry?.expertId === selectedExpertId
   ) || null;
+  const individualPayload = payloadFor(individual);
+  const collectivePayload = payloadFor(collective);
+  const hasUsableIndividualEvaluation = isPlainObject(individualPayload);
+  const hasUsableCollectiveEvaluation = isPlainObject(collectivePayload);
   const context = contextFor({ payload, stage, phase, individual, collective });
 
   return {
@@ -120,22 +127,27 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
     available: true,
     selectedPhase: phase,
     individual: individual
-      ? { ...individual, payload: payloadFor(individual) }
+      ? { ...individual, payload: individualPayload }
       : null,
     collective: collective
-      ? { ...collective, payload: payloadFor(collective) }
+      ? { ...collective, payload: collectivePayload }
       : null,
     submittedAt: individual?.submittedAt || null,
     hasSelectedExpertSubmission: Boolean(individual),
+    hasUsableIndividualEvaluation,
+    hasUsableCollectiveEvaluation,
     canShowCollective: Boolean(collective),
     renderer:
-      context && (individual || collective)
+      context &&
+      (hasUsableIndividualEvaluation || hasUsableCollectiveEvaluation)
         ? {
             stage,
             structureKey: context.structureKey,
             decisionContext: context.decisionContext,
-            evaluation: individual ? payloadFor(individual) : null,
-            collectiveEvaluation: collective ? payloadFor(collective) : null,
+            evaluation: hasUsableIndividualEvaluation ? individualPayload : null,
+            collectiveEvaluation: hasUsableCollectiveEvaluation
+              ? collectivePayload
+              : null,
             readOnly: true,
           }
         : null,
@@ -146,30 +158,36 @@ const criterionDomainRows = (payload) => {
   const domainsById = new Map(
     asArray(payload?.expressionDomains).map((domain) => [domain?.id, domain])
   );
+  const groupedDomains = new Map();
 
-  return asArray(payload?.criteria?.nodes)
+  asArray(payload?.criteria?.nodes)
     .filter((criterion) => criterion?.isLeaf === true)
-    .map((criterion) => {
-      const domain = domainsById.get(criterion?.expressionDomainId) || null;
+    .forEach((criterion) => {
+      const domainId = criterion?.expressionDomainId;
+      const domain = domainsById.get(domainId);
+      if (domainId == null || !domain) return;
 
-      return {
-        criterionId: criterion?.id || null,
+      if (!groupedDomains.has(domainId)) {
+        groupedDomains.set(domainId, {
+          domainId,
+          domainName: domain.name || "Unnamed domain",
+          domainTypeLabel: formatTechnicalLabel(domain.typeKey),
+          domainDisplayMeta: getExpressionDomainDisplayMeta(domain),
+          domain,
+          criteria: [],
+        });
+      }
+
+      groupedDomains.get(domainId).criteria.push({
+        id: criterion?.id || null,
         name: criterion?.name || "Unnamed criterion",
-        criterionType: criterion?.type || null,
-        criterionTypeLabel:
-          criterion?.type === "benefit"
-            ? "Benefit"
-            : criterion?.type === "cost"
-              ? "Cost"
-              : null,
-        domainName: domain?.name || "—",
-        domainTypeLabel: formatTechnicalLabel(domain?.typeKey),
-        domainDefinition: domain?.definition ?? null,
-        domainScope: domain?.scope || null,
-        domainDisplayMeta: getExpressionDomainDisplayMeta(domain),
-        domain,
-      };
+      });
     });
+
+  return [...groupedDomains.values()].map((item) => ({
+    ...item,
+    criteriaCount: item.criteria.length,
+  }));
 };
 
 const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
@@ -344,19 +362,20 @@ export const buildEvaluationsWorkspaceData = ({ payload, selection, selectedPhas
     },
     expertOptions: resolved.expertOptions,
     selectedExpertId: resolved.selectedExpertId,
+    selectedExpertName: resolved.selectedExpertId
+      ? resolveFinishedExpertIdentity(payload, resolved.selectedExpertId).name
+      : null,
     canShowCollective:
       criteriaWeighting.canShowCollective || alternativeEvaluation.canShowCollective,
     criteriaWeighting: {
       ...criteriaWeighting,
       title: "Criteria weighting",
       subtitle: "Weights assigned to criteria by the selected expert.",
-      emptySubmissionMessage: "This expert did not submit a criteria-weighting evaluation.",
     },
     alternativeEvaluation: {
       ...alternativeEvaluation,
       title: "Alternative evaluation",
       subtitle: "Performance of alternatives on each criterion.",
-      emptySubmissionMessage: "This expert did not submit an alternative evaluation in this context.",
     },
     domains: criterionDomainRows(payload),
     participation: {

@@ -161,14 +161,3 @@ export const correlationCellSx = (value) => {
     color: "#d5adff",
   };
 };
-
-export const developmentNoticeSx = {
-  display: "flex",
-  alignItems: "center",
-  gap: 1,
-  p: { xs: 1.2, md: 1.5 },
-  borderRadius: 3,
-  border: "1px solid rgba(83,198,214,0.18)",
-  bgcolor: "rgba(8,18,29,0.92)",
-  background: "linear-gradient(90deg, rgba(24,147,165,0.15), rgba(8,18,29,0.97) 58%)",
-};

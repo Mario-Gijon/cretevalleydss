@@ -9,7 +9,7 @@ const context = vi.hoisted(() => ({
     resetZoom: vi.fn(),
     selection: { selectedExecutionKeys: ["base"] },
   },
-  resultsAnalysisNavigation: { activeView: "outcome", setActiveView: vi.fn() },
+  resultsAnalysisNavigation: { activeView: "visualizations", setActiveView: vi.fn() },
 }));
 const buildWorkspace = vi.hoisted(() => vi.fn(() => ({ mode: "single" })));
 

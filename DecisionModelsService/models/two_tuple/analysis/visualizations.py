@@ -25,72 +25,6 @@ def _display(
     return 0.0 if rounded == -0.0 else rounded
 
 
-def _tuple_text(tuple_value: dict[str, Any]) -> str:
-    label = str(tuple_value.get("label") or tuple_value.get("labelKey") or "")
-    alpha = _display(tuple_value.get("alpha"), 4)
-    return f"{label} (α={alpha})"
-
-
-def _final_ranking(
-    facts: dict[str, Any],
-) -> dict[str, Any] | None:
-    ranking = facts["result"]["technicalRanking"]
-    if not ranking:
-        return None
-
-    sorted_items = sorted(
-        ranking,
-        key=lambda item: item["technicalRank"],
-    )
-    winner = facts["result"]["winner"]
-
-    if len(sorted_items) == 1:
-        insight = (
-            "Only one alternative was evaluated, so the bar shows its final "
-            "linguistic position without implying a comparative winner."
-        )
-    elif winner.get("available"):
-        item = winner["alternative"]
-        insight = (
-            f"{item['name']} is the unique semantic leader at "
-            f"β={_display(item['beta'], 4)}."
-        )
-    else:
-        leaders = facts["result"]["leadingGroup"]
-        leader_names = ", ".join(item["name"] for item in leaders)
-        insight = (
-            f"The effective leading group is {leader_names}; technical order "
-            "inside an effective tie is retained only for traceability."
-        )
-
-    return {
-        "key": "two-tuple-final-ranking",
-        "type": "bar",
-        "title": "Final linguistic ranking",
-        "description": (
-            "Final 2-tuple assessments represented by their linguistic position β "
-            "and ordered exactly as in the executed model."
-        ),
-        "insight": insight,
-        "orientation": "horizontal",
-        "xAxis": {"label": "Linguistic position β"},
-        "yAxis": {"label": "Alternative"},
-        "data": {
-            "categories": [item["name"] for item in sorted_items],
-            "series": [
-                {
-                    "key": "final-beta",
-                    "label": "Final linguistic position β",
-                    "values": [
-                        _display(item["beta"])
-                        for item in sorted_items
-                    ],
-                }
-            ],
-        },
-    }
-
-
 def _collective_profile(
     facts: dict[str, Any],
 ) -> dict[str, Any] | None:
@@ -171,70 +105,6 @@ def _collective_profile(
             ],
             "values": values,
             "details": details,
-        },
-    }
-
-
-def _criterion_separation(
-    facts: dict[str, Any],
-) -> dict[str, Any] | None:
-    capability = facts["capabilities"][
-        "analyzeObservedCriterionSeparation"
-    ]
-    if not capability.get("available"):
-        return None
-
-    criteria = facts["criteria"]["items"]
-    if not criteria:
-        return None
-
-    ranges = [
-        _display(item["betaRange"])
-        for item in criteria
-    ]
-    if not any(_finite(value) for value in ranges):
-        return None
-
-    most = facts["criteria"]["mostObservedSeparation"]
-    if most.get("available"):
-        names = ", ".join(
-            item["name"]
-            for item in most["criteria"]
-        )
-        insight = (
-            f"Largest observed collective separation: {names} "
-            f"(β range {_display(most['betaRange'], 4)})."
-        )
-    else:
-        insight = (
-            "Observed β separation is effectively equal across criteria."
-        )
-
-    return {
-        "key": "two-tuple-criterion-separation",
-        "type": "bar",
-        "title": "Observed separation by criterion",
-        "description": (
-            "For each criterion, the bar is max collective β minus min collective β "
-            "across alternatives. This is observed separation, not criterion importance "
-            "or causal influence."
-        ),
-        "insight": insight,
-        "orientation": "horizontal",
-        "xAxis": {"label": "Observed β range"},
-        "yAxis": {"label": "Criterion"},
-        "data": {
-            "categories": [
-                item["name"]
-                for item in criteria
-            ],
-            "series": [
-                {
-                    "key": "beta-range",
-                    "label": "Observed β range",
-                    "values": ranges,
-                }
-            ],
         },
     }
 
@@ -346,111 +216,6 @@ def _alpha_heatmap(
             "details": details,
         },
     }
-
-
-def _criteria_aggregation_traces(
-    facts: dict[str, Any],
-) -> list[dict[str, Any]]:
-    aggregation = facts["aggregation"]["criteriaAggregation"]
-    summary = aggregation["summary"]
-    traces = aggregation["trace"]["alternatives"]
-    descriptors: list[dict[str, Any]] = []
-
-    for order, trace in enumerate(
-        sorted(
-            traces,
-            key=lambda item: item["technicalRank"],
-        )
-    ):
-        sources = trace["sources"]
-        if not sources:
-            continue
-
-        method = summary["method"]
-        if method == "l2towa":
-            categories = [
-                (
-                    f"#{source['position']} · "
-                    f"{source['criterionName']}"
-                )
-                for source in sources
-            ]
-            description = (
-                "Contribution to the final β after descending β ordering. "
-                "The displayed L2TOWA weight belongs to the ordered position, "
-                "not permanently to the criterion."
-            )
-        else:
-            categories = [
-                source["criterionName"]
-                for source in sources
-            ]
-            description = (
-                "Contribution of each collective criterion β to the final β "
-                f"under {summary['methodLabel']}."
-            )
-
-        values = [
-            _display(source["aggregationContribution"])
-            for source in sources
-        ]
-
-        weight_text = (
-            "Positional OWA weights"
-            if method == "l2towa"
-            else (
-                "Criterion importance weights"
-                if summary["usesArgumentImportanceWeights"]
-                else "Equal criterion coefficients"
-            )
-        )
-
-        descriptors.append(
-            {
-                "key": (
-                    "two-tuple-criteria-aggregation-"
-                    + trace["alternativeId"]
-                ),
-                "type": "bar",
-                "title": (
-                    "Criteria aggregation · "
-                    + trace["alternativeName"]
-                ),
-                "description": description,
-                "insight": (
-                    f"{weight_text}; contributions sum to final "
-                    f"β={_display(trace['aggregatedBeta'], 4)} "
-                    f"({_tuple_text(trace['finalTuple'])})."
-                ),
-                "scope": {
-                    "dimension": "alternative",
-                    "id": trace["alternativeId"],
-                    "label": trace["alternativeName"],
-                    "order": order,
-                },
-                "orientation": "horizontal",
-                "xAxis": {"label": "Aggregation contribution to β"},
-                "yAxis": {
-                    "label": (
-                        "Ordered position"
-                        if method == "l2towa"
-                        else "Criterion"
-                    )
-                },
-                "data": {
-                    "categories": categories,
-                    "series": [
-                        {
-                            "key": "aggregation-contribution",
-                            "label": "Contribution to final β",
-                            "values": values,
-                        }
-                    ],
-                },
-            }
-        )
-
-    return descriptors
 
 
 def _evaluator_distance(
@@ -761,17 +526,10 @@ def _personal_vs_collective_ranking(
     }
 
 
-def _counterfactual_rank_impact(
+def _loeo_rank_impact(
     facts: dict[str, Any],
-    *,
-    evaluator: bool,
 ) -> dict[str, Any] | None:
-    robustness = facts["robustness"]
-    group = (
-        robustness["leaveOneEvaluatorOut"]
-        if evaluator
-        else robustness["leaveOneCriterionOut"]
-    )
+    group = facts["robustness"]["leaveOneEvaluatorOut"]
 
     if not group["availability"].get("available"):
         return None
@@ -797,24 +555,12 @@ def _counterfactual_rank_impact(
     ):
         return None
 
-    names = (
-        [item["expertLabel"] for item in items]
-        if evaluator
-        else [item["name"] for item in items]
-    )
-    changing = (
-        group["winnerStateChangingEvaluators"]
-        if evaluator
-        else group["winnerStateChangingCriteria"]
-    )
+    names = [item["expertLabel"] for item in items]
+    changing = group["winnerStateChangingEvaluators"]
 
     if changing:
         changing_names = ", ".join(
-            (
-                item["expertLabel"]
-                if evaluator
-                else item["name"]
-            )
+            item["expertLabel"]
             for item in changing
         )
         insight = (
@@ -826,33 +572,19 @@ def _counterfactual_rank_impact(
         )
 
     return {
-        "key": (
-            "two-tuple-loeo-rank-impact"
-            if evaluator
-            else "two-tuple-loco-rank-impact"
-        ),
+        "key": "two-tuple-loeo-rank-impact",
         "type": "bar",
-        "title": (
-            "LOEO evaluator impact"
-            if evaluator
-            else "LOCO criterion impact"
-        ),
+        "title": "LOEO evaluator impact",
         "description": (
             "Total absolute technical-rank displacement after removing one "
-            f"{'evaluator' if evaluator else 'criterion'} and rerunning the "
+            "evaluator and rerunning the "
             "configured 2-tuple aggregation pipeline. This is a counterfactual "
             "diagnostic, not part of the normative 2-tuple method."
         ),
         "insight": insight,
         "orientation": "horizontal",
         "xAxis": {"label": "Total absolute rank displacement"},
-        "yAxis": {
-            "label": (
-                "Evaluator"
-                if evaluator
-                else "Criterion"
-            )
-        },
+        "yAxis": {"label": "Evaluator"},
         "data": {
             "categories": names,
             "series": [
@@ -1059,28 +791,16 @@ def build_visualizations(
     visualizations: list[dict[str, Any]] = []
 
     for descriptor in (
-        _final_ranking(facts),
         _collective_profile(facts),
-        _criterion_separation(facts),
         _alpha_heatmap(facts),
         _evaluator_distance(facts),
         _evaluator_disagreement(facts),
         _personal_vs_collective_ranking(facts),
-        _counterfactual_rank_impact(
-            facts,
-            evaluator=False,
-        ),
-        _counterfactual_rank_impact(
-            facts,
-            evaluator=True,
-        ),
+        _loeo_rank_impact(facts),
     ):
         if descriptor is not None:
             visualizations.append(descriptor)
 
-    visualizations.extend(
-        _criteria_aggregation_traces(facts)
-    )
     visualizations.extend(
         _sensitivity_lines(
             facts,
@@ -1107,13 +827,6 @@ def build_visualization_sections(
         for item in build_visualizations(facts)
     }
 
-    criteria_aggregation_keys = tuple(
-        key
-        for key in descriptors
-        if key.startswith(
-            "two-tuple-criteria-aggregation-"
-        )
-    )
     criterion_sensitivity_keys = tuple(
         key
         for key in descriptors
@@ -1131,27 +844,14 @@ def build_visualization_sections(
 
     sections = (
         (
-            "two-tuple-final-result",
-            "Final 2-tuple result",
-            (
-                "Final linguistic positions and observed ordering "
-                "of the alternatives."
-            ),
-            (
-                "two-tuple-final-ranking",
-            ),
-            {},
-        ),
-        (
             "two-tuple-collective-structure",
             "Collective evaluation structure",
             (
-                "Observed collective 2-tuple positions and criterion "
-                "separation before final criteria aggregation."
+                "Observed collective 2-tuple positions across alternatives "
+                "and criteria."
             ),
             (
                 "two-tuple-collective-profile",
-                "two-tuple-criterion-separation",
             ),
             {
                 "layout": "stacked",
@@ -1168,18 +868,6 @@ def build_visualization_sections(
                 "two-tuple-alpha-heatmap",
             ),
             {},
-        ),
-        (
-            "two-tuple-aggregation",
-            "Criteria aggregation",
-            (
-                "How the configured criteria aggregation produced "
-                "the final linguistic position of each alternative."
-            ),
-            criteria_aggregation_keys,
-            {
-                "layout": "stacked",
-            },
         ),
         (
             "two-tuple-evaluators",
@@ -1200,11 +888,10 @@ def build_visualization_sections(
             "Counterfactual robustness",
             (
                 "Observed technical-rank impact when removing one "
-                "criterion or evaluator and rerunning the configured "
-                "aggregation pipeline."
+                "evaluator and rerunning the configured aggregation "
+                "pipeline."
             ),
             (
-                "two-tuple-loco-rank-impact",
                 "two-tuple-loeo-rank-impact",
             ),
             {},

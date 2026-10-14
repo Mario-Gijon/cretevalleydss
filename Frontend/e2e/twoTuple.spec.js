@@ -284,31 +284,32 @@ test("2-tuple smoke: an owner resolves a linguistically evaluated issue", async 
     finishedIssueDialog.getByText("Unable to load this Finished Issue.", { exact: true })
   ).toHaveCount(0);
 
-  await finishedIssueDialog
-    .getByRole("tab", { name: "Results analysis", exact: true })
-    .click();
-  await expect(
-    finishedIssueDialog.getByRole("heading", { name: "Final ranking", exact: true })
-  ).toBeVisible();
-  await expect(
-    finishedIssueDialog.getByTitle("E2E 2-Tuple Alpha", { exact: true })
-  ).toBeVisible();
-  await expect(
-    finishedIssueDialog.getByTitle("E2E 2-Tuple Beta", { exact: true })
-  ).toBeVisible();
-  await expect(
-    finishedIssueDialog.getByText("2 alternatives", { exact: true })
-  ).toBeVisible();
-  await expect(
-    finishedIssueDialog.getByText("Between High and Very High", { exact: true })
-  ).toBeVisible();
-  await expect(
-    finishedIssueDialog.getByText("Between Low and Medium", { exact: true })
-  ).toBeVisible();
+  const summaryRanking = finishedIssueDialog.getByRole("table", { name: "Final ranking", exact: true });
+  await expect(summaryRanking).toBeVisible();
+  await expect(summaryRanking.getByRole("cell", { name: "E2E 2-Tuple Alpha", exact: true })).toBeVisible();
+  await expect(summaryRanking.getByRole("cell", { name: "E2E 2-Tuple Beta", exact: true })).toBeVisible();
+
+  await finishedIssueDialog.getByRole("tab", { name: "Analysis", exact: true }).click();
+  await expect(finishedIssueDialog.getByRole("tab", { name: "Outcome", exact: true })).toHaveCount(0);
+  await expect(finishedIssueDialog.getByRole("tab", { name: "Visualizations", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(finishedIssueDialog.getByRole("tab", { name: "Interpretation", exact: true })).toBeVisible();
+  await expect(finishedIssueDialog.getByRole("button", { name: "Executions", exact: true })).toBeVisible();
+  await finishedIssueDialog.getByRole("button", { name: "Executions", exact: true }).click();
+  const baseExecutionOption = page.getByRole("menuitem", { name: "Base", exact: true });
+  await expect(baseExecutionOption).toBeVisible();
+  await expect(baseExecutionOption.getByRole("checkbox")).toBeChecked();
+  await page.keyboard.press("Escape");
 
   await finishedIssueDialog
     .getByRole("tab", { name: "Interpretation", exact: true })
     .click();
+  await expect(finishedIssueDialog.getByRole("tab", { name: "Visualizations", exact: true })).toHaveAttribute("aria-selected", "false");
+  await expect(finishedIssueDialog.getByRole("button", { name: "Executions", exact: true })).toBeVisible();
+  await finishedIssueDialog.getByRole("button", { name: "Executions", exact: true }).click();
+  const interpretationBaseOption = page.getByRole("menuitem", { name: "Base", exact: true });
+  await expect(interpretationBaseOption).toBeVisible();
+  await expect(interpretationBaseOption.getByRole("checkbox")).toBeChecked();
+  await page.keyboard.press("Escape");
   await expect(
     finishedIssueDialog.getByText(
       /E2E 2-Tuple Alpha.*finished first in the recorded execution\./

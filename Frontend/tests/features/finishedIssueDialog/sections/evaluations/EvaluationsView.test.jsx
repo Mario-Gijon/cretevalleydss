@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rendererSpy = vi.hoisted(() => vi.fn());
@@ -27,6 +27,7 @@ import {
   evaluationsStageDividerWideSx,
   evaluationsHeaderSx,
   evaluationsWorkspaceSx,
+  expressionDomainCriteriaListSx,
 } from "../../../../../src/features/finishedIssueDialog/sections/evaluations/evaluations.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
@@ -149,6 +150,18 @@ describe("EvaluationsView", () => {
     expect(screen.getAllByLabelText("Expert")).toHaveLength(1);
     expect(screen.queryByLabelText("Consensus round")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Show collective values")).toBeInTheDocument();
+    const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    const expectedSubmittedAt = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date("2026-01-02T00:00:00.000Z"));
+    expect(within(alternativePanel).getByText(`Submitted: ${expectedSubmittedAt}`)).toBeInTheDocument();
+    const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    const expectedCriteriaSubmittedAt = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date("2026-01-01T00:00:00.000Z"));
+    expect(within(criteriaPanel).getByText(`Submitted: ${expectedCriteriaSubmittedAt}`)).toBeInTheDocument();
     expect(screen.getByTestId("evaluations-stage-divider-wide")).toBeInTheDocument();
     expect(screen.getByTestId("evaluations-stage-divider-narrow")).toBeInTheDocument();
     expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", readOnly: true, collectiveEvaluation: null }));
@@ -169,15 +182,91 @@ describe("EvaluationsView", () => {
       "expert-3",
       "expert-4",
     ]);
-    expect(screen.getByText("This expert did not submit an alternative evaluation in this context.")).toBeInTheDocument();
+    expect(screen.getByText("Criteria only did not participate in this alternative-evaluation round.")).toBeInTheDocument();
+    const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    expect(within(alternativePanel).queryByText(/^Submitted:/)).not.toBeInTheDocument();
     expect(data.alternativeEvaluation.individual).toBeNull();
     expect(rendererSpy).not.toHaveBeenCalledWith(expect.objectContaining({
       stage: "alternativeEvaluation",
       evaluation: expect.anything(),
     }));
     expect(screen.getByRole("heading", { name: "Criteria weighting" })).toBeInTheDocument();
-    expect(screen.getByText("Alternative only")).toBeInTheDocument();
-    expect(screen.getAllByText("Criteria only")).not.toHaveLength(0);
+    expect(screen.getByLabelText("Expert")).toHaveTextContent("Criteria only (criteria@example.test)");
+    expect(screen.queryByRole("heading", { name: "Expert participation" })).not.toBeInTheDocument();
+  });
+
+  it("shows named issue-level empty state when an expert has no criteria weighting", () => {
+    const payload = payloadWithPartialParticipation();
+    payload.consensus.enabled = false;
+    const state = { ...selection, selectedExpertId: "expert-3" };
+    const data = buildEvaluationsWorkspaceData({ payload, selection: state, selectedPhase: null });
+    renderView(data, state);
+
+    const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    expect(within(criteriaPanel).getByRole("heading", { name: "No criteria weighting submitted" })).toBeInTheDocument();
+    expect(within(criteriaPanel).getByText("Alternative only did not participate in the criteria-weighting stage for this issue.")).toBeInTheDocument();
+    expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
+  });
+
+  it("uses round-level wording when an expert has no alternative evaluation in consensus mode", () => {
+    const payload = payloadWithPartialParticipation();
+    const state = { ...selection, selectedExpertId: "expert-4" };
+    const data = buildEvaluationsWorkspaceData({ payload, selection: state, selectedPhase: 5 });
+    renderView(data, state);
+
+    const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    expect(within(alternativePanel).getByRole("heading", { name: "No alternative evaluation submitted" })).toBeInTheDocument();
+    expect(within(alternativePanel).getByText("Criteria only did not participate in this alternative-evaluation round.")).toBeInTheDocument();
+  });
+
+  it("keeps Submitted metadata tied to each expert stage when collective values are shown", () => {
+    const payload = payloadWithPartialParticipation();
+    const state = { ...selection, selectedExpertId: "expert-4", showCollective: true };
+    const data = buildEvaluationsWorkspaceData({ payload, selection: state, selectedPhase: 5 });
+    renderView(data, state);
+
+    const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    const expectedCriteriaSubmittedAt = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date("2026-01-03T00:00:00.000Z"));
+
+    expect(within(criteriaPanel).getByText(`Submitted: ${expectedCriteriaSubmittedAt}`)).toBeInTheDocument();
+    expect(within(alternativePanel).queryByText(/^Submitted:/)).not.toBeInTheDocument();
+    expect(data.alternativeEvaluation.hasUsableCollectiveEvaluation).toBe(true);
+    expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({
+      stage: "alternativeEvaluation",
+      evaluation: expect.objectContaining({ a: expect.anything(), b: expect.anything() }),
+      collectiveEvaluation: expect.objectContaining({ a: expect.anything(), b: expect.anything() }),
+    }));
+  });
+
+  it("shows collective-specific empty state when a collective record has no usable payload", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const criteriaCollective = payload.evaluations.collective.find(
+      (entry) => entry.stage === "criteriaWeighting"
+    );
+    criteriaCollective.displayPayload = null;
+    criteriaCollective.rawPayload = null;
+    const data = buildEvaluationsWorkspaceData({
+      payload,
+      selection: { ...selection, showCollective: true },
+      selectedPhase: 5,
+    });
+    renderView(data, { ...selection, showCollective: true });
+
+    const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    expect(data.criteriaWeighting).toMatchObject({
+      hasUsableCollectiveEvaluation: false,
+      canShowCollective: true,
+    });
+    expect(within(criteriaPanel).getByRole("heading", { name: "No collective criteria weighting available" })).toBeInTheDocument();
+    expect(within(criteriaPanel).getByText("No collective criteria-weighting evaluation is available for this round.")).toBeInTheDocument();
+    expect(within(criteriaPanel).queryByText(/Expert One/)).not.toBeInTheDocument();
+    expect(within(criteriaPanel).queryByTestId("evaluation-renderer-criteriaWeighting")).not.toBeInTheDocument();
+    expect(within(criteriaPanel).queryByText("Evaluation payload is unavailable.")).not.toBeInTheDocument();
+    expect(rendererSpy).not.toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting" }));
   });
 
   it("keeps collective payloads stage-specific and only supplies them when selected", () => {
@@ -189,6 +278,8 @@ describe("EvaluationsView", () => {
     });
     renderView(data, { ...selection, showCollective: true });
 
+    expect(data.criteriaWeighting.hasUsableCollectiveEvaluation).toBe(true);
+    expect(data.alternativeEvaluation.hasUsableCollectiveEvaluation).toBe(true);
     expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", collectiveEvaluation: { weightsByCriterion: {} } }));
     expect(rendererSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -219,19 +310,32 @@ describe("EvaluationsView", () => {
     expect(evaluationPluginPanelSx).not.toHaveProperty("border");
   });
 
-  it("renders a compact domain table and content-driven renderer viewport", () => {
+  it("groups expression domains by stable ID in leaf-criterion order", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.criteria.nodes.find((criterion) => criterion.id === "cost").type = "cost";
     payload.criteria.nodes.find((criterion) => criterion.id === "quality").type = "benefit";
+    payload.criteria.nodes.push(
+      { id: "risk", name: "Risk", isLeaf: true, expressionDomainId: "domain-2" },
+      { id: "safety", name: "Safety", isLeaf: true, expressionDomainId: "domain-2" }
+    );
+    payload.expressionDomains.push({ id: "domain-2", name: "Crisp", typeKey: "numericContinuous", definition: { min: 0, max: 10 } });
     const data = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 5 });
     renderView(data);
 
-    expect(screen.getByRole("heading", { name: "Expression domains by criterion" })).toBeInTheDocument();
-    expect(screen.getByText("Cost")).toBeInTheDocument();
-    expect(screen.getByText("Quality")).toBeInTheDocument();
-    expect(screen.getAllByText("Global")).toHaveLength(2);
-    expect(screen.queryByText("Benefit")).not.toBeInTheDocument();
-    expect(screen.queryByText("Cost")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Expression domains" })).toBeInTheDocument();
+    expect(data.domains.map((domain) => domain.domainId)).toEqual(["domain-1", "domain-2"]);
+    expect(data.domains.map((domain) => domain.criteria.map(({ name }) => name))).toEqual([
+      ["Cost", "Quality"],
+      ["Risk", "Safety"],
+    ]);
+    expect(screen.getAllByText("Crisp", { selector: "p" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Used by 2 criteria" })).toHaveLength(2);
+    expect(screen.queryByRole("heading", { name: "Expert participation" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Cost", { selector: "span" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Used by 2 criteria" })[0]);
+    expect(screen.getByText("Cost", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Quality", { selector: "span" })).toBeInTheDocument();
+    expect(screen.queryByText("Risk", { selector: "span" })).not.toBeInTheDocument();
     expect(evaluationPluginRendererViewportSx).not.toHaveProperty("minHeight");
     expect(evaluationPluginRendererViewportSx).toMatchObject({ width: "100%", maxWidth: "100%", maxHeight: { xs: 520, xl: 620 }, overflow: "auto" });
     expect(evaluationsExpertControlSx).toMatchObject({ width: { xs: "100%", sm: 230 } });
@@ -243,6 +347,39 @@ describe("EvaluationsView", () => {
     expect(evaluationsActionGroupSx).toMatchObject({ width: { xs: "100%", md: "auto" } });
     expect(evaluationsStageDividerWideSx.display).toEqual({ xs: "none", xl: "block" });
     expect(evaluationsStageDividerNarrowSx.display).toEqual({ xs: "block", xl: "none" });
+  });
+
+  it("shows all used criteria and scrolls the expanded list only above five items", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.criteria.nodes.push(
+      ...Array.from({ length: 5 }, (_, index) => ({
+        id: `extra-${index}`,
+        name: `Extra criterion ${index + 1}`,
+        isLeaf: true,
+        expressionDomainId: "domain-1",
+      }))
+    );
+    const data = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 5 });
+    renderView(data);
+
+    expect(data.domains[0].criteriaCount).toBe(7);
+    expect(expressionDomainCriteriaListSx(7)).toMatchObject({ maxHeight: 112, overflowY: "auto" });
+    expect(expressionDomainCriteriaListSx(5)).toMatchObject({ maxHeight: "none", overflowY: "visible" });
+    const toggle = screen.getByRole("button", { name: "Used by 7 criteria" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Extra criterion 5", { selector: "span" })).toBeInTheDocument();
+  });
+
+  it("uses the singular label for a domain used by one criterion", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.criteria.nodes.find((criterion) => criterion.id === "quality").expressionDomainId = null;
+    const data = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 5 });
+    renderView(data);
+
+    expect(data.domains).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Used by 1 criterion" })).toBeInTheDocument();
   });
 
   it("does not render a fake round selector for non-consensus evidence", () => {
