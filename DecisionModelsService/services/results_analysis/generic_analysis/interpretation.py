@@ -1,621 +1,400 @@
-from math import floor
-
-from .common import finite, fmt, ordinal, phase_label
+from .common import finite, ordinal, phase_label
 
 
-_RELATIONSHIP_EPSILON = 1e-12
-_PAIRWISE_MATRIX_MAX_ALTERNATIVES = 6
+def _names(items, *, key="name", bold=True):
+    values = [item.get(key) for item in items]
+    values = [value.strip() for value in values if isinstance(value, str) and value.strip()]
+    if bold:
+        values = [f"**{value}**" for value in values]
+    if len(values) < 2:
+        return values[0] if values else ""
+    if len(values) == 2:
+        return f"{values[0]} and {values[1]}"
+    return ", ".join(values[:-1]) + f", and {values[-1]}"
 
 
-def _percentage(value):
-    if not finite(value):
-        return "—"
-    rounded = floor(max(0.0, min(1.0, value)) * 100 + 0.5)
-    return f"{rounded}%"
-
-
-def _percentage_points(value):
-    if not finite(value):
-        return "—"
-    rounded = floor(abs(value) * 100 + 0.5)
-    return f"{rounded} percentage point{'s' if rounded != 1 else ''}"
-
-
-def _escape_table(value):
-    return str(value).replace("|", "\\|").replace("\n", " ")
-
-
-def _pair_names(pair):
-    return pair.get("leftAlternative"), pair.get("rightAlternative")
-
-
-def _pair_lookup(phase):
-    result = {}
-    for pair in phase.get("pairs") or []:
-        left_id = pair.get("leftAlternativeId")
-        right_id = pair.get("rightAlternativeId")
-        if left_id is None or right_id is None:
-            continue
-        result[frozenset((left_id, right_id))] = pair.get("relativeSeparation")
-    return result
-
-
-def _final_ranking_markdown(facts):
-    if facts.get("executedRounds") != 1:
-        return ""
-
-    ranking = facts.get("finalRanking") or []
-    if not ranking:
-        return ""
-
-    lines = ["### Final ranking", ""]
-    if len(ranking) == 1:
-        lines.append(f"**{ranking[0]['name']}** is the only ranked alternative.")
-        return "\n".join(lines)
-
-    lines.append(
-        f"**{ranking[0]['name']}** finished first in the recorded execution."
-    )
-    lines.append("")
-    for item in ranking:
-        name = f"**{item['name']}**" if item["rank"] == 1 else item["name"]
-        lines.append(f"{ordinal(item['rank'])}. {name}")
-    return "\n".join(lines)
-
-
-def _ranking_evolution_markdown(facts):
-    evolution = facts["rankingEvolution"]
-    if len(evolution["phases"]) < 2:
-        return ""
-
-    lines = ["### Ranking evolution", ""]
-    leader_changes = facts["leaderChanges"]
-
-    if not leader_changes and facts["finalRanking"]:
-        lines.append(
-            f"**{facts['finalRanking'][0]['name']}** remained the leading "
-            "alternative throughout the executed phases."
-        )
-    elif len(leader_changes) == 1:
-        change = leader_changes[0]
-        lines.append(
-            f"The leading alternative changed once: "
-            f"**{change['fromAlternative']}** led in "
-            f"**{phase_label(change['fromPhase'])}**, while "
-            f"**{change['toAlternative']}** led in "
-            f"**{phase_label(change['toPhase'])}**."
-        )
-    else:
-        lines.append(
-            f"The leading alternative changed "
-            f"**{len(leader_changes)} times** across the executed phases."
-        )
-
-    movements = []
-    for item in evolution["changes"]:
-        change = item["positionChange"]
-        if change is None or change == 0:
-            continue
-        direction = "moved up" if change > 0 else "moved down"
-        movements.append(
-            f"- **{item['name']}** {direction} from "
-            f"{ordinal(item['initialRank'])} to "
-            f"{ordinal(item['finalRank'])} "
-            f"(**{change:+g}** positions)."
-        )
-
-    if movements:
-        lines.extend(["", *movements])
-    else:
-        lines.extend(
-            ["", "The final ranking is unchanged from the first executed phase."]
-        )
-
-    rows = [
-        "",
-        "| Alternative | Initial | Final | Change |",
-        "|:--|--:|--:|--:|",
-    ]
-    for item in evolution["changes"]:
-        if item["initialRank"] is None or item["finalRank"] is None:
-            continue
-        change = item["positionChange"]
-        change_label = f"{change:+g}" if change is not None else "—"
-        rows.append(
-            f"| {_escape_table(item['name'])} | {ordinal(item['initialRank'])} | "
-            f"{ordinal(item['finalRank'])} | {change_label} |"
-        )
-    if len(rows) > 3:
-        lines.extend(rows)
-
-    return "\n".join(lines)
-
-
-def _ranking_stability_markdown(facts):
-    if facts.get("executedRounds", 0) < 2:
-        return ""
-
-    alternatives = (facts.get("rankingStability") or {}).get("alternatives") or []
-    if len(alternatives) < 2:
-        return ""
-
-    lines = ["### Ranking stability", ""]
-    maximum_movement = max(item["totalMovement"] for item in alternatives)
-    most_mobile = [
-        item["name"]
-        for item in alternatives
-        if item["totalMovement"] == maximum_movement
-    ]
-    stable = [item["name"] for item in alternatives if item["totalMovement"] == 0]
-
-    if maximum_movement == 0:
-        lines.append(
-            "No alternative changed position across the recorded phase transitions."
-        )
-    elif len(most_mobile) == 1:
-        lines.append(
-            f"**{most_mobile[0]}** showed the largest observed positional movement "
-            f"with **{maximum_movement:g}** cumulative rank positions."
-        )
-    else:
-        lines.append(
-            f"**{', '.join(most_mobile)}** shared the largest observed positional "
-            f"movement with **{maximum_movement:g}** cumulative rank positions each."
-        )
-
-    if stable and maximum_movement != 0:
-        lines.append(
-            f"**{', '.join(stable)}** remained in the same rank position throughout "
-            "all recorded transitions."
-        )
-
-    lines.extend(
-        [
-            "",
-            "| Alternative | Best | Worst | Total movement | Position changes |",
-            "|:--|--:|--:|--:|--:|",
-        ]
-    )
-    for item in alternatives:
-        lines.append(
-            f"| {_escape_table(item['name'])} | {ordinal(item['bestRank'])} | "
-            f"{ordinal(item['worstRank'])} | {item['totalMovement']:g} | "
-            f"{item['positionChangeCount']} |"
-        )
-
-    return "\n".join(lines)
-
-
-def _ranking_agreement_markdown(facts):
-    agreement = facts.get("rankingAgreement") or {}
-    transitions = agreement.get("transitions") or []
-    if not transitions:
-        return ""
-
-    lines = ["### Phase-to-phase agreement", ""]
-    strongest = max(transitions, key=lambda item: item["coefficient"])
-    weakest = min(transitions, key=lambda item: item["coefficient"])
-
-    if len(transitions) == 1:
-        lines.append(
-            f"The consecutive rankings have a Spearman coefficient of "
-            f"**{fmt(transitions[0]['coefficient'])}**."
-        )
-    else:
-        lines.append(
-            f"The strongest consecutive ranking agreement was "
-            f"**{fmt(strongest['coefficient'])}** between "
-            f"**{phase_label(strongest['fromPhase'])}** and "
-            f"**{phase_label(strongest['toPhase'])}**."
-        )
-        if weakest != strongest:
-            lines.append(
-                f"The weakest consecutive agreement was "
-                f"**{fmt(weakest['coefficient'])}** between "
-                f"**{phase_label(weakest['fromPhase'])}** and "
-                f"**{phase_label(weakest['toPhase'])}**."
-            )
-
-    stabilization_phase = agreement.get("stabilizationPhase")
-    if stabilization_phase is not None:
-        lines.append(
-            f"The complete ranking remained unchanged from "
-            f"**{phase_label(stabilization_phase)}** through completion."
-        )
-
-    lines.extend(["", "| Transition | Spearman ρ |", "|:--|--:|"])
-    for transition in transitions:
-        lines.append(
-            f"| {phase_label(transition['fromPhase'])} → "
-            f"{phase_label(transition['toPhase'])} | "
-            f"{fmt(transition['coefficient'])} |"
-        )
-
-    return "\n".join(lines)
-
-
-def _pairwise_matrix(phase):
-    alternatives = phase.get("alternatives") or []
-    if len(alternatives) < 2 or len(alternatives) > _PAIRWISE_MATRIX_MAX_ALTERNATIVES:
+def _top_rank_group(ranking):
+    valid = [item for item in ranking or [] if finite(item.get("rank"))]
+    if not valid:
         return []
-
-    pair_values = _pair_lookup(phase)
-    header = "| Alternative | " + " | ".join(
-        _escape_table(item["name"]) for item in alternatives
-    ) + " |"
-    alignment = "|:--|" + "--:|" * len(alternatives)
-    rows = ["", header, alignment]
-
-    for left in alternatives:
-        values = []
-        for right in alternatives:
-            if left["alternativeId"] == right["alternativeId"]:
-                values.append("—")
-                continue
-            value = pair_values.get(
-                frozenset((left["alternativeId"], right["alternativeId"]))
-            )
-            values.append(_percentage(value))
-        rows.append(
-            f"| {_escape_table(left['name'])} | " + " | ".join(values) + " |"
-        )
-    return rows
+    top_rank = min(item["rank"] for item in valid)
+    return [item for item in valid if item["rank"] == top_rank]
 
 
-def _relationship_phase_markdown(phase, *, degenerate):
-    lines = [f"**{phase_label(phase['phase'])}**", ""]
-    alternatives = phase.get("alternatives") or []
-    pairs = phase.get("pairs") or []
+def _next_rank_group(ranking, top_rank):
+    next_ranks = [
+        item["rank"]
+        for item in ranking or []
+        if finite(item.get("rank")) and item["rank"] > top_rank
+    ]
+    if not next_ranks:
+        return []
+    next_rank = min(next_ranks)
+    return [item for item in ranking if item.get("rank") == next_rank]
 
-    if degenerate:
-        lines.append(
-            "No relative separation is observable in the available standardized "
-            "results: every pair is **0%** apart on the execution-wide scale."
-        )
-    elif pairs:
-        closest = phase.get("closestPairs") or []
-        if len(closest) == 1:
-            left, right = _pair_names(closest[0])
-            lines.append(
-                f"The closest pair is **{left}** and **{right}**, with a relative "
-                f"separation of **{_percentage(closest[0]['relativeSeparation'])}**."
-            )
-        elif closest:
-            names = "; ".join(
-                f"{item['leftAlternative']} ↔ {item['rightAlternative']}"
-                for item in closest[:4]
-            )
-            suffix = "" if len(closest) <= 4 else f"; and {len(closest) - 4} more"
-            lines.append(
-                f"**{len(closest)} pairs** share the minimum relative separation of "
-                f"**{_percentage(closest[0]['relativeSeparation'])}**: {names}{suffix}."
-            )
 
-        winner_pair = phase.get("winnerToRunnerUp")
-        if winner_pair and len(alternatives) >= 2:
-            lines.append(
-                f"The winner **{alternatives[0]['name']}** and runner-up "
-                f"**{alternatives[1]['name']}** are separated by "
-                f"**{_percentage(winner_pair['relativeSeparation'])}**."
-            )
-
-        furthest = phase.get("furthestPairs") or []
-        if len(furthest) == 1 and (
-            not closest
-            or furthest[0]["relativeSeparation"]
-            - closest[0]["relativeSeparation"]
-            > _RELATIONSHIP_EPSILON
-        ):
-            left, right = _pair_names(furthest[0])
-            lines.append(
-                f"The widest separation in this phase is between **{left}** and "
-                f"**{right}** at **{_percentage(furthest[0]['relativeSeparation'])}**."
-            )
-
-        mean_separation = phase.get("meanSeparation")
-        if finite(mean_separation) and len(pairs) >= 3:
-            lines.append(
-                f"Across all alternative pairs, the mean relative separation is "
-                f"**{_percentage(mean_separation)}**."
-            )
-
-    matrix = _pairwise_matrix(phase)
-    if matrix:
-        lines.extend(matrix)
-    elif len(alternatives) > _PAIRWISE_MATRIX_MAX_ALTERNATIVES:
-        lines.extend(
-            [
-                "",
-                f"The full pairwise table is omitted because this phase contains "
-                f"**{len(alternatives)} alternatives**; the interactive Heatmap and "
-                "Network remain available in Visualizations.",
-            ]
+def _overall_outcome(facts):
+    ranking = facts.get("finalRanking") or []
+    if len(ranking) == 1:
+        return (
+            "### Overall outcome\n\n"
+            f"Only **{ranking[0]['name']}** appears in the final recorded result, "
+            "so this issue does not provide a comparative ranking."
         )
 
-    return "\n".join(lines)
+    if not ranking:
+        return (
+            "### Overall outcome\n\n"
+            "The available generic results do not include a final ranking, so an "
+            "overall order cannot be described."
+        )
+
+    top_group = _top_rank_group(ranking)
+    if not top_group:
+        return (
+            "### Overall outcome\n\n"
+            "The available generic results do not include valid final ranking "
+            "positions, so an overall order cannot be described."
+        )
+
+    top_rank = min(item["rank"] for item in top_group)
+    if top_rank == 1 and len(top_group) > 1:
+        sentence = f"{_names(top_group)} share the highest recorded rank."
+    elif top_rank == 1:
+        sentence = f"**{top_group[0]['name']}** finished first in the recorded ranking."
+    else:
+        sentence = (
+            f"**{_names(top_group, bold=False)}** holds the highest available "
+            f"recorded position ({ordinal(top_rank)}), but no first-place rank is "
+            "recorded."
+        )
+
+    next_group = _next_rank_group(ranking, top_rank)
+    if next_group:
+        next_names = _names(next_group)
+        if len(top_group) == 1 and top_rank == 1:
+            sentence += f" It was followed by {next_names}."
+        else:
+            sentence += f" The next recorded position belongs to {next_names}."
+
+    return "### Overall outcome\n\n" + sentence
 
 
-def _alternative_relationships_markdown(facts):
+def _phase_relationship(facts):
     relationships = facts.get("alternativeRelationships") or {}
     phases = relationships.get("phases") or []
-    if not phases:
-        return ""
+    final_phase = facts.get("finalPhase")
+    if final_phase is None and len(phases) == 1:
+        return phases[0]
+    return next((item for item in phases if item.get("phase") == final_phase), None)
 
-    normalization = relationships.get("normalization") or {}
-    lines = ["### Alternative relationships", ""]
-    lines.append(
-        "Relative separation compares alternatives pairwise using the finite "
-        "standardized result range observed across this execution. **0%** means "
-        "no observed separation on that scale; the percentages are not "
-        "probabilities, confidence values, or percentages by which one alternative "
-        "is better than another."
-    )
 
-    for phase in phases:
-        lines.extend(
-            [
-                "",
-                _relationship_phase_markdown(
-                    phase,
-                    degenerate=normalization.get("degenerate") is True,
-                ),
-            ]
+def _pair_name(pair):
+    return f"**{pair['leftAlternative']}** and **{pair['rightAlternative']}**"
+
+
+def _alternative_relationships(facts):
+    phase = _phase_relationship(facts)
+    if not phase:
+        return None
+
+    alternatives = phase.get("alternatives") or []
+    pairs = phase.get("pairs") or []
+    if len(alternatives) < 2 or not pairs:
+        return None
+
+    if all(finite(item.get("relativeSeparation")) for item in pairs) and all(
+        item["relativeSeparation"] == 0 for item in pairs
+    ):
+        return (
+            "### Alternative relationships\n\n"
+            f"The comparable recorded scores in {phase_label(phase.get('phase'))} "
+            "are equal, so they do not distinguish the alternatives."
         )
 
-    unavailable = relationships.get("unavailablePhases") or []
-    if unavailable and phases:
-        labels = ", ".join(phase_label(item.get("phase")) for item in unavailable)
-        lines.extend(
-            [
-                "",
-                f"Pairwise separation could not be calculated for **{labels}** "
-                "because complete finite standardized scores were not available.",
-            ]
-        )
+    if len(alternatives) < 3:
+        return None
 
-    return "\n".join(lines)
-
-
-def _relationship_transition_events(facts, from_phase, to_phase):
-    relationships = facts.get("alternativeRelationships") or {}
-    transition = next(
-        (
-            item
-            for item in relationships.get("transitions") or []
-            if item.get("fromPhase") == from_phase and item.get("toPhase") == to_phase
-        ),
-        None,
-    )
-    if not transition:
-        return []
-
-    events = []
-    decrease = transition.get("largestDecrease")
-    increase = transition.get("largestIncrease")
-
-    if decrease:
-        events.append(
-            f"the relative separation between **{decrease['leftAlternative']}** and "
-            f"**{decrease['rightAlternative']}** decreased from "
-            f"**{_percentage(decrease['fromSeparation'])}** to "
-            f"**{_percentage(decrease['toSeparation'])}** "
-            f"({_percentage_points(decrease['change'])})"
-        )
-    if increase:
-        events.append(
-            f"the relative separation between **{increase['leftAlternative']}** and "
-            f"**{increase['rightAlternative']}** increased from "
-            f"**{_percentage(increase['fromSeparation'])}** to "
-            f"**{_percentage(increase['toSeparation'])}** "
-            f"({_percentage_points(increase['change'])})"
-        )
-
-    pair_changes = transition.get("pairChanges") or []
-    if pair_changes and not decrease and not increase:
-        events.append("all comparable pairwise relative separations were unchanged")
-
-    return events
-
-
-def _phase_highlights_markdown(facts):
-    highlights = facts.get("phaseHighlights") or []
-    if not highlights:
-        return ""
-
-    lines = ["### Phase highlights", ""]
-    for highlight in highlights:
-        events = []
-        leader_change = highlight.get("leaderChange")
-        if leader_change:
-            events.append(
-                f"the leader changed from **{leader_change['fromAlternative']}** "
-                f"to **{leader_change['toAlternative']}**"
-            )
-
-        movements = highlight.get("largestMovements") or []
-        if movements:
-            movement_parts = []
-            for movement in movements:
-                direction = "up" if movement["positionChange"] > 0 else "down"
-                amount = abs(movement["positionChange"])
-                movement_parts.append(
-                    f"**{movement['name']}** moved {direction} **{amount:g}** "
-                    f"position{'s' if amount != 1 else ''}"
-                )
-            events.append("; ".join(movement_parts))
-        elif not highlight.get("rankingChanged"):
-            events.append("the ranking order did not change")
-
-        events.extend(
-            _relationship_transition_events(
-                facts,
-                highlight["fromPhase"],
-                highlight["toPhase"],
-            )
-        )
-
-        consensus_change = highlight.get("consensusChange")
-        if consensus_change is not None:
-            if consensus_change > 0:
-                events.append(f"consensus increased by **{fmt(consensus_change)}**")
-            elif consensus_change < 0:
-                events.append(
-                    f"consensus decreased by **{fmt(abs(consensus_change))}**"
-                )
-            else:
-                events.append("consensus was unchanged")
-
-        if not events:
-            continue
-
-        transition = (
-            f"{phase_label(highlight['fromPhase'])} → "
-            f"{phase_label(highlight['toPhase'])}"
-        )
-        lines.append(f"- **{transition}:** " + "; ".join(events) + ".")
-
-    return "\n".join(lines) if len(lines) > 2 else ""
-
-
-def _consensus_markdown(consensus):
-    if not consensus["enabled"] or not consensus["points"]:
-        return ""
-
+    closest = phase.get("closestPairs") or []
+    furthest = phase.get("furthestPairs") or []
     sentences = []
-    if len(consensus["points"]) == 1:
-        sentences.append(
-            f"The recorded consensus measure is **{fmt(consensus['finalMeasure'])}**."
-        )
-    else:
-        change = consensus["change"]
-        direction = (
-            "increased"
-            if change > 0
-            else "decreased"
-            if change < 0
-            else "remained unchanged"
-        )
-        sentences.append(
-            f"Consensus {direction} from **{fmt(consensus['initialMeasure'])}** to "
-            f"**{fmt(consensus['finalMeasure'])}** "
-            f"(**{'+' if change > 0 else ''}{fmt(change)}**)."
-        )
 
-        monotonic_direction = consensus.get("monotonicDirection")
-        if monotonic_direction == "nondecreasing":
+    if len(closest) == 1:
+        pair = closest[0]
+        if pair.get("relativeSeparation") == 0:
             sentences.append(
-                "The recorded consensus series did not decrease between any "
-                "consecutive measured phases."
-            )
-        elif monotonic_direction == "nonincreasing":
-            sentences.append(
-                "The recorded consensus series did not increase between any "
-                "consecutive measured phases."
-            )
-        elif monotonic_direction == "constant":
-            sentences.append("The recorded consensus measure remained constant.")
-        elif monotonic_direction == "mixed":
-            sentences.append(
-                "Consensus changed in both directions across the recorded phases."
-            )
-
-        largest_increase = consensus.get("largestIncrease")
-        if largest_increase:
-            sentences.append(
-                f"The largest increase was **+{fmt(largest_increase['change'])}** "
-                f"from **{phase_label(largest_increase['fromPhase'])}** to "
-                f"**{phase_label(largest_increase['toPhase'])}**."
-            )
-
-        largest_decrease = consensus.get("largestDecrease")
-        if largest_decrease:
-            sentences.append(
-                f"The largest decrease was **{fmt(largest_decrease['change'])}** "
-                f"from **{phase_label(largest_decrease['fromPhase'])}** to "
-                f"**{phase_label(largest_decrease['toPhase'])}**."
-            )
-
-    if consensus["threshold"] is not None:
-        if consensus["reached"]:
-            sentences.append(
-                f"The required threshold of **{fmt(consensus['threshold'])}** was "
-                f"first reached in **{phase_label(consensus['firstReachedPhase'])}**."
+                f"The recorded scores for {_pair_name(pair)} are equal."
             )
         else:
-            gap = consensus.get("finalGapToThreshold")
-            if gap is not None:
-                sentences.append(
-                    f"The final consensus measure remained **{fmt(gap)}** below the "
-                    f"required threshold of **{fmt(consensus['threshold'])}**."
+            sentences.append(
+                f"Among the recorded scores, {_pair_name(pair)} were the closest "
+                "pair."
+            )
+    elif closest:
+        if closest[0].get("relativeSeparation") == 0:
+            sentences.append("Several pairs had equal recorded scores.")
+        else:
+            sentences.append(
+                "Several pairs tied for the closest recorded scores."
+            )
+
+    if len(furthest) == 1:
+        widest = furthest[0]
+        same_as_closest = any(
+            {
+                closest_pair.get("leftAlternativeId"),
+                closest_pair.get("rightAlternativeId"),
+            }
+            == {widest.get("leftAlternativeId"), widest.get("rightAlternativeId")}
+            for closest_pair in closest
+        )
+        if not same_as_closest and widest.get("relativeSeparation") != 0:
+            sentences.append(
+                f"The widest difference in recorded scores was between "
+                f"{_pair_name(widest)}."
+            )
+    elif furthest:
+        sentences.append("Several pairs tied for the widest score difference.")
+
+    if not sentences:
+        return None
+    return "### Alternative relationships\n\n" + " ".join(sentences)
+
+
+def _rankings_by_phase(facts):
+    evolution = facts.get("rankingEvolution") or {}
+    phases = evolution.get("phases") or []
+    series = evolution.get("series") or []
+    rankings = []
+    for index, phase in enumerate(phases):
+        ranking = []
+        for item in series:
+            values = item.get("values") or []
+            rank = values[index] if index < len(values) else None
+            if finite(rank):
+                ranking.append(
+                    {
+                        "alternativeId": item.get("alternativeId"),
+                        "name": item.get("name"),
+                        "rank": rank,
+                    }
                 )
+        rankings.append({"phase": phase, "ranking": ranking})
+    return rankings
+
+
+def _leader_group(ranking):
+    return _top_rank_group(ranking)
+
+
+def _leader_ids(group):
+    return {item.get("alternativeId") for item in group}
+
+
+def _decision_process(facts):
+    rankings = _rankings_by_phase(facts)
+    if len(rankings) < 2:
+        return None
+
+    valid = [item for item in rankings if item["ranking"]]
+    if not valid:
+        return None
+
+    first = valid[0]
+    last = valid[-1]
+    first_leaders = _leader_group(first["ranking"])
+    last_leaders = _leader_group(last["ranking"])
+    same_leaders = _leader_ids(first_leaders) == _leader_ids(last_leaders)
+    all_phases_ranked = len(valid) == len(rankings)
+    all_same_lead = all(
+        _leader_ids(_leader_group(item["ranking"])) == _leader_ids(first_leaders)
+        for item in valid
+    )
+    paragraphs = []
+
+    agreement = facts.get("rankingAgreement") or {}
+    stabilization_phase = agreement.get("stabilizationPhase")
+    if all_phases_ranked and all_same_lead and stabilization_phase == rankings[0]["phase"]:
+        paragraphs.append("The full ranking remained unchanged throughout the recorded phases.")
+    elif all_phases_ranked and all_same_lead:
+        paragraphs.append(
+            f"{_names(first_leaders)} stayed at the top throughout the recorded phases."
+        )
+    elif first_leaders and last_leaders and not same_leaders:
+        if len(first_leaders) == 1 and len(last_leaders) == 1:
+            paragraphs.append(
+                f"The leading alternative changed between the first and final "
+                f"recorded rankings: **{first_leaders[0]['name']}** led in "
+                f"{phase_label(first['phase'])}, while **{last_leaders[0]['name']}** "
+                f"finished first in {phase_label(last['phase'])}."
+            )
+        else:
+            paragraphs.append(
+                f"The top-ranked group changed between the first and final recorded "
+                f"rankings: {_names(first_leaders)} led in {phase_label(first['phase'])}, "
+                f"while {_names(last_leaders)} held the top rank in "
+                f"{phase_label(last['phase'])}."
+            )
+    elif first_leaders and last_leaders and same_leaders and not all_same_lead:
+        paragraphs.append(
+            f"The top-ranked group changed during the process and returned to "
+            f"{_names(last_leaders)} by the final recorded ranking."
+        )
+    elif first_leaders and last_leaders:
+        paragraphs.append(
+            f"{_names(first_leaders)} led in {phase_label(first['phase'])}, and "
+            f"{_names(last_leaders)} held the top rank in {phase_label(last['phase'])}; "
+            "some recorded phases do not include ranking data."
+        )
+    elif last_leaders:
+        paragraphs.append(
+            f"{_names(last_leaders)} held the top rank in {phase_label(last['phase'])}; "
+            "earlier recorded phases do not provide enough ranking data to describe "
+            "how the lead developed."
+        )
+
+    if stabilization_phase is not None:
+        if stabilization_phase == rankings[0]["phase"]:
+            if not paragraphs:
+                paragraphs.append("The full ranking remained unchanged throughout the recorded phases.")
+        else:
+            paragraphs.append(
+                f"The full ranking settled from {phase_label(stabilization_phase)} onward."
+            )
+
+    first_last_leaders = _leader_ids(first_leaders) | _leader_ids(last_leaders)
+    changes = [
+        item
+        for item in (facts.get("rankingEvolution") or {}).get("changes") or []
+        if finite(item.get("positionChange"))
+        and item["positionChange"] != 0
+        and item.get("alternativeId") not in first_last_leaders
+        and finite(item.get("initialRank"))
+        and finite(item.get("finalRank"))
+    ]
+    if changes:
+        largest_shift = max(abs(item["positionChange"]) for item in changes)
+        movers = [item for item in changes if abs(item["positionChange"]) == largest_shift]
+        if len(movers) == 1:
+            mover = movers[0]
+            direction = "up" if mover["positionChange"] > 0 else "down"
+            paragraphs.append(
+                f"Among the other alternatives, **{mover['name']}** moved {direction} "
+                f"from {ordinal(mover['initialRank'])} to "
+                f"{ordinal(mover['finalRank'])} between the first and final rankings."
+            )
+        else:
+            paragraphs.append(
+                f"Among the other alternatives, {_names(movers)} shared the largest "
+                "net position change between the first and final rankings."
+            )
+
+    if not paragraphs:
+        return None
+    return "### Decision process\n\n" + " ".join(paragraphs)
+
+
+def _consensus(facts):
+    consensus = facts.get("consensus") or {}
+    if consensus.get("enabled") is not True:
+        return None
+
+    points = consensus.get("points") or []
+    if not points:
+        return (
+            "### Consensus\n\n"
+            "Issue-level consensus tracking was enabled, but no measure was recorded "
+            "for the completed phases."
+        )
+
+    threshold = consensus.get("threshold")
+    if not finite(threshold):
+        return (
+            "### Consensus\n\n"
+            "An issue-level consensus measure was recorded, but no configured "
+            "threshold is available for comparison."
+        )
+
+    sentences = []
+    if len(points) > 1:
+        change = consensus.get("change")
+        if finite(change):
+            if change > 0:
+                sentences.append(
+                    "The recorded issue-level consensus measure rose between the first "
+                    "and final measurements."
+                )
+            elif change < 0:
+                sentences.append(
+                    "The recorded issue-level consensus measure fell between the first "
+                    "and final measurements."
+                )
+            else:
+                sentences.append(
+                    "The recorded issue-level consensus measure was unchanged between "
+                    "the first and final measurements."
+                )
+
+    reached_phase = consensus.get("firstReachedPhase")
+    if reached_phase is not None:
+        sentences.append(
+            f"It first met the configured threshold in {phase_label(reached_phase)}."
+        )
+        if finite(consensus.get("finalMeasure")) and consensus["finalMeasure"] < threshold:
+            sentences.append("The final recorded measure was below that threshold.")
+    else:
+        sentences.append("No recorded measure met the configured threshold.")
 
     return "### Consensus\n\n" + " ".join(sentences)
 
 
-def _participation_markdown(participants):
-    current_count = participants.get("currentCount", 0)
-    if not current_count:
-        return ""
-
-    completed = participants.get("evaluationCompletedCurrentCount", 0)
-    accepted = participants.get("acceptedCurrentCount", 0)
+def _participation(facts):
+    participants = facts.get("participants") or {}
     historical = participants.get("historicalCount", 0)
+    current = participants.get("currentCount", 0)
+    completed = participants.get("evaluationCompletedCurrentCount", 0)
     phase_counts = participants.get("phaseCounts") or []
-    count_changed = (
-        len(phase_counts) >= 2
-        and not participants.get("participantCountStableAcrossPhases")
-    )
-
-    noteworthy = (
-        completed != current_count
-        or accepted != current_count
-        or historical > current_count
-        or count_changed
-    )
-    if not noteworthy:
-        return ""
-
     sentences = []
-    if completed != current_count:
+
+    if historical > 0 and historical != current:
         sentences.append(
-            f"At completion, **{completed} of {current_count}** current participants "
-            "are recorded with a completed alternative evaluation."
+            f"Stored history contains **{historical}** participant identities, while "
+            f"the current participant set contains **{current}**. These are different "
+            "records and do not establish how many people contributed inputs to the "
+            "completed result."
         )
 
-    if accepted != current_count:
+    if current and completed != current:
         sentences.append(
-            f"**{accepted} of {current_count}** current participants are recorded as "
-            "having accepted the Issue invitation."
+            f"The current participant set records **{completed} of {current}** people "
+            "as having completed an alternative evaluation."
         )
 
-    if historical > current_count:
-        sentences.append(
-            f"The stored history contains **{historical}** participant identities, "
-            f"while **{current_count}** remain in the current participant set."
-        )
-
-    if count_changed:
-        change = participants.get("participantCountChange")
-        if change is not None:
-            direction = "increased" if change > 0 else "decreased"
+    if len(phase_counts) >= 2:
+        counts = [
+            entry.get("participantCount")
+            for entry in phase_counts
+            if finite(entry.get("participantCount"))
+        ]
+        if len(counts) >= 2 and min(counts) != max(counts):
             sentences.append(
-                f"Across available phase snapshots, the participant count {direction} "
-                f"from **{phase_counts[0]['participantCount']}** to "
-                f"**{phase_counts[-1]['participantCount']}**."
+                f"Phase-start snapshots ranged from **{min(counts)}** to "
+                f"**{max(counts)}** participants. These counts do not identify "
+                "individual contributions."
             )
 
-    return "### Participation\n\n" + " ".join(sentences) if sentences else ""
+    if not sentences:
+        return None
+    return "### Participation records\n\n" + " ".join(sentences)
 
 
 def build_issue_interpretation(facts):
+    """Summarize common issue results without assigning model-specific meaning."""
     sections = [
-        _final_ranking_markdown(facts),
-        _ranking_evolution_markdown(facts),
-        _alternative_relationships_markdown(facts),
-        _ranking_stability_markdown(facts),
-        _ranking_agreement_markdown(facts),
-        _phase_highlights_markdown(facts),
-        _consensus_markdown(facts["consensus"]),
-        _participation_markdown(facts["participants"]),
+        _overall_outcome(facts),
+        _alternative_relationships(facts),
+        _decision_process(facts),
+        _consensus(facts),
+        _participation(facts),
     ]
     return "\n\n".join(section for section in sections if section)

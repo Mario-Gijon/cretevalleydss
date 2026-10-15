@@ -53,11 +53,12 @@ def test_generic_issue_endpoint_projects_context_and_returns_standard_success():
     }
     assert response["data"]["facts"]["finalRanking"] == [{"alternativeId": "a", "name": "Alpha", "rank": 1}]
     assert response["data"]["visualizations"] == []
-    assert "### Ranking evolution" not in response["data"]["interpretation"]
+    assert "### Overall outcome" in response["data"]["interpretation"]
+    assert "Only **Alpha** appears" in response["data"]["interpretation"]
     assert "### Consensus" in response["data"]["interpretation"]
-    assert "### Participation" in response["data"]["interpretation"]
-    assert "### Final ranking" in response["data"]["interpretation"]
-    assert "**Alpha** is the only ranked alternative." in response["data"]["interpretation"]
+    assert "### Participation records" not in response["data"]["interpretation"]
+    assert "### Final ranking" not in response["data"]["interpretation"]
+    assert "### Ranking evolution" not in response["data"]["interpretation"]
     assert "### Execution" not in response["data"]["interpretation"]
 
 
@@ -82,7 +83,7 @@ def test_generic_issue_analysis_keeps_a_stored_projection_but_marks_an_empty_one
     }
 
 
-def test_issue_analysis_keeps_ranking_evolution_but_not_consensus_visualization():
+def test_issue_analysis_keeps_ranking_evolution_visualization_without_narrative_inventory():
     context = analysis_context()
     second_round = deepcopy(context["rounds"][0])
     second_round["phase"] = 1
@@ -91,10 +92,11 @@ def test_issue_analysis_keeps_ranking_evolution_but_not_consensus_visualization(
     result = asyncio.run(analyze_generic_issue(context))["data"]
 
     assert [entry["type"] for entry in result["visualizations"]] == ["rankingEvolution"]
-    assert "### Ranking evolution" in result["interpretation"]
-    assert "| Alternative | Initial | Final | Change |" in result["interpretation"]
-    assert "| Alpha | 1st | 1st | +0 |" in result["interpretation"]
+    assert "### Decision process" in result["interpretation"]
+    assert "remained unchanged" in result["interpretation"]
+    assert "| Alternative | Initial | Final | Change |" not in result["interpretation"]
     assert "### Final ranking" not in result["interpretation"]
+    assert "1. **Alpha**" not in result["interpretation"]
     assert "### Execution" not in result["interpretation"]
 
 
