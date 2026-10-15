@@ -18,6 +18,9 @@ describe("InterpretationPanel", () => {
     expect(screen.getByText("Own result")).toBeInTheDocument();
     expect(screen.getByText("General analysis is not available for this execution. Reload Analysis to generate it.")).toBeInTheDocument();
     expect(screen.queryByText("Model analysis")).not.toBeInTheDocument();
+    expect(screen.queryByText("TOPSIS")).not.toBeInTheDocument();
+    expect(screen.queryByText("Base model")).not.toBeInTheDocument();
+    expect(screen.queryByText("BORDA")).not.toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
 
@@ -29,7 +32,10 @@ describe("InterpretationPanel", () => {
     expect(screen.getAllByText("Alternative evaluation")).toHaveLength(2);
     expect(screen.getByText("Base model interpretation")).toBeInTheDocument();
     expect(screen.getByText("Scenario model interpretation")).toBeInTheDocument();
-    expect(screen.getAllByText("Scenario model")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Base" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Scenario" })).toBeInTheDocument();
+    expect(screen.queryByText("Base model")).not.toBeInTheDocument();
+    expect(screen.queryByText("Scenario model")).not.toBeInTheDocument();
   });
 
   it("renders available stage interpretations in criteria-weighting then alternative-evaluation order", () => {
@@ -41,7 +47,9 @@ describe("InterpretationPanel", () => {
       },
     }]} />);
     expect(screen.getByText("Criteria weighting").compareDocumentPosition(screen.getByText("Alternative evaluation")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText("criteria-model")).toBeInTheDocument();
+    expect(screen.queryByText("criteria-model")).not.toBeInTheDocument();
+    expect(screen.queryByText("alternative-model")).not.toBeInTheDocument();
+    expect(screen.queryByText("Alternative model")).not.toBeInTheDocument();
     expect(screen.getByText("Criteria interpretation")).toBeInTheDocument();
     expect(screen.getByText("Alternative interpretation")).toBeInTheDocument();
   });

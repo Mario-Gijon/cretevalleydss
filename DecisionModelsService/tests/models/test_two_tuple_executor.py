@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 
 import pytest
 
@@ -82,3 +83,23 @@ def test_two_tuple_executor_emits_natural_language_result_labels() -> None:
     ]
     assert all("beta" not in entry["resultLabel"].lower() for entry in ranked)
     json.dumps(response, ensure_ascii=False)
+
+
+def test_two_tuple_executor_rejects_incompatible_criterion_scales() -> None:
+    value = deepcopy(
+        TWO_TUPLE_REQUEST_EXAMPLES["basic_linguistic_2tuple_matrix"]["value"]
+    )
+    second_domain = deepcopy(
+        value["context"]["criteria"][1]["expressionDomain"]
+    )
+    second_domain["definition"]["labels"][3]["label"] = "Good"
+    value["context"]["criteria"][1]["expressionDomain"] = second_domain
+
+    response = execute_two_tuple(
+        GenericModelExecutionRequest.model_validate(value)
+    )
+
+    assert response.status_code == 200
+    payload = json.loads(response.body)
+    assert payload["success"] is False
+    assert "same ordered linguistic2Tuple labels" in payload["message"]

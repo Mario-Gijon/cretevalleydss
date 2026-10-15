@@ -23,6 +23,7 @@ import {
   evaluationsExpertControlSx,
   evaluationsActionGroupSx,
   evaluationsSelectorGroupSx,
+  evaluationsToggleSx,
   evaluationsStageDividerNarrowSx,
   evaluationsStageDividerWideSx,
   evaluationsHeaderSx,
@@ -339,12 +340,20 @@ describe("EvaluationsView", () => {
     expect(evaluationPluginRendererViewportSx).not.toHaveProperty("minHeight");
     expect(evaluationPluginRendererViewportSx).toMatchObject({ width: "100%", maxWidth: "100%", maxHeight: { xs: 520, xl: 620 }, overflow: "auto" });
     expect(evaluationsExpertControlSx).toMatchObject({ width: { xs: "100%", sm: 230 } });
+    expect(evaluationsToggleSx).toMatchObject({ width: { xs: "100%", sm: "auto" } });
     expect(evaluationsHeaderSx).toMatchObject({
       justifyContent: "space-between",
-      flexDirection: { xs: "column", md: "row" },
+      flexDirection: { xs: "column", sm: "row" },
+      alignItems: { xs: "stretch", sm: "center" },
     });
-    expect(evaluationsSelectorGroupSx).toMatchObject({ width: { xs: "100%", md: "auto" } });
-    expect(evaluationsActionGroupSx).toMatchObject({ width: { xs: "100%", md: "auto" } });
+    expect(evaluationsSelectorGroupSx).toMatchObject({
+      width: { xs: "100%", sm: "auto" },
+      flexDirection: { xs: "column", sm: "row" },
+    });
+    expect(evaluationsActionGroupSx).toMatchObject({
+      width: { xs: "100%", sm: "auto" },
+      justifyContent: { xs: "center", sm: "flex-end" },
+    });
     expect(evaluationsStageDividerWideSx.display).toEqual({ xs: "none", xl: "block" });
     expect(evaluationsStageDividerNarrowSx.display).toEqual({ xs: "block", xl: "none" });
   });

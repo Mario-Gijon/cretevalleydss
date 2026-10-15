@@ -175,13 +175,6 @@ const stageAnalysisFor = (execution, stage) =>
     ? execution?.alternativeEvaluationAnalysis
     : null);
 
-const stageCaption = (execution, stage, entry) =>
-  stage === "alternativeEvaluation" &&
-    execution.modelName &&
-    execution.modelName !== "—"
-    ? execution.modelName
-    : entry?.apiModelKey || null;
-
 const InterpretationPanel = ({ executions = [] }) => {
   const multiple = executions.length > 1;
 
@@ -234,21 +227,6 @@ const InterpretationPanel = ({ executions = [] }) => {
               </Box>
             ) : null}
 
-            {multiple ? (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  mt: multiple ? 0.3 : 0,
-                  mb: 1.9,
-                }}
-              >
-                {execution.modelName}
-              </Typography>
-            ) : null}
-
-
-
             <Box component="h3" sx={stageHeadingSx}>
               General analysis
             </Box>
@@ -275,8 +253,6 @@ const InterpretationPanel = ({ executions = [] }) => {
                 return null;
               }
 
-              const caption = stageCaption(execution, stage.key, entry);
-
               return (
                 <Box
                   key={stage.key}
@@ -287,19 +263,6 @@ const InterpretationPanel = ({ executions = [] }) => {
                   <Box component="h3" sx={stageHeadingSx}>
                     {stage.title}
                   </Box>
-
-                  {caption ? (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: "block",
-                        mb: 0.9,
-                      }}
-                    >
-                      {caption}
-                    </Typography>
-                  ) : null}
 
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}

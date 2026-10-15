@@ -7,8 +7,8 @@ export const evaluationsRootSx = {
 
 export const evaluationsHeaderSx = {
   display: "flex",
-  flexDirection: { xs: "column", md: "row" },
-  alignItems: { xs: "stretch", md: "center" },
+  flexDirection: { xs: "column", sm: "row" },
+  alignItems: { xs: "stretch", sm: "center" },
   justifyContent: "space-between",
   gap: 1.2,
   p: { xs: 1.35, md: 1.65 },
@@ -20,15 +20,15 @@ export const evaluationsSelectorGroupSx = {
   alignItems: { xs: "stretch", sm: "center" },
   flexWrap: "wrap",
   gap: 1,
-  width: { xs: "100%", md: "auto" },
+  width: { xs: "100%", sm: "auto" },
   minWidth: 0,
 };
 
 export const evaluationsActionGroupSx = {
   display: "flex",
   alignItems: "center",
-  justifyContent: { xs: "stretch", md: "flex-end" },
-  width: { xs: "100%", md: "auto" },
+  justifyContent: { xs: "center", sm: "flex-end" },
+  width: { xs: "100%", sm: "auto" },
   minWidth: 0,
 };
 
