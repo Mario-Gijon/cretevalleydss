@@ -50,7 +50,11 @@ def _example_facts() -> dict:
     return analysis["facts"]
 
 
-def _greece_execution(*, multi_expert: bool) -> dict:
+def _greece_execution(
+    *,
+    multi_expert: bool,
+    varied_expert_distances: bool = False,
+) -> dict:
     fixture_name = (
         "two_tuple_greece_video.json"
         if multi_expert
@@ -126,6 +130,15 @@ def _greece_execution(*, multi_expert: bool) -> dict:
             scenario["participants"]["finalExpert"]: scenario["sourceValues"]
         }
     )
+    if varied_expert_distances:
+        source_values = {
+            alias: deepcopy(scenario["sourceValuesByExpert"][alias])
+            for alias in ("expert_a", "expert_c", "expert_e")
+        }
+        # This valid one-step input variation creates distinct distances after
+        # the real model execution while retaining the source fixture's scale.
+        assert source_values["expert_c"]["s03"][0] == 3
+        source_values["expert_c"]["s03"][0] = 2
     evaluations = []
     for alias, matrix in source_values.items():
         payload = {}
@@ -235,6 +248,14 @@ def multi_expert_execution() -> dict:
     return _greece_execution(multi_expert=True)
 
 
+@pytest.fixture(scope="module")
+def varied_distance_execution() -> dict:
+    return _greece_execution(
+        multi_expert=True,
+        varied_expert_distances=True,
+    )
+
+
 @pytest.fixture
 def facts(real_facts: dict) -> dict:
     return deepcopy(real_facts)
@@ -281,10 +302,13 @@ def test_unique_preferred_alternative_is_explained_without_repeating_ranking(
 
     assert "**Alternative A** is favored under the criteria" in overall
     assert "criteria and preferences used" in overall
-    assert "**Alternative A** had higher recorded assessments" in overall
-    assert "**Quality** (**High** vs **Medium**)" in overall
-    assert "**Service** (**High** vs **Medium**)" in overall
-    assert "**Quality** had the largest individual criterion weight" in overall
+    assert (
+        "Compared with **Alternative B**, **Alternative A** received "
+        "**High** assessments for **Quality** and **Service**, while "
+        "**Alternative B** was rated **Medium** on those criteria"
+    ) in overall
+    assert "**Quality** (**High** vs **Medium**)" not in overall
+    assert "largest individual criterion weight" not in overall
     assert "### Expert perspectives" in interpretation
     assert "### Stability of the result" in interpretation
     assert "### Points worth reviewing" in interpretation
@@ -438,7 +462,7 @@ def test_personal_leading_alternative_difference_uses_actual_names(
     assert "**Expert 2**'s personal assessment favored **Alternative B**" in expert_section
     assert "collective result favored **Alternative A**" in expert_section
     assert "### Points worth reviewing" in interpretation
-    assert "**Expert 2**'s personal preference differs from the collective lead" in _section(
+    assert "Discuss what informs **Expert 2**'s preference for **Alternative B**" in _section(
         interpretation,
         "Points worth reviewing",
     )
@@ -473,9 +497,10 @@ def test_cell_disagreement_names_alternative_and_criterion(facts: dict) -> None:
     interpretation = build_interpretation(facts)
     points_section = _section(interpretation, "Points worth reviewing")
 
-    assert "largest cell-level differences from the collective" in points_section
+    assert "Consider discussing the ratings for" in points_section
     assert "**Alternative A** on **Service**" in points_section
-    assert "**Alternative B** on **Service**" in points_section
+    assert "furthest from the collective" in points_section
+    assert "different assumptions" in points_section
 
 
 def test_identical_expert_assessments_do_not_claim_a_cell_disagreement(
@@ -681,8 +706,9 @@ def test_l2towa_is_described_as_positional_not_named_importance(
     interpretation = build_interpretation(facts)
     stability = _section(interpretation, "Stability of the result")
 
-    assert "combined according to their relative position" in interpretation
-    assert "rather than by fixed importance assigned to named criteria" in interpretation
+    assert "combined according to their relative position" not in interpretation
+    assert "fixed importance assigned to named criteria" not in interpretation
+    assert "largest individual criterion weight" not in interpretation
     assert "**Quality**'s weight" not in interpretation
     assert "L2TOWA" not in interpretation
 
@@ -723,7 +749,9 @@ def test_weighted_average_and_arithmetic_mean_do_not_leak_technical_details(
     assert "confidence percentage" not in interpretation.lower()
 
 
-def test_arithmetic_mean_names_equal_criterion_treatment(facts: dict) -> None:
+def test_criterion_weighting_is_not_added_as_an_isolated_observation(
+    facts: dict,
+) -> None:
     summary = facts["aggregation"]["criteriaAggregation"]["summary"]
     summary.update(
         {
@@ -735,7 +763,8 @@ def test_arithmetic_mean_names_equal_criterion_treatment(facts: dict) -> None:
 
     overall = _section(build_interpretation(facts), "Overall result")
 
-    assert "Each criterion had equal weight in this alternative evaluation" in overall
+    assert "equal weight" not in overall.lower()
+    assert "criterion weight" not in overall.lower()
     assert "arithmetic mean" not in overall.lower()
 
 
@@ -757,6 +786,42 @@ def test_criterion_comparison_reports_labels_without_assuming_direction(
     assert "stronger than" not in overall
 
 
+def test_same_linguistic_label_preserves_the_within_category_difference(
+    facts: dict,
+) -> None:
+    alternative_a = next(
+        item
+        for item in facts["alternatives"]["items"]
+        if item["alternativeId"] == "alt-a"
+    )
+    alternative_b = next(
+        item
+        for item in facts["alternatives"]["items"]
+        if item["alternativeId"] == "alt-b"
+    )
+    quality_a = next(
+        item
+        for item in alternative_a["collectiveCriteria"]
+        if item["criterionId"] == "quality"
+    )
+    quality_b = next(
+        item
+        for item in alternative_b["collectiveCriteria"]
+        if item["criterionId"] == "quality"
+    )
+    quality_b["tuple"] = deepcopy(quality_a["tuple"])
+    quality_b["tuple"]["alpha"] = 0
+    quality_b["beta"] = quality_b["tuple"]["labelIndex"]
+
+    overall = _section(build_interpretation(facts), "Overall result")
+
+    assert (
+        "For **Quality**, both alternatives were rated **High**, though "
+        "**Alternative A**'s assessment was higher within that category "
+        "than **Alternative B**'s"
+    ) in overall
+
+
 def test_criterion_and_alternative_comparisons_follow_stable_ids(
     facts: dict,
 ) -> None:
@@ -766,8 +831,8 @@ def test_criterion_and_alternative_comparisons_follow_stable_ids(
 
     overall = _section(build_interpretation(facts), "Overall result")
 
-    assert "**Alternative A** had higher recorded assessments" in overall
-    assert "**Quality** had the largest individual criterion weight" in overall
+    assert "**Quality** and **Service**" in overall
+    assert "largest individual criterion weight" not in overall
 
 
 def test_incompatible_linguistic_label_is_omitted_from_criterion_comparison(
@@ -806,7 +871,9 @@ def test_greece_parent_and_leaf_weights_are_separate_executions(
     assert largest_leaf["criterionName"] == "Wind potential"
     assert largest_leaf["effectiveWeight"] == pytest.approx(0.10714286)
     assert parent_weights["c5"] == pytest.approx(0.22142857)
-    assert "Wind potential** had the largest individual criterion weight" in greece_execution["analysis"]["interpretation"]
+    overall = _section(greece_execution["analysis"]["interpretation"], "Overall result")
+    assert "largest individual criterion weight" not in overall
+    assert "Wind potential" not in overall
     assert "Local Socio-Economic Benefits" not in greece_execution["analysis"]["interpretation"]
     assert "other 17 alternatives" not in greece_execution["analysis"]["interpretation"]
 
@@ -820,17 +887,26 @@ def test_greece_narrative_groups_observations_and_keeps_review_action_distinct(
     points = _section(interpretation, "Points worth reviewing")
 
     assert overall.count("Compared with") == 1
-    assert "**Compatibility with planned PV if any**" in overall
-    assert "**Shared infrastructure potential in future**" in overall
+    assert (
+        "**Psyxro** received **Very High** assessments for "
+        "**Compatibility with planned PV if any** and "
+        "**Shared infrastructure potential in future**"
+    ) in overall
+    assert "**Saint George Village Entrance** was rated **High** on those criteria" in overall
     assert "**Irrigation & public building benefits**" in overall
-    assert "For **" not in overall
-    assert "The overall choice reflects all criteria together" in overall
+    assert (
+        "**Psyxro** was rated **High**, while "
+        "**Saint George Village Entrance** was rated **Medium**"
+    ) in overall
+    assert "The overall result reflects all criteria together" in overall
+    assert "largest individual criterion weight" not in overall
     assert "when each criterion was left out in turn" in stability
     assert "raising the weight assigned to **Land rent** above its starting value" in stability
     assert "changed the preferred alternative from **Psyxro** to **Old TEEI**" in stability
-    assert "Before choosing, confirm whether the current priority assigned to **Land rent**" in points
+    assert "Check whether the current priority assigned to **Land rent**" in points
     assert "above its starting value" not in points
     assert "leading result changed" not in points
+    assert "invite them to assess the alternatives" in points
 
 
 def test_executed_five_expert_greece_fixture_distinguishes_profiles_rankings_and_cells(
@@ -862,20 +938,94 @@ def test_executed_five_expert_greece_fixture_distinguishes_profiles_rankings_and
     assert "The ratings from **Expert A** were closest overall" in expert_section
     assert "**Expert B**, **Expert C**, **Expert D**, and **Expert E** tied for the greatest distance" in expert_section
     assert "**Expert E**'s personal assessment favored **Saint George Village Entrance**" in expert_section
-    assert "personal assessments from **Expert A**, **Expert B**, **Expert C**, and **Expert D** also favored **Psyxro**" in expert_section
+    assert "The other four experts also favored **Psyxro**" in expert_section
     assert "**Agios Georgios (Saint George Village)** on **Accessibility of location**" in points
     assert "**Expert B** furthest from the collective" in points
-    assert "**Visibility from roads/public areas**" in points
-    assert "**Expert C** furthest from the collective" in points
     assert "When **Irrigation & public building benefits** was excluded" in stability
-    assert "raising the weight assigned to **Accessibility of location** above its starting value changed the preferred alternative from **Psyxro** to **Saint George Village Entrance**" in stability
-    assert "raising the weight assigned to either **Land rent** or **Long-term operational potential (after project period)** above its starting value changed the preferred alternative from **Psyxro** to **Plati**" in stability
-    assert "raising the weight assigned to either **Installation cost** or **Landowner cooperation Risk** above its starting value changed the preferred alternative from **Psyxro** to **Old TEEI**" in stability
+    assert "**Long-term operational potential (after project period)**" in stability
+    assert "**Landowner cooperation Risk**" in stability
+    assert "changed the preferred alternative from **Psyxro** to **Plati**" in stability
+    assert "changed the preferred alternative from **Psyxro** to **Old TEEI**" in stability
+    assert "**Accessibility of location**" not in stability
+    assert "**Land rent**" not in stability
+    assert "Other tested weight settings remain available in Visualizations" in stability
     assert "Irrigation & public building benefits** was excluded" not in points
     assert "preferred alternative changed to **Plati**" not in points
+    assert "belongs in the decision scope" in points
+    assert "changed the preferred alternative from" not in points
+    assert len(points.split(". ")) <= 3
     assert "statistically significant" not in interpretation.lower()
     assert "additional experts" not in interpretation.lower()
     assert build_interpretation(deepcopy(facts)) == interpretation
+
+
+def test_varied_distance_greece_fixture_executes_three_distinct_expert_profiles(
+    varied_distance_execution: dict,
+) -> None:
+    facts = varied_distance_execution["analysis"]["facts"]
+    interpretation = varied_distance_execution["analysis"]["interpretation"]
+    experts = _section(interpretation, "Expert perspectives")
+    points = _section(interpretation, "Points worth reviewing")
+
+    distances = {
+        item["expertLabel"]: item["distanceToCollective"][
+            "meanAbsoluteBetaDistance"
+        ]
+        for item in facts["evaluators"]["items"]
+    }
+    assert facts["counts"]["evaluators"] == 3
+    assert varied_distance_execution["response"]["success"] is True
+    assert [
+        item["expert"]["id"]
+        for item in varied_distance_execution["request"]["evaluations"]
+    ] == ["expert_a", "expert_c", "expert_e"]
+    expert_c_payload = next(
+        item["payload"]
+        for item in varied_distance_execution["request"]["evaluations"]
+        if item["expert"]["id"] == "expert_c"
+    )
+    assert expert_c_payload["s03"]["c1_wind_potential"] == {
+        "labelKey": "s1",
+        "alpha": 0,
+    }
+    assert len({round(distance, 10) for distance in distances.values()}) == 3
+    assert distances["Expert A"] < distances["Expert E"] < distances["Expert C"]
+    assert [item["expertLabel"] for item in facts["evaluators"]["closestToCollective"]["evaluators"]] == ["Expert A"]
+    assert [item["expertLabel"] for item in facts["evaluators"]["farthestFromCollective"]["evaluators"]] == ["Expert C"]
+    assert (
+        "**Psyxro** received a **Medium** assessment for "
+        "**Long-term operational potential (after project period)**, while "
+        "**Plati** was rated **Very High** on that criterion"
+    ) in _section(interpretation, "Overall result")
+
+    personal_leaders = {
+        item["expertLabel"]: [leader["name"] for leader in item["personalResult"]["leadingGroup"]]
+        for item in facts["evaluators"]["items"]
+    }
+    assert personal_leaders == {
+        "Expert A": ["Psyxro"],
+        "Expert C": ["Psyxro"],
+        "Expert E": ["Saint George Village Entrance"],
+    }
+    assert "The ratings from **Expert A** were closest overall" in experts
+    assert "those from **Expert C** were furthest" in experts
+    assert "ratings from **Expert E** fell between" in experts
+    assert "**Expert E**'s personal assessment favored **Saint George Village Entrance**" in experts
+    assert "The other two experts also favored **Psyxro**" in experts
+    assert "**Expert C**'s personal assessment favored" not in experts
+    assert "**Expert E** furthest from the collective" in points
+    assert "**Long-term operational potential (after project period)**" in points
+    assert build_interpretation(deepcopy(facts)) == interpretation
+
+
+def test_sensitivity_examples_are_selected_by_nearness_not_input_order(
+    multi_expert_execution: dict,
+) -> None:
+    facts = deepcopy(multi_expert_execution["analysis"]["facts"])
+    expected = _section(build_interpretation(facts), "Stability of the result")
+    facts["sensitivity"]["criterionWeights"]["items"].reverse()
+
+    assert _section(build_interpretation(facts), "Stability of the result") == expected
 
 
 def test_three_experts_with_equal_distances_are_all_named(facts: dict) -> None:
@@ -940,8 +1090,10 @@ def test_weight_sensitivity_reports_increases_and_decreases_without_a_threshold(
     points = _section(interpretation, "Points worth reviewing")
 
     assert "raising the weight assigned to **Service** above its starting value" in stability
-    assert "lowering the weight assigned to **Service** below its starting value" in stability
-    assert stability.count("changed the preferred alternative from **Alternative A** to **Alternative B**") == 2
+    assert "lowering the weight assigned to **Service** below its starting value" not in stability
+    assert stability.count("changed the preferred alternative from **Alternative A** to **Alternative B**") == 1
+    assert "Among the sampled interior changes closest to their starting weights" in stability
+    assert "Other tested weight settings remain available in Visualizations" in stability
     assert "universal threshold" not in stability.lower()
     assert "current priority assigned to **Service**" in points
     assert "raising the weight assigned to **Service**" not in points
@@ -1017,7 +1169,7 @@ def test_many_criterion_weights_never_report_the_criterion_count_as_alternatives
 
     interpretation = build_interpretation(facts)
 
-    assert "**Quality** had the largest individual criterion weight" in interpretation
+    assert "largest individual criterion weight" not in interpretation
     assert "17 alternatives" not in interpretation
 
 
@@ -1045,9 +1197,11 @@ def test_single_evaluator_limitation_is_not_repeated_in_points_to_review(
 
     interpretation = build_interpretation(facts)
     expert_section = _section(interpretation, "Expert perspectives")
+    points = _section(interpretation, "Points worth reviewing")
 
     assert "result reflects only **Expert 1**'s alternative evaluations" in expert_section
-    assert "### Points worth reviewing" not in interpretation
+    assert "invite them to assess the alternatives" in points
+    assert "shared preference" in points
 
 
 def test_output_is_deterministic_and_uses_connected_natural_paragraphs(
