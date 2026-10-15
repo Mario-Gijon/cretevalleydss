@@ -60,7 +60,7 @@ describe("AnalyticalGraph", () => {
     const title = screen.getByRole("heading", { name: "MCC adjustment map" });
     const readingGuide = screen.getByTestId("visualization-reading-guide");
     const graph = screen.getByTestId("heatmap-analytical-graph");
-    expect(readingGuide).toHaveTextContent("positive values mean it increased");
+    expect(readingGuide).toHaveTextContent("positive means raised");
     expect(title.compareDocumentPosition(readingGuide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(readingGuide.compareDocumentPosition(graph) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText("Signed change Δ = adjusted weight − original weight.")).not.toBeInTheDocument();
@@ -226,8 +226,8 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent("Use the chart labels, legend, and tooltips");
     expect(screen.getByText("This graph is unavailable.")).toBeInTheDocument();
     rerender(<AnalyticalGraph visualization={{ ...descriptors.heatmap, key: "mcc-adjustment-map", title: {}, description: { malformed: true }, insight: { malformed: true } }} />);
-    expect(screen.getByRole("heading", { name: "MCC adjustment map" })).toBeInTheDocument();
-    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent("Each row is an expert");
+    expect(screen.getByRole("heading", { name: "Weight changes by expert and criterion" })).toBeInTheDocument();
+    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent("Rows are experts");
     rerender(<AnalyticalGraph visualization={null} />);
     expect(screen.getByText("This visualization is unavailable.")).toBeInTheDocument();
   });

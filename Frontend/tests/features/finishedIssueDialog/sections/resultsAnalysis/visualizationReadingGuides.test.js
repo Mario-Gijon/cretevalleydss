@@ -8,6 +8,7 @@ import {
 
 const MODEL_CHART_KEYS = [
   "individual-preference-distribution",
+  "collective-criterion-importance",
   "mcc-adjustment-map",
   "mcc-adjustment-effort-by-expert",
   "mcc-adjustment-effort-by-criterion",
@@ -82,14 +83,14 @@ describe("visualization reading guides", () => {
 
   it("explains linguistic scale, MCC direction, TOPSIS ideals, and counterfactual limits", () => {
     expect(getVisualizationReadingGuide({ key: "individual-preference-distribution" }).text).toContain("side-to-side offsets");
-    expect(getVisualizationReadingGuide({ key: "mcc-adjustment-map" }).text).toContain("negative values mean it decreased");
+    expect(getVisualizationReadingGuide({ key: "mcc-adjustment-map" }).text).toContain("negative means lowered");
     expect(getVisualizationReadingGuide({ key: "collective-beta-heatmap" }).text).toContain("may not be more desirable for a cost criterion");
     expect(getVisualizationReadingGuide({ key: "topsis-ideal-distances" }).text).toContain("most desirable reference");
     expect(getVisualizationReadingGuide({ key: "loco-rank-impact" }).text).toContain("not real-world causal importance");
   });
 
   it("uses safe fallbacks for older descriptors with missing or malformed descriptions", () => {
-    expect(getVisualizationReadingGuide({ key: "mcc-adjustment-map", description: null }).text).toContain("Each row is an expert");
+    expect(getVisualizationReadingGuide({ key: "mcc-adjustment-map", description: null }).text).toContain("Rows are experts");
     expect(getVisualizationReadingGuide({ type: "bar", description: { malformed: true } }).text).toContain("Use the chart labels");
     expect(getVisualizationReadingGuide(null).text).toContain("Use the chart labels");
   });

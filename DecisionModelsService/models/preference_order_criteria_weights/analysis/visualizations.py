@@ -273,6 +273,47 @@ def _individual_preference_distribution(
     }
 
 
+def _collective_criterion_importance(
+    facts: dict[str, Any],
+) -> dict[str, Any] | None:
+    criteria = sorted(
+        facts["criteria"]["items"],
+        key=lambda item: (
+            -float(item["collectiveWeight"]),
+            str(item["name"]).casefold(),
+            str(item["criterionId"]),
+        ),
+    )
+    if not criteria:
+        return None
+
+    return {
+        "key": "collective-criterion-importance",
+        "type": "bar",
+        "title": "Collective criterion importance",
+        "description": (
+            "Final collective weight assigned to each criterion after the experts' "
+            "preferences were combined."
+        ),
+        "orientation": "horizontal",
+        "xAxis": {"label": "Final collective weight (%)"},
+        "yAxis": {"label": "Criterion"},
+        "data": {
+            "categories": [item["name"] for item in criteria],
+            "series": [
+                {
+                    "key": "collective-criterion-importance",
+                    "label": "Final collective weight (%)",
+                    "values": [
+                        _display(float(item["collectiveWeight"]) * 100, digits=2)
+                        for item in criteria
+                    ],
+                }
+            ],
+        },
+    }
+
+
 def _mcc_adjustment_map(
     facts: dict[str, Any],
 ) -> dict[str, Any] | None:
@@ -369,13 +410,13 @@ def _mcc_adjustment_map(
     ]
 
     insight = (
-        "MCC did not need to modify "
-        "the individual utility vectors."
-        if abs(float(total)) <= 1e-12
+        "The calculation left the "
+        "original expert weights unchanged."
+        if abs(float(total)) <= 1e-6
         else (
-            "Total absolute MCC adjustment "
-            "across all evaluator–criterion "
-            f"cells is {_display(total)}."
+            "The calculation adjusted "
+            "the expert weight profiles to "
+            "meet the configured maximum gap."
         )
     )
 
@@ -385,14 +426,12 @@ def _mcc_adjustment_map(
         ),
         "type": "heatmap",
         "title": (
-            "MCC adjustment map"
+            "Weight changes by expert and criterion"
         ),
         "description": (
-            "Signed change Δ = adjusted "
-            "weight − original weight "
-            "applied by MCC to reconcile "
-            "individual criterion-weight "
-            "vectors."
+            "How much the calculation "
+            "raised or lowered each expert's "
+            "original weight for each criterion."
         ),
         "insight": insight,
         "scale": {
@@ -475,25 +514,23 @@ def _mcc_effort_by_expert(
                 ]["effort"]
             )
         )
-        <= 1e-12
+        <= 1e-6
     ):
         insight = (
-            "No evaluator required "
-            "any MCC adjustment."
+            "The calculation left all expert "
+            "weight profiles unchanged."
         )
 
     elif len(largest) == 1:
         insight = (
-            f"{largest[0]['name']} "
-            "required the largest "
-            "overall adjustment."
+            "The calculation applied the most "
+            f"total weight change to {largest[0]['name']}'s profile."
         )
 
     else:
         insight = (
-            f"{_names(largest)} "
-            "share the largest "
-            "overall adjustment."
+            "The calculation applied the greatest total change to the profiles of "
+            f"{_names(largest)}."
         )
 
     return {
@@ -502,18 +539,18 @@ def _mcc_effort_by_expert(
         ),
         "type": "bar",
         "title": (
-            "Adjustment effort by expert"
+            "Weight adjustment by expert"
         ),
         "description": (
-            "Total absolute modification "
-            "required for each evaluator "
-            "to satisfy the executed MCC "
-            "consensus constraints."
+            "Total amount of model-applied "
+            "weight changes across each expert's "
+            "criteria. Increases and decreases "
+            "both add to this total."
         ),
         "insight": insight,
         "orientation": "horizontal",
         "xAxis": {
-            "label": "Σ |Δ|"
+            "label": "Total weight moved"
         },
         "yAxis": {
             "label": "Evaluator"
@@ -529,7 +566,7 @@ def _mcc_effort_by_expert(
                         "mcc-effort-by-expert"
                     ),
                     "label": (
-                        "Adjustment effort"
+                        "Total weight moved"
                     ),
                     "values": [
                         _display(
@@ -583,25 +620,23 @@ def _mcc_effort_by_criterion(
                 ]["effort"]
             )
         )
-        <= 1e-12
+        <= 1e-6
     ):
         insight = (
-            "No criterion required "
-            "any MCC adjustment."
+            "The calculation left all criterion "
+            "weights unchanged."
         )
 
     elif len(largest) == 1:
         insight = (
-            f"{largest[0]['name']} "
-            "concentrates the largest "
-            "MCC adjustment."
+            "The most total weight change "
+            f"accumulated on {largest[0]['name']}."
         )
 
     else:
         insight = (
-            f"{_names(largest)} "
-            "share the largest "
-            "MCC adjustment."
+            "The most total weight change "
+            f"accumulated on {_names(largest)}."
         )
 
     return {
@@ -610,16 +645,18 @@ def _mcc_effort_by_criterion(
         ),
         "type": "bar",
         "title": (
-            "Adjustment effort by criterion"
+            "Weight adjustment by criterion"
         ),
         "description": (
-            "Total absolute MCC adjustment "
-            "concentrated on each criterion."
+            "Total amount of model-applied "
+            "weight changes across experts for "
+            "each criterion. Increases and "
+            "decreases both add to this total."
         ),
         "insight": insight,
         "orientation": "horizontal",
         "xAxis": {
-            "label": "Σ |Δ|"
+            "label": "Total weight moved"
         },
         "yAxis": {
             "label": "Criterion"
@@ -635,7 +672,7 @@ def _mcc_effort_by_criterion(
                         "mcc-effort-by-criterion"
                     ),
                     "label": (
-                        "Adjustment effort"
+                        "Total weight moved"
                     ),
                     "values": [
                         _display(
@@ -668,6 +705,9 @@ def build_visualizations(
     ].get("available"):
         visualizations.extend(
             [
+                _collective_criterion_importance(
+                    facts
+                ),
                 _mcc_adjustment_map(
                     facts
                 ),
@@ -706,6 +746,7 @@ def build_visualization_sections(
 
     preference_keys = (
         "individual-preference-distribution",
+        "collective-criterion-importance",
     )
 
     sections = [
@@ -714,11 +755,11 @@ def build_visualization_sections(
                 "criterion-preferences-importance"
             ),
             "title": (
-                "Individual criterion preferences"
+                "Criterion preferences and collective weights"
             ),
             "description": (
-                "Individual ordinal priorities before "
-                "collective aggregation."
+                "Individual ordinal priorities and the final collective importance "
+                "assigned to each criterion."
             ),
             "order": 0,
             "presentation": {
@@ -754,13 +795,11 @@ def build_visualization_sections(
                     "mcc-consensus-adjustment"
                 ),
                 "title": (
-                    "MCC consensus adjustment"
+                    "Consensus adjustments"
                 ),
                 "description": (
-                    "Where MCC changed the "
-                    "individual utility vectors "
-                    "and how much adjustment "
-                    "was required."
+                    "Where the calculation changed original expert weights and how "
+                    "much movement was needed."
                 ),
                 "order": 1,
                 "presentation": {

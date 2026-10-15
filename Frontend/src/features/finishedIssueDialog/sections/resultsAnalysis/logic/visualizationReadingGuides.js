@@ -5,17 +5,21 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
     "Individual preference distribution",
     "Each row is a criterion, and each colored circle is one expert's preference; the legend identifies the experts. The horizontal position gives its rank, with 1 meaning most important; small side-to-side offsets separate circles with the same rank without changing their value.",
   ),
+  "collective-criterion-importance": guide(
+    "Collective criterion importance",
+    "Each bar shows a criterion's final collective weight as a percentage. A longer bar means the criterion carries more weight into the alternative evaluation; it does not show how many experts ranked it first.",
+  ),
   "mcc-adjustment-map": guide(
-    "MCC adjustment map",
-    "Each row is an expert and each column is a criterion. The number and color show the change to that weight during agreement: positive values mean it increased, negative values mean it decreased, and zero means it stayed the same.",
+    "Weight changes by expert and criterion",
+    "Rows are experts; columns are criteria. Number and color show the calculated weight change for one expert and criterion: positive means raised, negative means lowered, and zero means unchanged. It does not show a change in the expert's stated preference.",
   ),
   "mcc-adjustment-effort-by-expert": guide(
-    "Adjustment effort by expert",
-    "Each bar represents an expert. Its length adds up the size of all weight changes made to that expert's original preferences, so longer bars mean more total adjustment; increases and decreases do not cancel each other out.",
+    "Weight adjustment by expert",
+    "Each bar shows the total amount of weight moved across one expert's criteria. Increases and decreases both add to the total; a longer bar means more total change, not greater agreement or a greater initial distance from the collective result.",
   ),
   "mcc-adjustment-effort-by-criterion": guide(
-    "Adjustment effort by criterion",
-    "Each bar represents a criterion. Its length adds up the size of the weight changes made across experts for that criterion, so longer bars mean more total adjustment; increases and decreases do not cancel each other out.",
+    "Weight adjustment by criterion",
+    "Each bar shows the total amount of weight moved for one criterion across experts. Increases and decreases both add to the total, so a longer bar means more weight was changed for that criterion.",
   ),
   "two-tuple-collective-profile": guide(
     "Collective 2-tuple profile",

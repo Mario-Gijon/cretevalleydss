@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
+import { getVisualizationReadingGuide } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/visualizationReadingGuides.js";
 
 const cellData = { rows: [{ key: "alternative", label: "Alternative" }], columns: [{ key: "criterion", label: "Criterion" }], values: [[0.4]] };
 const descriptor = (key, title, insight) => ({ key, type: "heatmap", title, description: { legacy: "not readable" }, insight, data: cellData });
@@ -34,7 +35,7 @@ describe("reading guides in Finished Issue visualizations", () => {
         title: "Model diagnostics",
         order: 0,
         visualizations: [
-          descriptor("mcc-adjustment-map", "MCC adjustment map", "A result-specific adjustment conclusion."),
+          descriptor("mcc-adjustment-map", "Weight changes by expert and criterion", "A result-specific adjustment conclusion."),
           descriptor("two-tuple-alpha-heatmap", "Symbolic translation α", "A result-specific translation conclusion."),
         ],
       }] } },
@@ -43,14 +44,29 @@ describe("reading guides in Finished Issue visualizations", () => {
     expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(1);
     expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
     const graphs = screen.getAllByTestId("analytical-graph-heatmap");
-    expect(graphs[0].querySelector("h3")).toHaveTextContent("MCC adjustment map");
-    expect(graphs[0].querySelector('[data-testid="visualization-reading-guide"]')).toHaveTextContent("positive values mean it increased");
+    expect(graphs[0].querySelector("h3")).toHaveTextContent("Weight changes by expert and criterion");
+    expect(graphs[0].querySelector('[data-testid="visualization-reading-guide"]')).toHaveTextContent("positive means raised");
+    expect(graphs[0].querySelector('[data-testid="visualization-reading-guide"]')).toHaveTextContent("does not show a change in the expert's stated preference");
     expect(graphs[1].querySelector("h3")).toHaveTextContent("Symbolic translation α");
     expect(graphs[1].querySelector('[data-testid="visualization-reading-guide"]')).toHaveTextContent("not confidence or uncertainty");
     expectTitleGuideChartOrder(graphs[0]);
     expectTitleGuideChartOrder(graphs[1]);
     expect(screen.queryByText("A result-specific adjustment conclusion.")).not.toBeInTheDocument();
     expect(screen.queryByText("A result-specific translation conclusion.")).not.toBeInTheDocument();
+  });
+
+  it("explains collective weights and adjustment totals in plain language", () => {
+    const collectiveGuide = getVisualizationReadingGuide({ key: "collective-criterion-importance" });
+    const expertAdjustmentGuide = getVisualizationReadingGuide({ key: "mcc-adjustment-effort-by-expert" });
+    const criterionAdjustmentGuide = getVisualizationReadingGuide({ key: "mcc-adjustment-effort-by-criterion" });
+
+    expect(collectiveGuide.title).toBe("Collective criterion importance");
+    expect(collectiveGuide.text).toContain("final collective weight as a percentage");
+    expect(collectiveGuide.text).toContain("does not show how many experts ranked it first");
+    expect(expertAdjustmentGuide.title).toBe("Weight adjustment by expert");
+    expect(expertAdjustmentGuide.text).toContain("not greater agreement");
+    expect(criterionAdjustmentGuide.title).toBe("Weight adjustment by criterion");
+    expect(criterionAdjustmentGuide.text).toContain("Increases and decreases both add to the total");
   });
 
   it("shows the same semantic guide independently for each execution in comparison columns", () => {
