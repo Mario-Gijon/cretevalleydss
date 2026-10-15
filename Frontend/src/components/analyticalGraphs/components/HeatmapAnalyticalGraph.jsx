@@ -19,12 +19,17 @@ const divergingColorFor = (value, center, magnitude) => {
 };
 
 const humanizeKey = (key) => String(key).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/^./, (character) => character.toUpperCase());
-const formatValue = (value) => typeof value === "number" && Number.isFinite(value) ? Number(value.toPrecision(8)).toString() : String(value);
+const formatValue = (value, precision = 8) => typeof value === "number" && Number.isFinite(value) ? Number(value.toPrecision(precision)).toString() : String(value);
+const valuePrecision = (value) => Number.isInteger(value) && value >= 1 && value <= 15 ? value : 8;
 
 export const heatmapTooltipLines = ({ row, column, value, details }) => {
-  const lines = [`${row.label || row.key}, ${column.label || column.key}: ${Number.isFinite(value) ? formatValue(value) : "Unavailable"}`];
+  const precision = valuePrecision(details?.valuePrecision);
+  const note = typeof details?.note === "string" ? details.note : null;
+  const cellValue = Number.isFinite(value) ? formatValue(value, precision) : note || "Unavailable";
+  const lines = [`${row.label || row.key}, ${column.label || column.key}: ${cellValue}`];
   if (!details || typeof details !== "object" || Array.isArray(details)) return lines;
   Object.entries(details).forEach(([key, detail]) => {
+    if (key === "note" || key === "valuePrecision") return;
     if (["string", "boolean"].includes(typeof detail) || (typeof detail === "number" && Number.isFinite(detail))) lines.push(`${humanizeKey(key)}: ${formatValue(detail)}`);
   });
   return lines;
@@ -34,22 +39,25 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
   const data = visualization?.data;
   if (!Array.isArray(data?.rows) || !Array.isArray(data?.columns) || !Array.isArray(data?.values)) return <GraphUnavailable />;
   const finiteValues = data.values.flat().filter(Number.isFinite);
-  const minimum = Math.min(...finiteValues);
-  const maximum = Math.max(...finiteValues);
+  const minimum = Number.isFinite(visualization?.scale?.min) ? visualization.scale.min : Math.min(...finiteValues);
+  const maximum = Number.isFinite(visualization?.scale?.max) ? visualization.scale.max : Math.max(...finiteValues);
   const diverging = visualization?.scale?.kind === "diverging";
+  const truncateLabels = visualization?.truncateLabels === true;
+  const precision = valuePrecision(visualization?.scale?.valuePrecision);
   const center = Number.isFinite(visualization?.scale?.center) ? visualization.scale.center : 0;
   const magnitude = finiteValues.reduce((maximumDeviation, value) => Math.max(maximumDeviation, Math.abs(value - center)), 0);
-  return <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", gridTemplateColumns: `minmax(90px, auto) repeat(${data.columns.length}, minmax(64px, 1fr))`, gap: 0.5 }}>
+  return <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", width: truncateLabels ? "100%" : undefined, gridTemplateColumns: `${truncateLabels ? "minmax(90px, 220px)" : "minmax(90px, auto)"} repeat(${data.columns.length}, minmax(64px, 1fr))`, gap: 0.5 }}>
     <Box />
-    {data.columns.map((column) => <Typography key={column.key} variant="caption" sx={{ textAlign: "center", fontWeight: 700 }}>{column.label || column.key}</Typography>)}
+    {data.columns.map((column) => <Typography key={column.key} variant="caption" noWrap={truncateLabels} title={truncateLabels ? column.label || column.key : undefined} sx={{ textAlign: "center", fontWeight: 700, ...(truncateLabels ? { minWidth: 0 } : {}) }}>{column.label || column.key}</Typography>)}
     {data.rows.map((row, rowIndex) => <Box key={row.key} sx={{ display: "contents" }}>
-      <Typography variant="caption" sx={{ alignSelf: "center", fontWeight: 700 }}>{row.label || row.key}</Typography>
+      <Typography variant="caption" noWrap={truncateLabels} title={truncateLabels ? row.label || row.key : undefined} sx={{ alignSelf: "center", fontWeight: 700, ...(truncateLabels ? { minWidth: 0 } : {}) }}>{row.label || row.key}</Typography>
       {data.columns.map((column, columnIndex) => {
         const value = data.values[rowIndex]?.[columnIndex];
-        const lines = heatmapTooltipLines({ row, column, value, details: data.details?.[rowIndex]?.[columnIndex] });
+        const details = data.details?.[rowIndex]?.[columnIndex];
+        const lines = heatmapTooltipLines({ row, column, value, details });
         const label = lines.join("\n");
         const color = Number.isFinite(value) ? (diverging ? divergingColorFor(value, center, magnitude) : colorFor(value, minimum, maximum)) : "action.disabledBackground";
-        return <Tooltip key={column.key} title={label}><Box aria-label={label} data-color-scale={diverging ? "diverging" : "sequential"} data-cell-color={color} sx={{ minHeight: 42, display: "grid", placeItems: "center", borderRadius: 1, bgcolor: color, color: "rgba(255,255,255,0.94)", fontWeight: 700 }}>{Number.isFinite(value) ? formatValue(value) : "—"}</Box></Tooltip>;
+        return <Tooltip key={column.key} title={label}><Box aria-label={label} data-color-scale={diverging ? "diverging" : "sequential"} data-cell-color={color} sx={{ minHeight: 42, display: "grid", placeItems: "center", borderRadius: 1, bgcolor: color, color: "rgba(255,255,255,0.94)", fontWeight: 700 }}>{Number.isFinite(value) ? formatValue(value, precision) : "—"}</Box></Tooltip>;
       })}
     </Box>)}
   </Box>;

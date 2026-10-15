@@ -14,6 +14,7 @@ import { useState } from "react";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
 import { AnalyticalGraph } from "../../../../../components/analyticalGraphs";
+import AlternativeRelationshipsVisualization from "./AlternativeRelationshipsVisualization.jsx";
 import { AnalyticalScatterChart } from "../../../graphs/components/AnalyticalScatterChart";
 import { ComparativeAnalyticalScatterChart } from "../../../graphs/components/ComparativeAnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../../../graphs/components/AnalyticalConsensusLineChart";
@@ -689,6 +690,7 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [] }) => {
             <RankingEvolution executions={executions} />
           </Stack>
         ) : null}
+        <AlternativeRelationshipsVisualization executions={executions} />
         <Box
           sx={{
             mt: 1.4,

@@ -178,7 +178,7 @@ def test_multi_phase_interpretation_selects_lead_change_stabilization_and_consen
     assert "The recorded issue-level consensus measure rose" in interpretation
     assert "It first met the configured threshold in Round 2." in interpretation
     assert "unanimous" not in interpretation.lower()
-    assert "Stored history contains **5** participant identities" in interpretation
+    assert "Stored history contains" not in interpretation
     assert "**1 of 2** people" in interpretation
     assert "ranged from **2** to **3** participants" in interpretation
     assert "### Ranking evolution" not in interpretation
@@ -230,6 +230,39 @@ def test_missing_participation_evidence_is_not_filled_with_assumptions():
     )
 
     assert "### Participation records" not in result["interpretation"]
+
+
+def test_historical_and_current_identity_counts_alone_do_not_trigger_participation():
+    result = analyze_issue(
+        issue_context(
+            [ranked(("alpha", 1), ("beta", 2))],
+            historical_identities=[{"id": f"former-{index}"} for index in range(5)],
+            current_participants=[{"evaluationCompleted": True}],
+        )
+    )
+
+    assert "### Participation records" not in result["interpretation"]
+    assert result["facts"]["participants"]["historicalCount"] == 5
+    assert result["facts"]["participants"]["currentCount"] == 1
+
+
+def test_incomplete_current_alternative_evaluations_are_described_without_contributor_claims():
+    result = analyze_issue(
+        issue_context(
+            [ranked(("alpha", 1), ("beta", 2))],
+            historical_identities=[{"id": "former"}],
+            current_participants=[
+                {"evaluationCompleted": True},
+                {"evaluationCompleted": False},
+            ],
+        )
+    )
+    interpretation = result["interpretation"]
+
+    assert "### Participation records" in interpretation
+    assert "**1 of 2** people as having completed an alternative evaluation" in interpretation
+    assert "contributed inputs" not in interpretation
+    assert "criterion weighting" not in interpretation.lower()
 
 
 def test_generic_relationship_visualization_still_matches_preserved_facts():

@@ -88,6 +88,10 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
 });
 
 export const GENERIC_VISUALIZATION_READING_GUIDES = Object.freeze({
+  alternativeRelationships: guide(
+    "Alternative relationships",
+    "Each cell compares two alternatives' recorded scores relative to the observed score range for this execution. Zero means equal recorded scores; one spans the full observed range. Larger values indicate greater score separation, not a percentage of superiority or preference. Compare phases within this execution; do not compare values across executions or models.",
+  ),
   rankingEvolution: guide(
     "Ranking evolution",
     "Each colored line follows one alternative across phases from left to right. The vertical position is its rank: 1 is best, so moving toward a smaller number means it rose in the ranking and a larger number means it fell.",

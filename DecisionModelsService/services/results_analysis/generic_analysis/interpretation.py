@@ -350,19 +350,10 @@ def _consensus(facts):
 
 def _participation(facts):
     participants = facts.get("participants") or {}
-    historical = participants.get("historicalCount", 0)
     current = participants.get("currentCount", 0)
     completed = participants.get("evaluationCompletedCurrentCount", 0)
     phase_counts = participants.get("phaseCounts") or []
     sentences = []
-
-    if historical > 0 and historical != current:
-        sentences.append(
-            f"Stored history contains **{historical}** participant identities, while "
-            f"the current participant set contains **{current}**. These are different "
-            "records and do not establish how many people contributed inputs to the "
-            "completed result."
-        )
 
     if current and completed != current:
         sentences.append(

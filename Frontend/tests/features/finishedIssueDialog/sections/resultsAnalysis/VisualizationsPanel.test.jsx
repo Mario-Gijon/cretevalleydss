@@ -13,6 +13,7 @@ vi.mock("@mui/x-charts/BarChart", () => ({
 }));
 vi.mock("../../../../../src/components/analyticalGraphs", () => ({
   AnalyticalGraph: ({ visualization, titleVariant }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant}>{visualization?.key}</div>,
+  HeatmapAnalyticalGraph: ({ visualization }) => <div data-testid="alternative-relationships-heatmap" data-phase={visualization?.phase} data-values={JSON.stringify(visualization?.data?.values)} data-labels={JSON.stringify(visualization?.data?.rows?.map((row) => row.label))}>{visualization?.data?.rows?.map((row) => row.label).join("|")}</div>,
 }));
 
 import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
@@ -244,13 +245,14 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("analytical-graph")).not.toBeInTheDocument();
   });
 
-  it("shows scatter and stored distances for multiple experts while harmlessly ignoring alternative relationships", () => {
+  it("shows scatter, stored distances, and valid generic alternative relationships", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{
         key: "base",
         displayLabel: "Base",
         genericAnalysis: {
-          visualizations: [{ type: "alternativeRelationships", phases: [{ phase: 1, pairs: [] }] }],
+          facts: { alternativeRelationships: { normalization: { degenerate: false }, unavailablePhases: [] } },
+          visualizations: [{ type: "alternativeRelationships", phases: [{ phase: 1, alternatives: [{ alternativeId: "alpha", name: "Alpha", rank: 1 }, { alternativeId: "beta", name: "Beta", rank: 2 }], pairs: [{ leftAlternativeId: "alpha", rightAlternativeId: "beta", relativeSeparation: 0.23 }] }] }],
         },
       }]}
       visualizations={{
@@ -264,8 +266,10 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
     expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Expert 1|Expert 2");
     expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Alternative relationships")).not.toBeInTheDocument();
-    expect(screen.queryByText("Pairwise separation")).not.toBeInTheDocument();
+    expect(screen.getByTestId("alternative-relationships-heatmap")).toHaveAttribute("data-phase", "1");
+    expect(screen.getByTestId("alternative-relationships-heatmap")).toHaveAttribute("data-values", "[[null,0.23],[0.23,null]]");
+    expect(screen.getByTestId("alternative-relationships-section")).toBeInTheDocument();
+    expect(screen.getByText(/not a percentage of superiority/)).toBeInTheDocument();
     expect(screen.queryByText("Relationship network")).not.toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
     expect(screen.getByText("Distances")).toBeInTheDocument();
@@ -275,6 +279,167 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByText("Bar chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Projected distance to collective")).not.toBeInTheDocument();
     expect(screen.queryByText("Base")).not.toBeInTheDocument();
+  });
+
+  it("selects among phases within one execution and keeps execution relationships separate", () => {
+    const alternatives = [
+      { alternativeId: "a", name: "Alpha", rank: 1 },
+      { alternativeId: "b", name: "Beta", rank: 2 },
+    ];
+    const relationship = (phase, separation) => ({
+      phase,
+      alternatives,
+      pairs: [{ leftAlternativeId: "a", rightAlternativeId: "b", relativeSeparation: separation }],
+    });
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[
+        { key: "base", displayLabel: "Base execution", genericAnalysis: { facts: { alternativeRelationships: { normalization: { degenerate: false } } }, visualizations: [{ type: "alternativeRelationships", phases: [relationship(0, 0.2), relationship(1, 0.7)] }] } },
+        { key: "scenario", displayLabel: "Scenario A", genericAnalysis: { facts: { alternativeRelationships: { normalization: { degenerate: false } } }, visualizations: [{ type: "alternativeRelationships", phases: [relationship(0, 0.4)] }] } },
+      ]}
+      visualizations={{
+        mode: "comparison",
+        consensus: { enabled: false },
+        expertCollectiveComparison: { presentation: "unavailable", footerMessage: "No projections available." },
+      }}
+    /></ThemeProvider>);
+
+    const heatmaps = screen.getAllByTestId("alternative-relationships-heatmap");
+    expect(heatmaps).toHaveLength(2);
+    expect(heatmaps[0]).toHaveAttribute("data-phase", "1");
+    expect(heatmaps[0]).toHaveAttribute("data-values", "[[null,0.7],[0.7,null]]");
+    expect(heatmaps[1]).toHaveAttribute("data-values", "[[null,0.4],[0.4,null]]");
+    expect(screen.getByText("Base execution")).toBeInTheDocument();
+    expect(screen.getByText("Scenario A")).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Phase" }));
+    fireEvent.click(screen.getByRole("option", { name: "Initial" }));
+    expect(screen.getAllByTestId("alternative-relationships-heatmap")[0]).toHaveAttribute("data-values", "[[null,0.2],[0.2,null]]");
+  });
+
+  it("renders partial relationship data with missing pairs distinct from zero", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        genericAnalysis: {
+          facts: { alternativeRelationships: { normalization: { degenerate: false } } },
+          visualizations: [{ type: "alternativeRelationships", phases: [{
+            phase: 0,
+            alternatives: [
+              { alternativeId: "a", name: "Alpha", rank: 1 },
+              { alternativeId: "b", name: "Beta", rank: 2 },
+              { alternativeId: "c", name: "Gamma", rank: 3 },
+            ],
+            pairs: [{ leftAlternativeId: "a", rightAlternativeId: "b", relativeSeparation: 0 }],
+          }] }],
+        },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("alternative-relationships-heatmap")).toHaveAttribute(
+      "data-values",
+      "[[null,0,null],[0,null,null],[null,null,null]]",
+    );
+    expect(screen.getByTestId("alternative-relationships-missing-pairs")).toHaveTextContent(
+      "not treated as zero",
+    );
+  });
+
+  it("shows equal score values without assigning them a comparative color advantage", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        genericAnalysis: {
+          facts: { alternativeRelationships: { normalization: { degenerate: false } } },
+          visualizations: [{ type: "alternativeRelationships", phases: [{
+            phase: 0,
+            alternatives: [
+              { alternativeId: "a", name: "Alpha", rank: 1 },
+              { alternativeId: "b", name: "Beta", rank: 2 },
+            ],
+            pairs: [{ leftAlternativeId: "a", rightAlternativeId: "b", relativeSeparation: 0 }],
+          }] }],
+        },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("alternative-relationships-heatmap")).toHaveAttribute(
+      "data-values",
+      "[[null,0],[0,null]]",
+    );
+    expect(screen.getByTestId("alternative-relationships-equal-phase")).toHaveTextContent(
+      "scores in this phase are equal",
+    );
+  });
+
+  it("does not show a misleading chart for globally degenerate scores or absent descriptors", () => {
+    const alternatives = [
+      { alternativeId: "a", name: "Alpha", rank: 1 },
+      { alternativeId: "b", name: "Beta", rank: 2 },
+    ];
+    const { rerender } = render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        genericAnalysis: {
+          facts: { alternativeRelationships: { normalization: { degenerate: true } } },
+          visualizations: [{ type: "alternativeRelationships", phases: [{ phase: 0, alternatives, pairs: [{ leftAlternativeId: "a", rightAlternativeId: "b", relativeSeparation: 0 }] }] }],
+        },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("alternative-relationships-degenerate")).toBeInTheDocument();
+    expect(screen.queryByTestId("alternative-relationships-heatmap")).not.toBeInTheDocument();
+
+    rerender(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", genericAnalysis: { visualizations: [] } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+    expect(screen.queryByTestId("alternative-relationships-section")).not.toBeInTheDocument();
+  });
+
+  it("omits the relationship section for an empty descriptor and for a missing descriptor", () => {
+    const { rerender } = render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", genericAnalysis: { visualizations: [{ type: "alternativeRelationships", phases: [] }] } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+    expect(screen.queryByTestId("alternative-relationships-section")).not.toBeInTheDocument();
+
+    rerender(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", genericAnalysis: { visualizations: [] } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+    expect(screen.queryByTestId("alternative-relationships-section")).not.toBeInTheDocument();
+  });
+
+  it("keeps long alternative names and many alternatives available in the relationship matrix", () => {
+    const alternatives = Array.from({ length: 12 }, (_, index) => ({
+      alternativeId: `alternative-${index}`,
+      name: `Alternative ${index} with a deliberately long display name`,
+      rank: index + 1,
+    }));
+    const pairs = [];
+    alternatives.forEach((left, index) => alternatives.slice(index + 1).forEach((right) => pairs.push({
+      leftAlternativeId: left.alternativeId,
+      rightAlternativeId: right.alternativeId,
+      relativeSeparation: (index + 1) / 12,
+    })));
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", genericAnalysis: {
+        facts: { alternativeRelationships: { normalization: { degenerate: false } } },
+        visualizations: [{ type: "alternativeRelationships", phases: [{ phase: 0, alternatives, pairs }] },
+      ] } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const heatmap = screen.getByTestId("alternative-relationships-heatmap");
+    expect(JSON.parse(heatmap.getAttribute("data-labels"))).toHaveLength(12);
+    expect(heatmap).toHaveAttribute("data-values", expect.stringContaining("0.08333333333333333"));
+    expect(screen.getByTestId("alternative-relationships-heatmap-viewport")).toBeInTheDocument();
   });
 
   it("uses the existing meaningful consensus availability to switch between map and distances", () => {

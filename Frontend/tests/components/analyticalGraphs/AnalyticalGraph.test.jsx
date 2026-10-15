@@ -218,6 +218,42 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByLabelText(/Alt 1, C1: 0/)).toHaveAttribute("data-cell-color", "rgba(255, 255, 255, 0.12)");
   });
 
+  it("supports fixed sequential ranges, concise values, and distinct missing-cell explanations", () => {
+    const longName = "An alternative with a long name that should remain available in full";
+    render(<AnalyticalGraph visualization={{
+      type: "heatmap",
+      title: "Alternative relationships",
+      description: "Relative score separation.",
+      truncateLabels: true,
+      scale: { kind: "sequential", min: 0, max: 1, valuePrecision: 3 },
+      data: {
+        rows: [{ key: "a", label: longName }],
+        columns: [
+          { key: "zero", label: "Zero" },
+          { key: "middle", label: "Middle" },
+          { key: "maximum", label: "Maximum" },
+          { key: "missing", label: "Missing" },
+        ],
+        values: [[0, 0.23456, 1, null]],
+        details: [[
+          { valuePrecision: 3 },
+          { valuePrecision: 3 },
+          { valuePrecision: 3 },
+          { note: "No valid comparable score pair is available." },
+        ]],
+      },
+    }} />);
+
+    expect(screen.getByTitle(longName)).toBeInTheDocument();
+    expect(screen.getByText("0.235")).toBeInTheDocument();
+    expect(screen.getByLabelText("An alternative with a long name that should remain available in full, Zero: 0"))
+      .toHaveAttribute("data-cell-color", "rgba(83, 198, 214, 0.15)");
+    expect(screen.getByLabelText("An alternative with a long name that should remain available in full, Maximum: 1"))
+      .toHaveAttribute("data-cell-color", "rgba(83, 198, 214, 0.85)");
+    expect(screen.getByLabelText("An alternative with a long name that should remain available in full, Missing: No valid comparable score pair is available."))
+      .toHaveTextContent("—");
+  });
+
   it("handles unsupported and malformed descriptors without crashing", () => {
     const { rerender } = render(<AnalyticalGraph visualization={{ key: "unknown", type: "surface", title: "Unknown", data: {} }} />);
     expect(screen.getByText("This visualization type is not supported.")).toBeInTheDocument();

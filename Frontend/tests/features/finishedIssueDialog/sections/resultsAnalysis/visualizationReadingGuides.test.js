@@ -70,12 +70,14 @@ describe("visualization reading guides", () => {
     });
   });
 
-  it("provides separate semantic guides for the generic temporal charts", () => {
+  it("provides separate semantic guides for the generic charts", () => {
     expect(Object.keys(GENERIC_VISUALIZATION_READING_GUIDES).sort()).toEqual([
+      "alternativeRelationships",
       "rankingAgreement",
       "rankingEvolution",
       "rankingStability",
     ]);
+    expect(getVisualizationReadingGuide({ type: "alternativeRelationships" }).text).toContain("not a percentage of superiority or preference");
     expect(getVisualizationReadingGuide({ type: "rankingEvolution" }).text).toContain("1 is best");
     expect(getVisualizationReadingGuide({ type: "rankingStability" }).text).toContain("starting and ending rank");
     expect(getVisualizationReadingGuide({ type: "rankingAgreement" }).text).toContain("near −1 means it reversed");

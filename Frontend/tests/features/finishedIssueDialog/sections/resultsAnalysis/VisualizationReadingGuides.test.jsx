@@ -26,6 +26,15 @@ const expectTitleGuideChartOrder = (graph) => {
 };
 
 describe("reading guides in Finished Issue visualizations", () => {
+  it("explains generic alternative separation without describing it as superiority", () => {
+    const relationshipGuide = getVisualizationReadingGuide({ type: "alternativeRelationships" });
+
+    expect(relationshipGuide.title).toBe("Alternative relationships");
+    expect(relationshipGuide.text).toContain("relative to the observed score range for this execution");
+    expect(relationshipGuide.text).toContain("not a percentage of superiority or preference");
+    expect(relationshipGuide.text).toContain("do not compare values across executions or models");
+  });
+
   it("keeps a separate explanation on each chart in a paired layout", () => {
     renderPanel([{
       key: "base",
