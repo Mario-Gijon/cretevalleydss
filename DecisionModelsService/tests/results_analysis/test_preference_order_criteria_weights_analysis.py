@@ -453,7 +453,7 @@ def test_multi_expert_analysis_builds_preference_and_mcc_views_with_facts():
     assert "### Overall priorities" in analysis["interpretation"]
     assert "### Expert perspectives" in analysis["interpretation"]
     assert "### Consensus adjustments" in analysis["interpretation"]
-    assert "### Points worth reviewing" in analysis["interpretation"]
+    assert "### Points worth reviewing" not in analysis["interpretation"]
     assert (
         "**Criterion 1** and **Criterion 2** shared the greatest final collective "
         "importance"
@@ -615,9 +615,108 @@ def test_greece_interpretation_uses_executed_priorities_and_is_deterministic(
         "Site Accessibility and Infrastructure Security"
     )
     assert mcc["maxConsensusDeviation"] <= mcc["epsilon"] + 1e-6
-    assert "do not show which expert was furthest" in interpretation
-    assert "does not mean the experts changed their stated preferences" in interpretation
+    consensus = interpretation.split("### Consensus adjustments\n\n", 1)[1].split(
+        "\n\n### Points worth reviewing", 1
+    )[0]
+    review = interpretation.split("### Points worth reviewing\n\n", 1)[1]
+    assert "largest overall adjustment was made to **Expert E**'s" in consensus
+    assert "**Site Accessibility and Infrastructure Security** required the greatest" in consensus
+    assert "met the agreement limits established" in consensus
+    assert "how far an expert's original preferences were" in consensus
+    assert "independently accept the adjusted weights" in consensus
+    assert "0.203" not in consensus
+    assert "0.171" not in consensus
+    assert "0.050" not in consensus
+    assert "**Expert D** ranked it 1st while **Expert E** ranked it 7th" in review
+    assert "concentration of importance among the leading criteria" in review
+    assert review.count("balance") == 1
+    assert "Local Socio-Economic Benefits should" not in review
+    assert "given that not everyone ranked it first" not in review
+    assert "53.57%" not in review
+    assert "22.14%" not in review
     assert build_interpretation(deepcopy(facts)) == interpretation
+
+
+def test_points_worth_reviewing_omits_unsupported_concentration_concerns(
+    greece_execution,
+):
+    facts = deepcopy(greece_execution["facts"])
+    for criterion in facts["criteria"]["items"]:
+        criterion["collectiveWeight"] = 1 / len(facts["criteria"]["items"])
+
+    interpretation = build_interpretation(facts)
+    review = interpretation.split("### Points worth reviewing\n\n", 1)[1]
+
+    assert "different priorities assigned" in review
+    assert "concentration of importance" not in review
+
+
+def test_greece_visualizations_use_executed_preference_weights_and_mcc_cells(
+    greece_execution,
+):
+    facts = greece_execution["facts"]
+    visualizations = {
+        item["key"]: item for item in greece_execution["visualizations"]
+    }
+    criteria = facts["criteria"]["items"]
+    experts = facts["experts"]["items"]
+
+    importance = visualizations["collective-criterion-importance"]
+    sorted_criteria = sorted(
+        criteria,
+        key=lambda item: (
+            -item["collectiveWeight"],
+            item["name"].casefold(),
+            item["criterionId"],
+        ),
+    )
+    assert importance["data"]["categories"] == [
+        item["name"] for item in sorted_criteria
+    ]
+    assert importance["data"]["series"][0]["values"] == [
+        round(item["collectiveWeight"] * 100, 2) for item in sorted_criteria
+    ]
+
+    distribution = visualizations["individual-preference-distribution"]
+    assert len(distribution["data"]["series"]) == len(experts)
+    criterion_rows = {
+        item["criterionId"]: index
+        for index, item in enumerate(criteria, start=1)
+    }
+    for series, expert in zip(distribution["data"]["series"], experts):
+        assert series["key"] == expert["expertKey"]
+        assert [point["details"]["rank"] for point in series["points"]] == [
+            item["rank"] for item in expert["criterionOrder"]
+        ]
+        assert [point["x"] for point in series["points"]] == [
+            item["rank"] for item in expert["criterionOrder"]
+        ]
+        assert [point["y"] for point in series["points"]] == [
+            criterion_rows[item["criterionId"]]
+            for item in expert["criterionOrder"]
+        ]
+
+    adjustment = visualizations["mcc-adjustment-map"]
+    adjustment_cells = {
+        (item["expertKey"], item["criterionId"]): item
+        for item in facts["mcc"]["cells"]
+    }
+    for row_index, row in enumerate(adjustment["data"]["rows"]):
+        for column_index, column in enumerate(adjustment["data"]["columns"]):
+            cell = adjustment_cells[(row["key"], column["key"])]
+            displayed = adjustment["data"]["details"][row_index][column_index]
+            for output_key in (
+                "originalWeight",
+                "adjustedWeight",
+                "collectiveWeight",
+                "delta",
+            ):
+                assert displayed[output_key] == pytest.approx(
+                    round(cell[output_key], 6)
+                )
+            assert adjustment["data"]["values"][row_index][column_index] == pytest.approx(
+                round(cell["delta"], 6)
+            )
 
 
 def test_contrasting_execution_adapts_to_narrow_rank_differences_and_tied_criteria(
@@ -633,7 +732,10 @@ def test_contrasting_execution_adapts_to_narrow_rank_differences_and_tied_criter
     assert "First-place choices were split" in interpretation
     assert "appeared at opposite ends" not in interpretation
     assert "**Criterion 1** and **Criterion 2**" in interpretation
-    assert "each had 0.067 summed across experts" in interpretation
+    assert (
+        "greatest accumulated adjustment was tied across **Criterion 1** and **Criterion 2**"
+        in interpretation
+    )
     assert mcc["totalAbsoluteAdjustment"] < greece_mcc["totalAbsoluteAdjustment"]
     assert mcc["maxConsensusDeviation"] <= mcc["epsilon"] + 1e-6
 
@@ -666,8 +768,10 @@ def test_adjustment_narrative_handles_tied_experts_and_incomplete_diagnostics(
     ]
     tied_text = build_interpretation(tied_facts)
 
-    assert "tied across the profiles of **Expert 1** and **Expert 2**" in tied_text
-    assert "each had 0.133 summed across criteria" in tied_text
+    assert (
+        "largest overall adjustments were made to the numerical preference profiles of "
+        "**Expert 1** and **Expert 2**"
+    ) in tied_text
 
     incomplete = deepcopy(greece_execution["facts"])
     incomplete_mcc = incomplete["mcc"]
@@ -680,8 +784,8 @@ def test_adjustment_narrative_handles_tied_experts_and_incomplete_diagnostics(
 
     assert "cannot determine whether an adjustment was needed" in incomplete_text
     assert "cannot be confirmed from this record" in incomplete_text
-    assert "does not mean the calculation met its limit" not in incomplete_text
-    assert "The calculation adjusted the original numerical weights" not in incomplete_text
+    assert "did not meet the agreement limit" not in incomplete_text
+    assert "largest overall adjustment was made to" not in incomplete_text
 
 
 def test_adjustment_narrative_does_not_claim_an_exceeded_bound_was_satisfied(
@@ -692,5 +796,4 @@ def test_adjustment_narrative_does_not_claim_an_exceeded_bound_was_satisfied(
 
     interpretation = build_interpretation(facts)
 
-    assert "is above the configured limit" in interpretation
-    assert "does not show that the calculation met its limit" in interpretation
+    assert "did not meet the agreement limit established" in interpretation

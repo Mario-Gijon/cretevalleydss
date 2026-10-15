@@ -38,10 +38,6 @@ def _percent(value: float) -> str:
     return f"{value * 100:.2f}%"
 
 
-def _amount(value: float) -> str:
-    return f"{value:.3f}"
-
-
 def _ordinal(value: int) -> str:
     suffix = "th" if 10 <= value % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
     return f"{value}{suffix}"
@@ -291,59 +287,34 @@ def _perspectives(facts: dict[str, Any]) -> str | None:
     return "### Expert perspectives\n\n" + " ".join(paragraphs)
 
 
-def _lookup_effort(
-    items: list[dict[str, Any]],
-    key_field: str,
-    key_value: Any,
-) -> float | None:
-    for item in items:
-        if item.get(key_field) == key_value:
-            return _finite_number(item.get("effort"))
-    return None
-
-
 def _largest_adjustment_sentence(
     mcc: dict[str, Any],
     *,
     list_key: str,
-    id_field: str,
-    items_key: str,
     scope: str,
 ) -> str | None:
     largest = mcc.get(list_key) or []
     if not largest:
         return None
-    effort = _lookup_effort(mcc.get(items_key) or [], id_field, largest[0].get(id_field))
     names = _names(largest)
-    if scope == "across criteria":
-        if effort is None:
-            if len(largest) > 1:
-                return (
-                    "The largest accumulated adjustment was tied across the profiles "
-                    f"of {names}."
-                )
-            return f"The largest accumulated adjustment was to {names}'s profile."
+    if scope == "expert":
         if len(largest) > 1:
             return (
-                f"The largest accumulated adjustment was tied across the profiles of "
-                f"{names}; each had {_amount(effort)} summed {scope}."
+                "The largest overall adjustments were made to the numerical "
+                f"preference profiles of {names}."
             )
         return (
-            f"The largest accumulated adjustment was to {names}'s profile: "
-            f"{_amount(effort)} summed {scope}."
+            "The largest overall adjustment was made to "
+            f"{names}'s numerical preference profile."
         )
-    if effort is None:
-        if len(largest) > 1:
-            return f"The largest accumulated criterion adjustment was tied for {names}."
-        return f"The largest accumulated adjustment was for {names}."
     if len(largest) > 1:
         return (
-            f"The largest accumulated criterion adjustment was tied for {names}; "
-            f"each had {_amount(effort)} summed {scope}."
+            "The greatest accumulated adjustment was tied across "
+            f"{names}."
         )
     return (
-        f"The largest accumulated adjustment was for {names}: "
-        f"{_amount(effort)} summed {scope}."
+        "Across the evaluated criteria, "
+        f"{names} required the greatest accumulated adjustment."
     )
 
 
@@ -356,33 +327,24 @@ def _consensus_adjustments(facts: dict[str, Any]) -> str | None:
     paragraphs: list[str] = []
     if total is None:
         paragraphs.append(
-            "The saved adjustment details do not report the amount of weight change, "
-            "so this interpretation cannot determine whether an adjustment was needed."
+            "The saved adjustment details do not report the amount of change, so this "
+            "interpretation cannot determine whether an adjustment was needed."
         )
     elif total <= _MCC_ZERO_TOLERANCE:
         paragraphs.append(
-            "No numerical adjustment was needed: the original expert weight profiles "
-            "already met the configured maximum-gap constraint."
+            "No numerical adjustment was needed: the experts' original weights "
+            "already met the agreement limits set for the calculation."
         )
     else:
-        paragraphs.append(
-            "The calculation adjusted the original numerical weights so that every "
-            "adjusted criterion weight stayed within the allowed gap from its "
-            "collective weight."
-        )
         expert_change = _largest_adjustment_sentence(
             mcc,
             list_key="largestEffortExperts",
-            id_field="expertKey",
-            items_key="effortByExpert",
-            scope="across criteria",
+            scope="expert",
         )
         criterion_change = _largest_adjustment_sentence(
             mcc,
             list_key="largestEffortCriteria",
-            id_field="criterionId",
-            items_key="effortByCriterion",
-            scope="across experts",
+            scope="criterion",
         )
         if expert_change:
             paragraphs.append(expert_change)
@@ -399,9 +361,10 @@ def _consensus_adjustments(facts: dict[str, Any]) -> str | None:
                 "largest accumulated adjustment across experts."
             )
         paragraphs.append(
-            "These totals describe how much the calculation changed the weights; they "
-            "are not a score of agreement and do not show which expert was furthest "
-            "from the collective result."
+            "An adjustment describes a change made by the calculation; it does not "
+            "show how far an expert's original preferences were from the collective "
+            "result. The experts did not change their original preferences or "
+            "independently accept the adjusted weights."
         )
 
     maximum_gap = _finite_number(mcc.get("maxConsensusDeviation"))
@@ -413,19 +376,15 @@ def _consensus_adjustments(facts: dict[str, Any]) -> str | None:
             "from this record."
         )
     elif maximum_gap <= configured_gap + 1e-6:
-        paragraphs.append(
-            "The largest remaining difference between an adjusted weight and its "
-            f"collective weight was **{_amount(maximum_gap)}**, within the configured "
-            f"limit of **{_amount(configured_gap)}**. The calculation met that limit; "
-            "this does not mean the experts changed their stated preferences or agreed "
-            "independently."
-        )
+        if total is None or total > _MCC_ZERO_TOLERANCE:
+            paragraphs.append(
+                "The resulting weights met the agreement limits established for the "
+                "calculation."
+            )
     else:
         paragraphs.append(
-            "The largest remaining difference between an adjusted weight and its "
-            f"collective weight (**{_amount(maximum_gap)}**) is above the configured "
-            f"limit (**{_amount(configured_gap)}**), so the saved result does not show "
-            "that the calculation met its limit."
+            "The saved result did not meet the agreement limit established for the "
+            "calculation."
         )
 
     return "### Consensus adjustments\n\n" + " ".join(paragraphs)
@@ -438,15 +397,6 @@ def _points_worth_reviewing(facts: dict[str, Any]) -> str | None:
         return None
 
     paragraphs: list[str] = []
-    ordered = _ordered_criteria(facts)
-    leaders = (facts.get("criteria") or {}).get("collectiveLeaders") or []
-    leader_ids = {item.get("criterionId") for item in leaders}
-    leader = next((item for item in ordered if item.get("criterionId") in leader_ids), None)
-    if leader and int(leader.get("firstPlaceCount", 0)) < len(experts):
-        paragraphs.append(
-            f"The group may want to confirm whether **{_name(leader)}** should carry the "
-            "greatest importance, given that not everyone ranked it first."
-        )
 
     preference_facts = facts.get("criteria") or {}
     widest = preference_facts.get("widestPreferenceSpread") or []
@@ -467,20 +417,55 @@ def _points_worth_reviewing(facts: dict[str, Any]) -> str | None:
         lowest = min((int(item["rank"]) for item in positions), default=0)
         highest = max((int(item["rank"]) for item in positions), default=0)
         if highest - lowest > 1:
-            if lowest == 1 and highest == len(criteria):
-                detail = "appeared at opposite ends of the experts' lists"
-            else:
-                detail = f"spanned {highest - lowest} ranking places"
-            if mcc.get("available") and review_criterion.get("criterionId") in largest_adjusted_ids:
-                paragraphs.append(
-                    f"It may help to discuss why **{_name(review_criterion)}** {detail} and "
-                    "review its original and adjusted values in the weight-change map."
+            lowest_names = _names(
+                [item for item in positions if int(item["rank"]) == lowest],
+                key="expertName",
+            )
+            highest_names = _names(
+                [item for item in positions if int(item["rank"]) == highest],
+                key="expertName",
+            )
+            paragraphs.append(
+                f"The group may find it useful to discuss the different priorities "
+                f"assigned to **{_name(review_criterion)}**, particularly why "
+                f"{lowest_names} ranked it {_ordinal(lowest)} while {highest_names} "
+                f"ranked it {_ordinal(highest)}. Understanding the reasons behind "
+                "these rankings could help the group decide whether the final weight "
+                "gives suitable consideration to both perspectives."
+            )
+
+    ordered = _ordered_criteria(facts)
+    if len(ordered) > 3:
+        leading_share = sum(
+            float(item.get("collectiveWeight", 0.0)) for item in ordered[:3]
+        )
+        if leading_share > 0.5 + 1e-9:
+            paragraphs.append(
+                "The group may also want to confirm that the concentration of "
+                "importance among the leading criteria reflects the balance it wants "
+                "to maintain."
+            )
+
+    if not paragraphs and mcc.get("available"):
+        total = _finite_number(mcc.get("totalAbsoluteAdjustment"))
+        adjustment_criteria = mcc.get("largestEffortCriteria") or []
+        if (
+            total is not None
+            and total > _MCC_ZERO_TOLERANCE
+            and adjustment_criteria
+            and (
+                review_criterion is None
+                or all(
+                    item.get("criterionId") != review_criterion.get("criterionId")
+                    for item in adjustment_criteria
                 )
-            elif example:
-                paragraphs.append(
-                    f"It may help to discuss what explains why **{_name(review_criterion)}** "
-                    f"{detail} before relying on its final weight."
-                )
+            )
+        ):
+            paragraphs.append(
+                f"It may be useful to review the original and adjusted weights for "
+                f"**{_names(adjustment_criteria)}** to confirm the resulting balance "
+                "matches the group's priorities."
+            )
 
     if not paragraphs:
         return None
