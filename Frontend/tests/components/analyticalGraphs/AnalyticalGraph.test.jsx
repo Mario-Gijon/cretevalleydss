@@ -9,7 +9,7 @@ vi.mock("chart.js", () => ({
   ArcElement: {}, BarElement: {}, CategoryScale: {}, Filler: {}, Legend: {}, LineElement: {}, LinearScale: {}, PointElement: {}, RadialLinearScale: {}, ScatterController: {}, Tooltip: {},
 }));
 vi.mock("react-chartjs-2", () => ({
-  Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
+  Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-min={options.scales.x.min} data-x-max={options.scales.x.max} />,
   Line: ({ data, options }) => <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
   Scatter: ({ data, options }) => {
     scatterState.data = data;
@@ -122,6 +122,12 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-series", "1");
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-stack", "total");
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-axis", "Score");
+  });
+
+  it("applies explicit value-axis bounds only when a descriptor supplies them", () => {
+    render(<AnalyticalGraph visualization={{ ...descriptors.bar, orientation: "horizontal", valueAxis: { min: 0, max: 1 } }} />);
+    expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-min", "0");
+    expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-max", "1");
   });
 
   it("passes line axes and multiple series", () => {
@@ -346,6 +352,39 @@ describe("AnalyticalGraph", () => {
     expect(finalCell).toHaveTextContent("0.5");
     expect(viewport.contains(screen.getByRole("heading", { name: "2-Tuple heatmap" }))).toBe(false);
     expect(viewport.contains(screen.getByTestId("visualization-reading-guide"))).toBe(false);
+  });
+
+  it("keeps TOPSIS collective performance columns readable and exposes raw values in tooltips", () => {
+    const alternativeName = "Agios Georgios (Saint George Village) with a long local name";
+    const criterionName = "Long-term ecological quality and biodiversity recovery across the region";
+    const visualization = {
+      key: "topsis-collective-performance-profile",
+      type: "heatmap",
+      title: "Collective performance by criterion",
+      truncateLabels: true,
+      scale: { min: 0, max: 1, valuePrecision: 4 },
+      data: {
+        rows: [{ key: "alternative-a", label: alternativeName }],
+        columns: [{ key: "criterion-a", label: criterionName }],
+        values: [[0.75]],
+        details: [[{ inputEvaluation: 4.5, direction: "min", configuredWeight: 0.35 }]],
+      },
+    };
+    const layout = getVisualizationLayout(visualization);
+    render(<div style={{ width: "320px" }}><AnalyticalGraph visualization={visualization} chartHeight={layout.chartHeight} chartMinWidth={layout.chartMinWidth} /></div>);
+
+    const grid = screen.getByTestId("heatmap-analytical-graph");
+    const header = screen.getByTitle(criterionName);
+    const alternative = screen.getByText(alternativeName);
+    const cell = screen.getByLabelText((label) => label.includes(`${criterionName}: 0.75`));
+    const viewport = screen.getByTestId("analytical-graph-viewport");
+    expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("240px");
+    expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("minmax(150px, 1fr)");
+    expect(window.getComputedStyle(header).getPropertyValue("-webkit-line-clamp")).toBe("2");
+    expect(window.getComputedStyle(alternative).whiteSpace).toBe("nowrap");
+    expect(window.getComputedStyle(viewport).overflowX).toBe("auto");
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Input Evaluation: 4.5"));
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Direction: min"));
   });
 
   it("keeps sequential heatmaps and supports safe diverging colors with optional cell details", () => {

@@ -14,6 +14,10 @@ const BarAnalyticalGraph = ({ visualization }) => {
   const series = validSeries(data?.series);
   if (!categories?.length || !series.length) return <GraphUnavailable />;
   const horizontal = visualization.orientation === "horizontal";
+  const chartOptions = buildCartesianChartOptions({ xAxis: visualization.xAxis, yAxis: visualization.yAxis, horizontal, stacked: Boolean(visualization.stacked) });
+  const valueAxis = horizontal ? "x" : "y";
+  if (Number.isFinite(visualization.valueAxis?.min)) chartOptions.scales[valueAxis].min = visualization.valueAxis.min;
+  if (Number.isFinite(visualization.valueAxis?.max)) chartOptions.scales[valueAxis].max = visualization.valueAxis.max;
   return <Bar
     data-testid="bar-analytical-graph"
     data={{
@@ -29,7 +33,7 @@ const BarAnalyticalGraph = ({ visualization }) => {
         ...(visualization.stacked ? { stack: "total" } : {}),
       })),
     }}
-    options={buildCartesianChartOptions({ xAxis: visualization.xAxis, yAxis: visualization.yAxis, horizontal, stacked: Boolean(visualization.stacked) })}
+    options={chartOptions}
   />;
 };
 

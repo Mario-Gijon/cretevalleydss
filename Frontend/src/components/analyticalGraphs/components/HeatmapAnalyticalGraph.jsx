@@ -14,6 +14,7 @@ const TWO_TUPLE_HEATMAP_KEYS = new Set([
   "collective-beta-heatmap",
   "alpha-heatmap",
 ]);
+const TOPSIS_PROFILE_HEATMAP_KEYS = new Set(["topsis-collective-performance-profile"]);
 const divergingColorFor = (value, center, magnitude) => {
   const difference = value - center;
   if (!Number.isFinite(difference) || !Number.isFinite(magnitude) || magnitude <= 0 || Math.abs(difference) <= Number.EPSILON * Math.max(1, magnitude)) return neutralColor;
@@ -51,21 +52,22 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
   const truncateLabels = visualization?.truncateLabels === true;
   const mccAdjustmentMap = visualization?.key === "mcc-adjustment-map";
   const twoTupleHeatmap = TWO_TUPLE_HEATMAP_KEYS.has(visualization?.key);
-  const showColumnTooltips = truncateLabels || mccAdjustmentMap || twoTupleHeatmap;
+  const topsisProfile = TOPSIS_PROFILE_HEATMAP_KEYS.has(visualization?.key);
+  const showColumnTooltips = truncateLabels || mccAdjustmentMap || twoTupleHeatmap || topsisProfile;
   const labelColumn = mccAdjustmentMap
     ? "minmax(180px, 240px)"
-    : twoTupleHeatmap
+    : twoTupleHeatmap || topsisProfile
       ? "240px"
       : truncateLabels
         ? "minmax(90px, 220px)"
         : "minmax(90px, auto)";
-  const criterionColumnMinWidth = mccAdjustmentMap || twoTupleHeatmap ? 150 : 64;
+  const criterionColumnMinWidth = mccAdjustmentMap || twoTupleHeatmap || topsisProfile ? 150 : 64;
   const precision = valuePrecision(visualization?.scale?.valuePrecision);
   const center = Number.isFinite(visualization?.scale?.center) ? visualization.scale.center : 0;
   const magnitude = finiteValues.reduce((maximumDeviation, value) => Math.max(maximumDeviation, Math.abs(value - center)), 0);
   return <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", width: truncateLabels || mccAdjustmentMap || twoTupleHeatmap ? "100%" : undefined, gridTemplateColumns: `${labelColumn} repeat(${data.columns.length}, minmax(${criterionColumnMinWidth}px, 1fr))`, gap: 0.5 }}>
     <Box />
-    {data.columns.map((column) => <Typography key={column.key} variant="caption" noWrap={showColumnTooltips && !twoTupleHeatmap} title={showColumnTooltips ? column.label || column.key : undefined} sx={{ textAlign: "center", fontWeight: 700, ...(showColumnTooltips ? { minWidth: 0 } : {}), ...(twoTupleHeatmap ? { display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", overflowWrap: "anywhere", lineHeight: 1.25 } : {}) }}>{column.label || column.key}</Typography>)}
+    {data.columns.map((column) => <Typography key={column.key} variant="caption" noWrap={showColumnTooltips && !twoTupleHeatmap && !topsisProfile} title={showColumnTooltips ? column.label || column.key : undefined} sx={{ textAlign: "center", fontWeight: 700, ...(showColumnTooltips ? { minWidth: 0 } : {}), ...(twoTupleHeatmap || topsisProfile ? { display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", overflowWrap: "anywhere", lineHeight: 1.25 } : {}) }}>{column.label || column.key}</Typography>)}
     {data.rows.map((row, rowIndex) => <Box key={row.key} sx={{ display: "contents" }}>
       <Typography variant="caption" noWrap={truncateLabels || twoTupleHeatmap} title={truncateLabels || mccAdjustmentMap || twoTupleHeatmap ? row.label || row.key : undefined} sx={{ alignSelf: "center", fontWeight: 700, ...(truncateLabels || mccAdjustmentMap || twoTupleHeatmap ? { minWidth: 0 } : {}), ...(mccAdjustmentMap ? { overflowWrap: "anywhere" } : {}) }}>{row.label || row.key}</Typography>
       {data.columns.map((column, columnIndex) => {

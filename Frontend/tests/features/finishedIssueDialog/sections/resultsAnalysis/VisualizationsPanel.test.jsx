@@ -146,6 +146,28 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["criteria-chart", "alternative-chart"]);
   });
 
+  it("renders model-owned TOPSIS descriptors through the shared alternative-evaluation pipeline", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        alternativeEvaluationAnalysis: { analysis: { sections: [
+          { id: "topsis-relative-closeness", title: "TOPSIS result", order: 0, visualizations: [{ key: "topsis-numeric-ranking-scores", type: "bar", orientation: "horizontal" }] },
+          { id: "topsis-collective-performance", title: "Collective performance", order: 1, visualizations: [{ key: "topsis-collective-performance-profile", type: "heatmap" }] },
+          { id: "topsis-ideal-distance-geometry", title: "TOPSIS reference distances", order: 2, visualizations: [{ key: "topsis-numeric-ideal-distances", type: "scatter" }] },
+        ] } },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
+      "topsis-numeric-ranking-scores",
+      "topsis-collective-performance-profile",
+      "topsis-numeric-ideal-distances",
+    ]);
+    expect(screen.getByText("Alternative evaluation visualizations")).toBeInTheDocument();
+  });
+
   it("renders each model-specific visualization as an isolated dashboard card", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[

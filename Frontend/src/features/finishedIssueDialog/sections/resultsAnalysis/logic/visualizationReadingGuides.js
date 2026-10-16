@@ -49,6 +49,18 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
     "Distance to TOPSIS ideals",
     "Each point is an alternative. The horizontal axis is its distance from the most desirable reference, and the vertical axis is its distance from the least desirable reference. Farther left and higher means closer to the best reference and farther from the worst.",
   ),
+  "topsis-numeric-ranking-scores": guide(
+    "TOPSIS relative closeness",
+    "Each bar is an alternative's executed TOPSIS score, ordered by the model's technical ranking. The score combines distance from the positive and negative ideal references; higher values mean greater relative closeness to the positive ideal within this execution.",
+  ),
+  "topsis-collective-performance-profile": guide(
+    "Collective performance by criterion",
+    "Rows are alternatives and columns are criteria. Number and color show each input's position within that criterion's observed range, with benefit and cost directions respected; hover for raw evaluations. Columns are scaled independently, so values do not compare units across criteria.",
+  ),
+  "topsis-numeric-ideal-distances": guide(
+    "Distance from TOPSIS reference solutions",
+    "Each point is an alternative. The horizontal axis is its reconstructed Euclidean distance to the positive ideal, and the vertical axis is distance to the negative ideal. The view appears only when reconstructed relative-closeness scores match the executed scores.",
+  ),
   "criterion-weighted-discrimination": guide(
     "Observed discriminating power by criterion",
     "Each bar combines a criterion's assigned weight with how much its collective evaluations vary across alternatives. Longer bars mean more weighted variation in these results; they do not show what would happen if the criterion were removed.",

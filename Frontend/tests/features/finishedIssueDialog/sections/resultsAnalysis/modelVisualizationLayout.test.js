@@ -69,6 +69,14 @@ describe("getVisualizationLayout", () => {
     }).chartMinWidth).toBe(240 + columnCount * 154);
   });
 
+  it.each([3, 7, 15])("gives TOPSIS collective performance a scrollable matrix for %i criteria", (columnCount) => {
+    expect(getVisualizationLayout({
+      key: "topsis-collective-performance-profile",
+      type: "heatmap",
+      data: { columns: Array.from({ length: columnCount }, (_, index) => index) },
+    }).chartMinWidth).toBe(240 + columnCount * 154);
+  });
+
   it("keeps unrelated heatmap sizing unchanged", () => {
     expect(getVisualizationLayout({
       key: "generic-heatmap",

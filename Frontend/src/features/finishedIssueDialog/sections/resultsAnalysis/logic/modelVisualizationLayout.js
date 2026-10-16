@@ -22,6 +22,7 @@ const TWO_TUPLE_HEATMAP_KEYS = new Set([
   "collective-beta-heatmap",
   "alpha-heatmap",
 ]);
+const TOPSIS_PROFILE_HEATMAP_KEYS = new Set(["topsis-collective-performance-profile"]);
 
 const chartHeight = () => COMPACT_CHART_HEIGHT;
 const categoricalChartWidth = (itemCount, pixelsPerItem, threshold) => itemCount > threshold ? itemCount * pixelsPerItem : undefined;
@@ -58,6 +59,7 @@ export const getVisualizationLayout = (visualization) => {
     const columnCount = collectionLength(data.columns);
     const mccAdjustmentMap = visualization.key === "mcc-adjustment-map";
     const twoTupleHeatmap = TWO_TUPLE_HEATMAP_KEYS.has(visualization.key);
+    const topsisProfile = TOPSIS_PROFILE_HEATMAP_KEYS.has(visualization.key);
     return {
       span: 1,
       chartHeight: dynamicChartHeight(
@@ -71,6 +73,9 @@ export const getVisualizationLayout = (visualization) => {
         : twoTupleHeatmap
           ? TWO_TUPLE_LABEL_COLUMN_MIN_WIDTH
             + columnCount * (TWO_TUPLE_CRITERION_COLUMN_MIN_WIDTH + HEATMAP_COLUMN_GAP)
+          : topsisProfile
+            ? TWO_TUPLE_LABEL_COLUMN_MIN_WIDTH
+              + columnCount * (TWO_TUPLE_CRITERION_COLUMN_MIN_WIDTH + HEATMAP_COLUMN_GAP)
           : categoricalChartWidth(columnCount, 84, 5),
     };
   }
