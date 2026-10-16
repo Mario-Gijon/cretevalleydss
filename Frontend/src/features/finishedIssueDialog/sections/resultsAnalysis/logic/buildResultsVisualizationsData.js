@@ -358,9 +358,11 @@ const visualGroup = (group, projection = group.representative) => ({
 
 const buildConsensusVisualization = (payload, executions) => {
   const threshold =
-    payload?.configuration?.consensusThreshold ??
     payload?.consensus?.threshold ??
+    payload?.configuration?.consensus?.threshold ??
+    payload?.configuration?.consensusThreshold ??
     null;
+  const issueEnabled = payload?.consensus?.enabled === true;
   const phases = [
     ...new Set(
       executions
@@ -394,11 +396,12 @@ const buildConsensusVisualization = (payload, executions) => {
       };
     })
     .filter((entry) => entry.data.some((value) => value !== null));
-  const hasEvolution = series.some(
+  const hasEvolution = issueEnabled && series.some(
     (entry) => entry.data.filter((value) => value !== null).length >= 2,
   );
   return {
     enabled: hasEvolution,
+    issueEnabled,
     available: hasEvolution,
     graph: {
       labels: phases.map((phase) => `Phase ${phase}`),

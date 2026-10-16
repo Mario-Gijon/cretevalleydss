@@ -26,5 +26,6 @@ describe("FinishedIssueNavigation", () => {
     expect(screen.getByRole("tab", { name: "Analysis" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Results analysis" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Summary", "Issue info", "Analysis", "Evaluations", "Models"]);
+    expect(screen.getByRole("tablist", { name: "Finished issue sections" }).parentElement).toHaveClass("MuiTabs-scroller");
   });
 });

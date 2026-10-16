@@ -37,10 +37,57 @@ export const issueInformationGridSx = {
   gridTemplateColumns: {
     xs: "minmax(0, 1fr)",
     sm: "repeat(2, minmax(0, 1fr))",
-    lg: "repeat(3, minmax(0, 1fr))",
+    lg: "minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.8fr)",
+  },
+  gridTemplateAreas: {
+    xs: '"name" "dates" "weighting" "model" "alternative" "criteria" "description"',
+    sm: '"name name" "dates dates" "weighting weighting" "model alternative" "criteria criteria" "description description"',
+    lg: '"weighting dates name" "model alternative criteria" "description description description"',
   },
   gap: 0.8,
   minWidth: 0,
+  alignItems: "stretch",
+  "& > *": { minWidth: 0 },
+};
+
+export const issueDatesGroupSx = {
+  gridArea: "dates",
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "repeat(2, minmax(0, 1fr))",
+    lg: "minmax(0, 1fr)",
+  },
+  minWidth: 0,
+  borderRadius: 1.35,
+  border: "1px solid rgba(255,255,255,0.07)",
+  bgcolor: "rgba(255,255,255,0.018)",
+  overflow: "hidden",
+};
+
+export const issueDateSectionSx = {
+  display: "grid",
+  gridTemplateColumns: "28px minmax(0, 1fr)",
+  gap: 0.65,
+  alignItems: "center",
+  minWidth: 0,
+  px: 0.8,
+  py: 0.7,
+  "&:first-of-type": {
+    borderRight: { xs: "1px solid rgba(255,255,255,0.07)", lg: "none" },
+    borderBottom: { xs: "none", lg: "1px solid rgba(255,255,255,0.07)" },
+  },
+};
+
+export const issueNameInformationSx = {
+  gridArea: "name",
+  alignItems: "flex-start",
+  height: "100%",
+};
+
+export const issueNameInformationTextSx = {
+  whiteSpace: "normal",
+  overflowWrap: "anywhere",
+  lineHeight: 1.4,
 };
 
 export const overviewTopGridSx = {
@@ -155,9 +202,9 @@ export const overviewInformationRowSx = {
 
 export const issueDescriptionItemSx = {
   ...overviewInformationRowSx,
-  gridColumn: "1 / -1",
+  gridArea: "description",
   alignItems: "flex-start",
-  mt: 1,
+  minWidth: 0,
 };
 
 export const overviewInformationIconSx = (tone = "cyan") => ({

@@ -22,8 +22,24 @@ const TAB_ICONS = {
 };
 
 const FinishedIssueNavigation = ({ navigation }) => (
-  <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.selectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile textColor="secondary" indicatorColor="secondary">
-    {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} icon={TAB_ICONS[tab]} iconPosition="start" label={TAB_LABELS[tab]} sx={{ textTransform: "none" }} />)}
+  <Tabs
+    aria-label="Finished issue sections"
+    value={navigation.activeTab}
+    onChange={(_, tab) => navigation.selectTab(tab)}
+    variant="scrollable"
+    scrollButtons="auto"
+    allowScrollButtonsMobile
+    textColor="secondary"
+    indicatorColor="secondary"
+    sx={{
+      flex: "1 1 auto",
+      minWidth: 0,
+      maxWidth: "100%",
+      "& .MuiTabs-scroller": { minWidth: 0 },
+      "& .MuiTab-root": { minWidth: "max-content", whiteSpace: "nowrap", px: { xs: 1, sm: 1.25 }, textTransform: "none" },
+    }}
+  >
+    {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} icon={TAB_ICONS[tab]} iconPosition="start" label={TAB_LABELS[tab]} />)}
   </Tabs>
 );
 

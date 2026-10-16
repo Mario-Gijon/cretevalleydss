@@ -35,6 +35,48 @@ describe("getVisualizationLayout", () => {
     })).toEqual({ span: 1, chartHeight: { xs: 736, sm: 736 }, chartMinWidth: 1512 });
   });
 
+  it.each([3, 7, 15])("gives MCC adjustment maps 150px criteria columns for %i criteria", (columnCount) => {
+    const layout = getVisualizationLayout({
+      key: "mcc-adjustment-map",
+      type: "heatmap",
+      data: {
+        rows: Array.from({ length: 7 }, (_, index) => index),
+        columns: Array.from({ length: columnCount }, (_, index) => index),
+      },
+    });
+
+    expect(layout.chartMinWidth).toBe(180 + columnCount * 154);
+  });
+
+  it.each([
+    ["two-tuple-collective-profile", 5],
+    ["two-tuple-collective-profile", 13],
+    ["two-tuple-collective-profile", 18],
+    ["two-tuple-alpha-heatmap", 5],
+    ["two-tuple-alpha-heatmap", 13],
+    ["two-tuple-alpha-heatmap", 18],
+    ["collective-beta-heatmap", 5],
+    ["collective-beta-heatmap", 13],
+    ["collective-beta-heatmap", 18],
+    ["alpha-heatmap", 5],
+    ["alpha-heatmap", 13],
+    ["alpha-heatmap", 18],
+  ])("gives %s a 240px label column and readable criterion columns for %i criteria", (key, columnCount) => {
+    expect(getVisualizationLayout({
+      key,
+      type: "heatmap",
+      data: { columns: Array.from({ length: columnCount }, (_, index) => index) },
+    }).chartMinWidth).toBe(240 + columnCount * 154);
+  });
+
+  it("keeps unrelated heatmap sizing unchanged", () => {
+    expect(getVisualizationLayout({
+      key: "generic-heatmap",
+      type: "heatmap",
+      data: { columns: Array.from({ length: 7 }, (_, index) => index) },
+    }).chartMinWidth).toBe(588);
+  });
+
   it("caps dynamic horizontal-bar and heatmap heights", () => {
     expect(getVisualizationLayout({
       type: "bar",

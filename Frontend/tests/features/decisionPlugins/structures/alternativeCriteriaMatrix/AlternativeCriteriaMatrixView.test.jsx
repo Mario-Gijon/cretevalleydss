@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import AlternativeCriteriaMatrixView from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
 import { cellSx } from "../../../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/styles/Cell.styles.js";
-import { evaluationMatrixInputBoundarySx } from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
+import {
+  buildEvaluationMatrixDataGridSx,
+  evaluationMatrixInputBoundarySx,
+} from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const numericDomain = {
@@ -69,6 +72,25 @@ const buildMatrixPayload = () => ({
 describe("AlternativeCriteriaMatrixView", () => {
   it("uses the shared transparent outlined-input rule inside matrix cells", () => {
     expect(cellSx.inputBoundary).toMatchObject(evaluationMatrixInputBoundarySx);
+    expect(
+      cellSx.inputBoundary["& .MuiInputBase-input.Mui-disabled, & .MuiSelect-select.Mui-disabled"]
+    ).toEqual({ color: "text.secondary", WebkitTextFillColor: "currentColor" });
+  });
+
+  it("matches alternative-name cells to the existing header background", () => {
+    const styles = buildEvaluationMatrixDataGridSx({
+      palette: {
+        common: { white: "#fff" },
+        text: { primary: "#fff", disabled: "#999" },
+      },
+    });
+    const headerBackground = styles["& .MuiDataGrid-columnHeaders"].backgroundColor;
+
+    expect(styles["& .MuiDataGrid-cell[data-field='alternativeLabel']"].backgroundColor).toBe(headerBackground);
+    expect(
+      styles["& .MuiDataGrid-row:hover .MuiDataGrid-cell[data-field='alternativeLabel']"].backgroundColor
+    ).toBe(headerBackground);
+    expect(styles["& .MuiDataGrid-columnHeader"].backgroundColor).toBe(headerBackground);
   });
 
   it("updates a canonical cell and disables it in read-only mode", () => {

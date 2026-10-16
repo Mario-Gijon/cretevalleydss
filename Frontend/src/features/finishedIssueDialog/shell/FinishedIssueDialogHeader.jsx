@@ -23,16 +23,12 @@ import FinishedIssueNavigation from "./FinishedIssueNavigation";
 import {
   finishedIssueContentFrameSx,
   finishedIssueHeaderControlsSx,
-  finishedIssueHeaderIdentitySx,
   finishedIssueHeaderSx,
   finishedIssueHeaderTabsSx,
-  finishedIssueHeaderTitleSx,
 } from "./finishedIssueShell.styles";
 
 const FinishedIssueDialogHeader = () => {
   const {
-    dialog,
-    selectedIssue,
     setOpenRemoveConfirmDialog,
     handleCloseFinishedIssueDialog,
     header,
@@ -41,27 +37,20 @@ const FinishedIssueDialogHeader = () => {
 
   const theme = useTheme();
   const isCompactLayout = useMediaQuery(theme.breakpoints.down("lg"));
-  const issue = dialog.payload?.issue || selectedIssue || {};
   const [mobileActionsMenuAnchor, setMobileActionsMenuAnchor] = useState(null);
   const closeMobileActionsMenu = () => setMobileActionsMenuAnchor(null);
 
   return (
     <Box sx={{ ...finishedIssueHeaderSx, background: alpha("#07111c", 0.92) }}>
       <Box sx={finishedIssueContentFrameSx}>
-        <Stack spacing={1.15}>
+        <Stack spacing={0.9}>
           <Stack
             direction="row"
-            alignItems="flex-start"
-            justifyContent="space-between"
-            spacing={0.9}
+            alignItems="center"
+            spacing={0.75}
+            sx={{ minWidth: 0 }}
           >
-            <Box sx={finishedIssueHeaderIdentitySx}>
-              <Stack direction="row" spacing={0.8} alignItems="flex-start" sx={{ mt: 0.35, minWidth: 0, maxWidth: "100%" }}>
-                <Typography variant="h4" component="h1" title={issue?.name || ""} sx={finishedIssueHeaderTitleSx}>
-                  {issue?.name || "Finished issue"}
-                </Typography>
-              </Stack>
-            </Box>
+            <FinishedIssueNavigation navigation={navigation} />
 
             <Stack direction="row" spacing={0.75} alignItems="center" sx={finishedIssueHeaderControlsSx}>
               {isCompactLayout ? (
@@ -88,8 +77,6 @@ const FinishedIssueDialogHeader = () => {
           {header.showRounds ? <Tabs value={header.selectedPhase} onChange={(_, value) => header.changePhase(value)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={finishedIssueHeaderTabsSx}>
             {header.basePhases.map((phase) => <Tab key={phase} value={phase} label={formatFinishedIssuePhaseLabel({ phase, orderedPhases: header.basePhases })} />)}
           </Tabs> : null}
-
-          <FinishedIssueNavigation navigation={navigation} />
         </Stack>
       </Box>
     </Box>

@@ -17,6 +17,10 @@ import {
   overviewDataRowSeparator,
   issueInfoTableViewportSx,
   issueDescriptionItemSx,
+  issueInformationGridSx,
+  issueDatesGroupSx,
+  issueDateSectionSx,
+  issueNameInformationTextSx,
 } from "../../../../../src/features/finishedIssueDialog/sections/overview/overview.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
@@ -35,19 +39,48 @@ describe("Issue info view", () => {
     ["Issue information", "Alternatives", "Expert participation", "Criteria structure"].forEach((title) => {
       expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     });
-    ["Evaluation model", "Alternative evaluation", "Criteria weighting", "Weighting level", "Created", "Finalized", "Description"].forEach((label) => {
+    ["Issue name", "Evaluation model", "Alternative evaluation", "Criteria weighting", "Weighting level", "Created", "Finalized", "Description"].forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
     expect(screen.queryByText("Domain assignments")).not.toBeInTheDocument();
     expect(screen.queryByText("Status")).not.toBeInTheDocument();
     expect(screen.getByText("Base model")).toBeInTheDocument();
+    expect(screen.getByTestId("issue-name-item")).toHaveTextContent("Issue nameFinished issue");
+    expect(screen.getAllByText("Finished issue")).toHaveLength(1);
+    expect(screen.getByTestId("issue-dates-group")).toBeInTheDocument();
     expect(screen.getByText("Canonical fixture")).toBeInTheDocument();
     expect(screen.getByTestId("participation-chart")).toHaveTextContent("1,1");
-    expect(issueDescriptionItemSx).toMatchObject({ gridColumn: "1 / -1", alignItems: "flex-start" });
+    expect(issueDescriptionItemSx).toMatchObject({ gridArea: "description", alignItems: "flex-start" });
     expect(screen.getByTestId("issue-description-item")).toHaveTextContent("DescriptionCanonical fixture");
     expect(screen.queryByText("Owner")).not.toBeInTheDocument();
     expect(screen.queryByText("Consensus")).not.toBeInTheDocument();
     expect(screen.queryByText("Expected finalization date")).not.toBeInTheDocument();
+  });
+
+  it("wraps the complete issue name and places information cards in the responsive reading order", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.issue.name = "Crete Valley: A very long issue name that should wrap completely inside the information card";
+    renderView(dataFor(payload));
+
+    const nameCard = screen.getByTestId("issue-name-item");
+    expect(within(nameCard).getByText(payload.issue.name)).toHaveAttribute("title", payload.issue.name);
+    expect(screen.getAllByText(payload.issue.name)).toHaveLength(1);
+    expect(issueNameInformationTextSx).toMatchObject({ whiteSpace: "normal", overflowWrap: "anywhere" });
+    expect(issueDatesGroupSx.gridTemplateColumns).toEqual({ xs: "repeat(2, minmax(0, 1fr))", lg: "minmax(0, 1fr)" });
+    expect(issueDateSectionSx["&:first-of-type"]).toMatchObject({
+      borderRight: { xs: "1px solid rgba(255,255,255,0.07)", lg: "none" },
+      borderBottom: { xs: "none", lg: "1px solid rgba(255,255,255,0.07)" },
+    });
+    expect(issueInformationGridSx.gridTemplateColumns).toEqual({
+      xs: "minmax(0, 1fr)",
+      sm: "repeat(2, minmax(0, 1fr))",
+      lg: "minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.8fr)",
+    });
+    expect(issueInformationGridSx.gridTemplateAreas).toEqual({
+      xs: '"name" "dates" "weighting" "model" "alternative" "criteria" "description"',
+      sm: '"name name" "dates dates" "weighting weighting" "model alternative" "criteria criteria" "description description"',
+      lg: '"weighting dates name" "model alternative criteria" "description description description"',
+    });
   });
 
   it("formats day-first Created and ISO Finalized dates as MMM D, YYYY without changing raw values", () => {

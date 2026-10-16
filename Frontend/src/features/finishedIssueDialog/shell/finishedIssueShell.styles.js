@@ -22,24 +22,8 @@ export const finishedIssueHeaderSx = {
   backdropFilter: "blur(14px)",
 };
 
-export const finishedIssueHeaderIdentitySx = {
-  minWidth: 0,
-  flex: "1 1 auto",
-};
-
 export const finishedIssueHeaderControlsSx = {
   flexShrink: 0,
-};
-
-export const finishedIssueHeaderTitleSx = {
-  minWidth: 0,
-  letterSpacing: "-0.035em",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  display: "-webkit-box",
-  WebkitBoxOrient: "vertical",
-  WebkitLineClamp: { xs: 2, lg: 1 },
-  whiteSpace: { xs: "normal", lg: "nowrap" },
 };
 
 export const finishedIssueTabsAccentSx = {

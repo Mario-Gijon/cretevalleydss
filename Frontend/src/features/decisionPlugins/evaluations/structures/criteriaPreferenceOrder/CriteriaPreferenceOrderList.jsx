@@ -29,6 +29,8 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
+import { evaluationMatrixCellBackground } from "../../shared/styles/evaluationMatrixTable.styles";
+
 const getCriterionName = (criterion) => criterion.name || criterion.id;
 
 const CriteriaPreferenceOrderRow = ({
@@ -73,7 +75,7 @@ const CriteriaPreferenceOrderRow = ({
         borderColor: "divider",
         bgcolor: isDragging
           ? alpha(theme.palette.secondary.main, 0.16)
-          : "transparent",
+          : evaluationMatrixCellBackground,
         boxShadow: isDragging
           ? `0 8px 20px ${alpha(theme.palette.common.black, 0.24)}`
           : "none",

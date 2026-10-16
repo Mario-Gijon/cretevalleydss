@@ -61,6 +61,9 @@ describe("PairwiseMatrix layout", () => {
         "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline"
       ]
     ).toEqual({ borderColor: "transparent" });
+    expect(
+      cellSx.inputBoundary["& .MuiInputBase-input.Mui-disabled, & .MuiSelect-select.Mui-disabled"]
+    ).toEqual({ color: "text.secondary", WebkitTextFillColor: "currentColor" });
   });
 
   it("keeps row and column separators on the shared DataGrid cell geometry", () => {
@@ -79,6 +82,20 @@ describe("PairwiseMatrix layout", () => {
     });
     expect(cellSx.diagonal).not.toHaveProperty("borderBottom");
     expect(cellSx.diagonal).not.toHaveProperty("borderRight");
+  });
+
+  it("matches alternative-name cells and the corner to the header background", () => {
+    const styles = buildEvaluationMatrixDataGridSx({
+      palette: {
+        common: { white: "#fff" },
+        text: { primary: "#fff", disabled: "#999" },
+      },
+    });
+    const headerBackground = styles["& .MuiDataGrid-columnHeaders"].backgroundColor;
+
+    expect(styles["& .first-column"].backgroundColor).toBe(headerBackground);
+    expect(styles["& .MuiDataGrid-row:hover .first-column"].backgroundColor).toBe(headerBackground);
+    expect(styles["& .MuiDataGrid-columnHeader"].backgroundColor).toBe(headerBackground);
   });
 
   it("leaves horizontal scrolling to DataGrid while preserving the matrix minimum width", () => {

@@ -7,8 +7,12 @@ import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
 import {
+  issueDateSectionSx,
+  issueDatesGroupSx,
   issueDescriptionItemSx,
   issueInformationGridSx,
+  issueNameInformationSx,
+  issueNameInformationTextSx,
   overviewInformationIconSx,
   overviewInformationRowSx,
 } from "../overview.styles";
@@ -43,12 +47,35 @@ const formatIssueDate = (value) => {
   return Number.isNaN(date.getTime()) ? String(value) : issueDateFormatter.format(date);
 };
 
-const InformationRow = ({ icon, label, value }) => (
-  <Box sx={overviewInformationRowSx}>
-    <Box sx={overviewInformationIconSx()}>{icon}</Box>
+const InformationRow = ({ icon, label, value, area, wrapValue = false, testId, sx }) => {
+  const rowSx = [overviewInformationRowSx];
+  if (area) rowSx.push({ gridArea: area });
+  if (sx) rowSx.push(sx);
+
+  return (
+    <Box data-testid={testId} sx={rowSx}>
+      <Box sx={overviewInformationIconSx()}>{icon}</Box>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="caption" color="text.secondary">{label}</Typography>
+        <Typography
+          variant="body2"
+          noWrap={!wrapValue}
+          title={String(value)}
+          sx={{ mt: 0.15, fontWeight: "fontWeightBold", ...(wrapValue ? issueNameInformationTextSx : {}) }}
+        >
+          {value}
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
+const DateInformationRow = ({ label, value }) => (
+  <Box sx={issueDateSectionSx}>
+    <Box sx={overviewInformationIconSx()}><CalendarMonthRoundedIcon fontSize="small" /></Box>
     <Box sx={{ minWidth: 0 }}>
       <Typography variant="caption" color="text.secondary">{label}</Typography>
-      <Typography variant="body2" noWrap title={String(value)} sx={{ mt: 0.15, fontWeight: "fontWeightBold" }}>
+      <Typography variant="body2" title={String(value)} sx={{ mt: 0.15, fontWeight: "fontWeightBold", whiteSpace: "normal", overflowWrap: "anywhere", lineHeight: 1.35 }}>
         {value}
       </Typography>
     </Box>
@@ -67,20 +94,31 @@ const IssueInformationPanel = ({ data }) => {
   return (
     <OverviewPanel title="Issue information" icon={<DescriptionRoundedIcon fontSize="small" />}>
       <Box sx={issueInformationGridSx}>
-        <InformationRow icon={<LayersRoundedIcon fontSize="small" />} label="Evaluation model" value={data.configuration.baseModel.name || "—"} />
-        <InformationRow icon={<HubRoundedIcon fontSize="small" />} label="Alternative evaluation" value={data.configuration.alternativeEvaluation.structureLabel || "—"} />
-        <InformationRow icon={<TuneRoundedIcon fontSize="small" />} label="Criteria weighting" value={weightingValue} />
-        <InformationRow icon={<AccountTreeRoundedIcon fontSize="small" />} label="Weighting level" value={weightingLevel} />
-        <InformationRow icon={<CalendarMonthRoundedIcon fontSize="small" />} label="Created" value={formatIssueDate(data.general.creationDate)} />
-        <InformationRow icon={<CalendarMonthRoundedIcon fontSize="small" />} label="Finalized" value={formatIssueDate(data.general.finishedAt)} />
-      </Box>
-      <Box data-testid="issue-description-item" sx={issueDescriptionItemSx}>
-        <Box sx={{ ...overviewInformationIconSx(), mt: 0.1 }}><DescriptionRoundedIcon fontSize="small" /></Box>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="caption" color="text.secondary">Description</Typography>
-          <Typography variant="body2" sx={{ mt: 0.15, color: data.description ? "text.primary" : "text.secondary", whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.5 }}>
-            {data.description || "No description was provided."}
-          </Typography>
+        <InformationRow
+          icon={<DescriptionRoundedIcon fontSize="small" />}
+          label="Issue name"
+          value={data.issue.name || "—"}
+          area="name"
+          wrapValue
+          sx={issueNameInformationSx}
+          testId="issue-name-item"
+        />
+        <Box data-testid="issue-dates-group" sx={issueDatesGroupSx}>
+          <DateInformationRow label="Created" value={formatIssueDate(data.general.creationDate)} />
+          <DateInformationRow label="Finalized" value={formatIssueDate(data.general.finishedAt)} />
+        </Box>
+        <InformationRow icon={<AccountTreeRoundedIcon fontSize="small" />} label="Weighting level" value={weightingLevel} area="weighting" />
+        <InformationRow icon={<LayersRoundedIcon fontSize="small" />} label="Evaluation model" value={data.configuration.baseModel.name || "—"} area="model" />
+        <InformationRow icon={<HubRoundedIcon fontSize="small" />} label="Alternative evaluation" value={data.configuration.alternativeEvaluation.structureLabel || "—"} area="alternative" />
+        <InformationRow icon={<TuneRoundedIcon fontSize="small" />} label="Criteria weighting" value={weightingValue} area="criteria" />
+        <Box data-testid="issue-description-item" sx={issueDescriptionItemSx}>
+          <Box sx={{ ...overviewInformationIconSx(), mt: 0.1 }}><DescriptionRoundedIcon fontSize="small" /></Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary">Description</Typography>
+            <Typography variant="body2" sx={{ mt: 0.15, color: data.description ? "text.primary" : "text.secondary", whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.5 }}>
+              {data.description || "No description was provided."}
+            </Typography>
+          </Box>
         </Box>
       </Box>
     </OverviewPanel>

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 
 const scatterState = vi.hoisted(() => ({ data: null, options: null }));
 
@@ -22,6 +23,7 @@ vi.mock("react-chartjs-2", () => ({
 
 import { AnalyticalGraph, analyticalGraphRegistry } from "../../../src/components/analyticalGraphs/index.js";
 import { preferenceDistributionMatrixPlugin } from "../../../src/components/analyticalGraphs/logic/preferenceDistributionMatrixPlugin.js";
+import { getVisualizationLayout } from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/modelVisualizationLayout.js";
 
 const descriptors = {
   bar: { key: "bar", type: "bar", title: "Bar", data: { categories: ["Alt 1", "Alt 2"], series: [{ key: "c1", label: "C1", values: [0.2, 0.5] }] } },
@@ -38,6 +40,53 @@ const expertSeries = (key, label) => ({
   label,
   points: [{ id: `${key}:criterion`, label: `${label} · Cost`, x: 1, y: 1, details: { expert: label, criterion: "Cost", rank: 1, utility: 0.5 } }],
 });
+
+const mccAdjustmentMap = (columnCount) => {
+  const longExpertName = "Expert Alexandria Papatheodorou with a deliberately long display name";
+  const columns = Array.from({ length: columnCount }, (_, index) => ({
+    key: `criterion-${index + 1}`,
+    label: `Criterion ${index + 1}: ${"long criterion name ".repeat(5).trim()}`,
+  }));
+  const rows = [
+    { key: "expert-long", label: longExpertName },
+    { key: "expert-short", label: "Expert B" },
+  ];
+
+  return {
+    key: "mcc-adjustment-map",
+    type: "heatmap",
+    title: "MCC adjustment map",
+    scale: { kind: "diverging", center: 0 },
+    data: {
+      rows,
+      columns,
+      values: rows.map(() => columns.map(() => 0.5)),
+    },
+  };
+};
+
+const twoTupleHeatmap = (key, columnCount) => {
+  const longAlternativeName = "Agios Georgios (Saint George Village) with a deliberately long display name";
+  const columns = Array.from({ length: columnCount }, (_, index) => ({
+    key: `criterion-${index + 1}`,
+    label: `Criterion ${index + 1}: ${"a long criterion name ".repeat(4).trim()}`,
+  }));
+  const rows = [
+    { key: "alternative-long", label: longAlternativeName },
+    { key: "alternative-short", label: "Short alternative" },
+  ];
+
+  return {
+    key,
+    type: "heatmap",
+    title: "2-Tuple heatmap",
+    data: {
+      rows,
+      columns,
+      values: rows.map(() => columns.map(() => 0.5)),
+    },
+  };
+};
 
 describe("AnalyticalGraph", () => {
   it("registers and resolves every supported graph type", () => {
@@ -199,10 +248,104 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText("C1")).toBeInTheDocument();
     expect(screen.getByText("0.5")).toBeInTheDocument();
     expect(screen.getByLabelText("Alt 1, C1: 0.5")).toBeInTheDocument();
+    expect(window.getComputedStyle(screen.getByTestId("heatmap-analytical-graph")).gridTemplateColumns).toContain("64px");
     rerender(<AnalyticalGraph visualization={descriptors.image} />);
     const image = screen.getByTestId("image-analytical-graph");
     expect(image).toHaveAttribute("src", expect.stringContaining("data:image/svg+xml,"));
     expect(image).toHaveAttribute("alt", "Image");
+  });
+
+  it.each([
+    { mode: "light", containerWidth: 320, columnCount: 15 },
+    { mode: "dark", containerWidth: 1600, columnCount: 3 },
+  ])("keeps the MCC matrix aligned across themes and container widths", ({ mode, containerWidth, columnCount }) => {
+    const visualization = mccAdjustmentMap(columnCount);
+    const layout = getVisualizationLayout(visualization);
+    render(
+      <ThemeProvider theme={createTheme({ palette: { mode } })}>
+        <div data-testid="matrix-container" style={{ width: `${containerWidth}px` }}>
+          <AnalyticalGraph
+            visualization={visualization}
+            chartHeight={layout.chartHeight}
+            chartMinWidth={layout.chartMinWidth}
+          />
+        </div>
+      </ThemeProvider>
+    );
+
+    const container = screen.getByTestId("matrix-container");
+    const grid = screen.getByTestId("heatmap-analytical-graph");
+    const gridTemplateColumns = window.getComputedStyle(grid).gridTemplateColumns;
+    const viewport = screen.getByTestId("analytical-graph-viewport");
+    const content = viewport.firstElementChild;
+    const longCriterionName = visualization.data.columns.at(-1).label;
+    const longExpertName = visualization.data.rows[0].label;
+
+    expect(window.getComputedStyle(container).width).toBe(`${containerWidth}px`);
+    expect(gridTemplateColumns).toContain("minmax(180px, 240px)");
+    expect(gridTemplateColumns).toContain("minmax(150px, 1fr)");
+    expect(window.getComputedStyle(viewport).overflowX).toBe("auto");
+    expect(window.getComputedStyle(content).width).toBe("100%");
+    expect(window.getComputedStyle(content).minWidth).toBe(`${layout.chartMinWidth}px`);
+    expect(screen.getByTitle(longCriterionName)).toBeInTheDocument();
+    expect(screen.getByTitle(longExpertName)).toBeInTheDocument();
+    expect(screen.getByText(longExpertName)).toBeInTheDocument();
+    expect(screen.getByText(longExpertName)).not.toHaveClass("MuiTypography-noWrap");
+    expect(screen.getByLabelText(`${longExpertName}, ${longCriterionName}: 0.5`)).toBeInTheDocument();
+    expect(viewport.contains(screen.getByRole("heading", { name: "MCC adjustment map" }))).toBe(false);
+    expect(viewport.contains(screen.getByTestId("visualization-reading-guide"))).toBe(false);
+  });
+
+  it.each([
+    { key: "two-tuple-collective-profile", mode: "light", containerWidth: 320, columnCount: 5 },
+    { key: "two-tuple-collective-profile", mode: "dark", containerWidth: 1600, columnCount: 13 },
+    { key: "two-tuple-collective-profile", mode: "light", containerWidth: 320, columnCount: 18 },
+    { key: "two-tuple-alpha-heatmap", mode: "dark", containerWidth: 1600, columnCount: 5 },
+    { key: "two-tuple-alpha-heatmap", mode: "light", containerWidth: 320, columnCount: 13 },
+    { key: "two-tuple-alpha-heatmap", mode: "dark", containerWidth: 1600, columnCount: 18 },
+    { key: "collective-beta-heatmap", mode: "light", containerWidth: 320, columnCount: 18 },
+    { key: "alpha-heatmap", mode: "dark", containerWidth: 1600, columnCount: 18 },
+  ])("keeps 2-Tuple heatmap labels readable and scrollable for $key in $mode mode", ({ key, mode, containerWidth, columnCount }) => {
+    const visualization = twoTupleHeatmap(key, columnCount);
+    const layout = getVisualizationLayout(visualization);
+    render(
+      <ThemeProvider theme={createTheme({ palette: { mode } })}>
+        <div data-testid="matrix-container" style={{ width: `${containerWidth}px` }}>
+          <AnalyticalGraph
+            visualization={visualization}
+            chartHeight={layout.chartHeight}
+            chartMinWidth={layout.chartMinWidth}
+          />
+        </div>
+      </ThemeProvider>
+    );
+
+    const grid = screen.getByTestId("heatmap-analytical-graph");
+    const gridStyle = window.getComputedStyle(grid);
+    const viewport = screen.getByTestId("analytical-graph-viewport");
+    const content = viewport.firstElementChild;
+    const lastCriterionName = visualization.data.columns.at(-1).label;
+    const longAlternativeName = visualization.data.rows[0].label;
+    const alternativeLabel = screen.getByText(longAlternativeName);
+    const criterionHeader = screen.getByTitle(lastCriterionName);
+    const finalCell = screen.getByLabelText(`${longAlternativeName}, ${lastCriterionName}: 0.5`);
+
+    expect(gridStyle.gridTemplateColumns).toContain("240px");
+    expect(gridStyle.gridTemplateColumns).toContain("minmax(150px, 1fr)");
+    expect(window.getComputedStyle(criterionHeader).display).toBe("-webkit-box");
+    expect(window.getComputedStyle(criterionHeader).getPropertyValue("-webkit-line-clamp")).toBe("2");
+    expect(alternativeLabel).toHaveClass("MuiTypography-noWrap");
+    expect(window.getComputedStyle(alternativeLabel).whiteSpace).toBe("nowrap");
+    expect(window.getComputedStyle(alternativeLabel).textOverflow).toBe("ellipsis");
+    expect(screen.getByTitle(longAlternativeName)).toBe(alternativeLabel);
+    expect(window.getComputedStyle(viewport).overflowX).toBe("auto");
+    expect(window.getComputedStyle(content).minWidth).toBe(`${layout.chartMinWidth}px`);
+    expect(finalCell).toBeInTheDocument();
+    expect(finalCell).toHaveAttribute("data-color-scale", "sequential");
+    expect(finalCell).toHaveAttribute("data-cell-color", "rgba(83, 198, 214, 0.5)");
+    expect(finalCell).toHaveTextContent("0.5");
+    expect(viewport.contains(screen.getByRole("heading", { name: "2-Tuple heatmap" }))).toBe(false);
+    expect(viewport.contains(screen.getByTestId("visualization-reading-guide"))).toBe(false);
   });
 
   it("keeps sequential heatmaps and supports safe diverging colors with optional cell details", () => {

@@ -50,9 +50,12 @@ afterEach(() => {
 });
 
 describe("FinishedIssueDialogHeader", () => {
-  it("keeps only issue actions on desktop", () => {
+  it("shows navigation and issue actions without the issue title on desktop", () => {
     renderHeader();
 
+    expect(screen.getByText("Navigation")).toBeInTheDocument();
+    expect(screen.queryByText("Completed issue")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Completed issue" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Select execution")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Add model")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Remove issue")).toBeInTheDocument();
@@ -60,9 +63,11 @@ describe("FinishedIssueDialogHeader", () => {
     expect(screen.queryByLabelText("Open issue actions")).not.toBeInTheDocument();
   });
 
-  it("keeps close directly visible and moves only remove into the compact actions menu", () => {
+  it("keeps navigation and close visible and moves only remove into the compact actions menu", () => {
     mobile = true;
     renderHeader();
+    expect(screen.getByText("Navigation")).toBeInTheDocument();
+    expect(screen.queryByText("Completed issue")).not.toBeInTheDocument();
     const actionsButton = screen.getByLabelText("Open issue actions");
     const closeButton = screen.getByLabelText("Close Finished Issue");
     expect(closeButton).toBeInTheDocument();

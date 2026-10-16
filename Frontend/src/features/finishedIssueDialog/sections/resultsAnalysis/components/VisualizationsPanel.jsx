@@ -14,7 +14,7 @@ import { useState } from "react";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
 import { AnalyticalGraph } from "../../../../../components/analyticalGraphs";
-import AlternativeRelationshipsVisualization from "./AlternativeRelationshipsVisualization.jsx";
+import AlternativeRelationshipsVisualization, { hasAlternativeRelationshipsVisualization } from "./AlternativeRelationshipsVisualization.jsx";
 import { AnalyticalScatterChart } from "../../../graphs/components/AnalyticalScatterChart";
 import { ComparativeAnalyticalScatterChart } from "../../../graphs/components/ComparativeAnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../../../graphs/components/AnalyticalConsensusLineChart";
@@ -25,6 +25,8 @@ import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js
 import { buildVisualizationLayout } from "../logic/modelVisualizationLayout.js";
 import { buildModelAnalysisSections, scopedEntities, visualizationsForScope } from "../logic/modelAnalysisSections.js";
 import { getVisualizationReadingGuide } from "../logic/visualizationReadingGuides.js";
+import { buildGeneralVisualizationsLayout } from "../logic/buildGeneralVisualizationsLayout.js";
+import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
 import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
@@ -70,13 +72,50 @@ const EXPERT_COLLECTIVE_MAP_GUIDE = "Each dot marks an expert or the collective 
 const EXPERT_COLLECTIVE_DISTANCES_GUIDE = "Each bar measures the distance from one expert's point to the collective point in the stored projection. Shorter bars mean closer positions in that display; these are projection distances, not geographic distances.";
 const RANKING_STABILITY_GUIDE = getVisualizationReadingGuide({ type: "rankingStability" });
 const RANKING_AGREEMENT_GUIDE = getVisualizationReadingGuide({ type: "rankingAgreement" });
+const finitePoint = (point) => Number.isFinite(point?.x) && Number.isFinite(point?.y);
+
+const renderableDistanceProjections = (projections) =>
+  (Array.isArray(projections) ? projections : []).filter(
+    (projection) => buildProjectedExpertDistances(projection).length > 0,
+  );
+
+const hasRenderableExpertCollectiveMap = (visualizations) => {
+  if (visualizations?.mode !== "comparison")
+    return visualizations?.singleScatter?.available === true;
+  const comparison = visualizations.expertCollectiveComparison;
+  if (comparison?.available !== true) return false;
+  if (comparison.presentation === "shared")
+    return Boolean(comparison.sharedProjection);
+  if (comparison.presentation === "aligned-overlay")
+    return Array.isArray(comparison.alignedExecutions) && comparison.alignedExecutions.length > 0;
+  return comparison.presentation === "separate" &&
+    Array.isArray(comparison.separateExecutions) && comparison.separateExecutions.length > 0;
+};
+
+const representedExpertCount = (visualizations) => {
+  const projections = visualizations?.mode === "single"
+    ? [visualizations.singleScatter?.data?.[visualizations.singleScatter?.sourcePhase]]
+    : (Array.isArray(visualizations?.canonicalProjections)
+      ? visualizations.canonicalProjections.filter((projection) => projection?.available === true)
+      : []);
+  const identities = new Set();
+  let largestProjection = 0;
+  projections.forEach((projection, projectionIndex) => {
+    const points = (Array.isArray(projection?.expertPoints) ? projection.expertPoints : []).filter(finitePoint);
+    largestProjection = Math.max(largestProjection, points.length);
+    points.forEach((point, pointIndex) => {
+      identities.add(point.identity || point.email || point.label || `${projectionIndex}:${pointIndex}`);
+    });
+  });
+  return Math.max(identities.size, largestProjection);
+};
 
 const Header = ({ title, subtitle, extraAction }) => (
   <Stack
-    direction="row"
+    direction={extraAction ? { xs: "column", md: "row" } : "row"}
     justifyContent="space-between"
     spacing={1}
-    alignItems="flex-start"
+    alignItems={extraAction ? { xs: "stretch", md: "flex-start" } : "flex-start"}
     sx={{ mb: 1.25 }}
   >
     <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
@@ -88,7 +127,7 @@ const Header = ({ title, subtitle, extraAction }) => (
         {subtitle ? <Typography component="p" data-testid="visualization-reading-guide" variant="body2" color="text.secondary">{subtitle}</Typography> : null}
       </Box>
     </Stack>
-    <Stack direction="row" spacing={0.8} alignItems="center">
+    <Stack direction="row" spacing={0.8} alignItems="center" sx={extraAction ? { alignSelf: { xs: "flex-end", md: "auto" } } : undefined}>
       {extraAction}
     </Stack>
   </Stack>
@@ -119,7 +158,7 @@ const GroupChips = ({ group }) => (
 );
 
 const ConsensusCard = ({ consensus }) => (
-  <Box sx={cardSx}>
+  <Box sx={cardSx} data-testid="consensus-level-visualization">
     <Header title="Consensus evolution" subtitle="Each line follows consensus across phases from left to right. The vertical scale runs from 0% to 100%: higher values mean more agreement, while a rise or fall shows agreement increasing or decreasing." />
     {consensus.available ? (
       <Box sx={chartFrameSx}>
@@ -545,18 +584,20 @@ const RankingTemporalSection = ({ executions }) => {
 
 const ExpertCollectiveRelationship = ({ visualizations }) => {
   const [representation, setRepresentation] = useState("map");
-  const singleProjection = visualizations.mode === "single"
-    ? visualizations.canonicalProjections?.[0]
-    : null;
-  const hasSingleExpert = singleProjection?.available === true &&
-    singleProjection.expertPoints?.length === 1;
-  const toggleMode = Boolean(visualizations.consensus?.available) && !hasSingleExpert;
-  const showMap = !toggleMode || representation === "map";
+  const mapAvailable = hasRenderableExpertCollectiveMap(visualizations);
+  const distanceProjections = renderableDistanceProjections(visualizations.canonicalProjections);
+  const distancesAvailable = distanceProjections.length > 0;
+  const hasMultipleExperts = representedExpertCount(visualizations) > 1;
+  const toggleMode = hasMultipleExperts && mapAvailable && distancesAvailable;
+  const selectedRepresentation = toggleMode
+    ? representation
+    : mapAvailable
+      ? "map"
+      : distancesAvailable
+        ? "distances"
+        : "map";
+  const showMap = selectedRepresentation === "map";
   const relationshipGuide = showMap ? EXPERT_COLLECTIVE_MAP_GUIDE : EXPERT_COLLECTIVE_DISTANCES_GUIDE;
-  const scatterAvailable = visualizations.mode === "comparison"
-    ? visualizations.expertCollectiveComparison?.presentation !== "unavailable"
-    : visualizations.singleScatter?.available;
-  const showBothRepresentations = !toggleMode && (scatterAvailable || visualizations.mode === "comparison");
   const map =
     visualizations.mode === "comparison" ? (
       <ComparisonVisualization
@@ -567,36 +608,18 @@ const ExpertCollectiveRelationship = ({ visualizations }) => {
         visualizations={visualizations}
       />
     );
-  if (hasSingleExpert) {
-    return (
-      <Box sx={cardSx}>
-        <Header
-          title="Expert–collective relationship"
-          subtitle={EXPERT_COLLECTIVE_MAP_GUIDE}
-        />
-        <Box data-testid="single-expert-projection" sx={{ width: "100%", minWidth: 0 }}>
-          {map}
-        </Box>
-      </Box>
-    );
-  }
   return (
-    <Box sx={cardSx}>
+    <Box sx={cardSx} data-testid="expert-collective-relationship">
       <Header
         title="Expert–collective relationship"
-        subtitle={showBothRepresentations ? null : relationshipGuide}
-        extraAction={toggleMode ? <ToggleButtonGroup color="secondary" exclusive size="small" value={representation} onChange={(_, value) => value && setRepresentation(value)} aria-label="Expert collective representation"><ToggleButton value="map">Map</ToggleButton><ToggleButton value="distances">Distances</ToggleButton></ToggleButtonGroup> : null}
+        subtitle={relationshipGuide}
+        extraAction={toggleMode ? <ToggleButtonGroup color="secondary" exclusive size="small" value={representation} onChange={(_, value) => value && setRepresentation(value)} aria-label="Expert collective representation"><ToggleButton value="map">MAP</ToggleButton><ToggleButton value="distances">DISTANCES</ToggleButton></ToggleButtonGroup> : null}
       />
-      {!scatterAvailable && visualizations.mode !== "comparison" ? map : toggleMode ? (
-        showMap ? map : <Box sx={expertChartFrameSx}><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
-      ) : (
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: { xs: 1.2, md: 0 }, alignItems: "start" }}>
-          <Box sx={{ minWidth: 0 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Map</Typography><VisualizationReadingGuide>{EXPERT_COLLECTIVE_MAP_GUIDE}</VisualizationReadingGuide>{map}</Box>
-          <Box aria-hidden="true" sx={{ display: { xs: "block", md: "none" }, borderTop: "1px solid rgba(83,198,214,0.18)" }} />
-          <Box aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
-          <Box sx={{ minWidth: 0 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Distances</Typography><VisualizationReadingGuide>{EXPERT_COLLECTIVE_DISTANCES_GUIDE}</VisualizationReadingGuide><ProjectedExpertDistances projections={visualizations.canonicalProjections || []} phase={visualizations.phase} matchScatterHeight /></Box>
-        </Box>
-      )}
+      <Box data-testid="expert-collective-selected-view" data-view={selectedRepresentation} sx={{ width: "100%", minWidth: 0 }}>
+        {showMap
+          ? map
+          : <Box sx={expertChartFrameSx}><ProjectedExpertDistances projections={distanceProjections} phase={visualizations.phase} matchScatterHeight /></Box>}
+      </Box>
     </Box>
   );
 };
@@ -672,6 +695,32 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [] }) => {
     executions,
     "rankingEvolution",
   );
+  const expertCollectiveAvailable = hasRenderableExpertCollectiveMap(visualizations) ||
+    renderableDistanceProjections(visualizations.canonicalProjections).length > 0;
+  const consensusIssueEnabled = visualizations.consensus?.issueEnabled === true;
+  const consensusAvailable = consensusIssueEnabled && visualizations.consensus?.available === true;
+  const alternativeRelationshipsAvailable =
+    hasAlternativeRelationshipsVisualization(executions);
+  const generalLayout = buildGeneralVisualizationsLayout({
+    expertCollectiveAvailable,
+    issueConsensusEnabled: consensusIssueEnabled,
+    consensusAvailable,
+    alternativeRelationshipsAvailable,
+  });
+
+  const renderGeneralVisualization = (type) => {
+    if (type === "expertCollective") {
+      return <ExpertCollectiveRelationship key={type} visualizations={visualizations} />;
+    }
+    if (type === "consensus") {
+      return <ConsensusCard key={type} consensus={visualizations.consensus} />;
+    }
+    if (type === "alternativeRelationships") {
+      return <AlternativeRelationshipsVisualization key={type} executions={executions} />;
+    }
+    return null;
+  };
+
   return (
     <Stack spacing={2}>
       <Box>
@@ -690,24 +739,27 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [] }) => {
             <RankingEvolution executions={executions} />
           </Stack>
         ) : null}
-        <AlternativeRelationshipsVisualization executions={executions} />
-        <Box
-          sx={{
-            mt: 1.4,
-            display: "grid",
-            gridTemplateColumns: visualizations.consensus?.available
-              ? { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(300px, 0.85fr)" }
-              : "1fr",
-            gap: 1.4,
-          }}
-        >
-          <ExpertCollectiveRelationship
-            visualizations={visualizations}
-          />
-          {visualizations.consensus?.enabled ? (
-            <ConsensusCard consensus={visualizations.consensus} />
-          ) : null}
-        </Box>
+        {generalLayout.primaryRow.length ? (
+          <Box
+            data-testid="general-visualization-primary-row"
+            data-consensus-layout={generalLayout.issueConsensusEnabled ? "enabled" : "disabled"}
+            sx={{
+              mt: 1.4,
+              display: "grid",
+              gridTemplateColumns: generalLayout.primaryGridTemplateColumns,
+              gap: 1.4,
+              minWidth: 0,
+              alignItems: "start",
+            }}
+          >
+            {generalLayout.primaryRow.map(renderGeneralVisualization)}
+          </Box>
+        ) : null}
+        {generalLayout.alternativeRelationshipsBelow ? (
+          <Box data-testid="alternative-relationships-secondary-row" sx={{ mt: 1.4, minWidth: 0 }}>
+            {renderGeneralVisualization("alternativeRelationships")}
+          </Box>
+        ) : null}
         <Box sx={{ mt: 1.4 }}>
           <RankingTemporalSection executions={executions} />
         </Box>

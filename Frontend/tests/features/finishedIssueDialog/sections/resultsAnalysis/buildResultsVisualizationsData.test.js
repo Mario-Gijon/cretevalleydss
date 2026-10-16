@@ -25,6 +25,58 @@ const execution = ({ key, points, collective = [0, 0], labels = ["a@example.test
 const payload = { consensus: { enabled: false }, phaseResults: [] };
 
 describe("Results Analysis analytical projection comparison", () => {
+  it("uses issue consensus configuration and available generic phase data for the consensus chart", () => {
+    const withConsensusFacts = {
+      ...execution({ key: "base", points: [[0, 0], [1, 1]] }),
+      genericAnalysis: {
+        facts: {
+          consensus: {
+            points: [
+              { phase: 0, value: 0.3 },
+              { phase: 1, value: 0.7 },
+            ],
+          },
+        },
+      },
+    };
+    const configured = buildResultsVisualizationsData({
+      payload: { consensus: { enabled: true, threshold: 0.8 } },
+      executions: [withConsensusFacts],
+    });
+    const disabled = buildResultsVisualizationsData({
+      payload: { consensus: { enabled: false, threshold: 0.8 } },
+      executions: [withConsensusFacts],
+    });
+
+    expect(configured.consensus).toMatchObject({
+      enabled: true,
+      issueEnabled: true,
+      available: true,
+      graph: { threshold: 0.8 },
+    });
+    expect(disabled.consensus).toMatchObject({
+      enabled: false,
+      issueEnabled: false,
+      available: false,
+    });
+  });
+
+  it("keeps configured consensus distinct from an unavailable chart", () => {
+    const result = buildResultsVisualizationsData({
+      payload: { consensus: { enabled: true } },
+      executions: [{
+        ...execution({ key: "base", points: [[0, 0], [1, 1]] }),
+        genericAnalysis: { facts: { consensus: { points: [{ phase: 0, value: 0.5 }] } } },
+      }],
+    });
+
+    expect(result.consensus).toMatchObject({
+      enabled: false,
+      issueEnabled: true,
+      available: false,
+    });
+  });
+
   it("uses only standardized plotsGraphic, reconstructs absolute experts, and preserves zeros", () => {
     const result = buildCanonicalAnalyticalProjection({ execution: execution({ key: "base", points: [[0, -1], [2, 0]], collective: [3, 4], rawOutput: { expert_points: [[99, 99]] }, modelSpecificOutput: { expert_points: [[88, 88]] } }) });
     expect(result).toMatchObject({ available: true, expertPoints: [{ identity: "a@example.test", x: 3, y: 3 }, { identity: "b@example.test", x: 5, y: 4 }], collectivePoint: { x: 3, y: 4 } });

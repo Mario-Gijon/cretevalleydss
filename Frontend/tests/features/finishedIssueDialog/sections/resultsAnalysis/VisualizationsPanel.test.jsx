@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalScatterChart", () => ({
   AnalyticalScatterChart: ({ phase }) => <div data-testid="analytical-scatter" data-phase={phase} />,
 }));
+vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/ComparativeAnalyticalScatterChart", () => ({
+  ComparativeAnalyticalScatterChart: ({ groups }) => <div data-testid="comparative-scatter">{groups.length}</div>,
+}));
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalConsensusLineChart", () => ({
   AnalyticalConsensusLineChart: () => <div>Consensus chart</div>,
 }));
@@ -17,9 +20,57 @@ vi.mock("../../../../../src/components/analyticalGraphs", () => ({
 }));
 
 import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
+import { buildGeneralVisualizationsLayout } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildGeneralVisualizationsLayout.js";
 
 describe("VisualizationsPanel", () => {
   const rankingAnalysis = (values = [1, 2]) => ({ visualizations: [{ type: "rankingEvolution", data: { phases: [0, 1], series: [{ alternativeId: "a", label: "Alpha", values }] } }] });
+
+  it("uses a readable desktop pair and stacks non-consensus visualizations responsively", () => {
+    const layout = buildGeneralVisualizationsLayout({
+      expertCollectiveAvailable: true,
+      alternativeRelationshipsAvailable: true,
+    });
+
+    expect(layout.primaryRow).toEqual(["expertCollective", "alternativeRelationships"]);
+    expect(layout.primaryGridTemplateColumns).toEqual({
+      xs: "minmax(0, 1fr)",
+      lg: "minmax(420px, 1fr) minmax(540px, 1fr)",
+    });
+    expect(layout.alternativeRelationshipsBelow).toBe(false);
+  });
+
+  it("keeps Expert and Consensus in the first row and puts relationships below", () => {
+    const layout = buildGeneralVisualizationsLayout({
+      expertCollectiveAvailable: true,
+      issueConsensusEnabled: true,
+      consensusAvailable: true,
+      alternativeRelationshipsAvailable: true,
+    });
+
+    expect(layout.primaryRow).toEqual(["expertCollective", "consensus"]);
+    expect(layout.primaryGridTemplateColumns).toEqual({
+      xs: "minmax(0, 1fr)",
+      lg: "minmax(420px, 1.35fr) minmax(300px, 0.85fr)",
+    });
+    expect(layout.alternativeRelationshipsBelow).toBe(true);
+  });
+
+  it("uses the available slot when an optional visualization is missing", () => {
+    const onlyRelationships = buildGeneralVisualizationsLayout({
+      alternativeRelationshipsAvailable: true,
+    });
+    const unavailableConsensus = buildGeneralVisualizationsLayout({
+      expertCollectiveAvailable: true,
+      issueConsensusEnabled: true,
+      consensusAvailable: false,
+      alternativeRelationshipsAvailable: true,
+    });
+
+    expect(onlyRelationships.primaryRow).toEqual(["alternativeRelationships"]);
+    expect(onlyRelationships.primaryGridTemplateColumns).toBe("minmax(0, 1fr)");
+    expect(unavailableConsensus.primaryRow).toEqual(["expertCollective"]);
+    expect(unavailableConsensus.alternativeRelationshipsBelow).toBe(true);
+  });
 
   it("passes the selected execution phase to the stored scatter projection", () => {
     render(
@@ -39,7 +90,7 @@ describe("VisualizationsPanel", () => {
 
   it("explains the consensus axes before rendering the phase chart", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
-      visualizations={{ mode: "single", consensus: { enabled: true, available: true, graph: { labels: ["Initial", "Round 1"], data: [0.25, 0.7] } } }}
+      visualizations={{ mode: "single", consensus: { enabled: true, issueEnabled: true, available: true, graph: { labels: ["Initial", "Round 1"], data: [0.25, 0.7] } } }}
     /></ThemeProvider>);
 
     const title = screen.getByRole("heading", { name: "Consensus evolution" });
@@ -65,7 +116,9 @@ describe("VisualizationsPanel", () => {
 
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
-    expect(screen.getByTestId("single-expert-projection")).toHaveStyle({ width: "100%", minWidth: "0" });
+    expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "map");
+    expect(screen.getByTestId("expert-collective-selected-view")).toHaveStyle({ width: "100%", minWidth: "0" });
+    expect(screen.queryByRole("group", { name: "Expert collective representation" })).not.toBeInTheDocument();
   });
 
   it("renders one execution's model-specific descriptors in stored order after General visualizations", () => {
@@ -153,13 +206,14 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
   });
 
-  it("renders one unavailable expert–collective state for one execution", () => {
+  it("omits an unavailable expert–collective visualization without leaving an empty slot", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       visualizations={{ mode: "single", singleScatter: { available: false, unavailableReason: "missing_analytical_projection" }, consensus: { enabled: false } }}
     /></ThemeProvider>);
 
-    expect(screen.getAllByText("No stored expert–collective analytical projection is available for this execution.")).toHaveLength(1);
-    expect(screen.queryByTestId("semantic-section-pane-divider")).not.toBeInTheDocument();
+    expect(screen.queryByText("No stored expert–collective analytical projection is available for this execution.")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("expert-collective-relationship")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("general-visualization-primary-row")).not.toBeInTheDocument();
   });
 
   it("applies packed compact and full-width spans to individual visualization cards", () => {
@@ -231,7 +285,7 @@ describe("VisualizationsPanel", () => {
     /></ThemeProvider>);
 
     expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
-    expect(screen.getAllByTestId("visualization-unavailable-state")).toHaveLength(2);
+    expect(screen.getAllByTestId("visualization-unavailable-state")).toHaveLength(1);
     expect(screen.queryByText("Expected behaviour")).not.toBeInTheDocument();
   });
 
@@ -257,28 +311,116 @@ describe("VisualizationsPanel", () => {
       }]}
       visualizations={{
         mode: "single",
-        singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
+        singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [{ identity: "expert-1", label: "Expert 1", x: 0.2, y: 0.1 }, { identity: "expert-2", label: "Expert 2", x: -0.2, y: -0.1 }], collectivePoint: { x: 0, y: 0 } } } },
         canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", label: "Expert 1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }, { identity: "expert-2", label: "Expert 2", email: "expert02@cretevalley.test", x: -0.2, y: -0.1 }] }],
         consensus: { enabled: false },
       }}
     /></ThemeProvider>);
 
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
-    expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Expert 1|Expert 2");
+    expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "map");
+    expect(screen.getByRole("group", { name: "Expert collective representation" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "MAP" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "DISTANCES" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
     expect(screen.getByTestId("alternative-relationships-heatmap")).toHaveAttribute("data-phase", "1");
     expect(screen.getByTestId("alternative-relationships-heatmap")).toHaveAttribute("data-values", "[[null,0.23],[0.23,null]]");
     expect(screen.getByTestId("alternative-relationships-section")).toBeInTheDocument();
+    const primaryRow = screen.getByTestId("general-visualization-primary-row");
+    expect(primaryRow).toHaveAttribute("data-consensus-layout", "disabled");
+    expect(within(primaryRow).getAllByTestId(/^(expert-collective-relationship|alternative-relationships-section)$/)).toHaveLength(2);
+    expect(within(primaryRow).getByTestId("expert-collective-relationship").compareDocumentPosition(within(primaryRow).getByTestId("alternative-relationships-section")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByTestId("alternative-relationships-section")).toHaveLength(1);
+    expect(within(screen.getByTestId("alternative-relationships-section")).queryByTestId("alternative-relationship-scale")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("alternative-relationships-section")).getByTestId("visualization-reading-guide")).toHaveTextContent(/relative to the observed score range/);
     expect(screen.getByText(/not a percentage of superiority/)).toBeInTheDocument();
     expect(screen.queryByText("Relationship network")).not.toBeInTheDocument();
-    expect(screen.getByText("Map")).toBeInTheDocument();
-    expect(screen.getByText("Distances")).toBeInTheDocument();
     expect(screen.getByText(/axes are not geographic coordinates/)).toBeInTheDocument();
-    expect(screen.getByText(/projection distances, not geographic distances/)).toBeInTheDocument();
+    expect(screen.queryByText(/projection distances, not geographic distances/)).not.toBeInTheDocument();
     expect(screen.queryByText("Dispersion chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Bar chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Projected distance to collective")).not.toBeInTheDocument();
     expect(screen.queryByText("Base")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "DISTANCES" }));
+    expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "distances");
+    expect(screen.queryByTestId("analytical-scatter")).not.toBeInTheDocument();
+    expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Expert 1|Expert 2");
+    expect(screen.getByText(/projection distances, not geographic distances/)).toBeInTheDocument();
+    expect(screen.queryByText(/axes are not geographic coordinates/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "MAP" }));
+    expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "map");
+    expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
+    expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
+  });
+
+  it("places the consensus chart beside Expert and keeps one relationship matrix below", () => {
+    const alternatives = [
+      { alternativeId: "alpha", name: "Alpha", rank: 1 },
+      { alternativeId: "beta", name: "Beta", rank: 2 },
+    ];
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        genericAnalysis: {
+          facts: { alternativeRelationships: { normalization: { degenerate: false }, unavailablePhases: [] } },
+          visualizations: [{ type: "alternativeRelationships", phases: [
+            { phase: 0, alternatives, pairs: [{ leftAlternativeId: "alpha", rightAlternativeId: "beta", relativeSeparation: 0.2 }] },
+            { phase: 1, alternatives, pairs: [{ leftAlternativeId: "alpha", rightAlternativeId: "beta", relativeSeparation: 0.4 }] },
+          ] }],
+        },
+      }]}
+      visualizations={{
+        mode: "single",
+        singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
+        consensus: { enabled: true, issueEnabled: true, available: true, graph: { labels: ["Initial", "Round 1"], series: [{ data: [0.3, 0.7] }] } },
+      }}
+    /></ThemeProvider>);
+
+    const primaryRow = screen.getByTestId("general-visualization-primary-row");
+    const expert = within(primaryRow).getByTestId("expert-collective-relationship");
+    const consensus = within(primaryRow).getByTestId("consensus-level-visualization");
+    const relationshipRow = screen.getByTestId("alternative-relationships-secondary-row");
+    const relationships = within(relationshipRow).getByTestId("alternative-relationships-section");
+    expect(expert.compareDocumentPosition(consensus) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(consensus.compareDocumentPosition(relationshipRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByTestId("alternative-relationships-section")).toHaveLength(1);
+    expect(screen.getByRole("combobox", { name: "Phase" })).toBeInTheDocument();
+    expect(within(relationships).getByTestId("visualization-reading-guide")).toHaveTextContent(/relative to the observed score range/);
+  });
+
+  it("does not render missing consensus or expert slots and still shows the relationship heatmap", () => {
+    const alternatives = [
+      { alternativeId: "alpha", name: "Alpha", rank: 1 },
+      { alternativeId: "beta", name: "Beta", rank: 2 },
+    ];
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        genericAnalysis: {
+          facts: { alternativeRelationships: { normalization: { degenerate: false } } },
+          visualizations: [{ type: "alternativeRelationships", phases: [{
+            phase: 0,
+            alternatives,
+            pairs: [{ leftAlternativeId: "alpha", rightAlternativeId: "beta", relativeSeparation: 0.2 }],
+          }] }],
+        },
+      }]}
+      visualizations={{
+        mode: "single",
+        singleScatter: { available: false, unavailableReason: "missing_analytical_projection" },
+        consensus: { enabled: false, issueEnabled: true, available: false },
+      }}
+    /></ThemeProvider>);
+
+    expect(screen.queryByTestId("expert-collective-relationship")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("consensus-level-visualization")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("general-visualization-primary-row")).not.toBeInTheDocument();
+    expect(screen.getByTestId("alternative-relationships-secondary-row")).toBeInTheDocument();
+    expect(screen.getAllByTestId("alternative-relationships-section")).toHaveLength(1);
   });
 
   it("selects among phases within one execution and keeps execution relationships separate", () => {
@@ -442,27 +584,69 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("alternative-relationships-heatmap-viewport")).toBeInTheDocument();
   });
 
-  it("uses the existing meaningful consensus availability to switch between map and distances", () => {
+  it("shows only the available map without a selector when distances are unavailable", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       visualizations={{
         mode: "single",
-        singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } },
-        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", email: "expert01@cretevalley.test", x: 0.2, y: 0.1 }, { identity: "expert-2", email: "expert02@cretevalley.test", x: -0.2, y: -0.1 }] }],
-        consensus: { enabled: true, available: true, graph: { labels: ["Phase 0", "Round 1"], series: [] } },
+        singleScatter: { available: true, sourcePhase: 1, data: { 1: { expertPoints: [{ identity: "expert-1", label: "Expert 1", x: 0.2, y: 0.1 }, { identity: "expert-2", label: "Expert 2", x: -0.2, y: -0.1 }], collectivePoint: { x: 0, y: 0 } } } },
+        canonicalProjections: [{ key: "base", available: false, displayLabel: "Base", collectivePoint: null, expertPoints: [] }],
+        consensus: { enabled: false, issueEnabled: false, available: false },
       }}
     /></ThemeProvider>);
 
-    expect(screen.getByRole("group", { name: "Expert collective representation" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Expert collective representation" })).not.toBeInTheDocument();
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
     expect(screen.getByText(/axes are not geographic coordinates/)).toBeInTheDocument();
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Distances" }));
+  });
+
+  it("shows available distances directly when the projection map is unavailable", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      visualizations={{
+        mode: "single",
+        singleScatter: { available: false, unavailableReason: "missing_analytical_projection" },
+        canonicalProjections: [{ key: "base", available: true, displayLabel: "Base", collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", label: "Expert 1", x: 0.2, y: 0.1 }, { identity: "expert-2", label: "Expert 2", x: -0.2, y: -0.1 }] }],
+        consensus: { enabled: false, issueEnabled: false, available: false },
+      }}
+    /></ThemeProvider>);
+
+    expect(screen.queryByRole("group", { name: "Expert collective representation" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "distances");
     expect(screen.queryByTestId("analytical-scatter")).not.toBeInTheDocument();
     expect(screen.getByTestId("projected-distance-bars")).toBeInTheDocument();
     expect(screen.getByText(/Each bar measures the distance/)).toBeInTheDocument();
     expect(screen.queryByText(/axes are not geographic coordinates/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
+  });
+
+  it("switches the comparison map and distances using expert identities from valid projections", () => {
+    const canonicalProjections = [{
+      key: "base",
+      available: true,
+      collectivePoint: { x: 0, y: 0 },
+      expertPoints: [
+        { identity: "expert-1", label: "Expert 1", x: 0.2, y: 0.1 },
+        { identity: "expert-2", label: "Expert 2", x: -0.2, y: -0.1 },
+      ],
+    }];
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      visualizations={{
+        mode: "comparison",
+        canonicalProjections,
+        expertCollectiveComparison: {
+          available: true,
+          presentation: "shared",
+          sharedProjection: { id: "shared-projection" },
+        },
+        consensus: { enabled: false, issueEnabled: false, available: false },
+      }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("comparative-scatter")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "MAP" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "DISTANCES" }));
+    expect(screen.queryByTestId("comparative-scatter")).not.toBeInTheDocument();
+    expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Expert 1|Expert 2");
   });
 
   it("does not render Reset zoom for scenario comparison relationships", () => {
@@ -474,7 +658,7 @@ describe("VisualizationsPanel", () => {
       }}
     /></ThemeProvider>);
 
-    expect(screen.getByRole("heading", { name: "Expert–collective relationship" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Expert–collective relationship" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reset zoom" })).not.toBeInTheDocument();
   });
 

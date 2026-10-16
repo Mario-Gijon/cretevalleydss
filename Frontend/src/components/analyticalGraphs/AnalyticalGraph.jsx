@@ -37,7 +37,7 @@ const AnalyticalGraph = ({ visualization, chartHeight, chartMinWidth, titleVaria
     <Typography component="h3" variant={titleVariant} sx={titleVariant === "subtitle1" ? { fontWeight: 800 } : undefined}>{title}</Typography>
     <VisualizationReadingGuide>{readingGuide.text}</VisualizationReadingGuide>
     <Box sx={graphFrameSx(chartHeight)}>
-      <Box sx={graphViewportSx}>
+      <Box data-testid="analytical-graph-viewport" sx={graphViewportSx}>
         <Box sx={graphContentSx(chartMinWidth)}><Renderer visualization={visualization} /></Box>
       </Box>
     </Box>

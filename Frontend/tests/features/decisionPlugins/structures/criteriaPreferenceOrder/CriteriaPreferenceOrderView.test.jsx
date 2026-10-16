@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import CriteriaPreferenceOrderView from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/CriteriaPreferenceOrderView.jsx";
 import { buildInitialEvaluation } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPreferenceOrder/operations/buildInitialEvaluation.js";
+import {
+  buildEvaluationMatrixDataGridSx,
+  evaluationMatrixCellBackground,
+} from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const decisionContext = {
@@ -45,6 +49,35 @@ describe("CriteriaPreferenceOrderView", () => {
     expect(screen.getByRole("button", { name: "Add Cost to ranking" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add Quality to ranking" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add Delivery to ranking" })).toBeInTheDocument();
+  });
+
+  it("uses the matrix evaluation-cell background for every ranked row", () => {
+    const matrixStyles = buildEvaluationMatrixDataGridSx({
+      palette: {
+        common: { white: "#fff" },
+        text: { primary: "#fff", disabled: "#999" },
+      },
+    });
+    renderView({
+      evaluation: { criterionOrder: ["cost", "quality", "delivery"] },
+    });
+
+    expect(matrixStyles["& .MuiDataGrid-cell"].backgroundColor).toBe(
+      evaluationMatrixCellBackground
+    );
+
+    const colorSample = document.createElement("div");
+    colorSample.style.backgroundColor = evaluationMatrixCellBackground;
+    document.body.append(colorSample);
+    const expectedBackground = window.getComputedStyle(colorSample).backgroundColor;
+    colorSample.remove();
+
+    const rankedList = screen.getByRole("list", { name: "Ranked criteria" });
+    within(rankedList)
+      .getAllByRole("listitem")
+      .forEach((row) => {
+        expect(window.getComputedStyle(row).backgroundColor).toBe(expectedBackground);
+      });
   });
 
   it("adds criteria as canonical ids in user-defined order", () => {

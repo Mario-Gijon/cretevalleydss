@@ -31,6 +31,14 @@ const executionDescriptor = (execution) =>
 const executionFacts = (execution) =>
   execution?.genericAnalysis?.facts?.alternativeRelationships || {};
 
+export const hasAlternativeRelationshipsVisualization = (executions = []) =>
+  executions.some((execution) => {
+    const phases = executionDescriptor(execution)?.phases;
+    if (!Array.isArray(phases) || phases.length === 0) return false;
+    if (executionFacts(execution).normalization?.degenerate === true) return true;
+    return phases.some((phase) => Boolean(buildAlternativeRelationshipsHeatmap(phase)));
+  });
+
 const unavailablePhaseMessage = (entry) => {
   const label = phaseLabel(entry.phase);
   if (entry.reason === "insufficient_alternatives") {
@@ -41,34 +49,6 @@ const unavailablePhaseMessage = (entry) => {
   }
   return `${label} is omitted because complete finite scores were not available.`;
 };
-
-const RelationshipScale = () => (
-  <Stack
-    direction="row"
-    spacing={1}
-    alignItems="center"
-    sx={{ minWidth: 0, mt: 0.8 }}
-    data-testid="alternative-relationship-scale"
-  >
-    <Typography variant="caption" color="text.secondary" noWrap>
-      0 · equal scores
-    </Typography>
-    <Box
-      aria-hidden="true"
-      sx={{
-        flex: 1,
-        minWidth: 24,
-        height: 7,
-        borderRadius: 99,
-        background:
-          "linear-gradient(90deg, rgba(83,198,214,0.15), rgba(83,198,214,0.85))",
-      }}
-    />
-    <Typography variant="caption" color="text.secondary" noWrap>
-      1 · full observed range
-    </Typography>
-  </Stack>
-);
 
 const ExecutionRelationships = ({ execution }) => {
   const descriptor = executionDescriptor(execution);
@@ -152,7 +132,6 @@ const ExecutionRelationships = ({ execution }) => {
           >
             <HeatmapAnalyticalGraph visualization={selected.heatmap} />
           </Box>
-          <RelationshipScale />
           {selected.heatmap.allScoresEqual ? (
             <Typography variant="caption" color="text.secondary" data-testid="alternative-relationships-equal-phase">
               The comparable recorded scores in this phase are equal.
@@ -180,17 +159,9 @@ const ExecutionRelationships = ({ execution }) => {
 };
 
 const AlternativeRelationshipsVisualization = ({ executions = [] }) => {
-  const visibleExecutions = executions.filter((execution) => {
-    const descriptor = executionDescriptor(execution);
-    const hasChart = (descriptor?.phases || []).some(
-      (phase) => buildAlternativeRelationshipsHeatmap(phase),
-    );
-    return (
-      Array.isArray(descriptor?.phases) &&
-      descriptor.phases.length > 0 &&
-      (hasChart || executionFacts(execution).normalization?.degenerate === true)
-    );
-  });
+  const visibleExecutions = executions.filter((execution) =>
+    hasAlternativeRelationshipsVisualization([execution]),
+  );
   if (!visibleExecutions.length) return null;
 
   return (
