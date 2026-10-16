@@ -1,4 +1,6 @@
+import { forwardRef } from "react";
 import { Tab, Tabs } from "@mui/material";
+import TabScrollButton from "@mui/material/TabScrollButton";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
@@ -21,6 +23,42 @@ const TAB_ICONS = {
   models: <ScienceRoundedIcon fontSize="small" />,
 };
 
+export const FinishedIssueTabScrollButton = forwardRef(function FinishedIssueTabScrollButton(
+  { direction, disabled, onClick, ...props },
+  ref,
+) {
+  const handleClick = (event) => {
+    if (disabled) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    onClick?.(event);
+  };
+
+  return (
+    <TabScrollButton
+      {...props}
+      ref={ref}
+      direction={direction}
+      disabled={disabled}
+      onClick={handleClick}
+      role="button"
+      aria-label={`Scroll tabs ${direction}`}
+      aria-disabled={disabled ? "true" : undefined}
+      tabIndex={disabled ? -1 : 0}
+      sx={{
+        "&.Mui-disabled": {
+          opacity: 0.42,
+          color: "text.secondary",
+          pointerEvents: "auto",
+        },
+      }}
+    />
+  );
+});
+
 const FinishedIssueNavigation = ({ navigation }) => (
   <Tabs
     aria-label="Finished issue sections"
@@ -28,6 +66,7 @@ const FinishedIssueNavigation = ({ navigation }) => (
     onChange={(_, tab) => navigation.selectTab(tab)}
     variant="scrollable"
     scrollButtons="auto"
+    ScrollButtonComponent={FinishedIssueTabScrollButton}
     allowScrollButtonsMobile
     textColor="secondary"
     indicatorColor="secondary"

@@ -12,7 +12,7 @@ export const finishedIssueContentFrameSx = {
 
 export const finishedIssueHeaderSx = {
   px: { xs: 1.5, md: 2.25 },
-  pt: { xs: 1.35, md: 1.75 },
+  pt: { xs: 0.35, md: 0.5 },
   pb: 0,
   position: "sticky",
   top: 0,

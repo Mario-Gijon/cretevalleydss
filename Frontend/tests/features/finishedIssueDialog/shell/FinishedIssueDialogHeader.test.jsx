@@ -24,6 +24,7 @@ vi.mock("../../../../src/features/finishedIssueDialog/shell/FinishedIssueNavigat
 }));
 
 import FinishedIssueDialogHeader from "../../../../src/features/finishedIssueDialog/shell/FinishedIssueDialogHeader.jsx";
+import { finishedIssueHeaderSx } from "../../../../src/features/finishedIssueDialog/shell/finishedIssueShell.styles.js";
 
 let mobile = false;
 const originalMatchMedia = window.matchMedia;
@@ -50,6 +51,11 @@ afterEach(() => {
 });
 
 describe("FinishedIssueDialogHeader", () => {
+  it("keeps compact top padding across responsive breakpoints without changing bottom spacing", () => {
+    expect(finishedIssueHeaderSx.pt).toEqual({ xs: 0.35, md: 0.5 });
+    expect(finishedIssueHeaderSx.pb).toBe(0);
+  });
+
   it("shows navigation and issue actions without the issue title on desktop", () => {
     renderHeader();
 
