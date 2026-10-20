@@ -1,27 +1,47 @@
 import { execFileSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+// This module override is local to this opt-in Vitest file; production capabilities stay false.
+vi.mock("../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    isResultStructureCapabilityEnabled: (options) =>
+      options?.resultStructureKey === "sorting" &&
+      options?.resultStructureVersion === 1 &&
+      options?.capability === "issueExecution"
+        ? true
+        : actual.isResultStructureCapabilityEnabled(options),
+  };
+});
+
+import { Alternative } from "../../models/Alternatives.js";
 import { Criterion } from "../../models/Criteria.js";
+import { Issue } from "../../models/Issues.js";
+import { IssueEvaluation } from "../../models/IssueEvaluations.js";
+import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { IssueStageResult } from "../../models/IssueStageResults.js";
 import { IssueStateSnapshot } from "../../models/IssueStateSnapshots.js";
+import { Participation } from "../../models/Participations.js";
+import { submitIssueEvaluationWorkflow } from "../../modules/issues/evaluations/submitIssueEvaluationWorkflow.js";
+import { respondToIssueInvitationWorkflow } from "../../modules/issues/notifications/respondToIssueInvitationWorkflow.js";
 import { buildIssueModelExecutionResult } from "../../modules/issues/modelExecution/buildIssueModelExecutionResult.js";
 import { buildIssueModelRequestPayload } from "../../modules/issues/modelExecution/buildIssueModelRequestPayload.js";
 import { buildIssueResultStructureContextOrThrow } from "../../modules/issues/modelExecution/buildIssueResultStructureContext.js";
 import { serializePhaseResults } from "../../modules/issues/finished/finishedPayload/serializers/serializePhaseResults.js";
-import { remapModelParametersCriterionIdsOrThrow } from "../../modules/modelParameters/remapModelParametersCriterionIds.js";
 import { resolveResultStructureMetadata } from "../../modules/decisionPlugins/resultStructureMetadata.js";
 import {
   projectNormalizedResultOrThrow,
 } from "../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { unwrapModelApiResponse } from "../../services/modelApi/modelResponse.js";
 import {
+  buildCreateIssueInfo,
   createConfirmedUser,
-  createIssueAlternativesFixture,
-  createIssueExpressionDomainSnapshotFixture,
-  createIssueFixture,
+  createExpressionDomainFixture,
   createIssueModel,
+  prepareAndPersistIssueCreation,
 } from "../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../setup/database.js";
 
@@ -86,61 +106,33 @@ const createBackendPayloadFixture = async () => {
     apiEndpoint: { method: "POST", path: "/topsis_sort_2016" },
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    implementationStatus: "scaffold",
-    publicUsable: false,
+    // This ready model exists only in the isolated Mongo test database.
+    // The production manifest remains scaffold and the registry stays disabled.
+    implementationStatus: "ready",
+    publicUsable: true,
+    visibleInIssueCreation: true,
     usesCriteriaWeights: true,
     usesCriterionTypes: true,
     supportedExpressionDomains: [{ typeKey: "numericDiscrete", constraints: {} }],
     parameters: modelParametersDefinition,
   });
-  const issue = await createIssueFixture({
-    ownerId: owner._id,
-    modelId: model._id,
-    name: "TOPSIS-Sort 2016 persisted contract fixture",
-    currentStage: "alternativeEvaluation",
-    evaluationStructureKey: "alternativeCriteriaMatrix",
-    resultStructureKey: "sorting",
-    resultStructureVersion: 1,
+  const domain = await createExpressionDomainFixture({
+    userId: owner._id,
+    typeKey: "numericDiscrete",
+    definition: { min: 1, max: 9, step: 1 },
   });
-  const domain = await createIssueExpressionDomainSnapshotFixture({
-    issueId: issue._id,
-    numericRange: { min: 1, max: 9, step: 1 },
+  const criteriaWeightingModel = await createIssueModel({
+    name: "TOPSIS-Sort test creator weights",
+    apiModelKey: "topsis_sort_test_criteria_weights",
+    modelKind: "criteriaWeighting",
+    visibleInCriteriaWeighting: true,
+    visibleInIssueCreation: false,
+    supportsCreatorCriteriaWeighting: true,
+    supportsExpertCriteriaWeighting: false,
+    evaluationStructureKey: "bestWorstCriteria",
+    apiEndpoint: { method: "POST", path: "/best_worst_criteria" },
+    parameters: [],
   });
-  const root = await Criterion.create({
-    issue: issue._id,
-    parentCriterion: null,
-    name: "Performance",
-    type: "group",
-    isLeaf: false,
-    position: 0,
-  });
-  const criteria = await Criterion.create([
-    {
-      issue: issue._id,
-      parentCriterion: root._id,
-      name: "Quality",
-      type: "benefit",
-      isLeaf: true,
-      expressionDomain: domain._id,
-      position: 0,
-    },
-    {
-      issue: issue._id,
-      parentCriterion: root._id,
-      name: "Cost",
-      type: "cost",
-      isLeaf: true,
-      expressionDomain: domain._id,
-      position: 1,
-    },
-  ]);
-  const alternatives = await createIssueAlternativesFixture({
-    issueId: issue._id,
-    names: ["Coastal option", "Urban option", "Forest option"],
-  });
-  const criterionIdByName = Object.fromEntries(
-    criteria.map((criterion) => [criterion.name, String(criterion._id)])
-  );
   const temporaryCriterionIds = {
     Quality: "temporary-quality",
     Cost: "temporary-cost",
@@ -168,85 +160,159 @@ const createBackendPayloadFixture = async () => {
       ],
     },
   };
-  const remappedParameters = remapModelParametersCriterionIdsOrThrow({
-    model,
-    modelParameters: sourceParameters,
-    criterionIdMappings: criteria.map((criterion) => ({
-      sourceCriterionId: temporaryCriterionIds[criterion.name],
-      persistedCriterionId: String(criterion._id),
-    })),
-    persistedLeafCriteria: criteria,
+  const issueInfo = buildCreateIssueInfo({
+    selectedModelId: model._id,
+    globalDomainId: domain._id,
+    addedExperts: [expert.email],
+    issueName: "TOPSIS-Sort real creation contract fixture",
     alternatives: [
-      { id: String(alternatives[0]._id), name: alternatives[0].name },
-      { id: String(alternatives[1]._id), name: alternatives[1].name },
-      { id: String(alternatives[2]._id), name: alternatives[2].name },
+      { name: "Coastal option", description: "Coastal site" },
+      { name: "Urban option", description: "Urban site" },
+      { name: "Forest option", description: "Forest site" },
     ],
-  });
-  issue.modelParameters = {
-    ...remappedParameters,
-    weights: {
-      [criterionIdByName.Quality]: 0.6,
-      [criterionIdByName.Cost]: 0.4,
+    criteria: [{
+      id: "source-performance",
+      name: "Performance",
+      type: "group",
+      children: [
+        { id: temporaryCriterionIds.Quality, name: "Quality", type: "benefit", children: [] },
+        { id: temporaryCriterionIds.Cost, name: "Cost", type: "cost", children: [] },
+      ],
+    }],
+    paramValues: sourceParameters,
+    criteriaWeightingConfig: {
+      mode: "creatorApiModel",
+      criteriaWeightingModelId: String(criteriaWeightingModel._id),
+      payload: {
+        bestCriterionId: temporaryCriterionIds.Quality,
+        worstCriterionId: temporaryCriterionIds.Cost,
+        bestToOthers: {
+          [temporaryCriterionIds.Quality]: 1,
+          [temporaryCriterionIds.Cost]: 3,
+        },
+        othersToWorst: {
+          [temporaryCriterionIds.Quality]: 3,
+          [temporaryCriterionIds.Cost]: 1,
+        },
+      },
     },
+  });
+  const criteriaWeightingHttpClient = {
+    post: vi.fn(async (_url, requestPayload) => ({
+      status: 200,
+      data: {
+        success: true,
+        data: {
+          weightsByCriterion: Object.fromEntries(
+            requestPayload.context.criteria.map((criterion) => [
+              criterion.id,
+              criterion.name === "Quality" ? 3 : 2,
+            ])
+          ),
+        },
+      },
+    })),
   };
-  await issue.save();
-
-  const snapshotAt = new Date("2026-01-01T00:00:00.000Z");
-  await IssueStateSnapshot.create({
-    issue: issue._id,
-    snapshotType: "creation",
-    stage: "alternativeEvaluation",
-    consensusPhase: 0,
-    occurredAt: snapshotAt,
-    correlationId: "topsis-sort-contract-fixture",
-    state: {
-      issue: {
-        id: String(issue._id),
-        effectiveModelParameters: issue.modelParameters,
-      },
-      model: {
-        id: String(model._id),
-        name: model.name,
-        parameters: model.parameters,
-      },
-      alternatives: alternatives.map((alternative, position) => ({
-        id: String(alternative._id),
-        name: alternative.name,
-        position,
-      })),
-      criteria: criteria.map((criterion) => ({
-        id: String(criterion._id),
-        name: criterion.name,
-        type: criterion.type,
-        isLeaf: true,
-        expressionDomainId: String(domain._id),
-      })),
-      expressionDomains: [{
-        id: String(domain._id),
-        typeKey: domain.typeKey,
-        definition: domain.definition,
-      }],
-      participants: [],
-      evaluations: [],
-    },
-    schemaVersion: 1,
+  await prepareAndPersistIssueCreation({
+    issueInfo,
+    ownerUserId: owner._id,
+    decisionModelsServiceBaseUrl: "http://criteria-weights.test",
+    httpClient: criteriaWeightingHttpClient,
   });
+
+  const issue = await Issue.findOne({ name: "TOPSIS-Sort real creation contract fixture" }).lean();
+  const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }).sort({ position: 1 }).lean();
+  const alternatives = await Alternative.find({ issue: issue._id }).sort({ position: 1 }).lean();
+  const domainSnapshots = await IssueExpressionDomain.find({ issue: issue._id }).lean();
+  const initialParticipation = await Participation.findOne({ issue: issue._id }).lean();
+  const creationSnapshot = await IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean();
+  expect(criteriaWeightingHttpClient.post).toHaveBeenCalledOnce();
+  expect(criteriaWeightingHttpClient.post.mock.calls[0][1].context.criteria)
+    .toEqual(criteria.map((criterion) => ({
+      id: String(criterion._id),
+      name: criterion.name,
+      type: criterion.type,
+    })));
+  const criteriaIdsByName = Object.fromEntries(
+    criteria.map((criterion) => [criterion.name, String(criterion._id)])
+  );
+  const criteriaWeightingPayload = criteriaWeightingHttpClient.post.mock.calls[0][1];
+  expect(criteriaWeightingPayload.evaluations[0].payload).toMatchObject({
+    bestCriterionId: criteriaIdsByName.Quality,
+    worstCriterionId: criteriaIdsByName.Cost,
+    bestToOthers: {
+      [criteriaIdsByName.Quality]: 1,
+      [criteriaIdsByName.Cost]: 3,
+    },
+    othersToWorst: {
+      [criteriaIdsByName.Quality]: 3,
+      [criteriaIdsByName.Cost]: 1,
+    },
+  });
+  expect(criteriaWeightingPayload.evaluations[0].payload.bestCriterionId)
+    .not.toBe(temporaryCriterionIds.Quality);
+  expect(issue.currentStage).toBe("alternativeEvaluation");
+  expect(initialParticipation).toMatchObject({
+    invitationStatus: "pending",
+    weightsCompleted: true,
+  });
+  expect(domainSnapshots).toHaveLength(1);
+  expect(domainSnapshots[0]).toMatchObject({
+    issue: issue._id,
+    sourceDomain: domain._id,
+    typeKey: "numericDiscrete",
+    definition: { min: 1, max: 9, step: 1 },
+  });
+  expect(creationSnapshot.state.issue.effectiveModelParameters).toEqual(issue.modelParameters);
+  expect(creationSnapshot.state.issue.effectiveModelParameters.orderedCategories).toEqual(categories);
+  expect(creationSnapshot.state.issue.effectiveModelParameters.boundaryProfiles.profiles)
+    .toMatchObject([
+      { valuesByCriterionId: { [criteriaIdsByName.Quality]: 4, [criteriaIdsByName.Cost]: 6 } },
+      { valuesByCriterionId: { [criteriaIdsByName.Quality]: 7, [criteriaIdsByName.Cost]: 3 } },
+    ]);
+  expect(creationSnapshot.state.criteriaWeighting.weightsByCriterionId).toEqual(issue.modelParameters.weights);
+  expect(Object.values(issue.modelParameters.weights)).toEqual([0.6, 0.4]);
+
+  await respondToIssueInvitationWorkflow({
+    issueId: issue._id,
+    userId: expert._id,
+    action: "accepted",
+  });
+  const acceptedParticipation = await Participation.findOne({ issue: issue._id }).lean();
+  expect(acceptedParticipation.invitationStatus).toBe("accepted");
 
   const evaluationValues = [
     { Quality: 2, Cost: 8 },
     { Quality: 5, Cost: 5 },
     { Quality: 8, Cost: 2 },
   ];
-  const evaluations = [{
-    expert: { _id: expert._id, name: expert.name, email: expert.email },
-    payload: Object.fromEntries(alternatives.map((alternative, index) => [
+  const evaluationPayload = Object.fromEntries(alternatives.map((alternative, index) => [
       String(alternative._id),
       Object.fromEntries(criteria.map((criterion) => [
         String(criterion._id),
         evaluationValues[index][criterion.name],
       ])),
-    ])),
-  }];
+    ]));
+  const submission = await submitIssueEvaluationWorkflow({
+    issueId: issue._id,
+    userId: expert._id,
+    stage: "alternativeEvaluation",
+    payload: evaluationPayload,
+  });
+  expect(submission).toMatchObject({
+    stage: "alternativeEvaluation",
+    completed: true,
+    currentStage: "alternativeEvaluation",
+  });
+  const evaluations = await IssueEvaluation.find({ issue: issue._id, stage: "alternativeEvaluation" })
+    .populate("expert", "name email")
+    .lean();
+  expect(evaluations).toHaveLength(1);
+  expect(evaluations[0]).toMatchObject({
+    completed: true,
+    stage: "alternativeEvaluation",
+    consensusPhase: 0,
+  });
 
   const payload = await buildIssueModelRequestPayload({
     issue,
@@ -259,6 +325,15 @@ const createBackendPayloadFixture = async () => {
 
 describe("Backend to DecisionModelsService TOPSIS-Sort 2016 contract integration", () => {
   it("builds, executes, validates, and persists a sorting@1 result with canonical IDs", async () => {
+    const productionRegistry = await vi.importActual(
+      "../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js"
+    );
+    expect(productionRegistry.isResultStructureCapabilityEnabled({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      capability: "issueExecution",
+    })).toBe(false);
+
     const {
       issue,
       model,
@@ -436,7 +511,7 @@ describe("Backend to DecisionModelsService TOPSIS-Sort 2016 contract integration
       .toEqual(alternativeIds);
     expect(finishedPhase).not.toHaveProperty("rankedAlternatives");
     expect(finishedPhase.standardizedOutput).not.toHaveProperty("rankedAlternatives");
-    expect(model.implementationStatus).toBe("scaffold");
-    expect(model.publicUsable).toBe(false);
+    expect(model.implementationStatus).toBe("ready");
+    expect(model.publicUsable).toBe(true);
   }, 30000);
 });

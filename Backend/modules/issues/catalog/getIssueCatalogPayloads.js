@@ -4,6 +4,7 @@ import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStru
 import {
   isResultStructureCapabilityEnabled,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
+import { isIssueModelUsable } from "../issueModelUsability.js";
 
 export const getAvailableIssueModelsPayload = async () => {
   const models = await IssueModel.find({
@@ -29,6 +30,7 @@ export const getAvailableIssueModelsPayload = async () => {
   return {
     models: models.filter((model) => {
       if (model.modelKind !== "issue") return false;
+      if (!isIssueModelUsable(model)) return false;
       return isResultStructureCapabilityEnabled({
         ...resolveResultStructureMetadata(model),
         capability: "issueExecution",

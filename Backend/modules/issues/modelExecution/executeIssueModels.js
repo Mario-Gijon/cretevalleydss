@@ -11,6 +11,7 @@ import {
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { buildIssueResultStructureContextOrThrow } from "./buildIssueResultStructureContext.js";
+import { assertIssueModelUsableOrThrow } from "../issueModelUsability.js";
 
 export const executeAlternativeEvaluationModel = async ({
   issue,
@@ -26,6 +27,9 @@ export const executeAlternativeEvaluationModel = async ({
   nextCurrentStage = null,
   executionAttemptInput,
 }) => {
+  if (issue?.model && typeof issue.model === "object" && issue.model._id) {
+    assertIssueModelUsableOrThrow(issue.model, { field: "resultStructureKey" });
+  }
   const resultStructureMetadata = resolveResultStructureMetadata(issue);
   if (
     !isResultStructureCapabilityEnabled({

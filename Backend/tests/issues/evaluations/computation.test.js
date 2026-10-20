@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Issue } from "../../../models/Issues.js";
+import { Criterion } from "../../../models/Criteria.js";
 import { IssueExecutionAttempt } from "../../../models/IssueExecutionAttempts.js";
 import { IssueEvaluationRevision } from "../../../models/IssueEvaluationRevisions.js";
 import { IssueEvent } from "../../../models/IssueEvents.js";
@@ -189,7 +190,7 @@ const createCriteriaComputeFixture = async ({
     issueId: issue._id,
     names: ["Alternative A", "Alternative B"],
   });
-  const { leafCriteria } = await createIssueCriteriaFixture({
+  const { rootCriterion, leafCriteria } = await createIssueCriteriaFixture({
     issueId: issue._id,
     leafNames: ["Criterion A", "Criterion B"],
     expressionDomainId: domain._id,
@@ -223,6 +224,7 @@ const createCriteriaComputeFixture = async ({
     issue,
     domain,
     alternatives,
+    rootCriterion,
     leafCriteria,
   };
 };
@@ -736,6 +738,54 @@ describe("criteria weighting compute orchestration", () => {
     expect(phaseZero).not.toBeNull();
     expect(phaseZero.state.evaluations).toEqual([]);
     expect(phaseZero.state.criteriaWeighting.weightsByCriterionId).toEqual({ [String(leafCriteria[0]._id)]: 0.65, [String(leafCriteria[1]._id)]: 0.35 });
+  });
+
+  it("propagates expert parent weights to operational leaf weights without changing the total", async () => {
+    const { owner, issue, acceptedExperts, rootCriterion, leafCriteria } =
+      await createCriteriaComputeFixture({
+        acceptedExpertCount: 1,
+        issueOverrides: { criteriaWeightingLevel: "parent" },
+      });
+    const parentId = String(rootCriterion._id);
+    const parentWeights = { [parentId]: 1 };
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: acceptedExperts[0]._id,
+      stage: "criteriaWeighting",
+      consensusPhase: 0,
+      completed: true,
+      payload: { weightsByCriterion: parentWeights },
+    });
+    const httpClient = createHttpClientMock(buildModelSuccessResponse({
+      message: "Parent criteria weights computed.",
+      weightsByCriterion: parentWeights,
+      collectiveEvaluations: { weightsByCriterion: parentWeights },
+      consensusMeasure: null,
+      rawOutput: { provider: "test" },
+    }));
+
+    await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "criteriaWeighting",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const storedIssue = await Issue.findById(issue._id).lean();
+    const storedStageResult = await IssueStageResult.findOne({
+      issue: issue._id,
+      stage: "criteriaWeighting",
+      consensusPhase: 0,
+    }).lean();
+    const expectedLeafWeights = Object.fromEntries(
+      leafCriteria.map((criterion) => [String(criterion._id), 0.5])
+    );
+    expect(storedIssue.criteriaWeightingSourceWeights).toEqual(parentWeights);
+    expect(storedIssue.modelParameters.weights).toEqual(expectedLeafWeights);
+    expect(Object.values(storedIssue.modelParameters.weights).reduce((sum, value) => sum + value, 0)).toBe(1);
+    expect(storedStageResult.result.standardResult.weightsByCriterion).toEqual(parentWeights);
+    expect(storedStageResult.result.standardResult).not.toHaveProperty("rankedAlternatives");
   });
 
   it("rejects invalid criteria weighting model responses before persistence", async () => {

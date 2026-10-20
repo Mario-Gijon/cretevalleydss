@@ -14,6 +14,8 @@ setupMongoDbTestHooks();
 
 const buildRuntimeModelConfig = (overrides = {}) => ({
   name: "Runtime model",
+  implementationStatus: "ready",
+  publicUsable: true,
   apiModelKey: "/runtime-model/",
   apiEndpoint: {
     method: "POST",
@@ -228,6 +230,37 @@ describe("loadCreateIssueActorsAndModel", () => {
       statusCode: 400,
       field: "selectedModelId",
       message: "Selected model is not enabled for issue creation",
+    });
+  });
+
+  it.each([
+    { implementationStatus: "scaffold", publicUsable: true },
+    { implementationStatus: "ready", publicUsable: false },
+  ])("rejects a model marked unusable even when administratively visible (%o)", async (usability) => {
+    const owner = await createConfirmedUser();
+    const expert = await createConfirmedUser({ email: "expert@example.com" });
+    const model = await createIssueModel({
+      visibleInIssueCreation: true,
+      ...usability,
+    });
+
+    await expect(
+      loadCreateIssueActorsAndModel({
+        ownerUserId: owner._id,
+        selectedModelId: model._id,
+        paramValues: {},
+        criteriaNodes: buildCreateIssueInfo({
+          selectedModelId: model._id,
+          globalDomainId: new mongoose.Types.ObjectId(),
+        }).criteria,
+        alternatives: [{ id: null, name: "Alternative A" }],
+        uniqueExpertEmails: [expert.email],
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "ISSUE_MODEL_NOT_USABLE",
+      field: "selectedModelId",
+      message: "Selected model is not ready for issue execution",
     });
   });
 

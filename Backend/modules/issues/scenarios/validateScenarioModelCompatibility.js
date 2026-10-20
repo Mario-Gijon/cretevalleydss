@@ -10,6 +10,7 @@ import { toIdString } from "../../../utils/common/ids.js";
 import {
   isDomainSnapshotSupportedByModel,
 } from "../../expressionDomains/domainCompatibility.js";
+import { assertIssueModelUsableOrThrow } from "../issueModelUsability.js";
 
 const normalizeEndpointPath = (value) => {
   if (typeof value !== "string") {
@@ -57,6 +58,7 @@ const getRequiredTrimmedRuntimeString = ({ targetModel, field, value }) => {
 };
 
 export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
+  assertIssueModelUsableOrThrow(targetModel, { field: "targetModelId" });
   const apiEndpoint = targetModel.apiEndpoint;
   if (!apiEndpoint || typeof apiEndpoint !== "object") {
     throw createInternalError(

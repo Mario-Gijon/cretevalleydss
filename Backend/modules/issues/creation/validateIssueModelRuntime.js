@@ -6,6 +6,7 @@ import {
 import {
   isResultStructureCapabilityEnabled,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
+import { assertIssueModelUsableOrThrow } from "../issueModelUsability.js";
 
 const normalizeEndpointPath = (value) => {
   const path = normalizeNonEmptyString(value);
@@ -47,6 +48,7 @@ const pushRuntimeErrorIfMissingString = ({
 };
 
 export const validateIssueModelRuntimeConfigOrThrow = (model) => {
+  assertIssueModelUsableOrThrow(model, { field: "selectedModelId" });
   const modelName = normalizeNonEmptyString(model.name) || "unknown";
   const runtimeErrors = [];
   const apiEndpoint = model.apiEndpoint;

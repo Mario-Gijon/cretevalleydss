@@ -113,6 +113,8 @@ describe("result structure selection in model execution", () => {
   it("prevents disabled sorting models from reaching DecisionModelsService", async () => {
     expect(() => buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "sorting-contract-only",
+      implementationStatus: "ready",
+      publicUsable: true,
       apiEndpoint: { method: "POST", path: "/sorting" },
       evaluationStructureKey: "alternativeCriteriaMatrix",
       resultStructureKey: "sorting",
@@ -136,6 +138,53 @@ describe("result structure selection in model execution", () => {
       },
     })).rejects.toThrow("not enabled for model execution");
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+  });
+
+  it("blocks scaffold or non-public-usable models even when their result structure allows execution", async () => {
+    const scaffoldModel = {
+      _id: "scaffold-model-id",
+      implementationStatus: "scaffold",
+      publicUsable: true,
+    };
+    const nonPublicModel = {
+      _id: "non-public-model-id",
+      implementationStatus: "ready",
+      publicUsable: false,
+    };
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: {
+        model: scaffoldModel,
+        resultStructureKey: "ranking",
+        resultStructureVersion: 1,
+      },
+    })).rejects.toMatchObject({
+      code: "ISSUE_MODEL_NOT_USABLE",
+      field: "resultStructureKey",
+    });
+    await expect(executeAlternativeEvaluationModel({
+      issue: {
+        model: nonPublicModel,
+        resultStructureKey: "ranking",
+        resultStructureVersion: 1,
+      },
+    })).rejects.toMatchObject({
+      code: "ISSUE_MODEL_NOT_USABLE",
+      field: "resultStructureKey",
+    });
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+
+    expect(() => buildTargetModelRuntimeSnapshotOrThrow({
+      _id: "scenario-scaffold-model-id",
+      implementationStatus: "scaffold",
+      publicUsable: false,
+      apiModelKey: "scaffold-model",
+      apiEndpoint: { method: "POST", path: "/execute" },
+      evaluationStructureKey: "alternativeCriteriaMatrix",
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+      supportsConsensus: false,
+    })).toThrow("not ready for issue execution");
   });
 
   it("transports and projects a synthetic result structure without ranking fields", () => {
@@ -216,6 +265,8 @@ describe("result structure selection in model execution", () => {
   it("preserves scenario-specific options while selecting the target model structure", async () => {
     const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "scenario-model",
+      implementationStatus: "ready",
+      publicUsable: true,
       apiEndpoint: { method: "POST", path: "/scenario" },
       evaluationStructureKey: "alternativeCriteriaMatrix",
     });
@@ -338,6 +389,8 @@ describe("result structure selection in model execution", () => {
   it("keeps scenario-specific public validation messages", async () => {
     const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "scenario-model",
+      implementationStatus: "ready",
+      publicUsable: true,
       apiEndpoint: { method: "POST", path: "/scenario" },
       evaluationStructureKey: "alternativeCriteriaMatrix",
     });

@@ -811,6 +811,22 @@ describe("users and models catalogs", () => {
       },
     });
     await createIssueModel({
+      name: "Admin visible scaffold",
+      modelKind: "issue",
+      implementationStatus: "scaffold",
+      publicUsable: true,
+      visibleInIssueCreation: true,
+      manifestSync: { isStale: false },
+    });
+    await createIssueModel({
+      name: "Admin visible but not public usable",
+      modelKind: "issue",
+      implementationStatus: "ready",
+      publicUsable: false,
+      visibleInIssueCreation: true,
+      manifestSync: { isStale: false },
+    });
+    await createIssueModel({
       name: "Visible criteria model",
       modelKind: "criteriaWeighting",
       visibleInCriteriaWeighting: true,
