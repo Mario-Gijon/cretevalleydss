@@ -1,1 +1,4 @@
-export { buildParameterContext } from "../logic/buildModelParameterContext.js";
+export {
+  buildParameterContext,
+  getParameterValueByStructureKey,
+} from "../logic/buildModelParameterContext.js";

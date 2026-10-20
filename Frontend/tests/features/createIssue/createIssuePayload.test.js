@@ -162,6 +162,80 @@ describe("createIssuePayload", () => {
     expect(result.payload.paramValues).toEqual({ requiredAlpha: "-0.125" });
   });
 
+  it("validates synthetic category and boundary-profile model parameters before submission", () => {
+    const selectedModel = {
+      ...basicCreateIssueModelFixture,
+      parameters: [
+        { key: "categories", label: "Categories", parameterStructureKey: "orderedCategories" },
+        { key: "profiles", label: "Boundary profiles", parameterStructureKey: "boundaryProfiles" },
+      ],
+    };
+    const criteria = [{
+      id: "criterion-benefit",
+      name: "Benefit",
+      type: "benefit",
+      children: [],
+    }];
+    const categories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "high", label: "High", order: 1 },
+    ];
+    const input = buildPayloadInput({
+      selectedModel,
+      criteria,
+      paramValues: {
+        categories,
+        profiles: {
+          profiles: [
+            { profileId: "profile-high", categoryId: "high", valuesByCriterionId: { "criterion-benefit": "0.5" } },
+          ],
+        },
+      },
+      expressionDomainConfig: { mode: "global", globalDomainId: globalContinuousDomainFixture._id },
+      allData: { selectedModel, criteria },
+    });
+
+    const valid = buildCreateIssueRequestPayload(input);
+    expect(valid.ok).toBe(true);
+    expect(valid.payload.paramValues).toEqual({
+      categories,
+      profiles: {
+        profiles: [
+          { profileId: "profile-high", categoryId: "high", valuesByCriterionId: { "criterion-benefit": 0.5 } },
+        ],
+      },
+    });
+
+    const invalid = buildCreateIssueRequestPayload({
+      ...input,
+      paramValues: {
+        ...input.paramValues,
+        profiles: { profiles: [] },
+      },
+    });
+    expect(invalid).toMatchObject({
+      ok: false,
+      errorMessage: expect.stringContaining("Boundary profiles: Add a boundary profile for 'High'."),
+    });
+
+    const stale = buildCreateIssueRequestPayload({
+      ...input,
+      paramValues: {
+        ...input.paramValues,
+        profiles: {
+          profiles: [
+            ...input.paramValues.profiles.profiles,
+            { profileId: "removed-boundary", categoryId: "low", valuesByCriterionId: { "criterion-benefit": 0.25 } },
+          ],
+        },
+      },
+    });
+    expect(stale).toMatchObject({
+      ok: false,
+      errorMessage: expect.stringContaining("no longer separates two categories"),
+    });
+  });
+
   it("rejects requests without a selected model", () => {
     expect(
       buildCreateIssueRequestPayload(

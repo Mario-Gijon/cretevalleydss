@@ -3,6 +3,7 @@ import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ParameterReadOnlyHost from "./ParameterReadOnlyHost";
 import { isPlainObject } from "../../../utils/common/objects";
+import { buildParameterContext } from "../context/index.js";
 
 const getParameterKey = (parameter) => parameter.key;
 const getParameterLabel = (parameter) => parameter.label || parameter.key;
@@ -227,6 +228,14 @@ export const IssueModelParametersView = ({
 }) => {
   const params = useMemo(() => (Array.isArray(parameters) ? parameters : []), [parameters]);
   const valuesObject = useMemo(() => (isPlainObject(values) ? values : {}), [values]);
+  const readOnlyParameterContext = useMemo(
+    () => buildParameterContext({
+      ...(parameterContext || {}),
+      parameterDefinitions: params,
+      parameterValues: valuesObject,
+    }),
+    [parameterContext, params, valuesObject]
+  );
 
   const declaredKeys = useMemo(
     () => new Set(params.map((parameter) => getParameterKey(parameter))),
@@ -275,13 +284,13 @@ export const IssueModelParametersView = ({
                 <RawValueView
                   paramKey={key}
                   value={value}
-                  parameterContext={parameterContext}
+                  parameterContext={readOnlyParameterContext}
                 />
               ) : (
                 <ParameterReadOnlyHost
                   parameter={parameter}
                   value={value}
-                  parameterContext={parameterContext}
+                  parameterContext={readOnlyParameterContext}
                 />
               )}
             </ParamRow>
@@ -293,7 +302,7 @@ export const IssueModelParametersView = ({
             <RawValueView
               paramKey={key}
               value={value}
-              parameterContext={parameterContext}
+              parameterContext={readOnlyParameterContext}
             />
           </ParamRow>
         ))}

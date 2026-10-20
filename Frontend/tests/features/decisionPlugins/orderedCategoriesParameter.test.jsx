@@ -1,0 +1,88 @@
+import { useState } from "react";
+import { describe, expect, it } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import {
+  PARAMETER_FIELD_REGISTRY,
+  resolveParameterFieldEntry,
+} from "../../../src/features/decisionPlugins/modelParameters";
+import {
+  normalizeOrderedCategoriesValue,
+  validateOrderedCategoriesValue,
+} from "../../../src/features/decisionPlugins/modelParameters/fields/orderedCategories/orderedCategoriesValues.js";
+
+const parameter = {
+  key: "categories",
+  label: "Categories",
+  parameterStructureKey: "orderedCategories",
+};
+
+const Harness = () => {
+  const [value, setValue] = useState([]);
+  const Field = PARAMETER_FIELD_REGISTRY.orderedCategories.FieldComponent;
+  return <Field parameter={parameter} value={value} onChange={setValue} />;
+};
+
+describe("orderedCategories model-parameter plugin", () => {
+  it("is discovered with field and read-only components", () => {
+    const entry = resolveParameterFieldEntry(parameter);
+    expect(entry).toBe(PARAMETER_FIELD_REGISTRY.orderedCategories);
+    expect(entry.FieldComponent).toBeTypeOf("function");
+    expect(entry.ReadOnlyComponent).toBeTypeOf("function");
+    expect(entry.normalizeValue).toBeTypeOf("function");
+  });
+
+  it("adds, edits, reorders and removes categories while keeping their IDs stable", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+
+    const first = screen.getByLabelText("Category 1 label");
+    const second = screen.getByLabelText("Category 2 label");
+    await user.clear(second);
+    await user.type(second, "Shared label");
+    await user.clear(first);
+    await user.type(first, "Shared label");
+
+    const initialRows = screen.getAllByRole("listitem");
+    const firstId = initialRows[0].getAttribute("data-testid").replace("ordered-category-", "");
+    const secondId = initialRows[1].getAttribute("data-testid").replace("ordered-category-", "");
+
+    await user.click(screen.getByRole("button", { name: "Move category 2 up" }));
+    const reorderedRows = screen.getAllByRole("listitem");
+    expect(reorderedRows[0]).toHaveAttribute("data-testid", `ordered-category-${secondId}`);
+    expect(reorderedRows[1]).toHaveAttribute("data-testid", `ordered-category-${firstId}`);
+    expect(within(reorderedRows[0]).getByLabelText("Category 1 label")).toHaveValue("Shared label");
+    expect(within(reorderedRows[1]).getByLabelText("Category 2 label")).toHaveValue("Shared label");
+
+    await user.click(screen.getByRole("button", { name: "Remove category 1" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByLabelText("Category 1 label")).toHaveValue("Shared label");
+  });
+
+  it("allows zero or one category and validates labels and IDs without requiring a global minimum", () => {
+    expect(validateOrderedCategoriesValue(parameter, [])).toBeNull();
+    expect(validateOrderedCategoriesValue(parameter, [
+      { categoryId: "one", label: "Only", order: 0 },
+    ])).toBeNull();
+    expect(validateOrderedCategoriesValue(parameter, [
+      { categoryId: "one", label: " ", order: 0 },
+    ])).toMatch(/Enter a label/);
+    expect(validateOrderedCategoriesValue(parameter, [
+      { categoryId: "same", label: "A", order: 0 },
+      { categoryId: "same", label: "B", order: 1 },
+    ])).toMatch(/repeated/);
+  });
+
+  it("normalizes order indexes while retaining stable category IDs and allowing duplicate labels", () => {
+    expect(normalizeOrderedCategoriesValue(parameter, [
+      { categoryId: "cat-b", label: "Same", order: 8 },
+      { categoryId: "cat-a", label: "Same", order: 2 },
+    ])).toEqual([
+      { categoryId: "cat-a", label: "Same", order: 0 },
+      { categoryId: "cat-b", label: "Same", order: 1 },
+    ]);
+  });
+});

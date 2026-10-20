@@ -62,6 +62,38 @@ const validateNormalizeValue = ({ entry, modulePath }) => {
   }
 };
 
+const validateValidateValue = ({ entry, modulePath }) => {
+  if (!Object.hasOwn(entry, "validateValue")) return;
+
+  if (typeof entry.validateValue !== "function") {
+    throw new Error(
+      `[modelParameters] ${modulePath} validateValue must be a function when provided.`
+    );
+  }
+};
+
+const validateDependencyReconciliation = ({ entry, modulePath }) => {
+  const declaresDependencies = Object.hasOwn(entry, "valueDependencyStructureKeys");
+  const declaresReconciler = Object.hasOwn(entry, "reconcileDependencyChange");
+  if (!declaresDependencies && !declaresReconciler) return;
+
+  if (
+    !Array.isArray(entry.valueDependencyStructureKeys) ||
+    entry.valueDependencyStructureKeys.some((key) => !isNonEmptyString(key)) ||
+    new Set(entry.valueDependencyStructureKeys).size !== entry.valueDependencyStructureKeys.length
+  ) {
+    throw new Error(
+      `[modelParameters] ${modulePath} valueDependencyStructureKeys must be an array of unique non-empty strings when dependency reconciliation is provided.`
+    );
+  }
+
+  if (typeof entry.reconcileDependencyChange !== "function") {
+    throw new Error(
+      `[modelParameters] ${modulePath} reconcileDependencyChange must be a function when dependency reconciliation is provided.`
+    );
+  }
+};
+
 const validateSemanticCapabilities = ({ entry, modulePath }) => {
   if (!Object.hasOwn(entry, "semanticCapabilities")) return;
 
@@ -141,6 +173,8 @@ export const buildParameterFieldRegistry = (
 
     validateImplementationStatus({ entry, modulePath });
     validateNormalizeValue({ entry, modulePath });
+    validateValidateValue({ entry, modulePath });
+    validateDependencyReconciliation({ entry, modulePath });
     validateSemanticCapabilities({ entry, modulePath });
 
     if (entry.key !== folderName) {
@@ -236,3 +270,27 @@ export const normalizeParameterValueFromRegistry = (registry, parameter, value) 
 
 export const normalizeParameterValue = (parameter, value) =>
   normalizeParameterValueFromRegistry(PARAMETER_FIELD_REGISTRY, parameter, value);
+
+export const validateParameterValueFromRegistry = (
+  registry,
+  parameter,
+  value,
+  parameterContext
+) => {
+  const structureKey =
+    typeof parameter?.parameterStructureKey === "string"
+      ? parameter.parameterStructureKey.trim()
+      : "";
+  const validateValue = registry[structureKey]?.validateValue;
+  return typeof validateValue === "function"
+    ? validateValue(parameter, value, parameterContext)
+    : null;
+};
+
+export const validateParameterValue = (parameter, value, parameterContext) =>
+  validateParameterValueFromRegistry(
+    PARAMETER_FIELD_REGISTRY,
+    parameter,
+    value,
+    parameterContext
+  );

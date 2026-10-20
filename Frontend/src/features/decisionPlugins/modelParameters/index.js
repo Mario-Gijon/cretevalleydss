@@ -3,4 +3,5 @@ export {
   normalizeParameterValue,
   resolveParameterFieldEntry,
   resolveParameterStructureKeyBySemanticCapability,
+  validateParameterValue,
 } from "./modelParameterRegistry.js";

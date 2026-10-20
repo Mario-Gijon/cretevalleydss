@@ -16,4 +16,7 @@ export {
   ParameterReadOnlyHost,
   IssueModelParametersView,
 } from "./rendering/index.js";
-export { buildParameterContext } from "./context/index.js";
+export {
+  buildParameterContext,
+  getParameterValueByStructureKey,
+} from "./context/index.js";

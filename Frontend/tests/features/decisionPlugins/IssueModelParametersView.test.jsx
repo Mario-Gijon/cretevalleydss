@@ -50,3 +50,37 @@ describe("IssueModelParametersView numberGlobal ownership", () => {
     expect(screen.getByText("-0.125")).toBeInTheDocument();
   });
 });
+
+describe("IssueModelParametersView dependent structures", () => {
+  it("passes the persisted parameter values to read-only plugins for category labels", () => {
+    render(
+      <IssueModelParametersView
+        parameters={[
+          { key: "categories", label: "Categories", parameterStructureKey: "orderedCategories" },
+          { key: "profiles", label: "Profiles", parameterStructureKey: "boundaryProfiles" },
+        ]}
+        values={{
+          categories: [
+            { categoryId: "low", label: "Low", order: 0 },
+            { categoryId: "high", label: "High", order: 1 },
+          ],
+          profiles: {
+            profiles: [
+              { profileId: "profile-1", categoryId: "high", valuesByCriterionId: { oldCriterion: 0.5 } },
+            ],
+          },
+        }}
+        parameterContext={{
+          alternatives: [],
+          criteriaTree: [],
+          leafCriteria: [],
+        }}
+      />
+    );
+
+    expect(screen.getByText("Low")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("Low → High")).toBeInTheDocument();
+    expect(screen.getByText("Criterion oldCriterion")).toBeInTheDocument();
+  });
+});

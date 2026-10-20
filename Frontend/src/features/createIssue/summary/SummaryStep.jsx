@@ -389,6 +389,9 @@ export const SummaryStep = () => {
                   defaultModelParams={defaultModelParams}
                   setDefaultModelParams={setDefaultModelParams}
                   handleDefaultChange={handleDefaultChange}
+                  globalDomains={globalDomains}
+                  expressionDomains={expressionDomains}
+                  expressionDomainConfig={expressionDomainConfig}
                 />
               </AccordionDetails>
             </Accordion>

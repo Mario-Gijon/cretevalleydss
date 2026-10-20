@@ -5,6 +5,8 @@ import {
   validateExpressionDomainConfig,
 } from "../../../utils/domainAssignments.utils";
 import { pruneCreateIssueParameterValues } from "../../modelParameters/draft";
+import { buildParameterContext } from "../../modelParameters/context";
+import { validateModelParameterValues } from "../../modelParameters/validation";
 import {
   CREATE_ISSUE_CRITERIA_WEIGHTING_MODES,
   modelUsesCriteriaWeights,
@@ -129,6 +131,35 @@ export const buildCreateIssueRequestPayload = ({
       ok: false,
       errorMessage:
         "You must assign a compatible expression domain to every leaf criterion before creating the issue.",
+    };
+  }
+
+  const modelParameterContext = buildParameterContext({
+    model: selectedModel,
+    alternatives: allData?.alternatives || [],
+    criteriaTree: Array.isArray(criteria) ? criteria : [],
+    leafCriteria,
+    parameterDefinitions: Array.isArray(selectedModel.parameters) ? selectedModel.parameters : [],
+    parameterValues: paramValues,
+    expressionDomainConfig,
+    expressionDomains: [
+      ...(Array.isArray(globalDomains) ? globalDomains : []),
+      ...(Array.isArray(expressionDomains) ? expressionDomains : []),
+    ],
+  });
+  const modelParameterErrors = validateModelParameterValues({
+    parameters: Array.isArray(selectedModel.parameters) ? selectedModel.parameters : [],
+    values: paramValues,
+    parameterContext: modelParameterContext,
+  });
+  const invalidParameter = Object.entries(modelParameterErrors)[0];
+  if (invalidParameter) {
+    const parameterDefinition = selectedModel.parameters.find(
+      (parameter) => parameter?.key === invalidParameter[0]
+    );
+    return {
+      ok: false,
+      errorMessage: `${parameterDefinition?.label || invalidParameter[0]}: ${invalidParameter[1]}`,
     };
   }
 
