@@ -2,6 +2,7 @@ import {
   createBadRequestError,
   createInternalError,
 } from "../../../utils/common/errors.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import {
   isDomainSnapshotSupportedByModel,
@@ -79,6 +80,8 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
       field: "evaluationStructureKey",
       value: targetModel.evaluationStructureKey,
     });
+  const targetResultStructureMetadata =
+    resolveResultStructureMetadata(targetModel);
   const targetSupportsConsensus = targetModel.supportsConsensus;
   const targetUsesCriteriaWeights = targetModel.usesCriteriaWeights;
   const targetUsesExpertWeights = targetModel.usesExpertWeights === true;
@@ -107,6 +110,10 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
       path: endpointPath,
     },
     targetEvaluationStructureKey,
+    targetResultStructureKey:
+      targetResultStructureMetadata.resultStructureKey,
+    targetResultStructureVersion:
+      targetResultStructureMetadata.resultStructureVersion,
     targetSupportsConsensus,
     targetUsesCriteriaWeights,
     targetUsesExpertWeights,

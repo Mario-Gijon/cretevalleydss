@@ -1,5 +1,8 @@
 import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
-import { normalizeModelExecutionResult } from "./normalizeModelExecutionResult.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  normalizeResultStructureOrThrow,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const SCENARIO_NORMALIZATION_MESSAGES = {
   resultRequired: "Scenario model execution result is required",
@@ -26,6 +29,10 @@ export const executeScenarioModel = async ({
   httpClient,
   executionAttemptInput,
 }) => {
+  const resultStructureMetadata = resolveResultStructureMetadata({
+    resultStructureKey: targetRuntimeSnapshot.targetResultStructureKey,
+    resultStructureVersion: targetRuntimeSnapshot.targetResultStructureVersion,
+  });
   const tracked = await executeTrackedDecisionModelRequest({
     attemptInput: executionAttemptInput,
     apiEndpointPath: targetRuntimeSnapshot.targetApiEndpoint.path,
@@ -33,15 +40,17 @@ export const executeScenarioModel = async ({
     errorMessage: "Scenario model execution failed",
     decisionModelsServiceBaseUrl,
     httpClient,
-    normalize: async (modelOutput) => normalizeModelExecutionResult({
-    result: modelOutput,
-    messages: SCENARIO_NORMALIZATION_MESSAGES,
-    options: {
-      requireResultObject: false,
-      validateAlternativeIdType: false,
-      enforceRankOrdering: false,
-    },
-  }),
+    normalize: async (modelOutput) =>
+      normalizeResultStructureOrThrow({
+        ...resultStructureMetadata,
+        result: modelOutput,
+        messages: SCENARIO_NORMALIZATION_MESSAGES,
+        options: {
+          requireResultObject: false,
+          validateAlternativeIdType: false,
+          enforceRankOrdering: false,
+        },
+      }),
   });
   const standardResult = tracked.result;
 

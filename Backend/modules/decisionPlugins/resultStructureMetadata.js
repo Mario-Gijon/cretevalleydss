@@ -1,3 +1,7 @@
+import {
+  getResultStructureOrThrow,
+} from "./resultStructures/resultStructureRegistry.js";
+
 export const DEFAULT_RESULT_STRUCTURE_KEY = "ranking";
 export const DEFAULT_RESULT_STRUCTURE_VERSION = 1;
 
@@ -29,17 +33,7 @@ export const resolveResultStructureMetadata = ({
     throw new TypeError("resultStructureVersion must be a positive integer");
   }
 
-  if (resultStructureKey !== DEFAULT_RESULT_STRUCTURE_KEY) {
-    throw new TypeError(
-      `Unsupported resultStructureKey '${resultStructureKey}'. Only 'ranking' is currently supported.`
-    );
-  }
-
-  if (resultStructureVersion !== DEFAULT_RESULT_STRUCTURE_VERSION) {
-    throw new TypeError(
-      `Unsupported resultStructureVersion '${resultStructureVersion}' for resultStructureKey 'ranking'.`
-    );
-  }
+  getResultStructureOrThrow(resultStructureKey, resultStructureVersion);
 
   return { resultStructureKey, resultStructureVersion };
 };

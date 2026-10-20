@@ -1,4 +1,7 @@
-import { normalizeModelExecutionResult } from "./normalizeModelExecutionResult.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  normalizeResultStructureOrThrow,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 export const buildIssueModelExecutionResult = ({
   issue,
@@ -8,7 +11,10 @@ export const buildIssueModelExecutionResult = ({
   issueUpdates,
   nextCurrentStage,
 }) => {
-  const normalizedResult = normalizeModelExecutionResult({ result });
+  const normalizedResult = normalizeResultStructureOrThrow({
+    ...resolveResultStructureMetadata(issue),
+    result,
+  });
 
   return {
     message,
