@@ -33,9 +33,8 @@ def _overall(facts: dict[str, Any]) -> str | None:
         return None
     if not result["available"]:
         return (
-            "The stored TOPSIS result does not contain finite relative-closeness scores, "
-            "so a score-based leader or separation cannot be interpreted. The remaining "
-            "sections describe only collective evaluations that are available."
+            "The stored result does not contain finite TOPSIS scores, so no score-based "
+            "leader can be identified. The available collective evaluations are described below."
         )
 
     top = alternatives[0]
@@ -49,57 +48,29 @@ def _overall(facts: dict[str, Any]) -> str | None:
     )
     if exact_tie:
         tied_names = _name_list(exact_tie["alternatives"])
-        paragraphs = [
-            f"{tied_names} share the highest executed TOPSIS score ({_number(top['score'])}). "
-            "Their equal scores do not distinguish between them; the model's sequential "
-            "technical ranks do not establish a preference within this exact tie."
-        ]
-        next_distinct = next((item for item in alternatives if item["score"] != top["score"]), None)
-        if next_distinct:
-            gap = top["score"] - next_distinct["score"]
-            paragraphs.append(
-                f"The next distinct score is **{_escape(next_distinct['name'])}** at "
-                f"{_number(next_distinct['score'])}, a score difference of {_number(gap)}."
-            )
-    else:
-        paragraphs = [
-            f"**{_escape(top['name'])}** has the highest executed TOPSIS relative-closeness "
-            f"score ({_number(top['score'])})."
-        ]
-        if len(alternatives) > 1:
-            second = alternatives[1]
-            paragraphs.append(
-                f"**{_escape(second['name'])}** follows at {_number(second['score'])}; "
-                f"the difference between these scores is {_number(top['score'] - second['score'])}."
-            )
-
-    paragraphs.append(
-        "The score is the distance from the negative (least desirable) reference divided "
-        "by the sum of distances from both references. A higher score therefore combines "
-        "being farther from the negative reference and closer to the positive (most desirable) "
-        "reference; it is relative to the alternatives and evaluations in this execution."
-    )
-    return "\n\n".join(paragraphs)
+        return (
+            f"{tied_names} share the highest executed TOPSIS score. Their exact tie does "
+            "not distinguish a preferred alternative."
+        )
+    return f"**{_escape(top['name'])}** has the highest executed TOPSIS relative-closeness score."
 
 
 def _criterion_comparison(facts: dict[str, Any]) -> dict[str, Any] | None:
     result = facts["result"]
     criteria = facts["criteria"]
     alternatives = result["items"]
-    if not criteria["available"] or len(alternatives) < 2:
+    if not result["available"] or not criteria["available"] or len(alternatives) < 2:
         return None
 
     top = alternatives[0]
-    next_distinct = next(
+    top_score_tie = any(group["score"] == top["score"] for group in result["exactScoreTies"])
+    if top_score_tie:
+        return None
+    comparison_alternative = next(
         (item for item in alternatives[1:] if item["score"] != top["score"]),
         None,
-    ) if result["available"] else None
-    comparison_alternative = next_distinct or alternatives[1]
-    top_score_tie = any(
-        group["score"] == top.get("score")
-        for group in result["exactScoreTies"]
-    ) if result["available"] else False
-    if result["available"] and top["score"] == comparison_alternative["score"]:
+    )
+    if comparison_alternative is None:
         return None
 
     comparisons = []
@@ -172,10 +143,11 @@ def _performance(facts: dict[str, Any]) -> tuple[str | None, dict[str, Any] | No
         descriptions.append(
             f"**{_escape(leader)}** has the more favorable collective value for "
             f"**{_escape(criterion['name'])}** ({_number(value)} versus "
-            f"{_number(other_value)}; {direction_note})"
+            f"{_number(other_value)}; {direction_note}; configured weight "
+            f"{_number(criterion.get('configuredWeight'))})"
         )
 
-    lead_in = f"Compared with **{_escape(other['name'])}**, " if facts["result"]["available"] else "Between these alternatives, "
+    lead_in = f"Compared with **{_escape(other['name'])}**, "
     return (
         lead_in + "; ".join(descriptions) + ". The values are compared within each named "
         "criterion, not across criteria with potentially different units. These input patterns "
@@ -184,22 +156,100 @@ def _performance(facts: dict[str, Any]) -> tuple[str | None, dict[str, Any] | No
     )
 
 
-def _what_result_suggests(comparison: dict[str, Any] | None) -> str | None:
-    if comparison is None:
+def _distance_interpretation(facts: dict[str, Any]) -> str | None:
+    distances = facts["idealDistances"]
+    result = facts["result"]
+    alternatives = result["items"]
+    if not result["available"] or not distances["available"] or len(alternatives) < 2:
         return None
-    if comparison.get("topScoreTie"):
+
+    leader = alternatives[0]
+    if any(group["score"] == leader["score"] for group in result["exactScoreTies"]):
         return None
-    relations = {item["relation"] for item in comparison["comparisons"]}
-    if "more_favorable" not in relations or "less_favorable" not in relations:
+    comparator = next(
+        (item for item in alternatives[1:] if item["score"] != leader["score"]),
+        None,
+    )
+    if comparator is None:
         return None
-    top = comparison["topAlternative"]["name"]
-    other = comparison["comparisonAlternative"]["name"]
+
+    distance_by_id = {item["alternativeId"]: item for item in distances["items"]}
+    leader_distance = distance_by_id.get(leader["alternativeId"])
+    comparator_distance = distance_by_id.get(comparator["alternativeId"])
+    if not leader_distance or not comparator_distance:
+        return None
+
+    positive_difference = leader_distance["positiveDistance"] - comparator_distance["positiveDistance"]
+    negative_difference = leader_distance["negativeDistance"] - comparator_distance["negativeDistance"]
+    positive_note = (
+        "closer to the most desirable reference"
+        if positive_difference < 0
+        else "farther from the most desirable reference"
+        if positive_difference > 0
+        else "at the same distance from the most desirable reference"
+    )
+    negative_note = (
+        "farther from the least desirable reference"
+        if negative_difference > 0
+        else "closer to the least desirable reference"
+        if negative_difference < 0
+        else "at the same distance from the least desirable reference"
+    )
+    direction_matches = positive_difference < 0 and negative_difference > 0
+    qualifier = (
+        "Both distance directions favor the higher-scoring alternative."
+        if direction_matches and positive_difference != 0 and negative_difference != 0
+        else "The two distance directions point different ways in this comparison; the executed score combines both positions."
+        if positive_difference != 0 and negative_difference != 0
+        else "Only one of the two distances differs in this comparison."
+    )
     return (
-        f"The observed profiles show a trade-off between **{_escape(top)}** and "
-        f"**{_escape(other)}**: each has a more favorable evaluation on at least one "
-        "criterion. TOPSIS combines the weighted, normalized profile against both ideal "
-        "references; this comparison is descriptive and does not identify a single decisive "
-        "criterion or establish sensitivity to changing inputs."
+        f"Compared with **{_escape(comparator['name'])}**, **{_escape(leader['name'])}** is "
+        f"{positive_note} (D+ {_number(leader_distance['positiveDistance'])} versus "
+        f"{_number(comparator_distance['positiveDistance'])}) and {negative_note} "
+        f"(D− {_number(leader_distance['negativeDistance'])} versus "
+        f"{_number(comparator_distance['negativeDistance'])}). {qualifier}"
+    )
+
+
+def _leading_distance_contributions(facts: dict[str, Any]) -> str | None:
+    result = facts["result"]
+    distances = facts["idealDistances"]
+    if not result["available"] or not distances["available"]:
+        return None
+    leader = result["items"][0]
+    if any(group["score"] == leader["score"] for group in result["exactScoreTies"]):
+        return None
+    distance = next(
+        (item for item in distances["items"] if item["alternativeId"] == leader["alternativeId"]),
+        None,
+    )
+    if distance is None:
+        return None
+
+    def largest(field: str) -> list[dict[str, Any]]:
+        return sorted(
+            (item for item in distance.get(field, []) if item["squaredDistanceContribution"] > 0),
+            key=lambda item: (-item["squaredDistanceContribution"], item["criterionId"]),
+        )[:2]
+
+    positive = largest("positiveSquaredContributions")
+    negative = largest("negativeSquaredContributions")
+    if not positive and not negative:
+        return None
+    positive_text = (
+        "the largest gaps from the most desirable reference were on "
+        + _name_list([{"name": item["criterionName"]} for item in positive])
+        if positive else "there was no gap from the most desirable reference"
+    )
+    negative_text = (
+        "the largest separations from the least desirable reference were on "
+        + _name_list([{"name": item["criterionName"]} for item in negative])
+        if negative else "there was no separation from the least desirable reference"
+    )
+    return (
+        f"For **{_escape(leader['name'])}**, {positive_text}; {negative_text}. "
+        "These squared components describe how the validated distances are made up. They do not add directly to relative closeness or show that a criterion caused the result."
     )
 
 
@@ -210,22 +260,18 @@ def build_interpretation(facts: dict[str, Any]) -> str:
     if overall:
         sections.append(f"### Overall result\n\n{overall}")
 
-    performance, comparison = _performance(facts)
+    performance, _comparison = _performance(facts)
     if performance:
-        sections.append(f"### Performance across criteria\n\n{performance}")
+        title = "Observed criterion trade-offs" if _comparison and {item["relation"] for item in _comparison["comparisons"]} >= {"more_favorable", "less_favorable"} else "Collective performance differences"
+        sections.append(f"### {title}\n\n{performance}")
 
-    suggestion = _what_result_suggests(comparison)
-    if suggestion:
-        sections.append(f"### What the result suggests\n\n{suggestion}")
+    distance_reading = _distance_interpretation(facts)
+    if distance_reading:
+        sections.append(f"### Position against the reference profiles\n\n{distance_reading}")
 
-    if facts["idealDistances"]["available"]:
-        sections.append(
-            "### Reading the reference distances\n\n"
-            "The distance view uses the Euclidean distances reconstructed from the exact "
-            "collective matrix, criterion weights, and benefit/cost directions in this "
-            "execution. It is shown only because the reconstructed relative-closeness values "
-            "match the stored TOPSIS scores."
-        )
+    contribution_reading = _leading_distance_contributions(facts)
+    if contribution_reading:
+        sections.append(f"### Criteria behind the reference gaps\n\n{contribution_reading}")
 
     return "\n\n".join(sections)
 

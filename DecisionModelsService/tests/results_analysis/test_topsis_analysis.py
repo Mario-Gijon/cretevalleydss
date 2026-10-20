@@ -5,6 +5,7 @@ from copy import deepcopy
 import pytest
 
 from models.topsis.analysis import analyze_issue
+from models.topsis.analysis.visualizations import _ideal_distance_scatter
 from models.topsis.examples import TOPSIS_REQUEST_EXAMPLES
 from models.topsis.executor import execute_topsis
 from schemas.model_requests import GenericModelExecutionRequest
@@ -107,20 +108,36 @@ def test_basic_execution_analysis_matches_scores_ranks_and_collective_input():
     }
     for name, expected in expected_distance_pairs.items():
         assert distance_pairs[name] == pytest.approx(expected)
+    for distance in facts["idealDistances"]["items"]:
+        positive_contributions = distance["positiveSquaredContributions"]
+        negative_contributions = distance["negativeSquaredContributions"]
+        assert sum(item["squaredDistanceContribution"] for item in positive_contributions) == pytest.approx(distance["positiveSquaredDistance"], abs=1e-12)
+        assert sum(item["squaredDistanceContribution"] for item in negative_contributions) == pytest.approx(distance["negativeSquaredDistance"], abs=1e-12)
+        assert distance["positiveSquaredDistance"] == pytest.approx(distance["positiveDistance"] ** 2, abs=1e-12)
+        assert distance["negativeSquaredDistance"] == pytest.approx(distance["negativeDistance"] ** 2, abs=1e-12)
 
     charts = _by_key(analysis)
     assert set(charts) == {
-        "topsis-numeric-ranking-scores",
         "topsis-collective-performance-profile",
         "topsis-numeric-ideal-distances",
+        "topsis-positive-distance-contributions",
+        "topsis-negative-distance-contributions",
     }
-    assert charts["topsis-numeric-ranking-scores"]["data"]["categories"] == [item["name"] for item in ranked]
-    assert charts["topsis-numeric-ranking-scores"]["data"]["series"][0]["values"] == pytest.approx([item["score"] for item in ranked])
+    assert "topsis-numeric-ranking-scores" not in charts
+    assert [item["score"] for item in facts["result"]["items"]] == pytest.approx([item["score"] for item in data["rankedAlternatives"]])
     profile = charts["topsis-collective-performance-profile"]
     assert profile["data"]["rows"] == [{"key": item["alternativeId"], "label": item["name"]} for item in ranked]
+    assert [item["direction"] for item in profile["data"]["columns"]] == ["max", "min", "max"]
     assert profile["data"]["details"][0][0]["inputEvaluation"] == data["collectiveEvaluations"][ranked[0]["alternativeId"]]["crit-quality"]
     scatter = charts["topsis-numeric-ideal-distances"]["data"]["series"][0]["points"]
     assert [point["details"]["relative closeness"] for point in scatter] == pytest.approx([item["score"] for item in ranked])
+    positive = charts["topsis-positive-distance-contributions"]
+    assert positive["stacked"] is True
+    assert positive["data"]["categories"] == [item["name"] for item in ranked]
+    assert positive["data"]["series"][0]["values"] == pytest.approx([
+        item["positiveSquaredContributions"][0]["squaredDistanceContribution"]
+        for item in facts["idealDistances"]["items"]
+    ])
     assert analysis["sections"] == [
         {"id": section["id"], "title": section["title"], "description": section["description"], "order": section["order"], "visualizations": section["visualizations"]}
         for section in analysis["sections"]
@@ -135,6 +152,9 @@ def test_mixed_direction_weighted_execution_and_long_names_change_interpretation
     assert "Agios Georgios (Saint George Village)" in analysis["interpretation"] or "Agios Georgios (Saint George Village)" in str(facts)
     assert "lower values are preferable" in analysis["interpretation"]
     assert "different units" in analysis["interpretation"]
+    assert "configured weight" in analysis["interpretation"]
+    assert "Position against the reference profiles" in analysis["interpretation"]
+    assert "Criteria behind the reference gaps" in analysis["interpretation"]
     profile = _by_key(analysis)["topsis-collective-performance-profile"]
     assert len(profile["data"]["columns"]) == 4
     assert len(profile["data"]["rows"]) == 3
@@ -159,19 +179,48 @@ def test_exact_score_ties_are_reported_without_inventing_a_preference():
     ties = analysis["facts"]["result"]["exactScoreTies"]
     assert any({item["alternativeId"] for item in group["alternatives"]} == {"alt-supplier-a", "alt-supplier-b"} for group in ties)
     assert "share the highest executed TOPSIS score" in analysis["interpretation"]
-    assert "do not establish a preference within this exact tie" in analysis["interpretation"]
+    assert "does not distinguish a preferred alternative" in analysis["interpretation"]
+    scatter = _by_key(analysis)["topsis-numeric-ideal-distances"]["data"]["series"][0]["points"]
+    shared = next(point for point in scatter if "Coincident alternatives" in point["label"])
+    assert "Supplier A" in shared["label"] and "Supplier B" in shared["label"]
+    assert "alternatives at this coordinate" in shared["details"]
 
 
-def test_missing_distance_diagnostics_preserve_ranking_and_performance_views():
+def test_nearby_distance_points_remain_at_their_coordinates_and_name_each_other():
+    facts = {
+        "result": {"available": True, "items": [
+            {"alternativeId": "a", "name": "Coastal choice", "technicalRank": 1, "score": 2 / 3},
+            {"alternativeId": "b", "name": "Village choice", "technicalRank": 2, "score": 2 / 3},
+            {"alternativeId": "c", "name": "Forest choice", "technicalRank": 3, "score": 0.25},
+        ]},
+        "idealDistances": {"available": True, "items": [
+            {"alternativeId": "a", "name": "Coastal choice", "technicalRank": 1, "closeness": 2 / 3, "positiveDistance": 1.0, "negativeDistance": 2.0},
+            {"alternativeId": "b", "name": "Village choice", "technicalRank": 2, "closeness": 2 / 3, "positiveDistance": 1.005, "negativeDistance": 2.01},
+            {"alternativeId": "c", "name": "Forest choice", "technicalRank": 3, "closeness": 0.25, "positiveDistance": 3.0, "negativeDistance": 1.0},
+        ]},
+        "criteria": {"items": []},
+    }
+
+    scatter = _ideal_distance_scatter(facts)
+    points = scatter["data"]["series"][0]["points"]
+    coastal, village = points[:2]
+    assert len(points) == 3
+    assert (coastal["x"], coastal["y"]) == (1.0, 2.0)
+    assert (village["x"], village["y"]) == (1.005, 2.01)
+    assert "Village choice" in coastal["details"]["nearby alternatives at their own coordinates"]
+    assert "Coastal choice" in village["details"]["nearby alternatives at their own coordinates"]
+
+
+def test_missing_distance_diagnostics_preserve_scores_and_performance_views():
     _data, context, _analysis = _execute_and_analyze(_basic_request())
     del context["rounds"][0]["execution"]["result"]["rawOutput"]["matrix_used"]
     analysis = analyze_issue(context)
 
     assert analysis["facts"]["idealDistances"]["available"] is False
     assert set(_by_key(analysis)) == {
-        "topsis-numeric-ranking-scores",
         "topsis-collective-performance-profile",
     }
+    assert [item["score"] for item in analysis["facts"]["result"]["items"]]
 
 
 def test_cleaned_constant_criterion_is_mapped_back_before_distance_validation():
@@ -186,6 +235,12 @@ def test_cleaned_constant_criterion_is_mapped_back_before_distance_validation():
     delivery = next(item for item in analysis["facts"]["criteria"]["items"] if item["criterionId"] == "crit-delivery")
     assert delivery["hasObservedVariation"] is False
     assert delivery["relativeFavorability"] == [0.5, 0.5, 0.5]
+    for distance in analysis["facts"]["idealDistances"]["items"]:
+        delivery_contribution = next(
+            item for item in distance["positiveSquaredContributions"]
+            if item["criterionId"] == "crit-delivery"
+        )
+        assert delivery_contribution["squaredDistanceContribution"] == 0
 
 
 def test_non_finite_scores_omit_score_and_distance_charts_without_losing_input_facts():
@@ -203,7 +258,7 @@ def test_non_finite_scores_omit_score_and_distance_charts_without_losing_input_f
     assert "topsis-numeric-ranking-scores" not in _by_key(analysis)
     assert "topsis-collective-performance-profile" in _by_key(analysis)
     assert "topsis-numeric-ideal-distances" not in _by_key(analysis)
-    assert "does not contain finite relative-closeness scores" in analysis["interpretation"]
+    assert "does not contain finite TOPSIS scores" in analysis["interpretation"]
 
 
 def test_single_alternative_execution_does_not_claim_a_finite_score():

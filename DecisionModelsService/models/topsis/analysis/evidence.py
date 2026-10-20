@@ -188,11 +188,16 @@ def _reconstruct_distances(
     matrix: list[list[float]],
     weights: list[float],
     directions: list[str | None],
+    criterion_indices: list[int],
     ranked: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]] | None, str | None]:
     if len(matrix) < 1 or not matrix[0]:
         return None, "matrix_unavailable"
-    if len(weights) != len(matrix[0]) or len(directions) != len(matrix[0]):
+    if (
+        len(weights) != len(matrix[0])
+        or len(directions) != len(matrix[0])
+        or len(criterion_indices) != len(matrix[0])
+    ):
         return None, "criterion_metadata_mismatch"
     if any(direction not in {"max", "min"} for direction in directions):
         return None, "criterion_directions_unavailable"
@@ -220,10 +225,19 @@ def _reconstruct_distances(
         negative_ideal.append(min(values) if direction == "max" else max(values))
 
     distances: list[dict[str, Any]] = []
-    by_ranked_id = {item["alternativeId"]: item for item in ranked}
     for row_index, weighted_row in enumerate(weighted):
-        positive_distance = math.sqrt(sum((value - ideal) ** 2 for value, ideal in zip(weighted_row, positive_ideal)))
-        negative_distance = math.sqrt(sum((value - ideal) ** 2 for value, ideal in zip(weighted_row, negative_ideal)))
+        positive_contributions = [
+            (value - ideal) ** 2
+            for value, ideal in zip(weighted_row, positive_ideal)
+        ]
+        negative_contributions = [
+            (value - ideal) ** 2
+            for value, ideal in zip(weighted_row, negative_ideal)
+        ]
+        positive_squared_distance = sum(positive_contributions)
+        negative_squared_distance = sum(negative_contributions)
+        positive_distance = math.sqrt(positive_squared_distance)
+        negative_distance = math.sqrt(negative_squared_distance)
         denominator = positive_distance + negative_distance
         if not math.isfinite(denominator) or denominator == 0:
             return None, "zero_or_non_finite_ideal_distance_sum"
@@ -234,6 +248,16 @@ def _reconstruct_distances(
             "rowIndex": row_index,
             "positiveDistance": positive_distance,
             "negativeDistance": negative_distance,
+            "positiveSquaredDistance": positive_squared_distance,
+            "negativeSquaredDistance": negative_squared_distance,
+            "positiveSquaredContributions": [
+                {"criterionIndex": index, "value": value}
+                for index, value in zip(criterion_indices, positive_contributions)
+            ],
+            "negativeSquaredContributions": [
+                {"criterionIndex": index, "value": value}
+                for index, value in zip(criterion_indices, negative_contributions)
+            ],
             "closeness": closeness,
         })
 
@@ -365,7 +389,9 @@ def extract_topsis_evidence(context: dict[str, Any]) -> dict[str, Any]:
         if matrix_used is not None:
             used_weights = [weights[index] for index in retained]
             used_directions = [criteria[index]["direction"] for index in retained]
-            distance_items, distance_reason = _reconstruct_distances(matrix_used, used_weights, used_directions, ranked)
+            distance_items, distance_reason = _reconstruct_distances(
+                matrix_used, used_weights, used_directions, retained, ranked
+            )
             if distance_items is not None:
                 input_order = input_alternative_ids
                 if len(input_order) == len(distance_items):
@@ -376,7 +402,51 @@ def extract_topsis_evidence(context: dict[str, Any]) -> dict[str, Any]:
                         if distance is None or item["score"] is None or not _same_number(distance["closeness"], item["score"]):
                             validated = []
                             break
-                        validated.append({**distance, "alternativeId": item["alternativeId"], "name": item["name"], "technicalRank": item["technicalRank"]})
+                        positive_by_criterion = {
+                            contribution["criterionIndex"]: contribution["value"]
+                            for contribution in distance["positiveSquaredContributions"]
+                        }
+                        negative_by_criterion = {
+                            contribution["criterionIndex"]: contribution["value"]
+                            for contribution in distance["negativeSquaredContributions"]
+                        }
+                        positive_contributions = [
+                            {
+                                "criterionId": criterion["criterionId"],
+                                "criterionName": criterion["name"],
+                                "direction": criterion["direction"],
+                                "configuredWeight": criterion["configuredWeight"],
+                                "squaredDistanceContribution": positive_by_criterion.get(criterion["index"], 0.0),
+                            }
+                            for criterion in criteria
+                        ]
+                        negative_contributions = [
+                            {
+                                "criterionId": criterion["criterionId"],
+                                "criterionName": criterion["name"],
+                                "direction": criterion["direction"],
+                                "configuredWeight": criterion["configuredWeight"],
+                                "squaredDistanceContribution": negative_by_criterion.get(criterion["index"], 0.0),
+                            }
+                            for criterion in criteria
+                        ]
+                        if not _same_number(
+                            sum(item["squaredDistanceContribution"] for item in positive_contributions),
+                            distance["positiveSquaredDistance"],
+                        ) or not _same_number(
+                            sum(item["squaredDistanceContribution"] for item in negative_contributions),
+                            distance["negativeSquaredDistance"],
+                        ):
+                            validated = []
+                            break
+                        validated.append({
+                            **distance,
+                            "positiveSquaredContributions": positive_contributions,
+                            "negativeSquaredContributions": negative_contributions,
+                            "alternativeId": item["alternativeId"],
+                            "name": item["name"],
+                            "technicalRank": item["technicalRank"],
+                        })
                     if validated:
                         distance_items = validated
                         distance_reason = None

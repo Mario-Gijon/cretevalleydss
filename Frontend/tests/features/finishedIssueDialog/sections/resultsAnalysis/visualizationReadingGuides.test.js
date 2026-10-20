@@ -19,9 +19,10 @@ const MODEL_CHART_KEYS = [
   "two-tuple-personal-vs-collective-ranking",
   "two-tuple-loeo-rank-impact",
   "topsis-ideal-distances",
-  "topsis-numeric-ranking-scores",
   "topsis-collective-performance-profile",
   "topsis-numeric-ideal-distances",
+  "topsis-positive-distance-contributions",
+  "topsis-negative-distance-contributions",
   "criterion-weighted-discrimination",
   "positive-distance-contributions",
   "negative-distance-contributions",
@@ -86,11 +87,14 @@ describe("visualization reading guides", () => {
     expect(getVisualizationReadingGuide({ type: "rankingAgreement" }).text).toContain("near −1 means it reversed");
   });
 
-  it("explains linguistic scale, MCC direction, TOPSIS ideals, and counterfactual limits", () => {
+  it("explains linguistic scale, MCC direction, TOPSIS reference positions, and distance contributions", () => {
     expect(getVisualizationReadingGuide({ key: "individual-preference-distribution" }).text).toContain("side-to-side offsets");
     expect(getVisualizationReadingGuide({ key: "mcc-adjustment-map" }).text).toContain("negative means lowered");
     expect(getVisualizationReadingGuide({ key: "collective-beta-heatmap" }).text).toContain("may not be more desirable for a cost criterion");
     expect(getVisualizationReadingGuide({ key: "topsis-ideal-distances" }).text).toContain("most desirable reference");
+    expect(getVisualizationReadingGuide({ key: "topsis-numeric-ideal-distances" }).text).toContain("Smaller D+ means closer");
+    expect(getVisualizationReadingGuide({ key: "topsis-positive-distance-contributions" }).text).toContain("not an additive effect on relative closeness");
+    expect(getVisualizationReadingGuide({ key: "topsis-negative-distance-contributions" }).text).toContain("squared distance from the least desirable reference");
     expect(getVisualizationReadingGuide({ key: "loco-rank-impact" }).text).toContain("not real-world causal importance");
   });
 

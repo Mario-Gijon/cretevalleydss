@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
@@ -21,7 +21,7 @@ vi.mock("react-chartjs-2", () => ({
   Radar: ({ data }) => <div data-testid="radar-chart" data-metrics={data.labels.join(",")} data-series={data.datasets.length} />,
 }));
 
-import { AnalyticalGraph, analyticalGraphRegistry } from "../../../src/components/analyticalGraphs/index.js";
+import { AnalyticalGraph, HeatmapAnalyticalGraph, analyticalGraphRegistry } from "../../../src/components/analyticalGraphs/index.js";
 import { preferenceDistributionMatrixPlugin } from "../../../src/components/analyticalGraphs/logic/preferenceDistributionMatrixPlugin.js";
 import { getVisualizationLayout } from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/modelVisualizationLayout.js";
 
@@ -365,7 +365,7 @@ describe("AnalyticalGraph", () => {
       scale: { min: 0, max: 1, valuePrecision: 4 },
       data: {
         rows: [{ key: "alternative-a", label: alternativeName }],
-        columns: [{ key: "criterion-a", label: criterionName }],
+        columns: [{ key: "criterion-a", label: criterionName, direction: "min" }],
         values: [[0.75]],
         details: [[{ inputEvaluation: 4.5, direction: "min", configuredWeight: 0.35 }]],
       },
@@ -379,12 +379,41 @@ describe("AnalyticalGraph", () => {
     const cell = screen.getByLabelText((label) => label.includes(`${criterionName}: 0.75`));
     const viewport = screen.getByTestId("analytical-graph-viewport");
     expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("240px");
-    expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("minmax(150px, 1fr)");
-    expect(window.getComputedStyle(header).getPropertyValue("-webkit-line-clamp")).toBe("2");
+    expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("150px");
+    expect(window.getComputedStyle(grid).gridTemplateColumns).not.toContain("1fr");
+    const directionHeader = screen.getByTestId("topsis-criterion-header");
+    const criterionLabel = within(directionHeader).getByText(criterionName);
+    expect(directionHeader).toHaveAttribute("data-direction", "min");
+    expect(within(directionHeader).getByText("Cost")).toBeInTheDocument();
+    expect(window.getComputedStyle(criterionLabel).getPropertyValue("-webkit-line-clamp")).toBe("2");
     expect(window.getComputedStyle(alternative).whiteSpace).toBe("nowrap");
     expect(window.getComputedStyle(viewport).overflowX).toBe("auto");
     expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Input Evaluation: 4.5"));
     expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Direction: min"));
+  });
+
+  it("keeps small and large alternative-relationship matrices at readable cell widths", () => {
+    const buildMatrix = (count) => ({
+      key: "alternative-relationships",
+      type: "heatmap",
+      truncateLabels: true,
+      data: {
+        rows: Array.from({ length: count }, (_, index) => ({ key: `alternative-${index}`, label: `Long alternative name ${index}` })),
+        columns: Array.from({ length: count }, (_, index) => ({ key: `alternative-${index}`, label: `Long alternative name ${index}` })),
+        values: Array.from({ length: count }, () => Array.from({ length: count }, () => 0.5)),
+      },
+    });
+    const { rerender } = render(<div data-testid="matrix-viewport" style={{ width: "320px", overflowX: "auto" }}><HeatmapAnalyticalGraph visualization={buildMatrix(3)} /></div>);
+    const viewport = screen.getByTestId("matrix-viewport");
+    const grid = screen.getByTestId("heatmap-analytical-graph");
+    expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("112px");
+    expect(window.getComputedStyle(grid).gridTemplateColumns).not.toContain("1fr");
+    expect(window.getComputedStyle(viewport).overflowX).toBe("auto");
+    expect(screen.getAllByTestId("heatmap-analytical-graph")[0].querySelectorAll("[data-color-scale]")).toHaveLength(9);
+
+    rerender(<div data-testid="matrix-viewport" style={{ width: "320px", overflowX: "auto" }}><HeatmapAnalyticalGraph visualization={buildMatrix(15)} /></div>);
+    expect(window.getComputedStyle(screen.getByTestId("heatmap-analytical-graph")).gridTemplateColumns).toContain("112px");
+    expect(screen.getAllByTestId("heatmap-analytical-graph")[0].querySelectorAll("[data-color-scale]")).toHaveLength(225);
   });
 
   it("keeps sequential heatmaps and supports safe diverging colors with optional cell details", () => {

@@ -47,6 +47,8 @@ const chartFrameSx = {
 };
 const expertChartFrameSx = {
   width: "100%",
+  maxWidth: 1100,
+  mx: "auto",
   height: { xs: 320, sm: 360, md: 420, xl: 430 },
   maxHeight: 430,
   minHeight: 0,

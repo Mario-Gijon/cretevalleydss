@@ -49,17 +49,21 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
     "Distance to TOPSIS ideals",
     "Each point is an alternative. The horizontal axis is its distance from the most desirable reference, and the vertical axis is its distance from the least desirable reference. Farther left and higher means closer to the best reference and farther from the worst.",
   ),
-  "topsis-numeric-ranking-scores": guide(
-    "TOPSIS relative closeness",
-    "Each bar is an alternative's executed TOPSIS score, ordered by the model's technical ranking. The score combines distance from the positive and negative ideal references; higher values mean greater relative closeness to the positive ideal within this execution.",
-  ),
   "topsis-collective-performance-profile": guide(
     "Collective performance by criterion",
-    "Rows are alternatives and columns are criteria. Number and color show each input's position within that criterion's observed range, with benefit and cost directions respected; hover for raw evaluations. Columns are scaled independently, so values do not compare units across criteria.",
+    "Each row is an alternative and each column is a criterion. Benefit and cost labels show which direction is preferable; color and number give the alternative's relative position within that criterion's observed range. Hover for raw collective evaluations and configured weights. Each criterion is scaled separately, not as an absolute quality score.",
   ),
   "topsis-numeric-ideal-distances": guide(
-    "Distance from TOPSIS reference solutions",
-    "Each point is an alternative. The horizontal axis is its reconstructed Euclidean distance to the positive ideal, and the vertical axis is distance to the negative ideal. The view appears only when reconstructed relative-closeness scores match the executed scores.",
+    "Position relative to TOPSIS reference solutions",
+    "Each point is an alternative's validated position relative to two reference profiles. Smaller D+ means closer to the most desirable profile; larger D− means farther from the least desirable one. Hover for precise values; coincident names share one point's tooltip, and nearby alternatives are listed without moving their coordinates.",
+  ),
+  "topsis-positive-distance-contributions": guide(
+    "Criterion contributions to squared distance from the most desirable reference",
+    "Each horizontal bar is an alternative; its colored criterion segments add to its squared distance from the most desirable reference. Larger segments show criteria where its profile is farther from that reference. This is a decomposition of squared distance, not an additive effect on relative closeness or ranking.",
+  ),
+  "topsis-negative-distance-contributions": guide(
+    "Criterion contributions to squared distance from the least desirable reference",
+    "Each horizontal bar is an alternative; its colored criterion segments add to its squared distance from the least desirable reference. Larger segments show criteria that separate it farther from that reference. This is a decomposition of squared distance, not an additive effect on relative closeness or ranking.",
   ),
   "criterion-weighted-discrimination": guide(
     "Observed discriminating power by criterion",

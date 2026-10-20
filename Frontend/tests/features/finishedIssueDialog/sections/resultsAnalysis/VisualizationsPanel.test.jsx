@@ -25,21 +25,18 @@ import { buildGeneralVisualizationsLayout } from "../../../../../src/features/fi
 describe("VisualizationsPanel", () => {
   const rankingAnalysis = (values = [1, 2]) => ({ visualizations: [{ type: "rankingEvolution", data: { phases: [0, 1], series: [{ alternativeId: "a", label: "Alpha", values }] } }] });
 
-  it("uses a readable desktop pair and stacks non-consensus visualizations responsively", () => {
+  it("places non-consensus generic visualizations in a full-width vertical sequence", () => {
     const layout = buildGeneralVisualizationsLayout({
       expertCollectiveAvailable: true,
       alternativeRelationshipsAvailable: true,
     });
 
-    expect(layout.primaryRow).toEqual(["expertCollective", "alternativeRelationships"]);
-    expect(layout.primaryGridTemplateColumns).toEqual({
-      xs: "minmax(0, 1fr)",
-      lg: "minmax(420px, 1fr) minmax(540px, 1fr)",
-    });
-    expect(layout.alternativeRelationshipsBelow).toBe(false);
+    expect(layout.primaryRow).toEqual(["expertCollective"]);
+    expect(layout.primaryGridTemplateColumns).toBe("minmax(0, 1fr)");
+    expect(layout.alternativeRelationshipsBelow).toBe(true);
   });
 
-  it("keeps Expert and Consensus in the first row and puts relationships below", () => {
+  it("places Expert, Consensus and relationships in full-width vertical order", () => {
     const layout = buildGeneralVisualizationsLayout({
       expertCollectiveAvailable: true,
       issueConsensusEnabled: true,
@@ -48,10 +45,7 @@ describe("VisualizationsPanel", () => {
     });
 
     expect(layout.primaryRow).toEqual(["expertCollective", "consensus"]);
-    expect(layout.primaryGridTemplateColumns).toEqual({
-      xs: "minmax(0, 1fr)",
-      lg: "minmax(420px, 1.35fr) minmax(300px, 0.85fr)",
-    });
+    expect(layout.primaryGridTemplateColumns).toBe("minmax(0, 1fr)");
     expect(layout.alternativeRelationshipsBelow).toBe(true);
   });
 
@@ -66,8 +60,9 @@ describe("VisualizationsPanel", () => {
       alternativeRelationshipsAvailable: true,
     });
 
-    expect(onlyRelationships.primaryRow).toEqual(["alternativeRelationships"]);
+    expect(onlyRelationships.primaryRow).toEqual([]);
     expect(onlyRelationships.primaryGridTemplateColumns).toBe("minmax(0, 1fr)");
+    expect(onlyRelationships.alternativeRelationshipsBelow).toBe(true);
     expect(unavailableConsensus.primaryRow).toEqual(["expertCollective"]);
     expect(unavailableConsensus.alternativeRelationshipsBelow).toBe(true);
   });
@@ -152,18 +147,20 @@ describe("VisualizationsPanel", () => {
         key: "base",
         displayLabel: "Base",
         alternativeEvaluationAnalysis: { analysis: { sections: [
-          { id: "topsis-relative-closeness", title: "TOPSIS result", order: 0, visualizations: [{ key: "topsis-numeric-ranking-scores", type: "bar", orientation: "horizontal" }] },
-          { id: "topsis-collective-performance", title: "Collective performance", order: 1, visualizations: [{ key: "topsis-collective-performance-profile", type: "heatmap" }] },
-          { id: "topsis-ideal-distance-geometry", title: "TOPSIS reference distances", order: 2, visualizations: [{ key: "topsis-numeric-ideal-distances", type: "scatter" }] },
+          { id: "topsis-collective-performance", title: "Collective performance", order: 0, visualizations: [{ key: "topsis-collective-performance-profile", type: "heatmap" }] },
+          { id: "topsis-ideal-distance-geometry", title: "TOPSIS reference distances", order: 1, visualizations: [{ key: "topsis-numeric-ideal-distances", type: "scatter" }] },
+          { id: "topsis-positive-distance-contributions", title: "Distance from the most desirable reference", order: 2, visualizations: [{ key: "topsis-positive-distance-contributions", type: "bar", stacked: true }] },
+          { id: "topsis-negative-distance-contributions", title: "Distance from the least desirable reference", order: 3, visualizations: [{ key: "topsis-negative-distance-contributions", type: "bar", stacked: true }] },
         ] } },
       }]}
       visualizations={{ mode: "single", consensus: { enabled: false } }}
     /></ThemeProvider>);
 
     expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
-      "topsis-numeric-ranking-scores",
       "topsis-collective-performance-profile",
       "topsis-numeric-ideal-distances",
+      "topsis-positive-distance-contributions",
+      "topsis-negative-distance-contributions",
     ]);
     expect(screen.getByText("Alternative evaluation visualizations")).toBeInTheDocument();
   });
@@ -351,8 +348,10 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("alternative-relationships-section")).toBeInTheDocument();
     const primaryRow = screen.getByTestId("general-visualization-primary-row");
     expect(primaryRow).toHaveAttribute("data-consensus-layout", "disabled");
-    expect(within(primaryRow).getAllByTestId(/^(expert-collective-relationship|alternative-relationships-section)$/)).toHaveLength(2);
-    expect(within(primaryRow).getByTestId("expert-collective-relationship").compareDocumentPosition(within(primaryRow).getByTestId("alternative-relationships-section")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const relationshipRow = screen.getByTestId("alternative-relationships-secondary-row");
+    expect(within(primaryRow).getAllByTestId("expert-collective-relationship")).toHaveLength(1);
+    expect(within(relationshipRow).getByTestId("alternative-relationships-section")).toBeInTheDocument();
+    expect(primaryRow.compareDocumentPosition(relationshipRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getAllByTestId("alternative-relationships-section")).toHaveLength(1);
     expect(within(screen.getByTestId("alternative-relationships-section")).queryByTestId("alternative-relationship-scale")).not.toBeInTheDocument();
     expect(within(screen.getByTestId("alternative-relationships-section")).getByTestId("visualization-reading-guide")).toHaveTextContent(/relative to the observed score range/);
@@ -378,7 +377,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
   });
 
-  it("places the consensus chart beside Expert and keeps one relationship matrix below", () => {
+  it("places consensus below Expert and keeps one relationship matrix last", () => {
     const alternatives = [
       { alternativeId: "alpha", name: "Alpha", rank: 1 },
       { alternativeId: "beta", name: "Beta", rank: 2 },
@@ -404,7 +403,7 @@ describe("VisualizationsPanel", () => {
 
     const primaryRow = screen.getByTestId("general-visualization-primary-row");
     const expert = within(primaryRow).getByTestId("expert-collective-relationship");
-    const consensus = within(primaryRow).getByTestId("consensus-level-visualization");
+    const consensus = screen.getByTestId("consensus-level-visualization");
     const relationshipRow = screen.getByTestId("alternative-relationships-secondary-row");
     const relationships = within(relationshipRow).getByTestId("alternative-relationships-section");
     expect(expert.compareDocumentPosition(consensus) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

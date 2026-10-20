@@ -73,6 +73,7 @@ export const buildAlternativeRelationshipsHeatmap = (phase) => {
   const hasMissingPairs = pairValues.size < expectedPairCount;
 
   return {
+    key: "alternative-relationships",
     type: "heatmap",
     title: "Alternative relationships",
     truncateLabels: true,
