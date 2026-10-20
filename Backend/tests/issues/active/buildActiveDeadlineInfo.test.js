@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { buildDeadlineInfo } from "../../../modules/issues/active/buildActiveDeadlineInfo.js";
 
@@ -11,13 +11,20 @@ const noDeadline = {
 
 describe("buildDeadlineInfo", () => {
   it("strictly parses persisted DD-MM-YYYY dates", () => {
-    const deadline = buildDeadlineInfo("25-09-2026");
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-01T12:00:00.000Z"));
 
-    expect(deadline).toMatchObject({
-      hasDeadline: true,
-      overdue: false,
-      iso: expect.any(String),
-    });
+    try {
+      const deadline = buildDeadlineInfo("25-09-2026");
+
+      expect(deadline).toMatchObject({
+        hasDeadline: true,
+        overdue: false,
+        iso: expect.any(String),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("returns no deadline for null", () => {
