@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-const MIN_SELECTIONS = 1;
 const MAX_SELECTIONS = 3;
 
 const uniqueKeys = (keys) => [...new Set((Array.isArray(keys) ? keys : []).filter(Boolean))];
@@ -17,11 +16,10 @@ export const useFinishedIssueResultsSelection = ({
   );
   const fallbackKey = useMemo(
     () => executionOptions?.find((option) => option.selectable)?.key
-      || optionsByKey.get("base")?.key
-      || executionOptions?.[0]?.key
-      || "base",
-    [executionOptions, optionsByKey]
+      || null,
+    [executionOptions]
   );
+  const minimumSelections = executionOptions?.some((option) => option.selectable) ? 1 : 0;
 
   useEffect(() => {
     setSelectedExecutionKeys(["base"]);
@@ -30,24 +28,22 @@ export const useFinishedIssueResultsSelection = ({
   useEffect(() => {
     setSelectedExecutionKeys((current) => {
       const pruned = uniqueKeys(current)
-        .filter((key) => optionsByKey.has(key))
-        .filter((key) => key === "base" || optionsByKey.get(key)?.selectable)
+        .filter((key) => optionsByKey.get(key)?.selectable)
         .slice(0, MAX_SELECTIONS);
-      const next = pruned.length ? pruned : [fallbackKey];
+      const next = pruned.length ? pruned : fallbackKey ? [fallbackKey] : [];
       return sameKeys(current, next) ? current : next;
     });
-  }, [fallbackKey, optionsByKey]);
+  }, [fallbackKey, minimumSelections, optionsByKey]);
 
   const normalizeSelection = (keys) => uniqueKeys(keys)
-      .filter((key) => optionsByKey.has(key))
-      .filter((key) => key === "base" || optionsByKey.get(key)?.selectable)
+      .filter((key) => optionsByKey.get(key)?.selectable)
       .slice(0, MAX_SELECTIONS);
 
   const setSelection = (nextKeys) => {
     setSelectedExecutionKeys((current) => {
       const proposed = typeof nextKeys === "function" ? nextKeys(current) : nextKeys;
       const next = normalizeSelection(proposed);
-      return next.length >= MIN_SELECTIONS && !sameKeys(current, next) ? next : current;
+      return next.length >= minimumSelections && !sameKeys(current, next) ? next : current;
     });
   };
 
@@ -60,14 +56,14 @@ export const useFinishedIssueResultsSelection = ({
 
   const removeExecution = (key) => {
     setSelection((current) => {
-      if (!current.includes(key) || current.length <= MIN_SELECTIONS) return current;
+      if (!current.includes(key) || current.length <= minimumSelections) return current;
       return current.filter((entry) => entry !== key);
     });
   };
 
   const toggleExecution = (key) => {
     setSelection((current) => {
-      if (current.includes(key)) return current.length > MIN_SELECTIONS ? current.filter((entry) => entry !== key) : current;
+      if (current.includes(key)) return current.length > minimumSelections ? current.filter((entry) => entry !== key) : current;
       if (!optionsByKey.get(key)?.selectable || current.length >= MAX_SELECTIONS) return current;
       return [...current, key];
     });
@@ -77,9 +73,9 @@ export const useFinishedIssueResultsSelection = ({
     selectedExecutionKeys,
     selectedExecutionKeySet: new Set(selectedExecutionKeys),
     primaryExecutionKey: selectedExecutionKeys[0],
-    minSelections: MIN_SELECTIONS,
+    minSelections: minimumSelections,
     maxSelections: MAX_SELECTIONS,
-    canAddMore: selectedExecutionKeys.length < MAX_SELECTIONS,
+    canAddMore: selectedExecutionKeys.length < MAX_SELECTIONS && (executionOptions || []).some((option) => option.selectable && !selectedExecutionKeys.includes(option.key)),
     setSelection,
     addExecution,
     removeExecution,

@@ -1,4 +1,5 @@
 import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from "../../../logic/selectFinishedIssueExecution.js";
+import { resolveResultPresentation } from "../../../resultPresentations/registry.js";
 import { formatFinishedIssuePhaseLabel } from "../../../logic/formatFinishedIssuePhaseLabel.js";
 import { buildRankingMovement, buildSpearmanCorrelationMatrix } from "./buildRankingComparison.js";
 import { buildResultsVisualizationsData } from "./buildResultsVisualizationsData.js";
@@ -56,7 +57,10 @@ const normalizeRanking = ({ payload, execution }) => {
     .sort((left, right) => left.position - right.position);
 };
 
-const getUnavailableReason = (execution, ranking) => {
+const getUnavailableReason = (execution, ranking, resolution) => {
+  if (!resolution.presentation?.capabilities.resultsAnalysis) {
+    return resolution.unavailableReason || `Results Analysis is not available for ${resolution.resultStructureKey}@${resolution.resultStructureVersion}.`;
+  }
   return ranking.length ? null : "This execution does not contain a standardized ranking.";
 };
 
@@ -79,8 +83,10 @@ const visibleExecutionLabels = (executions) => {
 
 const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }) => {
   const execution = resolveExecution(payload, option.key, selectedPhase);
-  const ranking = normalizeRanking({ payload, execution });
-  const unavailableReason = getUnavailableReason(execution, ranking);
+  const resultPresentation = resolveResultPresentation(execution || {});
+  const analysisSupported = Boolean(resultPresentation.presentation?.capabilities.resultsAnalysis);
+  const ranking = analysisSupported ? normalizeRanking({ payload, execution }) : [];
+  const unavailableReason = getUnavailableReason(execution, ranking, resultPresentation);
   const name = option.label || execution?.label || "—";
   const modelName = option.modelName || execution?.model?.name || "—";
   const type = execution?.type || option.type;
@@ -97,27 +103,32 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     displayLabel: shortLabel,
     color: RESULTS_ANALYSIS_SLOT_COLORS[slotIndex],
     ranking,
-    available: !unavailableReason,
+    resultStructureKey: resultPresentation.resultStructureKey,
+    resultStructureVersion: resultPresentation.resultStructureVersion,
+    analysisSupported,
+    available: analysisSupported && !unavailableReason,
     unavailableReason,
     sourcePhase: execution?.sourcePhase ?? null,
     phaseLabel: formatFinishedIssuePhaseLabel({ phase: execution?.sourcePhase, orderedPhases: execution?.phaseResults?.map((result) => result.phase) }),
     // Keep the controlled stored result and its persisted Generic Analysis
     // together. The visualization builder may use Generic Analysis only when
     // the stored standardized projection is absent.
-    standardizedOutput: execution?.standardizedOutput ?? null,
+    standardizedOutput: analysisSupported ? execution?.standardizedOutput ?? null : null,
     consensusMeasure: execution?.consensusMeasure ?? null,
     modelSpecificOutput: execution?.modelSpecificOutput ?? null,
     rawOutput: execution?.rawOutput ?? null,
-    genericAnalysis: selectExecutionGenericAnalysis(payload, option.key),
-    stageAnalyses,
+    genericAnalysis: analysisSupported ? selectExecutionGenericAnalysis(payload, option.key) : null,
+    stageAnalyses: analysisSupported ? stageAnalyses : {},
     // Retained as a compatibility alias while consumers migrate to the generic
     // stageAnalyses workspace contract.
-    alternativeEvaluationAnalysis: stageAnalyses.alternativeEvaluation ?? selectExecutionAlternativeEvaluationAnalysis(payload, option.key),
+    alternativeEvaluationAnalysis: analysisSupported
+      ? stageAnalyses.alternativeEvaluation ?? selectExecutionAlternativeEvaluationAnalysis(payload, option.key)
+      : null,
   };
 };
 
-export const buildResultsAnalysisSelectableOptions = (payload) => buildFinishedIssueExecutionOptions(payload).map((option) => {
-  const execution = buildExecution({ payload, option });
+export const buildResultsAnalysisSelectableOptions = (payload, selectedPhase = null) => buildFinishedIssueExecutionOptions(payload).map((option) => {
+  const execution = buildExecution({ payload, option, selectedPhase });
   return {
     ...option,
     displayLabel: execution.displayLabel,
@@ -127,34 +138,42 @@ export const buildResultsAnalysisSelectableOptions = (payload) => buildFinishedI
 });
 
 export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKeys, selectedPhase = null }) => {
-  const selectableOptions = buildResultsAnalysisSelectableOptions(payload);
+  const selectableOptions = buildResultsAnalysisSelectableOptions(payload, selectedPhase);
   const optionsByKey = new Map(selectableOptions.map((option) => [option.key, option]));
-  const selected = visibleExecutionLabels(asArray(selectedExecutionKeys)
+  const requested = asArray(selectedExecutionKeys)
     .slice(0, 3)
     .map((key, slotIndex) => {
       const option = optionsByKey.get(key);
       return option ? buildExecution({ payload, option, selectedPhase, slotIndex }) : null;
     })
-    .filter(Boolean));
-  const mode = selected.length > 1 ? "comparison" : "single";
+    .filter(Boolean);
+  const excludedSelections = requested.filter((execution) => !execution.analysisSupported);
+  const selected = visibleExecutionLabels(requested.filter((execution) => execution.analysisSupported));
+  const mode = selected.length > 1 ? "comparison" : selected.length === 1 ? "single" : "unavailable";
   const primary = selected[0] || null;
-  const visualizations = buildResultsVisualizationsData({ payload, executions: selected });
+  const visualizations = selected.length ? buildResultsVisualizationsData({ payload, executions: selected }) : null;
+  const analysisUnavailableReason = selected.length
+    ? null
+    : excludedSelections[0]?.unavailableReason || selectableOptions.find((option) => !option.selectable)?.unavailableReason || "No ranking-capable execution is available for Results Analysis.";
 
   return {
     mode,
     selected,
     primary,
     visualizations,
+    analysisAvailable: selected.length > 0,
+    analysisUnavailableReason,
+    excludedSelections,
     // Interpretation remains a neutral panel for now, but receives this same
     // workspace contract rather than retaining a separate primary selection.
     interpretation: { mode, selected, primary },
     selectableOptions,
     selection: {
       count: selected.length,
-      min: 1,
+      min: selectableOptions.some((option) => option.selectable) ? 1 : 0,
       max: 3,
-      canAddMore: selected.length < 3,
-      label: selected.length === 1 ? "Viewing 1 execution" : `Comparing ${selected.length} executions`,
+      canAddMore: selected.length < 3 && selectableOptions.some((option) => option.selectable && !selected.some((entry) => entry.key === option.key)),
+      label: selected.length === 0 ? "No ranking-capable execution selected" : selected.length === 1 ? "Viewing 1 execution" : `Comparing ${selected.length} executions`,
     },
     single: mode === "single" ? { available: Boolean(primary?.available), unavailableReason: primary?.unavailableReason || null, ranking: primary?.ranking || [] } : null,
     comparison: mode === "comparison" ? {

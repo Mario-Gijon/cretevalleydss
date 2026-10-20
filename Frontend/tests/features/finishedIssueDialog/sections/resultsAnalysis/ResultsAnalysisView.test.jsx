@@ -55,6 +55,23 @@ describe("ResultsAnalysisView", () => {
     expect(screen.queryByText("Outcome panel")).not.toBeInTheDocument();
   });
 
+  it("shows a capability message and no charts when the selected result disables Results Analysis", () => {
+    render(<ResultsAnalysisView
+      data={{
+        ...data,
+        analysisAvailable: false,
+        analysisUnavailableReason: "Results Analysis is not available for sorting@1.",
+        selected: [],
+      }}
+      selection={{ ...selection, selectedExecutionKeys: [] }}
+      navigation={{ activeView: "visualizations", setActiveView: vi.fn() }}
+    />);
+
+    expect(screen.getByTestId("results-analysis-unavailable")).toHaveTextContent("Results Analysis is not available for sorting@1.");
+    expect(screen.queryByText("Visualizations panel")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reload analysis" })).toBeDisabled();
+  });
+
   it("preserves execution selection while switching between the remaining views", async () => {
     const user = userEvent.setup();
     const SelectionHarness = () => {

@@ -8,6 +8,7 @@ vi.mock("@mui/x-charts/BarChart", () => ({
 
 import { useFinishedIssueResultsSelection } from "../../../../../src/features/finishedIssueDialog/hooks/useFinishedIssueResultsSelection.js";
 import { buildResultsAnalysisWorkspaceData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsAnalysisWorkspaceData.js";
+import { buildResultsAnalysisSelectableOptions } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsAnalysisWorkspaceData.js";
 import ScoreOverviewChart from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/ScoreOverviewChart.jsx";
 import FinalRankingPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/FinalRankingPanel.jsx";
 import RankingsByExecution from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/RankingsByExecution.jsx";
@@ -252,6 +253,64 @@ describe("Results analysis workspace", () => {
     await waitFor(() => expect(result.current.selectedExecutionKeys).toEqual(["scenario-a", "scenario-b"]));
   });
 
+  it("marks sorting executions unavailable for ranking analysis and keeps eligible ranking runs usable", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const sorting = completeScenario("scenario-sorting", []);
+    sorting.phaseResults[0].resultStructureKey = "sorting";
+    sorting.phaseResults[0].resultStructureVersion = 1;
+    sorting.phaseResults[0].standardizedOutput = {
+      categories: [{ categoryId: "high", label: "High", order: 1 }],
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "high" }],
+    };
+    payload.scenarios.push(sorting);
+
+    const options = buildResultsAnalysisSelectableOptions(payload);
+    expect(options.find((option) => option.key === "scenario-sorting")).toMatchObject({
+      selectable: false,
+      unavailableReason: "Results Analysis is not available for sorting@1.",
+    });
+    expect(options.find((option) => option.key === "base").selectable).toBe(true);
+
+    const mixed = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base", "scenario-sorting"] });
+    expect(mixed.selected.map((execution) => execution.key)).toEqual(["base"]);
+    expect(mixed.comparison).toBeNull();
+    expect(mixed.primary.ranking.map((entry) => entry.id)).toEqual(["b", "a"]);
+  });
+
+  it("does not build rankings or visualizations for a sorting-only workspace", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5).resultStructureKey = "sorting";
+    payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5).resultStructureVersion = 1;
+    payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5).standardizedOutput = {
+      categories: [{ categoryId: "high", label: "High", order: 1 }],
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "high" }],
+    };
+
+    const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+    expect(data.analysisAvailable).toBe(false);
+    expect(data.analysisUnavailableReason).toBe("Results Analysis is not available for sorting@1.");
+    expect(data.selected).toEqual([]);
+    expect(data.visualizations).toBeNull();
+    expect(data.comparison).toBeNull();
+  });
+
+  it("resolves Results Analysis capability from the phase selected in Finished Issue", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const initialPhase = payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 0);
+    initialPhase.resultStructureKey = "sorting";
+    initialPhase.resultStructureVersion = 1;
+    initialPhase.standardizedOutput = {
+      categories: [{ categoryId: "high", label: "High", order: 1 }],
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "high" }],
+    };
+
+    expect(buildResultsAnalysisSelectableOptions(payload, 0).find((option) => option.key === "base").selectable).toBe(false);
+    expect(buildResultsAnalysisSelectableOptions(payload, 5).find((option) => option.key === "base").selectable).toBe(true);
+  });
+
   it("uses functional selection updates for rapid changes and never leaves the workspace empty", async () => {
     const options = [{ key: "base", selectable: true }, { key: "scenario-a", selectable: true }, { key: "scenario-b", selectable: true }];
     const { result } = renderHook(() => useFinishedIssueResultsSelection({ issueId: "issue-1", executionOptions: options }));
@@ -267,6 +326,17 @@ describe("Results analysis workspace", () => {
       result.current.removeExecution("scenario-b");
     });
     expect(result.current.selectedExecutionKeys).toEqual(["scenario-b"]);
+  });
+
+  it("allows an empty Results Analysis selection when every contract disables that capability", async () => {
+    const options = [
+      { key: "base", selectable: false, unavailableReason: "Results Analysis is not available for sorting@1." },
+      { key: "sorting-run", selectable: false, unavailableReason: "Results Analysis is not available for sorting@1." },
+    ];
+    const { result } = renderHook(() => useFinishedIssueResultsSelection({ issueId: "issue-sorting", executionOptions: options }));
+    await waitFor(() => expect(result.current.selectedExecutionKeys).toEqual([]));
+    expect(result.current.minSelections).toBe(0);
+    expect(result.current.primaryExecutionKey).toBeUndefined();
   });
 
   it("uses full-width final-ranking tracks and bounded compact tracks", () => {

@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import DashboardView from "../../../../../src/features/finishedIssueDialog/sections/dashboard/components/DashboardView";
 import { buildDashboardData } from "../../../../../src/features/finishedIssueDialog/sections/dashboard/logic/buildFinishedIssueDashboardData.js";
+import { resolveResultPresentation } from "../../../../../src/features/finishedIssueDialog/resultPresentations/registry.js";
 
-const renderView = (data) => render(<ThemeProvider theme={createTheme()}><DashboardView data={data} /></ThemeProvider>);
+const renderView = (data) => render(<ThemeProvider theme={createTheme()}><DashboardView data={{ resultPresentation: resolveResultPresentation({}).presentation, ...data }} /></ThemeProvider>);
 
 describe("DashboardView Summary", () => {
   it("renders the three standalone Summary sections and canonical counts", () => {

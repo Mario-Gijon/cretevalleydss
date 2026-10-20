@@ -17,14 +17,6 @@ import {
   summaryPanelSx,
   summaryPanelHeaderSx,
   summaryHeaderIconSx,
-  rankingViewportSx,
-  rankingHeaderSx,
-  rankingRowSx,
-  firstRankingRowSx,
-  rankingMarkerSx,
-  rankingBarTrackSx,
-  rankingBarSx,
-  rankingBarCellSx,
   findingsGridSx,
   findingCardSx,
   findingListSx,
@@ -58,7 +50,7 @@ const FindingCard = ({ finding }) => {
         <Typography variant="subtitle2" sx={findingTitleSx(finding.kind)}>{finding.title}</Typography>
         {finding.kind === "overview" ? (
           <Box component="ul" sx={findingListSx}>
-            {finding.items.map((item) => <Box component="li" key={item}><Typography variant="body2">{item}</Typography></Box>)}
+            {finding.items.map((item, index) => <Box component="li" key={`${index}-${item}`}><Typography variant="body2">{item}</Typography></Box>)}
           </Box>
         ) : (
           <>
@@ -71,17 +63,9 @@ const FindingCard = ({ finding }) => {
   );
 };
 
-const safeToShowScoreBars = (ranking) => (
-  ranking.length >= 2 &&
-  ranking.every((entry) => Number.isFinite(entry.score) && entry.score >= 0) &&
-  ranking[0].score > 0 &&
-  ranking.every((entry, index) => index === 0 || ranking[index - 1].score >= entry.score)
-);
-
 const DashboardView = ({ data }) => {
-  const ranking = data.result.ranking;
-  const showScoreBars = data.result.available && safeToShowScoreBars(ranking);
-  const leaderScore = showScoreBars ? ranking[0].score : null;
+  const ResultComponent = data.resultPresentation?.DashboardResultComponent;
+  const ResultHeaderIcon = data.resultPresentation?.ResultHeaderIconComponent || ViewListRoundedIcon;
 
   return (
     <Box sx={dashboardRootSx}>
@@ -100,34 +84,13 @@ const DashboardView = ({ data }) => {
 
       <Box component="section" aria-labelledby="final-result-title" sx={summaryPanelSx}>
         <Box sx={summaryPanelHeaderSx}>
-          <Box sx={summaryHeaderIconSx("gold")}><EmojiEventsRoundedIcon sx={{ fontSize: 18 }} /></Box>
+          <Box sx={summaryHeaderIconSx("gold")}><ResultHeaderIcon sx={{ fontSize: 18 }} /></Box>
           <Typography id="final-result-title" variant="h6" sx={sectionTitleSx}>Final result</Typography>
         </Box>
-        {data.result.available ? (
-          <Box sx={rankingViewportSx} role="table" aria-label="Final ranking">
-            <Box role="row" sx={rankingHeaderSx(showScoreBars)}>
-              <Typography role="columnheader" variant="caption" color="text.secondary">#</Typography>
-              <Typography role="columnheader" variant="caption" color="text.secondary">Alternative</Typography>
-              {showScoreBars && <Box role="columnheader" aria-label="Score visualization" sx={rankingBarCellSx} />}
-              <Typography role="columnheader" variant="caption" color="text.secondary" textAlign="right">Score</Typography>
-            </Box>
-            {ranking.map((entry, index) => (
-              <Box key={`${entry.id}-${index}`} role="row" sx={[rankingRowSx(showScoreBars), index === 0 && firstRankingRowSx]}>
-                <Box role="cell" sx={rankingMarkerSx(index)}>{entry.position}</Box>
-                <Typography role="cell" variant="body2" title={entry.name} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{entry.name}</Typography>
-                {showScoreBars && (
-                  <Box role="cell" sx={rankingBarCellSx} aria-hidden="true">
-                    <Box sx={rankingBarTrackSx}>
-                      <Box sx={rankingBarSx(index, leaderScore > 0 ? (entry.score / leaderScore) * 100 : 0)} />
-                    </Box>
-                  </Box>
-                )}
-                <Typography role="cell" variant="body2" textAlign="right" sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{entry.formattedScore || "—"}</Typography>
-              </Box>
-            ))}
-          </Box>
+        {data.result.available && ResultComponent ? (
+          <ResultComponent result={data.result} />
         ) : (
-          <Typography variant="body2" color="text.secondary">No final result is available.</Typography>
+          <Typography variant="body2" color="text.secondary">{data.result.unavailableReason || "No final result is available."}</Typography>
         )}
       </Box>
 

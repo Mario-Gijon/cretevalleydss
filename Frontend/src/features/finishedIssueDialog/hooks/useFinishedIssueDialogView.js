@@ -24,8 +24,8 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
   });
   const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload, selectedPhase: navigation.selectedPhase });
   const resultsExecutionOptions = useMemo(
-    () => buildResultsAnalysisSelectableOptions(data.payload),
-    [data.payload]
+    () => buildResultsAnalysisSelectableOptions(data.payload, navigation.selectedPhase),
+    [data.payload, navigation.selectedPhase]
   );
   const resultsSelection = useFinishedIssueResultsSelection({
     issueId: data.issueId,

@@ -18,8 +18,8 @@ const ExecutionSelectionToolbar = ({ data, selectedExecutionKeys, onToggleExecut
     <Stack direction ="row" spacing={0.7} useFlexGap flexWrap="wrap" sx={{ minWidth: 0, flex: 1 }}>
       {data.selected.length > 1 ? data.selected.map((execution) => <Chip key={execution.key} label={execution.displayLabel} title={execution.fullLabel} onDelete={() => onRemoveExecution(execution.key)} variant="outlined" sx={{ maxWidth: 260, borderColor: execution.color, color: "text.primary", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />) : null}
     </Stack>
-    <Button size="small" color="secondary" variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={reload?.loading} onClick={() => reload?.reload(selectedExecutionKeys)}>{reload?.loading ? "Reloading…" : "Reload analysis"}</Button>
-    <Tooltip title={data.selection.canAddMore ? "Select executions" : "Maximum three executions"}>
+    <Button size="small" color="secondary" variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={reload?.loading || !data.analysisAvailable} onClick={() => reload?.reload(selectedExecutionKeys)}>{reload?.loading ? "Reloading…" : "Reload analysis"}</Button>
+    <Tooltip title={data.selection.canAddMore ? "Select executions" : data.selectableOptions.some((option) => option.selectable) ? "Maximum three executions" : "No ranking-capable executions are available"}>
       <span><Button size="small" color="secondary" variant="outlined" startIcon={<AddRoundedIcon />} disabled={!data.selection.canAddMore && !anchorEl} onClick={(event) => setAnchorEl(event.currentTarget)}>Executions</Button></span>
     </Tooltip>
     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} slotProps={{ paper: { sx: { maxHeight: 360, minWidth: 300 } } }}>

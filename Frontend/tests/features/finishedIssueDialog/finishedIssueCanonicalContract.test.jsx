@@ -32,6 +32,27 @@ describe("Finished Issue canonical contract", () => {
     expect(buildFinishedIssueExecutionOptions(payload).map((option) => option.key)).toEqual(["base", "scenario-ok", "scenario-secondary"]);
   });
 
+  it("carries each selected phase's persisted result structure metadata", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const basePhase = payload.phaseResults.find((result) => result.stage === "alternativeEvaluation" && result.phase === 0);
+    basePhase.resultStructureKey = "sorting";
+    basePhase.resultStructureVersion = 1;
+    const scenarioPhase = payload.scenarios[0].phaseResults.find((result) => result.phase === 0);
+    scenarioPhase.resultStructureKey = "sorting";
+    scenarioPhase.resultStructureVersion = 1;
+
+    expect(selectFinishedIssueExecution(payload, "base", 0)).toMatchObject({
+      sourcePhase: 0,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+    });
+    expect(selectFinishedIssueExecution(payload, "scenario-ok", 0)).toMatchObject({
+      sourcePhase: 0,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+    });
+  });
+
   it("keeps overview, evaluations and consensus canonical while results follow execution", () => {
     const payload = buildFinishedIssuePayloadFixture();
     const base = selectFinishedIssueExecution(payload, "base");

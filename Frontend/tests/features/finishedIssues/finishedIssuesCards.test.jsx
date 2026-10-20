@@ -81,6 +81,27 @@ describe("FinishedIssuesCards", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the sorting summary from its result structure metadata", () => {
+    renderCards({ issues: [issue({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      sortingSummary: { categoryCount: 4, assignedAlternativeCount: 9 },
+    })] });
+
+    const summary = screen.getByRole("region", { name: "Sorting summary" });
+    expect(within(summary).getByText("Sorting result")).toBeInTheDocument();
+    expect(within(summary).getByText("4 categories")).toBeInTheDocument();
+    expect(within(summary).getByText("9 alternatives assigned")).toBeInTheDocument();
+    expect(within(summary).queryByText("Ranking unavailable")).not.toBeInTheDocument();
+    expect(within(summary).queryByText("#1")).not.toBeInTheDocument();
+  });
+
+  it("does not interpret an unknown contract as a ranking even if topAlternatives exists", () => {
+    renderCards({ issues: [issue({ resultStructureKey: "future", resultStructureVersion: 3 })] });
+    expect(screen.getByRole("region", { name: "Result summary" })).toHaveTextContent("Result presentation unavailable");
+    expect(screen.queryByRole("region", { name: "Top alternatives" })).not.toBeInTheDocument();
+  });
+
   it("uses a reserved two-line description area and a compact metadata footer", () => {
     renderCards();
 
