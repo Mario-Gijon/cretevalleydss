@@ -68,6 +68,7 @@ export const createIssueScenario = async ({
       const requestSnapshot = cloneJsonCompatibleOrThrow(context.requestPayload, "requestSnapshot");
       const execution = await executeScenarioModel({
         requestPayload: requestSnapshot, targetRuntimeSnapshot: context.targetRuntimeSnapshot,
+        resultStructureContext: context.resultStructureContext,
         decisionModelsServiceBaseUrl, httpClient,
         executionAttemptInput: buildAttemptInput({ context, userId, correlationId, decisionModelsServiceBaseUrl }),
       });

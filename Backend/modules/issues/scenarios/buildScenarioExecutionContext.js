@@ -29,6 +29,7 @@ import {
   getStageExpertWeights,
   serializePreviousStageResultForExecution,
 } from "../stageResults/stageResultContract.js";
+import { resolveResultStructureParameterContextsOrThrow } from "../../decisionPlugins/modelParameters/resolveResultStructureParameterContexts.js";
 
 const requireParticipationExpertOrThrow = ({ issueId, participation }) => {
   const expert = participation.expert;
@@ -345,6 +346,12 @@ export const buildScenarioExecutionContext = async ({
       criteria,
       alternatives,
     });
+  const resultStructureContext = resolveResultStructureParameterContextsOrThrow({
+    resultStructureKey: targetRuntimeSnapshot.targetResultStructureKey,
+    resultStructureVersion: targetRuntimeSnapshot.targetResultStructureVersion,
+    parameterDefinitions: targetModel.parameters,
+    parameterValues: normalizedParams,
+  });
   const { weightsByExpertId } = buildExpertWeightSnapshotOrThrow({
     model: targetModel,
     participations: scenarioParticipations,
@@ -465,6 +472,7 @@ export const buildScenarioExecutionContext = async ({
     issue,
     targetModel,
     targetRuntimeSnapshot,
+    resultStructureContext,
     alternatives,
     criteria,
     participations: scenarioParticipations,

@@ -74,6 +74,21 @@ const assertValidResultStructure = ({ structure, modulePath }) => {
       }
     }
   }
+
+  if (Object.hasOwn(structure, "modelParameterContexts")) {
+    if (!isPlainObject(structure.modelParameterContexts)) {
+      throw new Error(`${modulePath} modelParameterContexts must be a plain object`);
+    }
+    for (const [contextKey, parameterStructureKey] of Object.entries(
+      structure.modelParameterContexts
+    )) {
+      if (!isNonEmptyString(contextKey) || !isNonEmptyString(parameterStructureKey)) {
+        throw new Error(
+          `${modulePath} modelParameterContexts must map non-empty context keys to non-empty parameter structure keys`
+        );
+      }
+    }
+  }
 };
 
 const extractResultStructureFromModule = ({ moduleExports, modulePath }) => {

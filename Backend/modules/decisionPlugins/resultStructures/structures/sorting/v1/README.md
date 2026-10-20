@@ -27,10 +27,18 @@ that canonical ID, including in persisted and historical results. Normalized
 assignments follow the Backend's authorized alternative order; this ordering
 does not express preference.
 
+The Backend also supplies `context.authorizedCategories`, resolved from the
+persisted `orderedCategories` model parameter using the model parameter
+definition frozen in the issue creation snapshot. The result's category IDs,
+labels, and orders must exactly match this configuration. The validator does
+not infer authorization from the categories returned by the executor. This
+context is only required while validating a new execution result; projections
+of already-persisted historical results continue to use their stored data.
+
 Category profiles, thresholds, reference alternatives, and their parameters
-are outside this result contract. Those belong to model parameters and issue
-configuration. No profile shape is required until the corresponding generic
-parameter contract is implemented.
+are outside this result contract. They belong to model parameters and issue
+configuration; profile requirements vary between sorting methods and are
+documented with the `orderedCategories` parameter structure.
 
 This result structure is available to validate and project stored results,
 but its `issueExecution`, `consensus`, and `resultsAnalysis` capabilities are

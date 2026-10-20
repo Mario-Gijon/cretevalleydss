@@ -122,6 +122,46 @@ describe("model manifest parameter mapping", () => {
     });
   });
 
+  it("accepts and preserves ordered category defaults in model manifests", () => {
+    const categoryParameter = {
+      key: "categories",
+      label: "Sorting categories",
+      parameterStructureKey: "orderedCategories",
+      required: true,
+      default: [
+        { categoryId: "high", label: "Shared", order: 1 },
+        { categoryId: "low", label: "Shared", order: 0 },
+      ],
+    };
+
+    expect(validateSyncableManifestModel(buildManifest([categoryParameter]))).toEqual(
+      []
+    );
+    expect(normalizeParameter(categoryParameter)).toMatchObject({
+      key: "categories",
+      parameterStructureKey: "orderedCategories",
+      default: categoryParameter.default,
+    });
+  });
+
+  it("rejects malformed category defaults through the registered parameter validator", () => {
+    expect(
+      validateSyncableManifestModel(
+        buildManifest([{
+          key: "categories",
+          label: "Sorting categories",
+          parameterStructureKey: "orderedCategories",
+          required: true,
+          default: [{ categoryId: "low", label: "Low", order: 1 }],
+        }])
+      )
+    ).toEqual([
+      expect.stringContaining(
+        "parameters[0] (categories): default category orders must be consecutive starting at zero"
+      ),
+    ]);
+  });
+
   it("preserves default omission independently of parameter structure", () => {
     const normalized = normalizeParameter({
       key: "optionalAlpha",

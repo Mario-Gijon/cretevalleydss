@@ -1,9 +1,12 @@
 import { createInternalError } from "../../../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../../../../utils/common/strings.js";
+import {
+  CATEGORY_ORDER_SEMANTICS,
+  validateAndNormalizeOrderedCategories,
+} from "../../../../shared/orderedCategories.js";
 
-export const SORTING_CATEGORY_ORDER_SEMANTICS =
-  "lower-order-is-less-preferred";
+export const SORTING_CATEGORY_ORDER_SEMANTICS = CATEGORY_ORDER_SEMANTICS;
 
 const throwInvalid = (message, field) => {
   throw createInternalError(message, { field });
@@ -41,6 +44,26 @@ const resolveAuthorizedAlternativeIds = (context) => {
   return ids;
 };
 
+const resolveAuthorizedCategories = (context) => {
+  if (!Array.isArray(context?.authorizedCategories)) {
+    throwInvalid(
+      "Sorting result validation requires Backend-authorized categories",
+      "context.authorizedCategories"
+    );
+  }
+
+  const normalized = validateAndNormalizeOrderedCategories(
+    context.authorizedCategories
+  );
+  if (!normalized.ok) {
+    throwInvalid(
+      `Backend-authorized sorting categories ${normalized.message}`,
+      "context.authorizedCategories"
+    );
+  }
+  return normalized.value;
+};
+
 export const normalizeSortingResult = ({ result, context }) => {
   if (!isPlainObject(result)) {
     throwInvalid("Model execution result must be an object", "result");
@@ -48,6 +71,7 @@ export const normalizeSortingResult = ({ result, context }) => {
 
   const authorizedAlternativeIds = resolveAuthorizedAlternativeIds(context);
   const authorizedAlternativeIdSet = new Set(authorizedAlternativeIds);
+  const authorizedCategories = resolveAuthorizedCategories(context);
 
   if (!Array.isArray(result.categories) || result.categories.length === 0) {
     throwInvalid(
@@ -66,59 +90,35 @@ export const normalizeSortingResult = ({ result, context }) => {
     );
   }
 
-  const categoryIds = new Set();
-  const categoryOrders = new Set();
-  const categories = result.categories.map((category, index) => {
-    if (!isPlainObject(category)) {
-      throwInvalid(
-        "Each sorting category must be an object",
-        `result.categories[${index}]`
-      );
-    }
-
-    const categoryId = normalizeRequiredId(
-      category.categoryId,
-      "Each sorting category requires a non-empty categoryId",
-      `result.categories[${index}].categoryId`
-    );
-    if (categoryIds.has(categoryId)) {
-      throwInvalid(
-        "Sorting category IDs must be unique",
-        `result.categories[${index}].categoryId`
-      );
-    }
-    categoryIds.add(categoryId);
-
-    const label = normalizeRequiredId(
-      category.label,
-      "Each sorting category requires a non-empty label",
-      `result.categories[${index}].label`
-    );
-
-    if (!Number.isInteger(category.order) || category.order < 0) {
-      throwInvalid(
-        "Sorting category order must be a non-negative integer",
-        `result.categories[${index}].order`
-      );
-    }
-    if (categoryOrders.has(category.order)) {
-      throwInvalid(
-        "Sorting category orders must be unique",
-        `result.categories[${index}].order`
-      );
-    }
-    categoryOrders.add(category.order);
-
-    return { categoryId, label, order: category.order };
-  });
-
-  categories.sort((left, right) => left.order - right.order);
-  if (categories.some((category, index) => category.order !== index)) {
+  const normalizedCategories = validateAndNormalizeOrderedCategories(
+    result.categories,
+    { rejectUnknownFields: false }
+  );
+  if (!normalizedCategories.ok) {
     throwInvalid(
-      "Sorting category orders must be consecutive starting at zero",
+      `Sorting result ${normalizedCategories.message}`,
       "result.categories"
     );
   }
+  const resultCategories = normalizedCategories.value;
+  const categoriesMatchAuthorization =
+    resultCategories.length === authorizedCategories.length &&
+    resultCategories.every((category, index) => {
+      const authorized = authorizedCategories[index];
+      return (
+        category.categoryId === authorized.categoryId &&
+        category.label === authorized.label &&
+        category.order === authorized.order
+      );
+    });
+  if (!categoriesMatchAuthorization) {
+    throwInvalid(
+      "Sorting result categories must exactly match Backend-authorized categories",
+      "result.categories"
+    );
+  }
+  const categories = authorizedCategories;
+  const categoryIds = new Set(categories.map((category) => category.categoryId));
 
   if (!Array.isArray(result.assignments)) {
     throwInvalid(

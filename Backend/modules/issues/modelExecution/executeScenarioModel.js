@@ -13,6 +13,7 @@ export const executeScenarioModel = async ({
   decisionModelsServiceBaseUrl,
   httpClient,
   executionAttemptInput,
+  resultStructureContext = {},
   resultStructureRegistry = RESULT_STRUCTURE_REGISTRY,
 }) => {
   const resultStructureMetadata = resolveResultStructureMetadata({
@@ -44,6 +45,7 @@ export const executeScenarioModel = async ({
         result: modelOutput,
         context: {
           kind: "scenario",
+          ...resultStructureContext,
           authorizedAlternativeIds: requestPayload.context?.alternatives?.map(
             (alternative) => alternative.id
           ),

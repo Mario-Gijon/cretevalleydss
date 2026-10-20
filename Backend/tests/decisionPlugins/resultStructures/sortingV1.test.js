@@ -26,7 +26,13 @@ const validResult = (overrides = {}) => ({
   ...overrides,
 });
 
-const normalize = (result, context = { authorizedAlternativeIds }) =>
+const defaultAuthorizedCategories = [...validResult().categories].sort(
+  (left, right) => left.order - right.order
+);
+const normalize = (
+  result,
+  context = { authorizedAlternativeIds, authorizedCategories: defaultAuthorizedCategories }
+) =>
   normalizeResultStructureOrThrow({
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
@@ -51,6 +57,11 @@ describe("sorting@1 result contract", () => {
   });
 
   it("orders categories by explicit semantics and allows shared assignments and empty categories", () => {
+    const configuredCategories = [
+      { categoryId: "bottom", label: "Same label", order: 0 },
+      { categoryId: "top", label: "Same label", order: 1 },
+      { categoryId: "empty", label: "Unused", order: 2 },
+    ];
     const normalized = normalize(validResult({
       categories: [
         { categoryId: "top", label: "Same label", order: 1 },
@@ -61,7 +72,7 @@ describe("sorting@1 result contract", () => {
         { alternativeId: authorizedAlternativeIds[0], categoryId: "top" },
         { alternativeId: authorizedAlternativeIds[1], categoryId: "top" },
       ],
-    }));
+    }), { authorizedAlternativeIds, authorizedCategories: configuredCategories });
 
     expect(normalized).toEqual({
       categories: [
@@ -92,7 +103,7 @@ describe("sorting@1 result contract", () => {
         alternativeId,
         categoryId: categories[0].categoryId,
       })),
-    }));
+    }), { authorizedAlternativeIds, authorizedCategories: categories });
     expect(normalized.categories).toHaveLength(count);
   });
 
@@ -100,6 +111,58 @@ describe("sorting@1 result contract", () => {
     expect(() => normalize(validResult(), {})).toThrow(
       "Backend-authorized alternative IDs"
     );
+  });
+
+  it("requires Backend-authorized category context and rejects invented, omitted, or changed categories", () => {
+    expect(() => normalize(validResult(), { authorizedAlternativeIds })).toThrow(
+      "Backend-authorized categories"
+    );
+
+    const configuredCategories = defaultAuthorizedCategories;
+    const assignments = authorizedAlternativeIds.map((alternativeId) => ({
+      alternativeId,
+      categoryId: "acceptable",
+    }));
+    expect(() => normalize(validResult({
+      categories: [
+        ...configuredCategories,
+        { categoryId: "invented", label: "Invented", order: 3 },
+      ],
+      assignments,
+    }))).toThrow("exactly match Backend-authorized categories");
+    expect(() => normalize(validResult({
+      categories: configuredCategories.slice(0, 2),
+      assignments,
+    }))).toThrow("exactly match Backend-authorized categories");
+    expect(() => normalize(validResult({
+      categories: configuredCategories.map((category) =>
+        category.categoryId === "acceptable"
+          ? { ...category, label: "Reinterpreted" }
+          : category
+      ),
+      assignments,
+    }))).toThrow("exactly match Backend-authorized categories");
+    expect(() => normalize(validResult({
+      categories: configuredCategories.map((category) =>
+        category.categoryId === "acceptable"
+          ? { ...category, order: 0 }
+          : category.categoryId === "excluded"
+            ? { ...category, order: 1 }
+            : category
+      ),
+      assignments,
+    }))).toThrow("exactly match Backend-authorized categories");
+  });
+
+  it("keeps accepting and projecting extra result category fields as before", () => {
+    const result = normalize(validResult({
+      categories: defaultAuthorizedCategories.map((category) => ({
+        ...category,
+        executorMetadata: "ignored",
+      })),
+    }));
+    expect(result.categories).toEqual(defaultAuthorizedCategories);
+    expect(result.categories[0]).not.toHaveProperty("executorMetadata");
   });
 
   it.each([
@@ -111,11 +174,11 @@ describe("sorting@1 result contract", () => {
     [validResult({ categories: [
       { categoryId: "same", label: "A", order: 0 },
       { categoryId: "same", label: "B", order: 1 },
-    ] }), "category IDs must be unique"],
+    ] }), "categoryId 'same' must be unique"],
     [validResult({ categories: [
       { categoryId: "a", label: "A", order: 0 },
       { categoryId: "b", label: "B", order: 0 },
-    ] }), "category orders must be unique"],
+    ] }), "category order '0' must be unique"],
     [validResult({ categories: [
       { categoryId: "a", label: "A", order: 0 },
       { categoryId: "b", label: "B", order: 2 },
@@ -174,7 +237,10 @@ describe("sorting@1 result contract", () => {
         resultStructureVersion: 1,
       },
       result: validResult(),
-      context: { authorizedAlternativeIds },
+      context: {
+        authorizedAlternativeIds,
+        authorizedCategories: defaultAuthorizedCategories,
+      },
       structureKey: "alternativeCriteriaMatrix",
     });
     const standardResult = result.standardResult;

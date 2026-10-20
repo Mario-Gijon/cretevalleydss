@@ -39,6 +39,7 @@ describe("model parameter structure registry", () => {
     const intervalGlobal = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("intervalGlobal");
     const numberCriterion = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("numberCriterion");
     const selectCriterion = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("selectCriterion");
+    const orderedCategories = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("orderedCategories");
 
     expect(numberGlobal).toMatchObject({
       key: "numberGlobal",
@@ -66,6 +67,11 @@ describe("model parameter structure registry", () => {
       validateAndNormalize: expect.any(Function),
       validateDefinition: expect.any(Function),
       remapCriterionIds: expect.any(Function),
+    });
+    expect(orderedCategories).toMatchObject({
+      key: "orderedCategories",
+      validateAndNormalize: expect.any(Function),
+      validateDefinition: expect.any(Function),
     });
   });
 

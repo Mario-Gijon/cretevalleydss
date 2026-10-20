@@ -10,6 +10,7 @@ import {
   isResultStructureCapabilityEnabled,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { buildIssueResultStructureContextOrThrow } from "./buildIssueResultStructureContext.js";
 
 export const executeAlternativeEvaluationModel = async ({
   issue,
@@ -45,6 +46,9 @@ export const executeAlternativeEvaluationModel = async ({
     phase,
     expertWeightsByExpertId,
   });
+  const resultStructureContext = await buildIssueResultStructureContextOrThrow({
+    issue,
+  });
 
   const tracked = await executeTrackedDecisionModelRequest({
     attemptInput: executionAttemptInput,
@@ -62,6 +66,7 @@ export const executeAlternativeEvaluationModel = async ({
       nextCurrentStage,
       context: {
         kind: "issue",
+        ...resultStructureContext,
         authorizedAlternativeIds: requestPayload.context.alternatives.map(
           (alternative) => alternative.id
         ),

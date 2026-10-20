@@ -11,6 +11,9 @@ export const sortingV1ResultStructure = Object.freeze({
   key: "sorting",
   version: 1,
   implementationStatus: "ready",
+  modelParameterContexts: Object.freeze({
+    authorizedCategories: "orderedCategories",
+  }),
   capabilities: Object.freeze({
     issueExecution: false,
     consensus: false,
