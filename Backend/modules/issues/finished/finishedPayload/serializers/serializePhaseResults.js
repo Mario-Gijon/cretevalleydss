@@ -9,42 +9,66 @@ import {
   getStageExpertWeights,
   getStageStandardResult,
 } from "../../../stageResults/stageResultContract.js";
+import { resolveResultStructureMetadata } from "../../../../decisionPlugins/resultStructureMetadata.js";
+import {
+  projectNormalizedResultOrThrow,
+  RESULT_STRUCTURE_REGISTRY,
+} from "../../../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const STAGE_ORDER = {
   criteriaWeighting: 0,
   alternativeEvaluation: 1,
 };
 
-const serializeRanking = ({ rankedAlternatives, alternativesById, alternativeIdsByName }) => {
-  if (!Array.isArray(rankedAlternatives)) return [];
+const serializeCriteriaWeightingResult = ({ result, standardResult, alternatives }) => {
+  const alternativesById = new Set(alternatives.map((alternative) => alternative.id));
+  const alternativeIdsByName = alternatives.reduce((map, alternative) => {
+    if (!map.has(alternative.name)) map.set(alternative.name, []);
+    map.get(alternative.name).push(alternative.id);
+    return map;
+  }, new Map());
+  const rankedAlternatives = Array.isArray(standardResult.rankedAlternatives)
+    ? standardResult.rankedAlternatives.map((entry) => {
+        const providedId = toNullableId(entry?.alternativeId);
+        const name = typeof entry?.name === "string" ? entry.name : null;
+        const alternativeId =
+          providedId && alternativesById.has(providedId)
+            ? providedId
+            : name && alternativeIdsByName.get(name)?.length === 1
+              ? alternativeIdsByName.get(name)[0]
+              : null;
 
-  return rankedAlternatives.map((entry) => {
-    const providedId = toNullableId(entry?.alternativeId);
-    const name = typeof entry?.name === "string" ? entry.name : null;
-    const resolvedId =
-      providedId && alternativesById.has(providedId)
-        ? providedId
-        : name && alternativeIdsByName.get(name)?.length === 1
-          ? alternativeIdsByName.get(name)[0]
-          : null;
-    const classification =
-      typeof entry?.classification === "string" && entry.classification.trim()
-        ? entry.classification.trim()
-        : null;
-    const resultLabel =
-      typeof entry?.resultLabel === "string" && entry.resultLabel.trim()
-        ? entry.resultLabel.trim()
-        : null;
+        return {
+          alternativeId,
+          name,
+          score: entry?.score ?? null,
+          rank: entry?.rank ?? null,
+          ...(typeof entry?.classification === "string" && entry.classification.trim()
+            ? { classification: entry.classification.trim() }
+            : {}),
+          ...(typeof entry?.resultLabel === "string" && entry.resultLabel.trim()
+            ? { resultLabel: entry.resultLabel.trim() }
+            : {}),
+        };
+      })
+    : [];
+  const consensusMeasure =
+    typeof standardResult.consensusMeasure === "number" && Number.isFinite(standardResult.consensusMeasure)
+      ? standardResult.consensusMeasure
+      : null;
 
-    return {
-      alternativeId: resolvedId,
-      name,
-      score: entry?.score ?? null,
-      rank: entry?.rank ?? null,
-      ...(classification ? { classification } : {}),
-      ...(resultLabel ? { resultLabel } : {}),
-    };
-  });
+  return {
+    consensusMeasure,
+    rankedAlternatives,
+    collectiveEvaluationId: toRequiredId(result, "phase result"),
+    plotsGraphic: cloneSerializable(standardResult.plotsGraphic, {}),
+    standardizedOutput: {
+      rankedAlternatives,
+      consensusMeasure,
+      collectiveEvaluations: cloneSerializable(standardResult.collectiveEvaluations, {}),
+      weightsByCriterion: cloneSerializable(standardResult.weightsByCriterion, null),
+    },
+  };
 };
 
 export const sortPhaseResults = (phaseResults) =>
@@ -60,14 +84,11 @@ export const sortPhaseResults = (phaseResults) =>
     );
   });
 
-export const serializePhaseResults = ({ phaseResults, alternatives }) => {
-  const alternativesById = new Map(alternatives.map((alternative) => [alternative.id, alternative]));
-  const alternativeIdsByName = alternatives.reduce((map, alternative) => {
-    if (!map.has(alternative.name)) map.set(alternative.name, []);
-    map.get(alternative.name).push(alternative.id);
-    return map;
-  }, new Map());
-
+export const serializePhaseResults = ({
+  phaseResults,
+  alternatives,
+  registry = RESULT_STRUCTURE_REGISTRY,
+}) => {
   return sortPhaseResults(phaseResults).map((result) => {
     if (!Number.isInteger(result.consensusPhase) || result.consensusPhase < 0) {
       throw createInternalError("Finished phase result has invalid phase", {
@@ -77,23 +98,40 @@ export const serializePhaseResults = ({ phaseResults, alternatives }) => {
     }
 
     const standardResult = getStageStandardResult(result);
-    const rankedAlternatives = serializeRanking({
-      rankedAlternatives: standardResult.rankedAlternatives,
-      alternativesById,
-      alternativeIdsByName,
-    });
+    let resultStructureMetadata;
+    let projectedResult;
+    if (result.stage === "criteriaWeighting") {
+      projectedResult = serializeCriteriaWeightingResult({
+        result,
+        standardResult,
+        alternatives,
+      });
+    } else {
+      resultStructureMetadata = resolveResultStructureMetadata(
+        result.result ?? {},
+        { registry }
+      );
+      projectedResult = cloneSerializable(
+        projectNormalizedResultOrThrow({
+          ...resultStructureMetadata,
+          result: standardResult,
+          target: "finishedIssuePhaseResult",
+          context: {
+            phaseResultId: toRequiredId(result, "phase result"),
+            alternatives,
+          },
+          registry,
+        }),
+        {}
+      );
+    }
 
     return {
+      ...projectedResult,
       id: toRequiredId(result, "phase result"),
       stage: result.stage,
       phase: result.consensusPhase,
-      consensusMeasure:
-        typeof standardResult.consensusMeasure === "number" && Number.isFinite(standardResult.consensusMeasure)
-          ? standardResult.consensusMeasure
-          : null,
-      rankedAlternatives,
-      collectiveEvaluationId: toRequiredId(result, "phase result"),
-      plotsGraphic: cloneSerializable(standardResult.plotsGraphic, {}),
+      ...(resultStructureMetadata ?? {}),
       expertWeightSnapshot: getStageExpertWeights(result)
         .map((entry) => ({
           expertId: toNullableId(entry.expert),
@@ -101,17 +139,6 @@ export const serializePhaseResults = ({ phaseResults, alternatives }) => {
         }))
         .filter((entry) => entry.expertId)
         .sort((left, right) => left.expertId.localeCompare(right.expertId)),
-      standardizedOutput: {
-        rankedAlternatives,
-        consensusMeasure:
-          typeof standardResult.consensusMeasure === "number" && Number.isFinite(standardResult.consensusMeasure)
-            ? standardResult.consensusMeasure
-            : null,
-        collectiveEvaluations: cloneSerializable(standardResult.collectiveEvaluations, {}),
-        ...(result.stage === "criteriaWeighting"
-          ? { weightsByCriterion: cloneSerializable(standardResult.weightsByCriterion, null) }
-          : { plotsGraphic: cloneSerializable(standardResult.plotsGraphic, {}) }),
-      },
       modelSpecificOutput: cloneSerializable(result.result?.modelExecution, {}),
       rawOutput: cloneSerializable(result.result?.rawOutput, {}),
       computedAt: toIsoOrNull(

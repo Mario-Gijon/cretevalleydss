@@ -2,41 +2,12 @@ import { Issue } from "../../../models/Issues.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { getUserFinishedIssueIds } from "../shared/queries.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  projectNormalizedResultOrThrow,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const TOP_ALTERNATIVES_LIMIT = 3;
-
-const normalizeTopAlternatives = (rankedAlternatives) =>
-  (Array.isArray(rankedAlternatives) ? rankedAlternatives : [])
-    .map((alternative, index) => ({
-      alternativeId: toIdString(alternative?.alternativeId),
-      name:
-        typeof alternative?.name === "string" && alternative.name.trim()
-          ? alternative.name.trim()
-          : null,
-      rank: Number(alternative?.rank),
-      score: alternative?.score,
-      index,
-    }))
-    .filter(
-      (alternative) =>
-        alternative.alternativeId &&
-        alternative.name &&
-        Number.isFinite(alternative.rank) &&
-        alternative.rank > 0 &&
-        typeof alternative.score === "number" &&
-        Number.isFinite(alternative.score)
-    )
-    .sort(
-      (left, right) =>
-        left.rank - right.rank || left.index - right.index
-    )
-    .slice(0, TOP_ALTERNATIVES_LIMIT)
-    .map(({ alternativeId, name, rank, score }) => ({
-      alternativeId,
-      name,
-      rank,
-      score,
-    }));
 
 export const getFinishedIssuesPayload = async ({ userId }) => {
   const normalizedUserId = toIdString(userId);
@@ -56,7 +27,7 @@ export const getFinishedIssuesPayload = async ({ userId }) => {
     issue: { $in: issues.map((issue) => issue._id) },
     stage: "alternativeEvaluation",
   })
-    .select("issue consensusPhase result.standardResult.rankedAlternatives")
+    .select("issue consensusPhase result.resultStructureKey result.resultStructureVersion result.standardResult")
     .sort({ issue: 1, consensusPhase: -1, _id: -1 })
     .lean();
   const finalResultByIssueId = new Map();
@@ -78,9 +49,19 @@ export const getFinishedIssuesPayload = async ({ userId }) => {
     closureDate: issue.closureDate ?? null,
     finishedAt: issue.finishedAt ?? null,
     isIssueOwner: sameId(issue.ownerId?._id, normalizedUserId),
-    topAlternatives: normalizeTopAlternatives(
-      finalResultByIssueId.get(toIdString(issue._id))?.result?.standardResult
-        ?.rankedAlternatives
-    ),
+    ...(() => {
+      const finalResult = finalResultByIssueId.get(toIdString(issue._id));
+      if (!finalResult) return { topAlternatives: [] };
+
+      const resultStructureMetadata = resolveResultStructureMetadata(
+        finalResult.result ?? {}
+      );
+      return projectNormalizedResultOrThrow({
+        ...resultStructureMetadata,
+        result: finalResult.result?.standardResult ?? {},
+        target: "finishedIssueListSummary",
+        context: { limit: TOP_ALTERNATIVES_LIMIT },
+      });
+    })(),
   }));
 };

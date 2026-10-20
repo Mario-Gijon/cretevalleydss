@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildResultStructureRegistry } from "../../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { serializeScenarios } from "../../../modules/issues/finished/finishedPayload/serializers/serializeScenarios.js";
 
 const targetModel = { _id: "model-1", name: "Replay model", moreInfoUrl: "https://example.test/model" };
@@ -17,7 +18,89 @@ describe("serializeScenarios", () => {
 
     expect(scenario.phaseResults.map((entry) => entry.phase)).toEqual([0, 2]);
     expect(scenario.phaseResults[1]).toMatchObject({ source: { stageResult: "stage-2" }, requestSnapshot: { modelParameters: { alpha: 0.8 } }, standardizedOutput: { consensusMeasure: 0.9 }, modelSpecificOutput: { phase: 2 }, rawOutput: { phase: 2 }, execution: { attemptId: "attempt-2" } });
+    expect(scenario.phaseResults[1]).toMatchObject({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+      consensusMeasure: 0.9,
+    });
     expect(scenario).not.toHaveProperty("source");
+  });
+
+  it("preserves a scenario result from its persisted non-ranking structure", () => {
+    const registry = buildResultStructureRegistry([{
+      key: "synthetic-results",
+      version: 1,
+      validateAndNormalize: ({ result }) => result,
+      projectNormalizedResult: ({ result, target }) => {
+        if (target === "finishedIssueScenarioPhaseResult") {
+          return { standardizedOutput: result };
+        }
+        throw new TypeError(`Unsupported synthetic projection '${target}'`);
+      },
+    }]);
+    const standardizedResult = {
+      assignments: [{ itemId: "item-1", group: "preferred" }],
+      confidence: { level: 0.93 },
+      customField: "scenario-preserved",
+    };
+    const [scenario] = serializeScenarios({
+      registry,
+      scenarios: [{
+        _id: "scenario-1",
+        name: "Synthetic result",
+        targetModel: { _id: "model-1", name: "Current catalog model", resultStructureKey: "ranking", resultStructureVersion: 1 },
+        phaseResults: [{
+          phase: 0,
+          source: {},
+          requestSnapshot: { pluginRequest: { threshold: 0.7 } },
+          result: {
+            resultStructureKey: "synthetic-results",
+            resultStructureVersion: 1,
+            standardResult: standardizedResult,
+            modelExecution: { customExecutionField: "execution-preserved" },
+            rawOutput: { customRawField: "raw-preserved" },
+          },
+          execution: {
+            attemptId: "attempt-1",
+            startedAt: new Date("2026-02-03T10:00:00.000Z"),
+            completedAt: new Date("2026-02-03T10:01:00.000Z"),
+          },
+        }],
+      }],
+    });
+
+    expect(scenario.phaseResults[0]).toMatchObject({
+      resultStructureKey: "synthetic-results",
+      resultStructureVersion: 1,
+      standardizedOutput: standardizedResult,
+      requestSnapshot: { pluginRequest: { threshold: 0.7 } },
+      modelSpecificOutput: { customExecutionField: "execution-preserved" },
+      rawOutput: { customRawField: "raw-preserved" },
+      execution: {
+        attemptId: "attempt-1",
+        startedAt: "2026-02-03T10:00:00.000Z",
+        completedAt: "2026-02-03T10:01:00.000Z",
+      },
+    });
+    expect(scenario.phaseResults[0]).not.toHaveProperty("rankedAlternatives");
+    expect(scenario.phaseResults[0].standardizedOutput).not.toHaveProperty("rankedAlternatives");
+  });
+
+  it.each([
+    [{ resultStructureKey: "missing", resultStructureVersion: 1 }, "Unsupported resultStructureKey"],
+    [{ resultStructureKey: "ranking", resultStructureVersion: 99 }, "Unsupported resultStructureVersion"],
+  ])("rejects incompatible scenario result metadata %j", (metadata, message) => {
+    expect(() => serializeScenarios({
+      scenarios: [{
+        _id: "scenario-1",
+        targetModel,
+        phaseResults: [{
+          phase: 0,
+          result: { ...metadata, standardResult: {}, modelExecution: {}, rawOutput: {} },
+          execution: {},
+        }],
+      }],
+    })).toThrow(message);
   });
 
 });

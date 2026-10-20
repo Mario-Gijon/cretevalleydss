@@ -18,6 +18,9 @@ const RESULT_PROJECTION_TARGETS = new Set([
   "scenarioInput",
   "stateSnapshot",
   "activeIssueResponse",
+  "finishedIssuePhaseResult",
+  "finishedIssueScenarioPhaseResult",
+  "finishedIssueListSummary",
 ]);
 
 const isValidResultStructure = (value) =>
@@ -254,10 +257,9 @@ export const normalizeResultStructureOrThrow = ({
 };
 
 /**
- * Projects normalized data at a named persistence or compatibility boundary:
- * stagePersistence, executionResponse, scenarioInput, stateSnapshot, or
- * activeIssueResponse.
- * Structures without family-specific projections preserve the normalized object.
+ * Projects normalized data at a named persistence or compatibility boundary.
+ * Finished Issue projections use a wrapper with `standardizedOutput` as their
+ * default; list summaries default to no family-specific fields.
  */
 export const projectNormalizedResultOrThrow = ({
   resultStructureKey,
@@ -276,9 +278,19 @@ export const projectNormalizedResultOrThrow = ({
     resultStructureVersion,
     registry
   );
-  const projectedResult = structure.projectNormalizedResult
+  let projectedResult = structure.projectNormalizedResult
     ? structure.projectNormalizedResult({ result, target, context })
-    : result;
+    : undefined;
+
+  if (projectedResult === undefined) {
+    projectedResult =
+      target === "finishedIssuePhaseResult" ||
+      target === "finishedIssueScenarioPhaseResult"
+        ? { standardizedOutput: result }
+        : target === "finishedIssueListSummary"
+          ? {}
+          : result;
+  }
 
   if (
     projectedResult === null ||
