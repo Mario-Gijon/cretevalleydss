@@ -31,3 +31,21 @@ Current layers cover:
 - consensusPhase isolation and re-entry-safe evaluation persistence
 
 Tests use a MongoDB in-memory replica set via `mongodb-memory-server`, so transaction-backed flows can run without an external database.
+
+## Backend and DecisionModelsService integration
+
+The PROMETHEE VI criterion-parameter integration is opt-in and is not included in the normal Backend test suite. It calls the real DecisionModelsService input preparer, so set `DECISION_MODELS_PYTHON` to an interpreter with that service's Python dependencies installed.
+
+From `Backend`, on POSIX shells:
+
+```bash
+DECISION_MODELS_PYTHON=/path/to/python npm run test:integration:decision-models
+```
+
+For example, point it at the service virtual environment when available:
+
+```bash
+DECISION_MODELS_PYTHON=../DecisionModelsService/.venv/bin/python npm run test:integration:decision-models
+```
+
+On PowerShell, set `$env:DECISION_MODELS_PYTHON` to the interpreter path first, then run `npm run test:integration:decision-models`. The interpreter may also be a command available on `PATH`; the integration test runs it with `DecisionModelsService` as its working directory.

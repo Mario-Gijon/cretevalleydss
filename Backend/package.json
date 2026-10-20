@@ -38,6 +38,7 @@
     "dev": "NODE_ENV=development nodemon server.js",
     "start": "NODE_ENV=production node server.js",
     "test": "vitest run --maxWorkers=1",
+    "test:integration:decision-models": "vitest run --config vitest.integration.config.js --maxWorkers=1",
     "test:watch": "vitest --watch --maxWorkers=1",
     "seed:e2e:auth": "node scripts/e2e/seedAuthSmokeUser.js",
     "seed:e2e:create-issue": "node scripts/e2e/seedCreateIssueSmokeFixtures.js",
