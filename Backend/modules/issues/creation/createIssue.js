@@ -1,4 +1,5 @@
 import { Issue } from "../../../models/Issues.js";
+import { Criterion } from "../../../models/Criteria.js";
 import { normalizeCreateIssueInput } from "./normalizeCreateIssueInput.js";
 import { loadCreateIssueActorsAndModel } from "./loadCreateIssueData.js";
 import {
@@ -27,6 +28,7 @@ import {
 import {
   createBadRequestError,
   createConflictError,
+  createInternalError,
 } from "../../../utils/common/errors.js";
 import axios from "axios";
 import {
@@ -41,6 +43,7 @@ import { getOrderedParentCriteriaFromInputOrThrow } from "../evaluations/criteri
 import {
   validateAndNormalizeExpertWeightsOrThrow,
 } from "../shared/expertWeights.js";
+import { remapModelParametersCriterionIdsOrThrow } from "../../modelParameters/remapModelParametersCriterionIds.js";
 import {
   createIssueEventOperationMetadata,
   ISSUE_EVENT_TYPES,
@@ -223,6 +226,17 @@ export const persistPreparedIssueCreation = async ({
   occurredAt = null,
   session,
 }) => {
+  if (
+    !session ||
+    typeof session.inTransaction !== "function" ||
+    !session.inTransaction()
+  ) {
+    throw createInternalError(
+      "Issue creation persistence requires an active MongoDB transaction",
+      { field: "session" }
+    );
+  }
+
   const {
     input,
     ownerUserId,
@@ -278,21 +292,35 @@ export const persistPreparedIssueCreation = async ({
     criteriaWeightingLevel: resolvedCriteriaWeighting.level ?? "leaf",
   });
 
-  await issue.save({ session });
+  const leafCriteria = [];
+  const criteriaToPersist = [];
+  const criterionIdMappings = [];
+  await createCriteriaRecursively({
+    issueId: issue._id,
+    nodes: input.criteria,
+    leafCriteria,
+    criteriaToPersist,
+    criterionIdMappings,
+  });
+
+  issue.modelParameters = remapModelParametersCriterionIdsOrThrow({
+    model,
+    modelParameters: normalizedModelParameters,
+    criterionIdMappings,
+    persistedLeafCriteria: leafCriteria,
+    alternatives: input.normalizedAlternatives.map((alternative) => ({
+      id: null,
+      name: alternative.name,
+    })),
+  });
 
   await createIssueAlternatives({
     issueId: issue._id,
     normalizedAlternatives: input.normalizedAlternatives,
     session,
   });
-
-  const leafCriteria = [];
-  await createCriteriaRecursively({
-    issueId: issue._id,
-    nodes: input.criteria,
-    leafCriteria,
-    session,
-  });
+  await Criterion.insertMany(criteriaToPersist, { session, ordered: true });
+  await issue.save({ session });
 
   await assignIssueExpressionDomainSnapshotsOrThrow({
     issueId: issue._id,

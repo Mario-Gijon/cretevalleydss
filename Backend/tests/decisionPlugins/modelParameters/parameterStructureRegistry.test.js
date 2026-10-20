@@ -16,13 +16,14 @@ const createTemporaryStructuresRoot = () => {
   return root;
 };
 
-const writeParameterStructure = ({ root, folderName, key = folderName, status }) => {
+const writeParameterStructure = ({ root, folderName, key = folderName, status, remapCriterionIds }) => {
   const directory = path.join(root, folderName);
   fs.mkdirSync(directory, { recursive: true });
   const statusSource = status === undefined ? "" : `, implementationStatus: ${JSON.stringify(status)}`;
+  const remapSource = remapCriterionIds === undefined ? "" : `, remapCriterionIds: ${JSON.stringify(remapCriterionIds)}`;
   fs.writeFileSync(
     path.join(directory, "index.js"),
-    `export const structure = { key: ${JSON.stringify(key)}, validateAndNormalize: () => ({ ok: true })${statusSource} };\n`,
+    `export const structure = { key: ${JSON.stringify(key)}, validateAndNormalize: () => ({ ok: true })${statusSource}${remapSource} };\n`,
     "utf8"
   );
 };
@@ -58,11 +59,13 @@ describe("model parameter structure registry", () => {
       key: "numberCriterion",
       validateAndNormalize: expect.any(Function),
       validateDefinition: expect.any(Function),
+      remapCriterionIds: expect.any(Function),
     });
     expect(selectCriterion).toMatchObject({
       key: "selectCriterion",
       validateAndNormalize: expect.any(Function),
       validateDefinition: expect.any(Function),
+      remapCriterionIds: expect.any(Function),
     });
   });
 
@@ -115,5 +118,18 @@ describe("model parameter structure registry", () => {
     await expect(
       loadParameterStructures({ structuresRoot: mismatchedScaffoldRoot })
     ).rejects.toThrow("must match folder name 'scaffoldFolder'");
+  });
+
+  it("rejects invalid optional criterion remappers", async () => {
+    const root = createTemporaryStructuresRoot();
+    writeParameterStructure({
+      root,
+      folderName: "invalidRemapper",
+      remapCriterionIds: "not-a-function",
+    });
+
+    await expect(loadParameterStructures({ structuresRoot: root })).rejects.toThrow(
+      "optional remapCriterionIds must be a function"
+    );
   });
 });

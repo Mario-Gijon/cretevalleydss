@@ -1,8 +1,10 @@
 import { validateAndNormalizeSelectCriterion } from "./validateAndNormalize.js";
 import { validateSelectCriterionDefinition } from "./validateDefinition.js";
+import { remapCriterionKeyedParameterValueOrThrow } from "../../criterionParameterRemapping.js";
 
 export const selectCriterionParameterStructure = Object.freeze({
   key: "selectCriterion",
   validateDefinition: validateSelectCriterionDefinition,
   validateAndNormalize: validateAndNormalizeSelectCriterion,
+  remapCriterionIds: remapCriterionKeyedParameterValueOrThrow,
 });

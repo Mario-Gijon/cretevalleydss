@@ -21,7 +21,8 @@ export const createCriteriaRecursively = async ({
   issueId,
   nodes,
   leafCriteria,
-  session,
+  criteriaToPersist = [],
+  criterionIdMappings = [],
   parentCriterionId = null,
 }) => {
   for (const [index, node] of nodes.entries()) {
@@ -38,7 +39,11 @@ export const createCriteriaRecursively = async ({
       position: index,
     });
 
-    await criterion.save({ session });
+    criteriaToPersist.push(criterion);
+    criterionIdMappings.push({
+      sourceCriterionId: node.id,
+      persistedCriterionId: String(criterion._id),
+    });
 
     if (isLeaf) {
       leafCriteria.push(criterion);
@@ -49,8 +54,11 @@ export const createCriteriaRecursively = async ({
       issueId,
       nodes: children,
       leafCriteria,
-      session,
+      criteriaToPersist,
+      criterionIdMappings,
       parentCriterionId: criterion._id,
     });
   }
+
+  return criterionIdMappings;
 };

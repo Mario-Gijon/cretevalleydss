@@ -23,6 +23,9 @@ const isValidParameterStructure = (value) => {
   return (
     value.validateDefinition === undefined ||
     typeof value.validateDefinition === "function"
+  ) && (
+    value.remapCriterionIds === undefined ||
+    typeof value.remapCriterionIds === "function"
   );
 };
 
@@ -46,7 +49,7 @@ const extractParameterStructureFromModule = ({ moduleExports, modulePath }) => {
 
   if (structures.length === 0) {
     throw new Error(
-      `${modulePath} must export exactly one valid parameter structure object`
+      `${modulePath} must export exactly one valid parameter structure object; optional remapCriterionIds must be a function`
     );
   }
 
