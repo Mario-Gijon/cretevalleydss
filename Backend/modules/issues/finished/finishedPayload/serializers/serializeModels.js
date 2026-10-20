@@ -1,6 +1,7 @@
 import { buildDefaultsResolved, mergeParamsResolved } from "../../../../decisionPlugins/modelParameters/resolveModelParameterValues.js";
 import { buildScenarioCompatibilityMetadata } from "../../../scenarios/validateScenarioModelCompatibility.js";
 import { resolveModelPaperUrl } from "./modelPaperUrl.js";
+import { resolveResultStructureMetadata } from "../../../../decisionPlugins/resultStructureMetadata.js";
 import {
   cloneSerializable,
   toNullableId,
@@ -22,7 +23,13 @@ const serializeCapabilities = (model) => ({
   supportedExpressionDomains: cloneSerializable(model.supportedExpressionDomains, []),
 });
 
-const serializeModel = ({ model, configuredParameters, leafCount, runtime }) => {
+const serializeModel = ({
+  model,
+  configuredParameters,
+  leafCount,
+  runtime,
+  resultStructureMetadata,
+}) => {
   if (!model) return null;
   const defaults = buildDefaultsResolved({ modelDoc: model, leafCount });
 
@@ -36,6 +43,9 @@ const serializeModel = ({ model, configuredParameters, leafCount, runtime }) => 
     },
     kind: model.modelKind,
     evaluationStructureKey: model.evaluationStructureKey,
+    ...(model.modelKind === "issue"
+      ? resultStructureMetadata ?? resolveResultStructureMetadata(model)
+      : {}),
     capabilities: serializeCapabilities(model),
     parameterDefinitions: cloneSerializable(model.parameters, []),
     configuredParameters: cloneSerializable(configuredParameters, {}),
@@ -66,6 +76,7 @@ export const serializeModels = ({ issue, compatibleModels, expressionDomains, cr
       apiModelKey: issue.apiModelKey,
       apiEndpoint: issue.apiEndpoint,
     },
+    resultStructureMetadata: resolveResultStructureMetadata(issue),
   });
   const criteriaWeighting = serializeModel({
     model: issue.criteriaWeightingModel,
@@ -93,6 +104,9 @@ export const serializeModels = ({ issue, compatibleModels, expressionDomains, cr
         },
         kind: model.modelKind,
         evaluationStructureKey: model.evaluationStructureKey,
+        ...(model.modelKind === "issue"
+          ? resolveResultStructureMetadata(model)
+          : {}),
         capabilities: serializeCapabilities(model),
         parameterDefinitions: cloneSerializable(model.parameters, []),
         compatibility: {

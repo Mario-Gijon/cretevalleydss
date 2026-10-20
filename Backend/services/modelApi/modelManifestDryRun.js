@@ -1,5 +1,6 @@
 import { IssueModel } from "../../models/IssueModels.js";
 import { Issue } from "../../models/Issues.js";
+import { resolveResultStructureMetadata } from "../../modules/decisionPlugins/resultStructureMetadata.js";
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
@@ -56,7 +57,10 @@ const isMongoFieldPresent = (mongoModel, field) =>
 const compareTechnicalFields = (manifestModel, mongoModel) => {
   const differences = [];
   const manifestProjection = buildManifestTechnicalProjection(manifestModel);
-  const manifestSyncFields = getManifestSyncFields(manifestProjection);
+  const manifestSyncFields = getManifestSyncFields(manifestProjection).filter(
+    (field) =>
+      field !== "resultStructureKey" && field !== "resultStructureVersion"
+  );
 
   for (const field of manifestSyncFields) {
     const manifestRawValue = getManifestTechnicalValue(
@@ -82,6 +86,42 @@ const compareTechnicalFields = (manifestModel, mongoModel) => {
         ? "Values differ"
         : "Field is not stored in Mongo IssueModel",
     });
+  }
+
+  if (manifestProjection.modelKind === "issue") {
+    try {
+      const manifestMetadata = resolveResultStructureMetadata(manifestProjection);
+      const mongoMetadata = resolveResultStructureMetadata(mongoModel);
+      for (const field of ["resultStructureKey", "resultStructureVersion"]) {
+        if (manifestMetadata[field] === mongoMetadata[field]) continue;
+
+        differences.push({
+          field,
+          manifestValue: manifestMetadata[field],
+          mongoValue: mongoMetadata[field],
+          mongoFieldPresent: hasOwnKey(mongoModel || {}, field),
+          reason: hasOwnKey(mongoModel || {}, field)
+            ? "Values differ"
+            : "Field is not stored in Mongo IssueModel",
+        });
+      }
+    } catch (error) {
+      differences.push({
+        field: "resultStructureMetadata",
+        manifestValue: {
+          resultStructureKey: manifestProjection.resultStructureKey ?? null,
+          resultStructureVersion: manifestProjection.resultStructureVersion ?? null,
+        },
+        mongoValue: {
+          resultStructureKey: mongoModel?.resultStructureKey ?? null,
+          resultStructureVersion: mongoModel?.resultStructureVersion ?? null,
+        },
+        mongoFieldPresent:
+          hasOwnKey(mongoModel || {}, "resultStructureKey") ||
+          hasOwnKey(mongoModel || {}, "resultStructureVersion"),
+        reason: error.message,
+      });
+    }
   }
 
   return differences;
@@ -208,6 +248,14 @@ const buildModelRow = ({
       manifestProjection?.evaluationStructureKey ??
       mongoModel?.evaluationStructureKey ??
       null,
+    resultStructureKey:
+      manifestProjection?.resultStructureKey ??
+      mongoModel?.resultStructureKey ??
+      null,
+    resultStructureVersion:
+      manifestProjection?.resultStructureVersion ??
+      mongoModel?.resultStructureVersion ??
+      null,
     supportsCreatorCriteriaWeighting:
       manifestProjection?.supportsCreatorCriteriaWeighting ??
       mongoModel?.supportsCreatorCriteriaWeighting ??
@@ -296,6 +344,7 @@ export const buildModelManifestDryRunReport = async ({
   const modelRows = [];
   const missingInMongo = [];
   const invalidManifestRuntimeFields = [];
+  const manifestKeysWithInvalidRuntimeFields = new Set();
   const technicalDifferences = [];
   const localConfigurationDifferences = [];
   const warnings = [];
@@ -309,6 +358,13 @@ export const buildModelManifestDryRunReport = async ({
     const runtimeValidationErrors = validateSyncableManifestModel(manifestModel);
 
     if (runtimeValidationErrors.length > 0) {
+      const invalidManifestApiModelKey = String(
+        manifestModel?.apiModelKey || ""
+      ).trim();
+      if (invalidManifestApiModelKey) {
+        manifestKeysWithInvalidRuntimeFields.add(invalidManifestApiModelKey);
+      }
+
       invalidManifestRuntimeFields.push({
         apiModelKey: manifestModel?.apiModelKey ?? null,
         displayName: manifestModel?.displayName ?? null,
@@ -420,6 +476,14 @@ export const buildModelManifestDryRunReport = async ({
     const apiModelKey = entry.model?.apiModelKey ?? null;
     const mongoName = entry.model?.name ?? null;
     const mongoId = toIdString(entry.model?._id);
+
+    if (
+      manifestKeysWithInvalidRuntimeFields.has(
+        String(apiModelKey || "").trim()
+      )
+    ) {
+      continue;
+    }
 
     if (!canManageMissingModel(entry.model)) {
       warnings.push(

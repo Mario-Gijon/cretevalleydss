@@ -33,6 +33,37 @@ def test_valid_issue_model_definition():
 
     assert definition.model_kind == "issue"
     assert definition.implementation_status == "ready"
+    assert definition.result_structure_key == "ranking"
+    assert definition.result_structure_version == 1
+
+
+def test_issue_model_definition_accepts_the_supported_result_contract():
+    definition = _build_definition(
+        result_structure_key="ranking",
+        result_structure_version=1,
+    )
+
+    assert definition.result_structure_key == "ranking"
+    assert definition.result_structure_version == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"result_structure_key": "sorting", "result_structure_version": 1},
+        {"result_structure_key": "ranking", "result_structure_version": 2},
+        {"result_structure_key": "ranking", "result_structure_version": 0},
+        {"result_structure_key": "ranking", "result_structure_version": True},
+        {"result_structure_key": "   ", "result_structure_version": 1},
+        {"result_structure_key": "ranking"},
+        {"result_structure_version": 1},
+    ],
+)
+def test_issue_model_definition_rejects_unknown_incomplete_or_incompatible_result_contracts(
+    overrides,
+):
+    with pytest.raises(ValueError, match="result_structure"):
+        _build_definition(**overrides)
 
 
 def test_model_definition_accepts_valid_model_section():
@@ -77,6 +108,8 @@ def test_valid_criteria_weighting_definition_with_creator_side_support():
 
     assert definition.supports_creator_criteria_weighting is True
     assert definition.supports_expert_criteria_weighting is False
+    assert definition.result_structure_key is None
+    assert definition.result_structure_version is None
 
 
 def test_valid_criteria_weighting_definition_with_expert_side_support():
@@ -124,6 +157,16 @@ def test_valid_criteria_weighting_definition_with_expert_side_support():
                 "supports_expert_criteria_weighting": False,
             },
             "must support creator-side or expert-side criteria weighting",
+        ),
+        (
+            {
+                "model_kind": "criteriaWeighting",
+                "evaluation_structure_key": "manualCriteriaWeights",
+                "supports_creator_criteria_weighting": True,
+                "result_structure_key": "ranking",
+                "result_structure_version": 1,
+            },
+            "must not declare result structure metadata",
         ),
     ],
 )

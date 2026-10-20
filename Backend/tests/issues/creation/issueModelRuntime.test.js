@@ -44,6 +44,8 @@ describe("issue model runtime configuration", () => {
         path: "/solve/runtime",
       },
       evaluationStructureKey: "alternativeCriteriaMatrix",
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
       supportsConsensus: false,
       supportsConsensusSimulation: false,
       requiresHomogeneousExpressionDomains: false,
@@ -110,6 +112,17 @@ describe("issue model runtime configuration", () => {
       )
     ).toThrow(/supportsConsensus must be boolean/);
   });
+
+  it.each([
+    [{ resultStructureKey: "ranking" }, /provided together/],
+    [{ resultStructureKey: "sorting", resultStructureVersion: 1 }, /Unsupported resultStructureKey/],
+    [{ resultStructureKey: "ranking", resultStructureVersion: 2 }, /Unsupported resultStructureVersion/],
+    [{ resultStructureKey: "ranking", resultStructureVersion: 0 }, /positive integer/],
+  ])("rejects incompatible result structure metadata %o", (metadata, message) => {
+    expect(() =>
+      validateIssueModelRuntimeConfigOrThrow(buildRuntimeModelConfig(metadata))
+    ).toThrow(message);
+  });
 });
 
 describe("loadCreateIssueActorsAndModel", () => {
@@ -145,6 +158,8 @@ describe("loadCreateIssueActorsAndModel", () => {
     expect(result.expertByEmail.get("expert@example.com")).toBeTruthy();
     expect(result.apiModelKey).toBe(model.apiModelKey);
     expect(result.apiEndpoint.path).toBe("/solve");
+    expect(result.resultStructureKey).toBe("ranking");
+    expect(result.resultStructureVersion).toBe(1);
   });
 
   it("rejects a missing selected model", async () => {

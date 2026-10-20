@@ -4,6 +4,8 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 MODEL_KINDS = {"issue", "criteriaWeighting"}
+DEFAULT_RESULT_STRUCTURE_KEY = "ranking"
+DEFAULT_RESULT_STRUCTURE_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,8 @@ class ModelDefinition:
     supports_expert_criteria_weighting: bool = False
 
     evaluation_structure_key: str = ""
+    result_structure_key: str | None = None
+    result_structure_version: int | None = None
     supports_consensus: bool = False
     supports_consensus_simulation: bool = False
     is_multi_criteria: bool | None = None
@@ -81,6 +85,69 @@ class ModelDefinition:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
                 f"model_kind in {sorted(MODEL_KINDS)}."
+            )
+
+        if self.model_kind == "issue":
+            if (
+                self.result_structure_key is None
+                and self.result_structure_version is None
+            ):
+                object.__setattr__(
+                    self, "result_structure_key", DEFAULT_RESULT_STRUCTURE_KEY
+                )
+                object.__setattr__(
+                    self,
+                    "result_structure_version",
+                    DEFAULT_RESULT_STRUCTURE_VERSION,
+                )
+            elif (
+                self.result_structure_key is None
+                or self.result_structure_version is None
+            ):
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' requires both "
+                    "result_structure_key and result_structure_version."
+                )
+
+            if (
+                not isinstance(self.result_structure_key, str)
+                or not self.result_structure_key.strip()
+                or self.result_structure_key != self.result_structure_key.strip()
+            ):
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' requires a non-empty, "
+                    "trimmed result_structure_key."
+                )
+
+            if self.result_structure_key != DEFAULT_RESULT_STRUCTURE_KEY:
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' has unsupported "
+                    f"result_structure_key '{self.result_structure_key}'."
+                )
+
+            if (
+                isinstance(self.result_structure_version, bool)
+                or not isinstance(self.result_structure_version, int)
+                or self.result_structure_version <= 0
+            ):
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' requires "
+                    "result_structure_version to be a positive integer."
+                )
+
+            if self.result_structure_version != DEFAULT_RESULT_STRUCTURE_VERSION:
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' has unsupported "
+                    f"result_structure_version '{self.result_structure_version}' "
+                    f"for result_structure_key '{self.result_structure_key}'."
+                )
+        elif (
+            self.result_structure_key is not None
+            or self.result_structure_version is not None
+        ):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' must not declare result "
+                "structure metadata for a criteriaWeighting model."
             )
 
         if not isinstance(self.requires_homogeneous_expression_domains, bool):

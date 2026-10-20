@@ -1,5 +1,6 @@
 import { IssueModel } from "../../models/IssueModels.js";
 import { Issue } from "../../models/Issues.js";
+import { resolveResultStructureMetadata } from "../../modules/decisionPlugins/resultStructureMetadata.js";
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
@@ -55,18 +56,39 @@ const findMongoMatch = (manifestModel, mongoEntries) => {
 };
 
 const getChangedSyncFields = (model, payload) => {
+  const resultStructureFields = [
+    "resultStructureKey",
+    "resultStructureVersion",
+  ];
   const comparedFields = Object.keys(payload).filter(
     (field) =>
       field !== "manifestSync" &&
       field !== "visibleInIssueCreation" &&
-      field !== "visibleInCriteriaWeighting"
+      field !== "visibleInCriteriaWeighting" &&
+      !resultStructureFields.includes(field)
   );
 
-  return comparedFields.filter(
+  const changedFields = comparedFields.filter(
     (field) =>
       hasOwnKey(payload, field) &&
       !isValueEqual(field, model[field], payload[field])
   );
+
+  if (payload.modelKind !== "issue" && model.modelKind !== "issue") {
+    return changedFields;
+  }
+
+  try {
+    const currentMetadata = resolveResultStructureMetadata(model);
+    const nextMetadata = resolveResultStructureMetadata(payload);
+    return changedFields.concat(
+      resultStructureFields.filter(
+        (field) => currentMetadata[field] !== nextMetadata[field]
+      )
+    );
+  } catch {
+    return changedFields.concat(resultStructureFields);
+  }
 };
 
 const getApplicableVisibilityField = (modelKind) => {
@@ -192,7 +214,7 @@ const buildBlockedDeletionItem = ({ entry, apiModelKey, references }) => ({
 
 const reconcileMissingManagedModels = async ({
   mongoEntries,
-  syncableKeys,
+  manifestKeys,
   now,
   warnings,
 }) => {
@@ -202,7 +224,7 @@ const reconcileMissingManagedModels = async ({
   for (const entry of mongoEntries) {
     const apiModelKey = String(entry.model.apiModelKey || "").trim();
 
-    if (entry.matched || !apiModelKey || syncableKeys.has(apiModelKey)) {
+    if (entry.matched || !apiModelKey || manifestKeys.has(apiModelKey)) {
       continue;
     }
 
@@ -306,9 +328,14 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
   const unchanged = [];
   const skipped = [];
   const warnings = [];
-  const syncableKeys = new Set();
+  const manifestKeys = new Set();
 
   for (const manifestModel of manifestModels) {
+    const manifestApiModelKey = String(manifestModel?.apiModelKey || "").trim();
+    if (manifestApiModelKey) {
+      manifestKeys.add(manifestApiModelKey);
+    }
+
     const blockerReason = getSyncBlockerReason(manifestModel);
 
     if (blockerReason) {
@@ -336,7 +363,6 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
       manifestModel,
       now,
     });
-    syncableKeys.add(payload.apiModelKey);
     const match = findMongoMatch(manifestModel, mongoEntries);
 
     if (match.status === "ambiguous") {
@@ -381,7 +407,7 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
 
   const { deleted, blockedDeletions } = await reconcileMissingManagedModels({
     mongoEntries,
-    syncableKeys,
+    manifestKeys,
     now,
     warnings,
   });

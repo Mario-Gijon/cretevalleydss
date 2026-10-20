@@ -194,6 +194,8 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
     }
     assert manifest_entry["modelKind"] == "issue"
     assert manifest_entry["evaluationStructureKey"] == "alternativeCriteriaMatrix"
+    assert manifest_entry["resultStructureKey"] == "ranking"
+    assert manifest_entry["resultStructureVersion"] == 1
     assert manifest_entry["apiEndpoint"] == {"method": "POST", "path": "/alpha"}
     assert manifest_entry["implementationStatus"] == "ready"
     assert manifest_entry["publicUsable"] is True
@@ -236,6 +238,8 @@ def test_criteria_weighting_manifest_preserves_creator_and_expert_capabilities(
     assert manifest_entry["supportsExpertCriteriaWeighting"] is True
     assert "supportsCreateIssue" not in manifest_entry
     assert "creatorExecutionEnabled" not in manifest_entry
+    assert "resultStructureKey" not in manifest_entry
+    assert "resultStructureVersion" not in manifest_entry
 
 
 def test_build_model_manifest_returns_models_wrapper(monkeypatch, model_definition_factory):

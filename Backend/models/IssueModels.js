@@ -190,6 +190,21 @@ const issueModelSchema = new Schema({
     trim: true,
     required: true,
   },
+  resultStructureKey: {
+    type: String,
+    validate: {
+      validator: (value) =>
+        value === undefined || (typeof value === "string" && value.trim().length > 0),
+      message: "resultStructureKey must be a non-empty string",
+    },
+  },
+  resultStructureVersion: {
+    type: Schema.Types.Mixed,
+    validate: {
+      validator: (value) => value === undefined || (Number.isInteger(value) && value > 0),
+      message: "resultStructureVersion must be a positive integer",
+    },
+  },
   supportsConsensus: {
     type: Boolean,
     default: false,

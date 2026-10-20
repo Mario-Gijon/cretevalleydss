@@ -6,6 +6,7 @@ import {
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 
 export const mapIssueModelCatalogItem = (model) => {
   const id = toIdString(model._id);
@@ -30,6 +31,9 @@ export const mapIssueModelCatalogItem = (model) => {
     manifestSync: model.manifestSync,
     isMultiCriteria: model.isMultiCriteria,
     evaluationStructureKey: model.evaluationStructureKey,
+    ...(model.modelKind === "issue"
+      ? resolveResultStructureMetadata(model)
+      : {}),
     usesCriteriaWeights: model.usesCriteriaWeights === true,
     usesExpertWeights: model.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,

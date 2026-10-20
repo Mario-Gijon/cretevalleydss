@@ -14,6 +14,7 @@ import {
   buildActiveCriteriaView,
 } from "./buildActiveCriteriaView.js";
 import { buildActiveCriteriaWeights } from "./buildActiveCriteriaWeights.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 
 const ALTERNATIVE_CONSENSUS_UI_STAGE = "alternativeConsensus";
 
@@ -139,6 +140,7 @@ export const buildActiveIssueView = ({
       criteriaWeightingLevel: issue.criteriaWeightingLevel ?? "leaf",
       criteriaWeightingSourceWeights: issue.criteriaWeightingSourceWeights ?? null,
       evaluationStructureKey: issue.evaluationStructureKey,
+      ...resolveResultStructureMetadata(issue),
       isConsensus: issue.isConsensus,
       supportsConsensus: issue.supportsConsensus,
       simulateConsensus: issue.simulateConsensus,

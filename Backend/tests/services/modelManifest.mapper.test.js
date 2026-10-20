@@ -28,12 +28,14 @@ it("preserves modelSection in the backend technical projection", () => {
   });
 });
 
-const buildManifest = (parameters) => ({
+const buildManifest = (parameters, overrides = {}) => ({
   apiModelKey: "demo_model",
   displayName: "Demo model",
   apiEndpoint: { path: "/models/demo" },
   modelKind: "issue",
   evaluationStructureKey: "alternativeCriteriaMatrix",
+  resultStructureKey: "ranking",
+  resultStructureVersion: 1,
   implementationStatus: "ready",
   publicUsable: true,
   isMultiCriteria: true,
@@ -44,6 +46,7 @@ const buildManifest = (parameters) => ({
   supportsConsensusSimulation: false,
   requiresHomogeneousExpressionDomains: false,
   parameters,
+  ...overrides,
 });
 
 const buildNumberGlobal = (overrides = {}) => ({
@@ -154,6 +157,65 @@ describe("model manifest parameter mapping", () => {
         default: null,
       })
     ).toHaveProperty("default", null);
+  });
+});
+
+describe("model manifest result structure metadata", () => {
+  it("accepts and projects ranking version 1", () => {
+    const manifestModel = buildManifest([]);
+
+    expect(validateSyncableManifestModel(manifestModel)).toEqual([]);
+    expect(buildManifestTechnicalProjection(manifestModel)).toMatchObject({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+    });
+  });
+
+  it("defaults a legacy manifest with both fields absent to ranking version 1", () => {
+    const manifestModel = buildManifest([]);
+    delete manifestModel.resultStructureKey;
+    delete manifestModel.resultStructureVersion;
+
+    expect(validateSyncableManifestModel(manifestModel)).toEqual([]);
+    expect(buildManifestTechnicalProjection(manifestModel)).toMatchObject({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+    });
+  });
+
+  it.each([
+    [{ resultStructureKey: "sorting", resultStructureVersion: 1 }],
+    [{ resultStructureKey: "ranking", resultStructureVersion: 2 }],
+    [{ resultStructureKey: "ranking", resultStructureVersion: 0 }],
+    [{ resultStructureKey: "ranking" }],
+    [{ resultStructureVersion: 1 }],
+  ])("rejects unsupported, invalid, or partial metadata %o", (overrides) => {
+    const manifestModel = buildManifest([]);
+    delete manifestModel.resultStructureKey;
+    delete manifestModel.resultStructureVersion;
+    Object.assign(manifestModel, overrides);
+
+    expect(validateSyncableManifestModel(manifestModel)).toEqual([
+      expect.stringContaining("result structure metadata:"),
+    ]);
+  });
+
+  it("keeps criteriaWeighting models outside the result structure contract", () => {
+    const manifestModel = buildManifest([], {
+      modelKind: "criteriaWeighting",
+      supportsCreatorCriteriaWeighting: true,
+      supportsExpertCriteriaWeighting: false,
+    });
+    delete manifestModel.resultStructureKey;
+    delete manifestModel.resultStructureVersion;
+
+    expect(validateSyncableManifestModel(manifestModel)).toEqual([]);
+    expect(buildManifestTechnicalProjection(manifestModel)).not.toHaveProperty(
+      "resultStructureKey"
+    );
+    expect(buildManifestTechnicalProjection(manifestModel)).not.toHaveProperty(
+      "resultStructureVersion"
+    );
   });
 });
 

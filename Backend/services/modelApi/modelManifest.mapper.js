@@ -3,6 +3,9 @@ import { normalizeNonEmptyString } from "../../utils/common/strings.js";
 import {
   MODEL_PARAMETER_STRUCTURE_REGISTRY,
 } from "../../modules/decisionPlugins/modelParameters/parameterStructureRegistry.js";
+import {
+  resolveResultStructureMetadata,
+} from "../../modules/decisionPlugins/resultStructureMetadata.js";
 
 export const MANIFEST_SYNC_SOURCE = "DecisionModelsService";
 
@@ -173,6 +176,26 @@ export const normalizeModelKind = (value) => {
   return null;
 };
 
+const resolveManifestResultStructureMetadata = (manifestModel) => {
+  if (manifestModel?.modelKind === "criteriaWeighting") {
+    if (
+      manifestModel.resultStructureKey !== undefined ||
+      manifestModel.resultStructureVersion !== undefined
+    ) {
+      throw new TypeError(
+        "result structure metadata is not supported for criteriaWeighting models"
+      );
+    }
+
+    return null;
+  }
+
+  return resolveResultStructureMetadata({
+    resultStructureKey: manifestModel?.resultStructureKey,
+    resultStructureVersion: manifestModel?.resultStructureVersion,
+  });
+};
+
 export const getSyncBlockerReason = (manifestModel) => {
   if (!normalizeModelKind(manifestModel?.modelKind)) {
     return "Model has invalid modelKind";
@@ -287,6 +310,11 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof requiresHomogeneousExpressionDomains !== "boolean") {
     missingFields.push("requiresHomogeneousExpressionDomains");
   }
+  try {
+    resolveManifestResultStructureMetadata(manifestModel);
+  } catch (error) {
+    missingFields.push(`result structure metadata: ${error.message}`);
+  }
   if (modelKind === "criteriaWeighting") {
     if (typeof supportsCreatorCriteriaWeighting !== "boolean") {
       missingFields.push("supportsCreatorCriteriaWeighting");
@@ -335,8 +363,21 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
   const implementationStatus =
     normalizeNonEmptyString(manifestModel?.implementationStatus) || "ready";
   const isScaffold = implementationStatus === "scaffold";
+  let resultStructureMetadata = null;
 
-  return {
+  if (modelKind === "issue") {
+    try {
+      resultStructureMetadata = resolveManifestResultStructureMetadata(manifestModel);
+    } catch {
+      // Keep malformed values visible to the manifest dry-run. Sync validates first.
+      resultStructureMetadata = {
+        resultStructureKey: manifestModel?.resultStructureKey ?? null,
+        resultStructureVersion: manifestModel?.resultStructureVersion ?? null,
+      };
+    }
+  }
+
+  const projection = {
     apiModelKey: normalizeNonEmptyString(manifestModel?.apiModelKey),
     displayName: normalizeNonEmptyString(manifestModel?.displayName),
     modelKind,
@@ -380,6 +421,12 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     request: normalizeDynamicObject(manifestModel?.request),
     response: normalizeDynamicObject(manifestModel?.response),
   };
+
+  if (resultStructureMetadata) {
+    Object.assign(projection, resultStructureMetadata);
+  }
+
+  return projection;
 };
 
 export const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {

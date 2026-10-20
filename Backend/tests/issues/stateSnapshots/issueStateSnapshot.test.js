@@ -24,7 +24,15 @@ const write = (issue, snapshotType, consensusPhase = 0, session = null) => write
 describe("IssueStateSnapshot", () => {
   it("enforces one creation snapshot and one phase-start snapshot per phase in Mongo", async () => {
     const issue = await createIssue();
-    await write(issue, "creation");
+    const creation = await write(issue, "creation");
+    expect(creation.state.issue).toMatchObject({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+    });
+    expect(creation.state.model).toMatchObject({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+    });
     await expect(write(issue, "creation")).rejects.toMatchObject({ code: 11000 });
     await write(issue, "consensusPhaseStart", 0);
     await write(issue, "consensusPhaseStart", 1);

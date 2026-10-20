@@ -636,6 +636,8 @@ describe("definitive Finished Issue contract", () => {
       configuredParameters: expect.objectContaining({ alpha: 0.7 }),
       effectiveParameters: expect.objectContaining({ alpha: 0.7 }),
       definitionSource: "currentRegistry",
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
     });
     expect(payload.models.criteriaWeighting).toMatchObject({ name: "Weight model" });
     expect(payload.models.compatible.some((model) => model.id === payload.models.base.id)).toBe(true);

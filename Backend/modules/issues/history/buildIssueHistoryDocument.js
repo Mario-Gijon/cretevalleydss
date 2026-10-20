@@ -9,6 +9,7 @@ import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Issue } from "../../../models/Issues.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 import { createBadRequestError, createInternalError } from "../../../utils/common/errors.js";
@@ -61,7 +62,7 @@ const serializeIssue = (issue) => ({
   criteriaWeightingLevel: issue.criteriaWeightingLevel ?? "leaf", criteriaWeightingSourceWeights: issue.criteriaWeightingSourceWeights ?? null,
   criteriaWeightingModelId: id(issue.criteriaWeightingModel), criteriaWeightingApiModelKey: issue.criteriaWeightingApiModelKey,
   criteriaWeightingApiEndpoint: issue.criteriaWeightingApiEndpoint, criteriaWeightingParameters: issue.criteriaWeightingParameters,
-  evaluationStructureKey: issue.evaluationStructureKey, consensusMaxPhases: issue.consensusMaxPhases,
+  evaluationStructureKey: issue.evaluationStructureKey, ...resolveResultStructureMetadata(issue), consensusMaxPhases: issue.consensusMaxPhases,
   consensusThreshold: issue.consensusThreshold, active: issue.active, creationDate: issue.creationDate,
   closureDate: issue.closureDate, finishedAt: issue.finishedAt, modelParameters: issue.modelParameters,
   currentStage: issue.currentStage, consensusPhase: issue.consensusPhase, createdAt: issue.createdAt, updatedAt: issue.updatedAt,

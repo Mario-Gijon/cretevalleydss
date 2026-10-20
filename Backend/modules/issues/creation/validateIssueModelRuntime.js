@@ -1,5 +1,8 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
+import {
+  resolveResultStructureMetadata,
+} from "../../decisionPlugins/resultStructureMetadata.js";
 
 const normalizeEndpointPath = (value) => {
   const path = normalizeNonEmptyString(value);
@@ -71,6 +74,22 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     message: "is required",
     value: model.evaluationStructureKey,
   });
+  let resultStructureMetadata;
+  try {
+    resultStructureMetadata = resolveResultStructureMetadata({
+      resultStructureKey: model.resultStructureKey,
+      resultStructureVersion: model.resultStructureVersion,
+    });
+  } catch (error) {
+    runtimeErrors.push({
+      field: "resultStructureKey",
+      message: error.message,
+      value: {
+        resultStructureKey: model.resultStructureKey,
+        resultStructureVersion: model.resultStructureVersion,
+      },
+    });
+  }
 
   if (typeof model.supportsConsensus !== "boolean") {
     runtimeErrors.push({
@@ -154,6 +173,7 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       path: endpointPath,
     },
     evaluationStructureKey,
+    ...resultStructureMetadata,
     supportsConsensus: model.supportsConsensus,
     supportsConsensusSimulation: model.supportsConsensusSimulation,
     usesCriteriaWeights: model.usesCriteriaWeights,

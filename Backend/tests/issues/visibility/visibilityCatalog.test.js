@@ -125,6 +125,8 @@ describe("active issue visibility", () => {
       name: "Example issue",
       owner: "owner@example.com",
       createdBy: "owner@example.com",
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
     });
   });
 

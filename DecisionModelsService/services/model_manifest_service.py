@@ -58,7 +58,7 @@ def _get_response_example(model: ModelDefinition) -> dict[str, Any] | None:
 def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
     """Convierte una definición de modelo al formato público canónico del manifest."""
 
-    return {
+    manifest_entry = {
         "apiModelKey": model.api_model_key,
         "displayName": model.display_name,
         "modelKind": model.model_kind,
@@ -93,6 +93,12 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
             "example": _get_response_example(model),
         },
     }
+
+    if model.model_kind == "issue":
+        manifest_entry["resultStructureKey"] = model.result_structure_key
+        manifest_entry["resultStructureVersion"] = model.result_structure_version
+
+    return manifest_entry
 
 
 def build_model_manifest() -> dict[str, Any]:

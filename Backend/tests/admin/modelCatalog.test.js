@@ -32,6 +32,8 @@ describe("admin model catalog", () => {
       usesCriteriaWeights: false,
       usesExpertWeights: true,
     });
+    expect(mapped).not.toHaveProperty("resultStructureKey");
+    expect(mapped).not.toHaveProperty("resultStructureVersion");
   });
 
   it("sorts by public visibility rank and then name", () => {
@@ -73,7 +75,12 @@ describe("admin model catalog", () => {
 
     await expect(getAdminModelCatalog({ issueModelModel })).resolves.toMatchObject({
       models: [
-        { name: "Available", publicUsable: true },
+        {
+          name: "Available",
+          publicUsable: true,
+          resultStructureKey: "ranking",
+          resultStructureVersion: 1,
+        },
         { name: "Hidden", publicUsable: false },
       ],
     });
