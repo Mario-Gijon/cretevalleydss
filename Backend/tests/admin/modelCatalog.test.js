@@ -36,6 +36,30 @@ describe("admin model catalog", () => {
     expect(mapped).not.toHaveProperty("resultStructureVersion");
   });
 
+  it("does not expose a sorting structure as publicly usable or consensus-capable", () => {
+    const mapped = mapIssueModelCatalogItem({
+      _id: "000000000000000000000003",
+      name: "Sorting contract only",
+      apiModelKey: "sorting-contract-only",
+      modelKind: "issue",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      visibleInIssueCreation: true,
+      supportsConsensus: true,
+      supportsConsensusSimulation: true,
+      manifestSync: { isStale: false },
+    });
+
+    expect(mapped).toMatchObject({
+      publicUsable: false,
+      visibleInIssueCreation: false,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      supportsConsensus: false,
+      supportsConsensusSimulation: false,
+    });
+  });
+
   it("sorts by public visibility rank and then name", () => {
     const models = [
       { name: "Zulu hidden", visibleInIssueCreation: false, visibleInCriteriaWeighting: false },

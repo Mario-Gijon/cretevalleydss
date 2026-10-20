@@ -113,9 +113,19 @@ describe("issue model runtime configuration", () => {
     ).toThrow(/supportsConsensus must be boolean/);
   });
 
+  it("does not allow sorting result structures to declare ranking consensus support", () => {
+    expect(() =>
+      validateIssueModelRuntimeConfigOrThrow(buildRuntimeModelConfig({
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        supportsConsensus: true,
+      }))
+    ).toThrow(/supportsConsensus is not supported by the selected result structure/);
+  });
+
   it.each([
     [{ resultStructureKey: "ranking" }, /provided together/],
-    [{ resultStructureKey: "sorting", resultStructureVersion: 1 }, /Unsupported resultStructureKey/],
+    [{ resultStructureKey: "sorting", resultStructureVersion: 1 }, /does not currently support issue execution/],
     [{ resultStructureKey: "ranking", resultStructureVersion: 2 }, /Unsupported resultStructureVersion/],
     [{ resultStructureKey: "ranking", resultStructureVersion: 0 }, /positive integer/],
   ])("rejects incompatible result structure metadata %o", (metadata, message) => {

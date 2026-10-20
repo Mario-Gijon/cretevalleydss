@@ -1,9 +1,11 @@
 import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 import {
+  isResultStructureCapabilityEnabled,
   RESULT_STRUCTURE_REGISTRY,
   normalizeResultStructureOrThrow,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
+import { createBadRequestError } from "../../../utils/common/errors.js";
 
 export const executeScenarioModel = async ({
   requestPayload,
@@ -17,6 +19,18 @@ export const executeScenarioModel = async ({
     resultStructureKey: targetRuntimeSnapshot.targetResultStructureKey,
     resultStructureVersion: targetRuntimeSnapshot.targetResultStructureVersion,
   }, { registry: resultStructureRegistry });
+  if (
+    !isResultStructureCapabilityEnabled({
+      ...resultStructureMetadata,
+      capability: "issueExecution",
+      registry: resultStructureRegistry,
+    })
+  ) {
+    throw createBadRequestError(
+      "The selected result structure is not enabled for model execution",
+      { field: "targetModelId" }
+    );
+  }
   const tracked = await executeTrackedDecisionModelRequest({
     attemptInput: executionAttemptInput,
     apiEndpointPath: targetRuntimeSnapshot.targetApiEndpoint.path,
@@ -28,7 +42,12 @@ export const executeScenarioModel = async ({
       const standardResult = normalizeResultStructureOrThrow({
         ...resultStructureMetadata,
         result: modelOutput,
-        context: "scenario",
+        context: {
+          kind: "scenario",
+          authorizedAlternativeIds: requestPayload.context?.alternatives?.map(
+            (alternative) => alternative.id
+          ),
+        },
         options: {
           requireResultObject: false,
           validateAlternativeIdType: false,

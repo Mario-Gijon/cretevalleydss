@@ -184,7 +184,7 @@ describe("model manifest result structure metadata", () => {
   });
 
   it.each([
-    [{ resultStructureKey: "sorting", resultStructureVersion: 1 }],
+    [{ resultStructureKey: "unsupported-structure", resultStructureVersion: 1 }],
     [{ resultStructureKey: "ranking", resultStructureVersion: 2 }],
     [{ resultStructureKey: "ranking", resultStructureVersion: 0 }],
     [{ resultStructureKey: "ranking" }],

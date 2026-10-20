@@ -102,6 +102,7 @@ export const buildFinishedIssuePayload = async ({ issue }) => {
     resultsAnalysis: serializeResultsAnalysis({
       analyses: loaded.resultsAnalyses,
       scenarios: loaded.scenarios,
+      issue,
     }),
     executionMetadata: serializeExecutionMetadata({ scenarios: loaded.scenarios }),
   };

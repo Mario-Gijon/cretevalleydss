@@ -60,7 +60,10 @@ export const getFinishedIssuesPayload = async ({ userId }) => {
         ...resultStructureMetadata,
         result: finalResult.result?.standardResult ?? {},
         target: "finishedIssueListSummary",
-        context: { limit: TOP_ALTERNATIVES_LIMIT },
+        context: {
+          limit: TOP_ALTERNATIVES_LIMIT,
+          resultStructureMetadata,
+        },
       });
     })(),
   }));

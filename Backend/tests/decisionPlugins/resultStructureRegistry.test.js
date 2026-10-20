@@ -7,6 +7,7 @@ import {
   RESULT_STRUCTURE_REGISTRY,
   buildResultStructureRegistry,
   getResultStructureOrThrow,
+  isResultStructureCapabilityEnabled,
   loadResultStructures,
 } from "../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { resolveResultStructureMetadata } from "../../modules/decisionPlugins/resultStructureMetadata.js";
@@ -69,6 +70,24 @@ describe("result structure registry", () => {
       implementationStatus: "ready",
       validateAndNormalize: expect.any(Function),
     });
+  });
+
+  it("defaults capabilities for existing structures and honors explicit plugin restrictions", () => {
+    expect(isResultStructureCapabilityEnabled({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+      capability: "issueExecution",
+    })).toBe(true);
+    expect(isResultStructureCapabilityEnabled({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      capability: "issueExecution",
+    })).toBe(false);
+    expect(isResultStructureCapabilityEnabled({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      capability: "consensus",
+    })).toBe(false);
   });
 
   it("supports multiple registered versions for a key", async () => {
@@ -202,10 +221,10 @@ describe("result structure registry", () => {
     ).toThrow("must be provided together");
     expect(() =>
       resolveResultStructureMetadata({
-        resultStructureKey: "sorting",
+        resultStructureKey: "unknown-structure",
         resultStructureVersion: 1,
       })
-    ).toThrow("Unsupported resultStructureKey 'sorting'");
+    ).toThrow("Unsupported resultStructureKey 'unknown-structure'");
     expect(() =>
       resolveResultStructureMetadata({
         resultStructureKey: "ranking",

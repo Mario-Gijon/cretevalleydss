@@ -11,6 +11,7 @@ export const buildIssueModelExecutionResult = ({
   structureKey,
   issueUpdates,
   nextCurrentStage,
+  context = {},
   resultStructureRegistry = RESULT_STRUCTURE_REGISTRY,
 }) => {
   const resultStructureMetadata = resolveResultStructureMetadata(
@@ -20,6 +21,7 @@ export const buildIssueModelExecutionResult = ({
   const normalizedResult = normalizeResultStructureOrThrow({
     ...resultStructureMetadata,
     result,
+    context,
     registry: resultStructureRegistry,
   });
 

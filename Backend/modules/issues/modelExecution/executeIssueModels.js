@@ -5,6 +5,11 @@ import { buildCriteriaWeightingExecutionResult } from "./buildCriteriaWeightingE
 import { buildIssueModelExecutionResult } from "./buildIssueModelExecutionResult.js";
 import { buildIssueModelRequestPayload } from "./buildIssueModelRequestPayload.js";
 import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  isResultStructureCapabilityEnabled,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
+import { createBadRequestError } from "../../../utils/common/errors.js";
 
 export const executeAlternativeEvaluationModel = async ({
   issue,
@@ -20,6 +25,19 @@ export const executeAlternativeEvaluationModel = async ({
   nextCurrentStage = null,
   executionAttemptInput,
 }) => {
+  const resultStructureMetadata = resolveResultStructureMetadata(issue);
+  if (
+    !isResultStructureCapabilityEnabled({
+      ...resultStructureMetadata,
+      capability: "issueExecution",
+    })
+  ) {
+    throw createBadRequestError(
+      "The selected result structure is not enabled for model execution",
+      { field: "resultStructureKey" }
+    );
+  }
+
   const requestPayload = await buildIssueModelRequestPayload({
     issue,
     structureKey,
@@ -35,7 +53,20 @@ export const executeAlternativeEvaluationModel = async ({
     errorMessage: executionErrorMessage,
     decisionModelsServiceBaseUrl,
     httpClient,
-    normalize: async (result) => buildIssueModelExecutionResult({ issue, message, result, structureKey, issueUpdates, nextCurrentStage }),
+    normalize: async (result) => buildIssueModelExecutionResult({
+      issue,
+      message,
+      result,
+      structureKey,
+      issueUpdates,
+      nextCurrentStage,
+      context: {
+        kind: "issue",
+        authorizedAlternativeIds: requestPayload.context.alternatives.map(
+          (alternative) => alternative.id
+        ),
+      },
+    }),
   });
   return { ...tracked.result, executionAttempt: tracked.attempt };
 };

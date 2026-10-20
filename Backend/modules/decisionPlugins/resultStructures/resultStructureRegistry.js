@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,6 +13,11 @@ const isNonEmptyString = (value) =>
 
 const isPositiveInteger = (value) =>
   Number.isInteger(value) && value > 0;
+const RESULT_STRUCTURE_CAPABILITIES = new Set([
+  "issueExecution",
+  "consensus",
+  "resultsAnalysis",
+]);
 const RESULT_PROJECTION_TARGETS = new Set([
   "stagePersistence",
   "executionResponse",
@@ -48,6 +54,25 @@ const assertValidResultStructure = ({ structure, modulePath }) => {
     throw new Error(
       `${modulePath} must export exactly one valid result structure object with a positive integer version and validateAndNormalize function`
     );
+  }
+
+  if (Object.hasOwn(structure, "capabilities")) {
+    if (!isPlainObject(structure.capabilities)) {
+      throw new Error(`${modulePath} capabilities must be a plain object`);
+    }
+
+    for (const [capability, enabled] of Object.entries(structure.capabilities)) {
+      if (!RESULT_STRUCTURE_CAPABILITIES.has(capability)) {
+        throw new Error(
+          `${modulePath} declares unsupported result structure capability '${capability}'`
+        );
+      }
+      if (typeof enabled !== "boolean") {
+        throw new Error(
+          `${modulePath} capability '${capability}' must be boolean`
+        );
+      }
+    }
   }
 };
 
@@ -236,6 +261,29 @@ export const getResultStructureOrThrow = (
   }
 
   return structure;
+};
+
+/**
+ * Capabilities default to enabled for existing structures. A plugin can
+ * explicitly withhold a capability while remaining available for historical
+ * validation and projection.
+ */
+export const isResultStructureCapabilityEnabled = ({
+  resultStructureKey,
+  resultStructureVersion,
+  capability,
+  registry = RESULT_STRUCTURE_REGISTRY,
+}) => {
+  if (!RESULT_STRUCTURE_CAPABILITIES.has(capability)) {
+    throw new TypeError(`Unsupported result structure capability '${capability}'`);
+  }
+
+  const structure = getResultStructureOrThrow(
+    resultStructureKey,
+    resultStructureVersion,
+    registry
+  );
+  return structure.capabilities?.[capability] !== false;
 };
 
 export const normalizeResultStructureOrThrow = ({

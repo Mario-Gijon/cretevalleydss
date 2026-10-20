@@ -86,6 +86,42 @@ describe("serializeScenarios", () => {
     expect(scenario.phaseResults[0].standardizedOutput).not.toHaveProperty("rankedAlternatives");
   });
 
+  it("serializes historical sorting scenario assignments with their structure version", () => {
+    const standardResult = {
+      categories: [{ categoryId: "hold", label: "Hold", order: 0 }],
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: [{ alternativeId: "historical-alt-id", categoryId: "hold" }],
+    };
+    const [scenario] = serializeScenarios({
+      scenarios: [{
+        _id: "scenario-sorting",
+        name: "Historical sorting replay",
+        targetModel,
+        phaseResults: [{
+          phase: 0,
+          source: {},
+          requestSnapshot: { context: { alternatives: [{ id: "historical-alt-id" }] } },
+          result: {
+            resultStructureKey: "sorting",
+            resultStructureVersion: 1,
+            standardResult,
+            modelExecution: {},
+            rawOutput: {},
+          },
+          execution: {},
+        }],
+      }],
+    });
+
+    expect(scenario.phaseResults[0]).toMatchObject({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      standardizedOutput: standardResult,
+      requestSnapshot: { context: { alternatives: [{ id: "historical-alt-id" }] } },
+    });
+    expect(scenario.phaseResults[0]).not.toHaveProperty("rankedAlternatives");
+  });
+
   it.each([
     [{ resultStructureKey: "missing", resultStructureVersion: 1 }, "Unsupported resultStructureKey"],
     [{ resultStructureKey: "ranking", resultStructureVersion: 99 }, "Unsupported resultStructureVersion"],

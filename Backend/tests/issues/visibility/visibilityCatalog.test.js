@@ -801,6 +801,16 @@ describe("users and models catalogs", () => {
       },
     });
     await createIssueModel({
+      name: "Sorting contract only",
+      modelKind: "issue",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      visibleInIssueCreation: true,
+      manifestSync: {
+        isStale: false,
+      },
+    });
+    await createIssueModel({
       name: "Visible criteria model",
       modelKind: "criteriaWeighting",
       visibleInCriteriaWeighting: true,

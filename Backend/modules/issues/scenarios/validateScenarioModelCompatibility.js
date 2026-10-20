@@ -3,6 +3,9 @@ import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  isResultStructureCapabilityEnabled,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import {
   isDomainSnapshotSupportedByModel,
@@ -82,6 +85,29 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     });
   const targetResultStructureMetadata =
     resolveResultStructureMetadata(targetModel);
+  if (
+    !isResultStructureCapabilityEnabled({
+      ...targetResultStructureMetadata,
+      capability: "issueExecution",
+    })
+  ) {
+    throw createBadRequestError(
+      "The selected result structure is not enabled for model execution",
+      { field: "targetModelId" }
+    );
+  }
+  if (
+    targetModel.supportsConsensus === true &&
+    !isResultStructureCapabilityEnabled({
+      ...targetResultStructureMetadata,
+      capability: "consensus",
+    })
+  ) {
+    throw createInternalError(
+      "Target model consensus capability is incompatible with its result structure",
+      { field: "targetModelId" }
+    );
+  }
   const targetSupportsConsensus = targetModel.supportsConsensus;
   const targetUsesCriteriaWeights = targetModel.usesCriteriaWeights;
   const targetUsesExpertWeights = targetModel.usesExpertWeights === true;

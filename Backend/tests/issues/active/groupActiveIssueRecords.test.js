@@ -92,4 +92,47 @@ describe("active issue result collection", () => {
       recommendations: ["Keep recommendation"],
     });
   });
+
+  it("projects sorting active results without requiring a consensus measure", () => {
+    const standardResult = {
+      categories: [
+        { categoryId: "low", label: "Lower", order: 0 },
+        { categoryId: "high", label: "Higher", order: 1 },
+      ],
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: [
+        { alternativeId: "alternative-a", categoryId: "high" },
+      ],
+    };
+    const collections = buildActiveIssueCollections({
+      participations: [],
+      alternatives: [],
+      criteria: [],
+      alternativeStageResults: [{
+        issue: "issue-sorting",
+        consensusPhase: 0,
+        createdAt: new Date("2026-10-20T12:00:00.000Z"),
+        result: {
+          resultStructureKey: "sorting",
+          resultStructureVersion: 1,
+          standardResult,
+          modelExecution: { kind: "decisionModelsService" },
+          rawOutput: { source: "synthetic" },
+        },
+      }],
+    });
+
+    expect(collections.consensusHistoryByIssue["issue-sorting"][0]).toMatchObject({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      standardResult,
+      consensusMeasure: null,
+      consensusLevel: null,
+      categories: standardResult.categories,
+      assignments: standardResult.assignments,
+    });
+    expect(collections.consensusHistoryByIssue["issue-sorting"][0]).not.toHaveProperty(
+      "rankedAlternatives"
+    );
+  });
 });

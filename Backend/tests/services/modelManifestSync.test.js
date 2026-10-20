@@ -151,7 +151,7 @@ describe("result structure metadata in manifest synchronization", () => {
   it("skips unsupported metadata before creating an IssueModel", async () => {
     fetchModelManifest.mockResolvedValue({
       models: [
-        issueManifestModel({ resultStructureKey: "sorting" }),
+        issueManifestModel({ resultStructureKey: "unsupported-structure" }),
       ],
     });
 
@@ -159,7 +159,7 @@ describe("result structure metadata in manifest synchronization", () => {
 
     expect(result.summary.skipped).toBe(1);
     expect(result.skipped[0].missingFields).toEqual([
-      expect.stringContaining("Unsupported resultStructureKey 'sorting'")
+      expect.stringContaining("Unsupported resultStructureKey 'unsupported-structure'")
     ]);
     expect(await IssueModel.countDocuments()).toBe(0);
   });
@@ -169,7 +169,7 @@ describe("result structure metadata in manifest synchronization", () => {
       technicalMongoModel(issueManifestModel())
     );
     const invalidManifestModel = issueManifestModel({
-      resultStructureKey: "sorting",
+      resultStructureKey: "unsupported-structure",
     });
     fetchModelManifest.mockResolvedValue({ models: [invalidManifestModel] });
 

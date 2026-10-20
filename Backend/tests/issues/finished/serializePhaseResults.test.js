@@ -202,6 +202,48 @@ describe("Finished Issue phase-result ranking serialization", () => {
     expect(phaseResult.standardizedOutput).not.toHaveProperty("rankedAlternatives");
   });
 
+  it("serializes sorting categories and canonical alternative assignments as Finished Issue output", () => {
+    const standardResult = {
+      categories: [
+        { categoryId: "low", label: "Lower", order: 0 },
+        { categoryId: "high", label: "Higher", order: 1 },
+      ],
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: [
+        { alternativeId: "historical-alt-id", categoryId: "high" },
+      ],
+    };
+    const [phaseResult] = serializePhaseResults({
+      alternatives: [],
+      phaseResults: [{
+        _id: "sorting-phase-result",
+        stage: "alternativeEvaluation",
+        consensusPhase: 0,
+        result: {
+          resultStructureKey: "sorting",
+          resultStructureVersion: 1,
+          standardResult,
+          modelExecution: {},
+          rawOutput: {},
+        },
+      }],
+    });
+
+    expect(phaseResult).toMatchObject({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      categories: standardResult.categories,
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: standardResult.assignments,
+      standardizedOutput: standardResult,
+    });
+    expect(phaseResult).not.toHaveProperty("rankedAlternatives");
+    expect(phaseResult).not.toHaveProperty("topAlternatives");
+    expect(phaseResult.standardizedOutput.assignments[0].alternativeId).toBe(
+      "historical-alt-id"
+    );
+  });
+
   it("keeps criteriaWeighting on its existing contract without consulting the registry", () => {
     const registry = buildResultStructureRegistry([]);
     const [phaseResult] = serializePhaseResults({

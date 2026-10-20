@@ -138,7 +138,11 @@ const validateAndNormalizeRankingResult = ({
   normalizeRankingResult({
     result,
     messages: {
-      ...(context === "scenario" ? SCENARIO_NORMALIZATION_MESSAGES : {}),
+      ...(
+        context === "scenario" || context?.kind === "scenario"
+          ? SCENARIO_NORMALIZATION_MESSAGES
+          : {}
+      ),
       ...messages,
     },
     options,

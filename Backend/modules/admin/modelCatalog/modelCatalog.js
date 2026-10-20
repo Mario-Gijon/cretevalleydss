@@ -7,14 +7,31 @@ import {
 import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  isResultStructureCapabilityEnabled,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 export const mapIssueModelCatalogItem = (model) => {
   const id = toIdString(model._id);
   const isStale = model?.manifestSync?.isStale === true;
+  const resultStructureMetadata = model.modelKind === "issue"
+    ? resolveResultStructureMetadata(model)
+    : null;
+  const issueExecutionEnabled = resultStructureMetadata
+    ? isResultStructureCapabilityEnabled({
+        ...resultStructureMetadata,
+        capability: "issueExecution",
+      })
+    : true;
+  const consensusEnabled = !resultStructureMetadata ||
+    isResultStructureCapabilityEnabled({
+      ...resultStructureMetadata,
+      capability: "consensus",
+    });
   const publicUsable =
     model.modelKind === "criteriaWeighting"
       ? model.visibleInCriteriaWeighting !== false && !isStale
-      : model.visibleInIssueCreation !== false && !isStale;
+      : model.visibleInIssueCreation !== false && !isStale && issueExecutionEnabled;
 
   return {
     _id: id,
@@ -25,21 +42,21 @@ export const mapIssueModelCatalogItem = (model) => {
     implementationStatus: model.implementationStatus || "ready",
     publicUsable,
     protectedHistoricalModel: isStale,
-    visibleInIssueCreation: model.visibleInIssueCreation !== false,
+    visibleInIssueCreation:
+      model.visibleInIssueCreation !== false && issueExecutionEnabled,
     visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
     apiEndpoint: model.apiEndpoint,
     manifestSync: model.manifestSync,
     isMultiCriteria: model.isMultiCriteria,
     evaluationStructureKey: model.evaluationStructureKey,
-    ...(model.modelKind === "issue"
-      ? resolveResultStructureMetadata(model)
-      : {}),
+    ...(resultStructureMetadata ?? {}),
     usesCriteriaWeights: model.usesCriteriaWeights === true,
     usesExpertWeights: model.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model.usesCriterionTypes === true,
-    supportsConsensus: model.supportsConsensus === true,
-    supportsConsensusSimulation: model.supportsConsensusSimulation === true,
+    supportsConsensus: model.supportsConsensus === true && consensusEnabled,
+    supportsConsensusSimulation:
+      model.supportsConsensusSimulation === true && consensusEnabled,
     requiresHomogeneousExpressionDomains:
       model.requiresHomogeneousExpressionDomains === true,
     parameters: model.parameters,

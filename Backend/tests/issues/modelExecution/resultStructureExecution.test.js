@@ -10,6 +10,7 @@ vi.mock("../../../modules/issues/modelExecution/executionEvidence.js", () => ({
 }));
 
 import { buildIssueModelExecutionResult } from "../../../modules/issues/modelExecution/buildIssueModelExecutionResult.js";
+import { executeAlternativeEvaluationModel } from "../../../modules/issues/modelExecution/executeIssueModels.js";
 import { executeScenarioModel } from "../../../modules/issues/modelExecution/executeScenarioModel.js";
 import { buildTargetModelRuntimeSnapshotOrThrow } from "../../../modules/issues/scenarios/validateScenarioModelCompatibility.js";
 import {
@@ -100,13 +101,41 @@ describe("result structure selection in model execution", () => {
         issue: {
           apiModelKey: "demo-model",
           apiEndpoint: { path: "/execute" },
-          resultStructureKey: "sorting",
+          resultStructureKey: "unsupported-structure",
           resultStructureVersion: 1,
         },
         result: standardRankingResult({ resultStructureKey: "ranking" }),
         structureKey: "alternativeCriteriaMatrix",
       })
-    ).toThrow("Unsupported resultStructureKey 'sorting'");
+    ).toThrow("Unsupported resultStructureKey 'unsupported-structure'");
+  });
+
+  it("prevents disabled sorting models from reaching DecisionModelsService", async () => {
+    expect(() => buildTargetModelRuntimeSnapshotOrThrow({
+      apiModelKey: "sorting-contract-only",
+      apiEndpoint: { method: "POST", path: "/sorting" },
+      evaluationStructureKey: "alternativeCriteriaMatrix",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      supportsConsensus: false,
+    })).toThrow("not enabled for model execution");
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: {
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+      },
+    })).rejects.toThrow("not enabled for model execution");
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+
+    await expect(executeScenarioModel({
+      requestPayload: { context: { alternatives: [] } },
+      targetRuntimeSnapshot: {
+        targetResultStructureKey: "sorting",
+        targetResultStructureVersion: 1,
+      },
+    })).rejects.toThrow("not enabled for model execution");
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
   });
 
   it("transports and projects a synthetic result structure without ranking fields", () => {

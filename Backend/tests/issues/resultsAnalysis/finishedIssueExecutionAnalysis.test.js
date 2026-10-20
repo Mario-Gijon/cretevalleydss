@@ -118,6 +118,74 @@ describe("finished Issue execution analysis service", () => {
     expect(result.stageAnalyses).toMatchObject({ criteriaWeighting: { apiModelKey: "criteria-model", analysis: { interpretation: "criteria-model:1" } }, alternativeEvaluation: { apiModelKey: "alternative-model", analysis: { interpretation: "alternative-model:1" } } });
   });
 
+  it("blocks generic analysis for sorting base results and sorting scenario results", async () => {
+    const { issueId, userId, dependencies } = fixture();
+    const requestAnalysis = vi.fn(async () => ({ interpretation: "must not run" }));
+    dependencies.getIssue.mockResolvedValue({
+      _id: issueId,
+      ownerId: userId,
+      active: false,
+      currentStage: "finished",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+    });
+
+    await expect(getOrGenerateFinishedIssueExecutionAnalysis({
+      issueId,
+      userId,
+      executionKey: "base",
+      requestAnalysis,
+      ...dependencies,
+    })).rejects.toThrow("Results analysis is not enabled for this result structure");
+
+    const scenarioId = new mongoose.Types.ObjectId();
+    await IssueScenario.create({
+      _id: scenarioId,
+      issue: issueId,
+      createdBy: userId,
+      name: "Sorting scenario",
+      targetModel: new mongoose.Types.ObjectId(),
+      config: { parameterOverrides: {} },
+      phaseResults: [{
+        phase: 0,
+        source: { stageResult: null, domainType: "numeric" },
+        requestSnapshot: {},
+        result: {
+          resultStructureKey: "sorting",
+          resultStructureVersion: 1,
+          standardResult: {},
+          modelExecution: {},
+          rawOutput: {},
+        },
+        execution: {
+          attemptId: new mongoose.Types.ObjectId(),
+          startedAt: new Date(),
+          completedAt: new Date(),
+        },
+      }],
+    });
+    dependencies.getIssue.mockResolvedValue({
+      _id: issueId,
+      ownerId: userId,
+      active: false,
+      currentStage: "finished",
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+    });
+
+    await expect(getOrGenerateFinishedIssueExecutionAnalysis({
+      issueId,
+      userId,
+      executionKey: String(scenarioId),
+      requestAnalysis,
+      ...dependencies,
+    })).rejects.toThrow("Results analysis is not enabled for this result structure");
+
+    expect(requestAnalysis).not.toHaveBeenCalled();
+    expect(dependencies.historyBuilder).not.toHaveBeenCalled();
+    expect(await IssueResultsAnalysis.countDocuments({ issue: issueId })).toBe(0);
+  });
+
   it("keeps model analyses isolated when reloading multiple executions", async () => {
     const { issueId, userId, dependencies } = fixture();
     const scenarioId = new mongoose.Types.ObjectId();

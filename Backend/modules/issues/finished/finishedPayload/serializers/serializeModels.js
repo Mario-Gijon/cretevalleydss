@@ -3,6 +3,9 @@ import { buildScenarioCompatibilityMetadata } from "../../../scenarios/validateS
 import { resolveModelPaperUrl } from "./modelPaperUrl.js";
 import { resolveResultStructureMetadata } from "../../../../decisionPlugins/resultStructureMetadata.js";
 import {
+  isResultStructureCapabilityEnabled,
+} from "../../../../decisionPlugins/resultStructures/resultStructureRegistry.js";
+import {
   cloneSerializable,
   toNullableId,
   toRequiredId,
@@ -88,6 +91,13 @@ export const serializeModels = ({ issue, compatibleModels, expressionDomains, cr
     },
   });
   const compatible = compatibleModels
+    .filter((model) => {
+      if (model.modelKind !== "issue") return false;
+      return isResultStructureCapabilityEnabled({
+        ...resolveResultStructureMetadata(model),
+        capability: "issueExecution",
+      });
+    })
     .map((model) => {
       const compatibility = buildScenarioCompatibilityMetadata({
         issue,

@@ -2,12 +2,19 @@ import { IssueResultsAnalysis } from "../../../models/IssueResultsAnalyses.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { requestGenericIssueAnalysis } from "../../../services/modelApi/genericResultsAnalysisClient.js";
 import { requestModelIssueAnalysis } from "../../../services/modelApi/modelResultsAnalysisClient.js";
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import {
+  createBadRequestError,
+  createInternalError,
+} from "../../../utils/common/errors.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { buildIssueHistoryDocument } from "../history/index.js";
 import { assertUserCanAccessIssue, getIssueByIdOrThrow } from "../shared/queries.js";
 import { buildAnalysisContext } from "./buildAnalysisContext.js";
 import { projectExecutionAnalysisContext } from "./projectExecutionAnalysisContext.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  isResultStructureCapabilityEnabled,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const MAX_EXECUTIONS = 3;
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -20,7 +27,7 @@ const normalizeExecutionKeyOrThrow = (executionKey) => {
 };
 
 const assertFinishedIssueAccess = async ({ issueId, userId, getIssue = getIssueByIdOrThrow }) => {
-  const issue = await getIssue(issueId, { select: "ownerId active currentStage", lean: true });
+  const issue = await getIssue(issueId, { select: "ownerId active currentStage resultStructureKey resultStructureVersion", lean: true });
   await assertUserCanAccessIssue({ issue, userId, message: "You are not allowed to access this finished issue" });
   if (issue.active !== false || issue.currentStage !== "finished") {
     throw createBadRequestError("Generic analysis is only available for finished issues", { field: "issueId" });
@@ -30,15 +37,48 @@ const assertFinishedIssueAccess = async ({ issueId, userId, getIssue = getIssueB
 
 const resolveCurrentExecutionOrThrow = async ({ issue, executionKey, scenarioModel = IssueScenario }) => {
   const key = normalizeExecutionKeyOrThrow(executionKey);
-  if (key === "base") return { key, type: "base", scenarioId: null };
+  if (key === "base") {
+    return {
+      key,
+      type: "base",
+      scenarioId: null,
+      resultStructureMetadata: resolveResultStructureMetadata(issue),
+    };
+  }
   if (!isValidObjectIdLike(key)) {
     throw createBadRequestError("Scenario execution is not available for this finished issue", { field: "executionKey" });
   }
-  const scenario = await scenarioModel.findOne({ _id: key, issue: issue._id }).select("_id").lean();
+  const scenario = await scenarioModel.findOne({ _id: key, issue: issue._id })
+    .select("_id phaseResults.result.resultStructureKey phaseResults.result.resultStructureVersion")
+    .lean();
   if (!scenario) {
     throw createBadRequestError("Scenario execution is not available for this finished issue", { field: "executionKey" });
   }
-  return { key, type: "scenario", scenarioId: String(scenario._id) };
+
+  const resultStructureMetadataByPhase = (scenario.phaseResults ?? []).map(
+    (phaseResult) => resolveResultStructureMetadata(phaseResult.result ?? {})
+  );
+  const resultStructureMetadata = resultStructureMetadataByPhase[0];
+  if (
+    !resultStructureMetadata ||
+    resultStructureMetadataByPhase.some(
+      (metadata) =>
+        metadata.resultStructureKey !== resultStructureMetadata.resultStructureKey ||
+        metadata.resultStructureVersion !== resultStructureMetadata.resultStructureVersion
+    )
+  ) {
+    throw createInternalError(
+      "Scenario phases contain inconsistent result structure metadata",
+      { field: "scenario.phaseResults" }
+    );
+  }
+
+  return {
+    key,
+    type: "scenario",
+    scenarioId: String(scenario._id),
+    resultStructureMetadata,
+  };
 };
 
 export const serializePersistedExecutionAnalysis = (entry) => ({
@@ -140,6 +180,17 @@ export const getOrGenerateFinishedIssueExecutionAnalysis = async ({
 }) => {
   const issue = await assertFinishedIssueAccess({ issueId, userId, getIssue });
   const descriptor = await resolveCurrentExecutionOrThrow({ issue, executionKey, scenarioModel });
+  if (
+    !isResultStructureCapabilityEnabled({
+      ...descriptor.resultStructureMetadata,
+      capability: "resultsAnalysis",
+    })
+  ) {
+    throw createBadRequestError(
+      "Results analysis is not enabled for this result structure",
+      { field: "executionKey" }
+    );
+  }
   if (!force) {
     const existing = await analysisModel.findOne({ issue: issue._id, executionKey: descriptor.key }).lean();
     if (existing) return serializePersistedExecutionAnalysis(existing);

@@ -8,6 +8,7 @@ import {
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 import {
   RESULT_STRUCTURE_REGISTRY,
+  isResultStructureCapabilityEnabled,
   projectNormalizedResultOrThrow,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
@@ -46,6 +47,15 @@ export const buildActiveIssueCollections = ({
 
   for (const stageResult of alternativeStageResults) {
     const standardResult = getStageStandardResult(stageResult);
+    const resultStructureMetadata = resolveResultStructureMetadata(
+      stageResult.result ?? {},
+      { registry: resultStructureRegistry }
+    );
+    const hasConsensusCapability = isResultStructureCapabilityEnabled({
+      ...resultStructureMetadata,
+      capability: "consensus",
+      registry: resultStructureRegistry,
+    });
     const issueId = toIdString(stageResult.issue);
     if (!issueId) {
       throw createInternalError("IssueStageResult issue id is invalid", {
@@ -63,8 +73,9 @@ export const buildActiveIssueCollections = ({
     }
 
     if (
-      typeof standardResult.consensusMeasure !== "number" ||
-      !Number.isFinite(standardResult.consensusMeasure)
+      hasConsensusCapability &&
+      (typeof standardResult.consensusMeasure !== "number" ||
+        !Number.isFinite(standardResult.consensusMeasure))
     ) {
       throw createInternalError("IssueStageResult consensusMeasure must be finite", {
         field: "consensusMeasure",

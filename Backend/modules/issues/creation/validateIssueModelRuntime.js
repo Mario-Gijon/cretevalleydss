@@ -3,6 +3,9 @@ import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 import {
   resolveResultStructureMetadata,
 } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  isResultStructureCapabilityEnabled,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const normalizeEndpointPath = (value) => {
   const path = normalizeNonEmptyString(value);
@@ -80,6 +83,44 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       resultStructureKey: model.resultStructureKey,
       resultStructureVersion: model.resultStructureVersion,
     });
+    if (
+      model.supportsConsensus === true &&
+      !isResultStructureCapabilityEnabled({
+        ...resultStructureMetadata,
+        capability: "consensus",
+      })
+    ) {
+      runtimeErrors.push({
+        field: "supportsConsensus",
+        message: "is not supported by the selected result structure",
+        value: model.supportsConsensus,
+      });
+    }
+    if (
+      model.supportsConsensusSimulation === true &&
+      !isResultStructureCapabilityEnabled({
+        ...resultStructureMetadata,
+        capability: "consensus",
+      })
+    ) {
+      runtimeErrors.push({
+        field: "supportsConsensusSimulation",
+        message: "requires a result structure that supports consensus",
+        value: model.supportsConsensusSimulation,
+      });
+    }
+    if (
+      !isResultStructureCapabilityEnabled({
+        ...resultStructureMetadata,
+        capability: "issueExecution",
+      })
+    ) {
+      runtimeErrors.push({
+        field: "resultStructureKey",
+        message: "does not currently support issue execution",
+        value: resultStructureMetadata.resultStructureKey,
+      });
+    }
   } catch (error) {
     runtimeErrors.push({
       field: "resultStructureKey",
