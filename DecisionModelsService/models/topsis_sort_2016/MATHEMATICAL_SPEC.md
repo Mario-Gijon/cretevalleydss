@@ -66,8 +66,20 @@ The lowest and highest categories are open-ended beyond their one finite
 boundary. Intermediate categories are open intervals between adjacent profile
 closeness values. Eq. (8) uses strict inequalities. It does not define which
 class owns an alternative equal to a profile, so the core returns a controlled
-error instead of inventing a tie rule. A small floating-point equality guard
-is used only to detect that undefined boundary case.
+error instead of inventing a tie rule. Boundary equality means exact equality
+of the computed floating-point closeness coefficients; no tolerance merges
+nearby values. When the computed coefficients differ, their strict order is
+used directly. Since the calculations use binary floating-point arithmetic,
+distinct real-number results can in principle round to the same coefficient;
+the implementation treats equality in its computed representation as a tie
+and does not claim exact real arithmetic.
+
+Consecutive profiles must have strictly increasing computed closeness values
+in least-to-most-preferred order. Equal values leave the intermediate strict
+interval empty, so the configuration is rejected with
+`AssignmentUndeterminedError`. This also catches profiles that differ only on
+zero-weight criteria, because such differences do not change the weighted
+TOPSIS coordinates or their closeness.
 
 The existing `boundaryProfiles` structure is structurally compatible with the
 raw-value procedure: it stores exactly `q - 1` profiles, values by criterion

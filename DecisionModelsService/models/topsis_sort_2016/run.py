@@ -36,8 +36,6 @@ class AssignmentUndeterminedError(TopsisSort2016Error):
 
 
 _DIRECTIONS = {"benefit", "cost"}
-_TIE_REL_TOL = 1e-12
-_TIE_ABS_TOL = 1e-12
 _WEIGHT_SUM_TOL = 1e-12
 
 
@@ -356,12 +354,7 @@ def _assign_order(
     for profile in profile_rows:
         profile_id = profile["profile_id"]
         boundary = profile_closeness_by_id[profile_id]
-        if math.isclose(
-            closeness,
-            boundary,
-            rel_tol=_TIE_REL_TOL,
-            abs_tol=_TIE_ABS_TOL,
-        ):
+        if closeness == boundary:
             raise ProfileBoundaryTieError(
                 f"alternative '{alternative_id}' has closeness {closeness:.17g} "
                 f"equal to boundary profile '{profile_id}' ({boundary:.17g}); "
@@ -511,15 +504,19 @@ def run_topsis_sort_2016(
     ordered_profile_closeness = [
         profile_closeness_by_id[profile_id] for profile_id in ordered_profile_ids
     ]
-    if any(
-        following < previous
-        for previous, following in zip(
-            ordered_profile_closeness, ordered_profile_closeness[1:]
-        )
+    for index, (previous, following) in enumerate(
+        zip(ordered_profile_closeness, ordered_profile_closeness[1:])
     ):
-        raise AssignmentUndeterminedError(
-            "profile closeness values do not increase with category preference order"
-        )
+        if following <= previous:
+            less_preferred = ordered_profiles[index]
+            more_preferred = ordered_profiles[index + 1]
+            relation = "equal" if following == previous else "decrease"
+            raise AssignmentUndeterminedError(
+                f"consecutive profiles '{less_preferred['profile_id']}' and "
+                f"'{more_preferred['profile_id']}' have {relation} closeness "
+                f"values ({previous:.17g}, {following:.17g}); Eq. (8) requires "
+                "strictly increasing profile limits to delimit every category"
+            )
     boundary_profile_by_category = {
         profile["category_id"]: profile for profile in ordered_profiles
     }

@@ -265,6 +265,76 @@ def test_exact_equality_with_a_profile_returns_controlled_error():
         _run(problem)
 
 
+@pytest.mark.parametrize(
+    ("score", "expected_category"),
+    [
+        (0.5 - 5e-13, "low"),
+        (0.5 + 5e-13, "high"),
+    ],
+)
+def test_strictly_different_near_boundary_closeness_keeps_eq8_order(
+    score, expected_category
+):
+    problem = {
+        "criteria": [{"criterion_id": "score", "direction": "benefit", "weight": 1.0}],
+        "categories": [
+            {"category_id": "low", "label": "Low", "order": 0},
+            {"category_id": "high", "label": "High", "order": 1},
+        ],
+        "profiles": [
+            {
+                "profile_id": "boundary",
+                "category_id": "high",
+                "values_by_criterion_id": {"score": 0.5},
+            }
+        ],
+        "alternatives": [
+            {"alternative_id": "near", "values_by_criterion_id": {"score": score}}
+        ],
+    }
+
+    result = _run(problem)
+    assert result["assignments"] == [
+        {"alternative_id": "near", "category_id": expected_category}
+    ]
+
+
+def test_equal_closeness_of_consecutive_profiles_rejects_empty_strict_interval():
+    problem = {
+        "criteria": [
+            {"criterion_id": "score", "direction": "benefit", "weight": 1.0},
+            {"criterion_id": "ignored", "direction": "benefit", "weight": 0.0},
+        ],
+        "categories": [
+            {"category_id": "low", "label": "Low", "order": 0},
+            {"category_id": "middle", "label": "Middle", "order": 1},
+            {"category_id": "high", "label": "High", "order": 2},
+        ],
+        "profiles": [
+            {
+                "profile_id": "p1",
+                "category_id": "middle",
+                "values_by_criterion_id": {"score": 4, "ignored": 1},
+            },
+            {
+                "profile_id": "p2",
+                "category_id": "high",
+                "values_by_criterion_id": {"score": 4, "ignored": 10},
+            },
+        ],
+        "alternatives": [
+            {"alternative_id": "a-low", "values_by_criterion_id": {"score": 1, "ignored": 1}},
+            {"alternative_id": "a-high", "values_by_criterion_id": {"score": 10, "ignored": 10}},
+        ],
+    }
+
+    with pytest.raises(
+        TopsisSort2016Error,
+        match=r"profiles 'p1' and 'p2' have equal closeness values.*strictly increasing",
+    ):
+        _run(problem)
+
+
 def test_multiple_alternatives_and_empty_categories_are_preserved():
     problem = {
         "criteria": [{"criterion_id": "score", "direction": "benefit", "weight": 1.0}],
