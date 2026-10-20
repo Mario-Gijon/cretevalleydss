@@ -47,10 +47,21 @@ def test_issue_model_definition_accepts_the_supported_result_contract():
     assert definition.result_structure_version == 1
 
 
+def test_issue_model_definition_accepts_versioned_sorting_result_contract():
+    definition = _build_definition(
+        result_structure_key="sorting",
+        result_structure_version=1,
+    )
+
+    assert definition.result_structure_key == "sorting"
+    assert definition.result_structure_version == 1
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"result_structure_key": "sorting", "result_structure_version": 1},
+        {"result_structure_key": "sorting", "result_structure_version": 2},
+        {"result_structure_key": "classification", "result_structure_version": 1},
         {"result_structure_key": "ranking", "result_structure_version": 2},
         {"result_structure_key": "ranking", "result_structure_version": 0},
         {"result_structure_key": "ranking", "result_structure_version": True},

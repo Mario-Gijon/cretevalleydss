@@ -1,8 +1,13 @@
 # TOPSIS-Sort (Sabokbar et al., 2016)
 
-This isolated package implements the original TOPSIS-Sort method in the attached
-2016 paper. It is not registered in the DecisionModelsService model catalog and
-does not enable Backend execution, consensus, or analysis.
+This package implements the original TOPSIS-Sort method in the attached 2016
+paper. `run.py` remains the pure mathematical core; `executor.py` adapts the
+DecisionModelsService request and result contracts, while `definition.py` and
+`examples.py` describe the Decision Plugin. The definition is auto-discovered
+as an `implementation_status="scaffold"` entry so its metadata can be reviewed.
+It is marked `publicUsable=false`, receives no explicit POST route, and the
+dynamic route rejects it. Backend execution, consensus, and results analysis
+remain disabled.
 
 ## Equation-to-code map
 

@@ -369,7 +369,8 @@ def test_registered_ready_models_expose_request_examples() -> None:
     models_without_examples = [
         _get_model_key(model)
         for model in _load_models()
-        if not _get_request_examples(model)
+        if getattr(model, "implementation_status", "ready") == "ready"
+        and not _get_request_examples(model)
     ]
 
     assert not models_without_examples, (

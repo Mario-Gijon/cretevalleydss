@@ -1,3 +1,4 @@
+import asyncio
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
@@ -142,6 +143,31 @@ def test_dynamic_model_async_handler_is_awaited(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["data"] == {"answer": 11}
+
+
+def test_dynamic_route_still_executes_ready_definition_directly(monkeypatch):
+    def handler(payload):
+        return {
+            "success": True,
+            "message": "Fake model executed",
+            "data": {"answer": payload.answer},
+            "error": None,
+        }
+
+    monkeypatch.setattr(
+        models_router,
+        "get_model_definition_by_endpoint_path",
+        lambda endpoint_path: _build_fake_definition(handler)
+        if endpoint_path == "/fake/model/path"
+        else None,
+    )
+
+    response = asyncio.run(
+        models_router.execute_dynamic_model("fake/model/path", {"answer": 7})
+    )
+
+    assert response["success"] is True
+    assert response["data"] == {"answer": 7}
 
 
 def test_system_reload_endpoint_returns_stable_response_when_present(monkeypatch):

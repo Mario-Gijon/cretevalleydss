@@ -97,6 +97,8 @@ def _create_explicit_model_endpoint(model: ModelDefinition):
 
 def _register_explicit_model_routes() -> None:
     for model in get_model_definitions(strict=False):
+        if model.implementation_status != "ready":
+            continue
         router.add_api_route(
             model.api_endpoint_path,
             _create_explicit_model_endpoint(model),
@@ -133,7 +135,7 @@ async def execute_dynamic_model(
     endpoint_path = "/" + str(model_path or "").strip("/")
     model = get_model_definition_by_endpoint_path(endpoint_path)
 
-    if model is None:
+    if model is None or model.implementation_status != "ready":
         return JSONResponse(
             status_code=404,
             content={

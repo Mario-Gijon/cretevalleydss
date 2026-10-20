@@ -1,5 +1,6 @@
 """Isolated implementation of the original 2016 TOPSIS-Sort method."""
 
+from .definition import MODEL_DEFINITION
 from .run import (
     AssignmentUndeterminedError,
     ProfileBoundaryTieError,
@@ -14,6 +15,7 @@ from .run import (
 )
 
 __all__ = [
+    "MODEL_DEFINITION",
     "AssignmentUndeterminedError",
     "ProfileBoundaryTieError",
     "TopsisSort2016Error",

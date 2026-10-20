@@ -53,6 +53,8 @@ def _make_param_id(model: Any, example: dict[str, Any] | None, index: int) -> st
 def _build_example_params() -> list[Any]:
     params = []
     for model in _load_models():
+        if getattr(model, "implementation_status", "ready") != "ready":
+            continue
         model_key = _get_model_key(model)
         request_examples = _get_request_examples(model)
         if not request_examples:
@@ -164,6 +166,7 @@ def test_registered_ready_models_expose_request_examples_for_api() -> None:
     models_without_examples = [
         _get_model_key(model)
         for model in _load_models()
+        if getattr(model, "implementation_status", "ready") == "ready"
         if not _get_request_examples(model)
     ]
 

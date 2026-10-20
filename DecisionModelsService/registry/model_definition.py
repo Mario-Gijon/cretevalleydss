@@ -6,6 +6,14 @@ from pydantic import BaseModel
 MODEL_KINDS = {"issue", "criteriaWeighting"}
 DEFAULT_RESULT_STRUCTURE_KEY = "ranking"
 DEFAULT_RESULT_STRUCTURE_VERSION = 1
+# Result contracts currently implemented by the Decision Plugins runtime.
+# This is contract metadata only; model definitions remain auto-discovered.
+SUPPORTED_RESULT_STRUCTURE_PAIRS = frozenset(
+    {
+        ("ranking", 1),
+        ("sorting", 1),
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -119,12 +127,6 @@ class ModelDefinition:
                     "trimmed result_structure_key."
                 )
 
-            if self.result_structure_key != DEFAULT_RESULT_STRUCTURE_KEY:
-                raise ValueError(
-                    f"ModelDefinition '{self.api_model_key}' has unsupported "
-                    f"result_structure_key '{self.result_structure_key}'."
-                )
-
             if (
                 isinstance(self.result_structure_version, bool)
                 or not isinstance(self.result_structure_version, int)
@@ -135,11 +137,14 @@ class ModelDefinition:
                     "result_structure_version to be a positive integer."
                 )
 
-            if self.result_structure_version != DEFAULT_RESULT_STRUCTURE_VERSION:
+            if (
+                self.result_structure_key,
+                self.result_structure_version,
+            ) not in SUPPORTED_RESULT_STRUCTURE_PAIRS:
                 raise ValueError(
                     f"ModelDefinition '{self.api_model_key}' has unsupported "
-                    f"result_structure_version '{self.result_structure_version}' "
-                    f"for result_structure_key '{self.result_structure_key}'."
+                    "result_structure pair "
+                    f"'{self.result_structure_key}@{self.result_structure_version}'."
                 )
         elif (
             self.result_structure_key is not None
