@@ -21,6 +21,9 @@ const normalizeCriterionLeafMetadata = (node) => {
     id: idCandidate,
     key: keyCandidate,
     name: nameCandidate,
+    ...(normalizeNonEmptyString(node?.type)
+      ? { type: normalizeNonEmptyString(node.type) }
+      : {}),
   };
 };
 

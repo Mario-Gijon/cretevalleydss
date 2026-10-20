@@ -10,6 +10,33 @@ const STRUCTURES_ROOT = path.join(__dirname, "structures");
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
+const isValidParameterDependencies = (dependencies) => {
+  if (dependencies === undefined) return true;
+  if (!Array.isArray(dependencies)) return false;
+
+  const keys = new Set();
+  return dependencies.every((dependency) => {
+    if (
+      dependency === null ||
+      typeof dependency !== "object" ||
+      !isNonEmptyString(dependency.key) ||
+      !isNonEmptyString(dependency.parameterStructureKey) ||
+      keys.has(dependency.key)
+    ) {
+      return false;
+    }
+    keys.add(dependency.key);
+    return true;
+  });
+};
+
+const isValidValidationContextKeys = (keys) =>
+  keys === undefined ||
+  (Array.isArray(keys) &&
+    keys.length > 0 &&
+    keys.every(isNonEmptyString) &&
+    new Set(keys).size === keys.length);
+
 const isValidParameterStructure = (value) => {
   if (
     value === null ||
@@ -26,7 +53,13 @@ const isValidParameterStructure = (value) => {
   ) && (
     value.remapCriterionIds === undefined ||
     typeof value.remapCriterionIds === "function"
-  );
+  ) && (
+    value.validateWithParameters === undefined ||
+    typeof value.validateWithParameters === "function"
+  ) && isValidParameterDependencies(value.parameterDependencies) && (
+    value.parameterDependencies === undefined ||
+    typeof value.validateWithParameters === "function"
+  ) && isValidValidationContextKeys(value.validationContextKeys);
 };
 
 const validateImplementationStatus = ({ structure, modulePath }) => {

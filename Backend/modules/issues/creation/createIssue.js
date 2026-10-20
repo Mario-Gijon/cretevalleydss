@@ -44,6 +44,7 @@ import {
   validateAndNormalizeExpertWeightsOrThrow,
 } from "../shared/expertWeights.js";
 import { remapModelParametersCriterionIdsOrThrow } from "../../modelParameters/remapModelParametersCriterionIds.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../modelParameters/validateAndNormalizeModelParameters.js";
 import {
   createIssueEventOperationMetadata,
   ISSUE_EVENT_TYPES,
@@ -96,7 +97,8 @@ export const prepareIssueCreation = async ({
     usesExpertWeights,
     isMultiCriteria,
     requiresHomogeneousExpressionDomains,
-    normalizedModelParameters,
+    normalizedModelParameters: initiallyNormalizedModelParameters,
+    modelParameterValuesToValidate,
   } = await loadCreateIssueActorsAndModel({
     ownerUserId,
     selectedModelId: input.selectedModelId,
@@ -107,6 +109,7 @@ export const prepareIssueCreation = async ({
       name: alternative.name,
     })),
     uniqueExpertEmails: input.uniqueExpertEmails,
+    deferModelParameterValidation: true,
   });
 
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
@@ -167,6 +170,29 @@ export const prepareIssueCreation = async ({
     userId: ownerUserId,
     modelSupportedExpressionDomains: model.supportedExpressionDomains,
   });
+
+  const domainById = new Map(
+    domainDocs.map((domain) => [String(domain._id), domain])
+  );
+  const criterionDomainsById = Object.fromEntries(
+    orderedLeafCriteria.flatMap((criterion) => {
+      const criterionId = criterion.id;
+      const domainId = domainIdByCriterionName.get(criterion.name);
+      const domain = domainById.get(domainId);
+      return criterionId && domain ? [[criterionId, domain]] : [];
+    })
+  );
+  const normalizedModelParameters = initiallyNormalizedModelParameters ??
+    validateAndNormalizeModelParametersOrThrow({
+      model,
+      paramValues: modelParameterValuesToValidate,
+      criteriaNodes: input.criteria,
+      alternatives: input.normalizedAlternatives.map((alternative) => ({
+        id: null,
+        name: alternative.name,
+      })),
+      criterionDomainsById,
+    });
 
   const fuzzyCriteriaWeightValueCount = resolveFuzzyCriteriaWeightValueCountOrThrow({
     model,

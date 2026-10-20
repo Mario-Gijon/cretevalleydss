@@ -23,6 +23,7 @@ export const validateAndNormalizeModelParametersOrThrow = ({
   paramValues,
   criteriaNodes,
   alternatives = [],
+  criterionDomainsById = {},
 }) => {
   const modelName = normalizeNonEmptyString(model?.name) || "unknown";
   const modelParameters = Array.isArray(model?.parameters) ? model.parameters : [];
@@ -139,6 +140,7 @@ export const validateAndNormalizeModelParametersOrThrow = ({
         modelName,
         leafCriteria,
         alternatives,
+        criterionDomainsById,
       },
     });
 
@@ -147,6 +149,76 @@ export const validateAndNormalizeModelParametersOrThrow = ({
         parameter: parameterKey,
         message: result?.message || "is invalid",
         value: result?.value ?? value,
+      });
+      continue;
+    }
+
+    normalizedModelParameters[parameterKey] = result.value;
+  }
+
+  if (parameterErrors.length > 0) {
+    throwInvalidModelParametersError({ modelName, parameterErrors });
+  }
+
+  for (const parameter of modelParameters) {
+    const parameterKey = resolveParameterKey(parameter);
+    if (!parameterKey || !hasOwnKey(normalizedModelParameters, parameterKey)) continue;
+
+    const structureKey = resolveParameterStructureKey(parameter);
+    const structure = structureKey
+      ? MODEL_PARAMETER_STRUCTURE_REGISTRY.get(structureKey)
+      : null;
+    if (typeof structure?.validateWithParameters !== "function") continue;
+
+    const dependencies = {};
+    let dependencyError = null;
+    for (const dependency of structure.parameterDependencies || []) {
+      const matches = modelParameters.filter(
+        (candidate) =>
+          resolveParameterStructureKey(candidate) ===
+          dependency.parameterStructureKey
+      );
+      if (matches.length !== 1) {
+        dependencyError = `requires exactly one configured '${dependency.parameterStructureKey}' parameter`;
+        break;
+      }
+
+      const dependencyKey = resolveParameterKey(matches[0]);
+      if (
+        !dependencyKey ||
+        !hasOwnKey(normalizedModelParameters, dependencyKey)
+      ) {
+        dependencyError = `requires a value for '${dependency.parameterStructureKey}'`;
+        break;
+      }
+      dependencies[dependency.key] = normalizedModelParameters[dependencyKey];
+    }
+
+    if (dependencyError) {
+      addError({
+        parameter: parameterKey,
+        message: dependencyError,
+        value: normalizedModelParameters[parameterKey],
+      });
+      continue;
+    }
+
+    const result = structure.validateWithParameters({
+      value: normalizedModelParameters[parameterKey],
+      parameter,
+      context: {
+        modelName,
+        leafCriteria,
+        alternatives,
+        criterionDomainsById,
+      },
+      dependencies,
+    });
+    if (!result?.ok) {
+      addError({
+        parameter: parameterKey,
+        message: result?.message || "is invalid in the configured parameter context",
+        value: result?.value ?? normalizedModelParameters[parameterKey],
       });
       continue;
     }

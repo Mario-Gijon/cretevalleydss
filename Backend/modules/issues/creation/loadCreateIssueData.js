@@ -1,6 +1,7 @@
 import { IssueModel } from "../../../models/IssueModels.js";
 import { User } from "../../../models/Users.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../../modelParameters/validateAndNormalizeModelParameters.js";
+import { MODEL_PARAMETER_STRUCTURE_REGISTRY } from "../../decisionPlugins/modelParameters/parameterStructureRegistry.js";
 import {
   validateIssueModelRuntimeConfigOrThrow,
 } from "./validateIssueModelRuntime.js";
@@ -26,6 +27,8 @@ export const loadCreateIssueActorsAndModel = async ({
   alternatives,
   uniqueExpertEmails,
   session = null,
+  deferModelParameterValidation = false,
+  availableValidationContextKeys = [],
 }) => {
   const normalizedExpertEmails = [
     ...new Set(uniqueExpertEmails.map((email) => normalizeEmail(email)).filter(Boolean)),
@@ -70,15 +73,31 @@ export const loadCreateIssueActorsAndModel = async ({
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
 
   const sanitizedParamValues = stripCriteriaWeightParameterValues(paramValues);
-
-  const normalizedModelParameters = validateAndNormalizeModelParametersOrThrow({
-    model: existingModel,
-    paramValues: sanitizedParamValues,
-    criteriaNodes,
-    alternatives,
+  const availableContextKeys = new Set(availableValidationContextKeys);
+  const hasUnavailableValidationContext = (
+    Array.isArray(existingModel.parameters) ? existingModel.parameters : []
+  ).some((parameter) => {
+    const structure = MODEL_PARAMETER_STRUCTURE_REGISTRY.get(
+      parameter?.parameterStructureKey
+    );
+    return (structure?.validationContextKeys || []).some(
+      (contextKey) => !availableContextKeys.has(contextKey)
+    );
   });
-  const normalizedModelParametersWithoutCriteriaWeights =
-    stripCriteriaWeightParameterValues(normalizedModelParameters);
+  const shouldDeferModelParameterValidation =
+    deferModelParameterValidation && hasUnavailableValidationContext;
+
+  const normalizedModelParameters = shouldDeferModelParameterValidation
+    ? null
+    : validateAndNormalizeModelParametersOrThrow({
+        model: existingModel,
+        paramValues: sanitizedParamValues,
+        criteriaNodes,
+        alternatives,
+      });
+  const normalizedModelParametersWithoutCriteriaWeights = shouldDeferModelParameterValidation
+    ? null
+    : stripCriteriaWeightParameterValues(normalizedModelParameters);
 
   const owner = await User.findById(ownerUserId).session(session);
   if (!owner) {
@@ -124,5 +143,8 @@ export const loadCreateIssueActorsAndModel = async ({
     requiresHomogeneousExpressionDomains,
     normalizedModelParameters:
       normalizedModelParametersWithoutCriteriaWeights,
+    ...(shouldDeferModelParameterValidation
+      ? { modelParameterValuesToValidate: sanitizedParamValues }
+      : {}),
   };
 };
