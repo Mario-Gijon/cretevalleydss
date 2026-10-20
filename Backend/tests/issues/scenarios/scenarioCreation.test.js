@@ -50,6 +50,8 @@ const buildMockExecutionContext = () => {
         path: "/solve-target",
       },
       targetEvaluationStructureKey: "alternativeCriteriaMatrix",
+      targetResultStructureKey: "ranking",
+      targetResultStructureVersion: 1,
       targetSupportsConsensus: false,
     },
     domainType: "numeric",
@@ -293,7 +295,7 @@ describe("createIssueScenario input normalization", () => {
     expect(scenario.phaseResults.map((entry) => entry.phase)).toEqual([0, 2]);
     expect(scenario.phaseResults[0]).toMatchObject({
       source: { domainType: "numeric" }, requestSnapshot: context.requestPayload,
-      result: { standardResult: { ranking: ["Alternative A"] }, modelExecution: { ok: true }, rawOutput: { raw: true } },
+      result: { resultStructureKey: "ranking", resultStructureVersion: 1, standardResult: { ranking: ["Alternative A"] }, modelExecution: { ok: true }, rawOutput: { raw: true } },
     });
     expect(scenario.phaseResults[0].execution.startedAt).toBeInstanceOf(Date);
     expect(scenario.phaseResults[0].execution.completedAt).toBeInstanceOf(Date);

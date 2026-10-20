@@ -8,6 +8,7 @@ import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { Participation } from "../../../models/Participations.js";
 import { User } from "../../../models/Users.js";
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import { projectNormalizedResultOrThrow } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { createInternalError } from "../../../utils/common/errors.js";
 
@@ -47,6 +48,32 @@ const identitySnapshotOrThrow = ({ user, userId, role }) => {
   if (!user) throw createInternalError(`Issue ${role} identity is required for a creation snapshot`, { field: role === "owner" ? "issue.ownerId" : "issue.createdBy", details: { userId: toIdString(userId) } });
   return { id: toIdString(user._id), name: user.name, email: user.email, university: user.university };
 };
+const buildPreviousPhaseSnapshot = ({ previousStageResult, phase }) => {
+  if (!previousStageResult) return null;
+
+  const standardResult = previousStageResult.result?.standardResult ?? {};
+  const resultStructureMetadata = resolveResultStructureMetadata(
+    previousStageResult.result ?? {}
+  );
+  const projectedResult = projectNormalizedResultOrThrow({
+    ...resultStructureMetadata,
+    result: standardResult,
+    target: "stateSnapshot",
+  });
+
+  return {
+    phase,
+    stageResultId: toIdString(previousStageResult._id),
+    executionAttemptId: toIdString(previousStageResult.executionAttempt) || null,
+    ...resultStructureMetadata,
+    standardResult: clone(standardResult, "previousPhase.standardResult"),
+    ...projectedResult,
+    modelExecution: clone(
+      previousStageResult.result?.modelExecution ?? null,
+      "previousPhase.modelExecution"
+    ),
+  };
+};
 export const buildIssueStateSnapshot = async ({ issue, snapshotType, consensusPhase = issue.consensusPhase, criteriaWeightingConfiguration = null, session = null }) => {
   const creationSnapshot = snapshotType === "consensusPhaseStart" ? await q(IssueStateSnapshot.findOne({ issue: issue._id, snapshotType: "creation" }).lean(), session) : null;
   if (snapshotType === "consensusPhaseStart" && !creationSnapshot) throw createInternalError("Issue creation snapshot is required before a consensus phase snapshot", { field: "issue" });
@@ -76,7 +103,10 @@ export const buildIssueStateSnapshot = async ({ issue, snapshotType, consensusPh
     expressionDomains: domains.map((d) => ({ id: toIdString(d._id), sourceDomainId: toIdString(d.sourceDomain), name: d.name, typeKey: d.typeKey, definition: clone(d.definition ?? {}, "expressionDomain.definition") })),
     participants: participations.map((p) => { const user = usersById.get(toIdString(p.expert)); return { participationId: toIdString(p._id), expert: { id: toIdString(p.expert), name: user?.name ?? null, email: user?.email ?? null, university: user?.university ?? null }, invitationStatus: p.invitationStatus, evaluationCompleted: p.evaluationCompleted === true, weightsCompleted: p.weightsCompleted === true, weight: p.weight ?? null, entryStage: p.entryStage ?? null, entryPhase: p.entryPhase ?? null, joinedAt: iso(p.joinedAt) }; }),
     evaluations: evaluations.map((e) => ({ evaluationId: toIdString(e._id), expertId: toIdString(e.expert), stage: e.stage, consensusPhase: e.consensusPhase, payload: clone(e.payload ?? {}, "evaluation.payload"), completed: e.completed === true, submittedAt: iso(e.submittedAt) })),
-    previousPhase: previousStageResult ? { phase: consensusPhase - 1, stageResultId: toIdString(previousStageResult._id), executionAttemptId: toIdString(previousStageResult.executionAttempt) || null, consensusMeasure: previousStageResult.result?.standardResult?.consensusMeasure ?? null, collectiveEvaluations: clone(previousStageResult.result?.standardResult?.collectiveEvaluations ?? null, "previousPhase.collectiveEvaluations"), rankedAlternatives: clone(previousStageResult.result?.standardResult?.rankedAlternatives ?? null, "previousPhase.rankedAlternatives"), modelExecution: clone(previousStageResult.result?.modelExecution ?? null, "previousPhase.modelExecution") } : null,
+    previousPhase: buildPreviousPhaseSnapshot({
+      previousStageResult,
+      phase: consensusPhase - 1,
+    }),
   }, "snapshot.state");
 };
 export const writeIssueStateSnapshot = async ({ issue, snapshotType, occurredAt, correlationId, sourceEvent = null, sourceExecutionAttempt = null, consensusPhase = issue.consensusPhase, criteriaWeightingConfiguration = null, session = null }) => IssueStateSnapshot.create([{ issue: issue._id, snapshotType, stage: issue.currentStage, consensusPhase, occurredAt, correlationId, sourceEvent, sourceExecutionAttempt, state: await buildIssueStateSnapshot({ issue, snapshotType, consensusPhase, criteriaWeightingConfiguration, session }), schemaVersion: 1 }], { session }).then(([snapshot]) => snapshot);

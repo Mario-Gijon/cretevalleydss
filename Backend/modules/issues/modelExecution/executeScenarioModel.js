@@ -1,26 +1,9 @@
 import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 import {
+  RESULT_STRUCTURE_REGISTRY,
   normalizeResultStructureOrThrow,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
-
-const SCENARIO_NORMALIZATION_MESSAGES = {
-  resultRequired: "Scenario model execution result is required",
-  rankedAlternativesRequired:
-    "Scenario model execution result.rankedAlternatives must be a non-empty array",
-  rankedAlternativeInvalidEntry: "Invalid rankedAlternatives entry",
-  rankedAlternativeNameRequired: "rankedAlternatives entry requires name",
-  rankedAlternativeScoreRequired:
-    "rankedAlternatives entry requires finite score",
-  rankedAlternativeRankRequired:
-    "rankedAlternatives entry requires positive rank",
-  collectiveEvaluationsRequired:
-    "Scenario model execution result.collectiveEvaluations is required",
-  plotsGraphicRequired: "Scenario model execution result.plotsGraphic is required",
-  consensusMeasureInvalid:
-    "Scenario model execution result.consensusMeasure must be finite or null",
-  rawOutputRequired: "Scenario model execution result.rawOutput is required",
-};
 
 export const executeScenarioModel = async ({
   requestPayload,
@@ -28,11 +11,12 @@ export const executeScenarioModel = async ({
   decisionModelsServiceBaseUrl,
   httpClient,
   executionAttemptInput,
+  resultStructureRegistry = RESULT_STRUCTURE_REGISTRY,
 }) => {
   const resultStructureMetadata = resolveResultStructureMetadata({
     resultStructureKey: targetRuntimeSnapshot.targetResultStructureKey,
     resultStructureVersion: targetRuntimeSnapshot.targetResultStructureVersion,
-  });
+  }, { registry: resultStructureRegistry });
   const tracked = await executeTrackedDecisionModelRequest({
     attemptInput: executionAttemptInput,
     apiEndpointPath: targetRuntimeSnapshot.targetApiEndpoint.path,
@@ -40,19 +24,26 @@ export const executeScenarioModel = async ({
     errorMessage: "Scenario model execution failed",
     decisionModelsServiceBaseUrl,
     httpClient,
-    normalize: async (modelOutput) =>
-      normalizeResultStructureOrThrow({
+    normalize: async (modelOutput) => {
+      const standardResult = normalizeResultStructureOrThrow({
         ...resultStructureMetadata,
         result: modelOutput,
-        messages: SCENARIO_NORMALIZATION_MESSAGES,
+        context: "scenario",
         options: {
           requireResultObject: false,
           validateAlternativeIdType: false,
           enforceRankOrdering: false,
         },
-      }),
+        registry: resultStructureRegistry,
+      });
+      return {
+        ...resultStructureMetadata,
+        standardResult,
+        rawOutput: standardResult.rawOutput ?? modelOutput,
+      };
+    },
   });
-  const standardResult = tracked.result;
+  const { standardResult } = tracked.result;
 
   const modelExecution = {
     kind: "decisionModelsService",
@@ -65,9 +56,10 @@ export const executeScenarioModel = async ({
   };
 
   return {
+    ...resultStructureMetadata,
     standardResult,
     modelExecution,
-    rawOutput: standardResult.rawOutput,
+    rawOutput: tracked.result.rawOutput,
     executionAttempt: tracked.attempt,
   };
 };

@@ -5,6 +5,11 @@ import {
   getStageExpertWeights,
   getStageStandardResult,
 } from "../stageResults/stageResultContract.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import {
+  RESULT_STRUCTURE_REGISTRY,
+  projectNormalizedResultOrThrow,
+} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const groupByIssueId = (items, selector, { recordType }) => {
   const grouped = {};
@@ -35,6 +40,7 @@ export const buildActiveIssueCollections = ({
   alternatives,
   criteria,
   alternativeStageResults,
+  resultStructureRegistry = RESULT_STRUCTURE_REGISTRY,
 }) => {
   const consensusByIssue = {};
 
@@ -62,26 +68,6 @@ export const buildActiveIssueCollections = ({
     ) {
       throw createInternalError("IssueStageResult consensusMeasure must be finite", {
         field: "consensusMeasure",
-        details: {
-          issueId,
-          phase: stageResult.consensusPhase,
-        },
-      });
-    }
-
-    if (!Array.isArray(standardResult.rankedAlternatives)) {
-      throw createInternalError("IssueStageResult rankedAlternatives must be an array", {
-        field: "rankedAlternatives",
-        details: {
-          issueId,
-          phase: stageResult.consensusPhase,
-        },
-      });
-    }
-
-    if (!isPlainObject(standardResult.collectiveEvaluations)) {
-      throw createInternalError("IssueStageResult collectiveEvaluations must be an object", {
-        field: "collectiveEvaluations",
         details: {
           issueId,
           phase: stageResult.consensusPhase,
@@ -147,15 +133,25 @@ export const buildActiveIssueCollections = ({
           .sort((left, right) => left.consensusPhase - right.consensusPhase)
           .map((stageResult) => {
             const standardResult = getStageStandardResult(stageResult);
+            const resultStructureMetadata = resolveResultStructureMetadata(
+              stageResult.result ?? {},
+              { registry: resultStructureRegistry }
+            );
+            const projectedResult = projectNormalizedResultOrThrow({
+              ...resultStructureMetadata,
+              result: standardResult,
+              target: "activeIssueResponse",
+              context: { rawOutput: stageResult.result.rawOutput },
+              registry: resultStructureRegistry,
+            });
             return {
               phase: stageResult.consensusPhase,
               computedAt: stageResult.updatedAt || stageResult.createdAt,
-              consensusLevel: standardResult.consensusMeasure,
-              consensusMeasure: standardResult.consensusMeasure,
-              rankedAlternatives: standardResult.rankedAlternatives,
-              collectiveEvaluations: standardResult.collectiveEvaluations,
-              feedback: stageResult.result.rawOutput.feedback,
-              recommendations: stageResult.result.rawOutput.recommendations,
+              ...resultStructureMetadata,
+              standardResult,
+              consensusLevel: standardResult.consensusMeasure ?? null,
+              consensusMeasure: standardResult.consensusMeasure ?? null,
+              ...projectedResult,
               modelExecution: stageResult.result.modelExecution,
               expertWeights: getStageExpertWeights(stageResult),
             };

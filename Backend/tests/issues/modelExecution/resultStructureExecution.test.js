@@ -12,6 +12,10 @@ vi.mock("../../../modules/issues/modelExecution/executionEvidence.js", () => ({
 import { buildIssueModelExecutionResult } from "../../../modules/issues/modelExecution/buildIssueModelExecutionResult.js";
 import { executeScenarioModel } from "../../../modules/issues/modelExecution/executeScenarioModel.js";
 import { buildTargetModelRuntimeSnapshotOrThrow } from "../../../modules/issues/scenarios/validateScenarioModelCompatibility.js";
+import {
+  buildResultStructureRegistry,
+  projectNormalizedResultOrThrow,
+} from "../../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const standardRankingResult = (overrides = {}) => ({
   rankedAlternatives: [
@@ -61,17 +65,23 @@ describe("result structure selection in model execution", () => {
 
     expect(result).toMatchObject({
       message: "Completed",
-      consensusMeasure: 0.75,
-      rankedAlternatives: [
-        {
-          alternativeId: "alternative-1",
-          name: "Alternative A",
-          score: 0.9,
-          rank: 1,
-        },
-      ],
-      collectiveEvaluations: { expertA: { value: 0.9 } },
-      plotsGraphic: { scores: [0.9] },
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+      standardResult: {
+        consensusMeasure: 0.75,
+        rankedAlternatives: [
+          {
+            alternativeId: "alternative-1",
+            name: "Alternative A",
+            score: 0.9,
+            rank: 1,
+          },
+        ],
+        collectiveEvaluations: { expertA: { value: 0.9 } },
+        plotsGraphic: { scores: [0.9] },
+        consensusLifecycle: { phase: 1 },
+        rawOutput: { source: "model" },
+      },
       modelExecution: {
         kind: "decisionModelsService",
         structureKey: "alternativeCriteriaMatrix",
@@ -97,6 +107,81 @@ describe("result structure selection in model execution", () => {
         structureKey: "alternativeCriteriaMatrix",
       })
     ).toThrow("Unsupported resultStructureKey 'sorting'");
+  });
+
+  it("transports and projects a synthetic result structure without ranking fields", () => {
+    const resultStructureRegistry = buildResultStructureRegistry([
+      {
+        key: "clusterSummary",
+        version: 3,
+        validateAndNormalize: ({ result }) => ({
+          clusters: result.clusters,
+          summary: result.summary,
+          rawOutput: result.rawOutput,
+        }),
+        projectNormalizedResult: ({ result, target }) => {
+          if (target === "stagePersistence") {
+            return {
+              clusters: result.clusters,
+              summary: result.summary,
+              rawOutput: result.rawOutput,
+            };
+          }
+          if (target === "executionResponse") {
+            return { clusters: result.clusters, summary: result.summary };
+          }
+          throw new TypeError(`Unsupported projection '${target}'`);
+        },
+      },
+    ]);
+    const result = buildIssueModelExecutionResult({
+      issue: {
+        apiModelKey: "cluster-model",
+        apiEndpoint: { path: "/execute" },
+        resultStructureKey: "clusterSummary",
+        resultStructureVersion: 3,
+      },
+      result: {
+        clusters: [{ alternativeIds: ["a", "b"] }],
+        summary: { count: 2 },
+        rawOutput: { trace: [1, 2] },
+      },
+      structureKey: "clusterEvaluation",
+      resultStructureRegistry,
+    });
+
+    expect(result).toMatchObject({
+      resultStructureKey: "clusterSummary",
+      resultStructureVersion: 3,
+      standardResult: {
+        clusters: [{ alternativeIds: ["a", "b"] }],
+        summary: { count: 2 },
+        rawOutput: { trace: [1, 2] },
+      },
+      rawOutput: { trace: [1, 2] },
+    });
+    expect(result.standardResult).not.toHaveProperty("rankedAlternatives");
+    expect(
+      projectNormalizedResultOrThrow({
+        resultStructureKey: "clusterSummary",
+        resultStructureVersion: 3,
+        result: result.standardResult,
+        target: "stagePersistence",
+        registry: resultStructureRegistry,
+      })
+    ).toEqual(result.standardResult);
+    expect(
+      projectNormalizedResultOrThrow({
+        resultStructureKey: "clusterSummary",
+        resultStructureVersion: 3,
+        result: result.standardResult,
+        target: "executionResponse",
+        registry: resultStructureRegistry,
+      })
+    ).toEqual({
+      clusters: [{ alternativeIds: ["a", "b"] }],
+      summary: { count: 2 },
+    });
   });
 
   it("preserves scenario-specific options while selecting the target model structure", async () => {
@@ -153,6 +238,74 @@ describe("result structure selection in model execution", () => {
     expect(result.standardResult).not.toHaveProperty("resultStructureKey");
   });
 
+  it("preserves arbitrary normalized scenario data and records trusted metadata", async () => {
+    const resultStructureRegistry = buildResultStructureRegistry([
+      {
+        key: "clusterSummary",
+        version: 3,
+        validateAndNormalize: ({ result }) => ({
+          clusterMap: result.clusterMap,
+          summary: result.summary,
+        }),
+      },
+    ]);
+    const modelOutput = {
+      clusterMap: { a: "group-1", b: "group-1" },
+      summary: { count: 2 },
+      resultStructureKey: "untrusted",
+      resultStructureVersion: 999,
+    };
+    let executionAttemptResult;
+    executionState.executeTrackedDecisionModelRequest.mockImplementation(
+      async ({ normalize }) => {
+        executionAttemptResult = await normalize(modelOutput);
+        return {
+          result: executionAttemptResult,
+          attempt: {
+            _id: "scenario-attempt",
+            startedAt: new Date("2026-01-01T00:00:00.000Z"),
+            completedAt: new Date("2026-01-01T00:00:01.000Z"),
+            durationMs: 1000,
+          },
+        };
+      }
+    );
+    const result = await executeScenarioModel({
+      requestPayload: {},
+      targetRuntimeSnapshot: {
+        targetApiModelKey: "cluster-model",
+        targetApiEndpoint: { path: "/scenario" },
+        targetEvaluationStructureKey: "alternativeCriteriaMatrix",
+        targetResultStructureKey: "clusterSummary",
+        targetResultStructureVersion: 3,
+      },
+      decisionModelsServiceBaseUrl: "http://decision-models.test",
+      httpClient: {},
+      executionAttemptInput: {},
+      resultStructureRegistry,
+    });
+
+    expect(executionAttemptResult).toEqual({
+      resultStructureKey: "clusterSummary",
+      resultStructureVersion: 3,
+      standardResult: {
+        clusterMap: { a: "group-1", b: "group-1" },
+        summary: { count: 2 },
+      },
+      rawOutput: modelOutput,
+    });
+    expect(result).toMatchObject({
+      resultStructureKey: "clusterSummary",
+      resultStructureVersion: 3,
+      standardResult: {
+        clusterMap: { a: "group-1", b: "group-1" },
+        summary: { count: 2 },
+      },
+      rawOutput: modelOutput,
+    });
+    expect(result.standardResult).not.toHaveProperty("rankedAlternatives");
+  });
+
   it("keeps scenario-specific public validation messages", async () => {
     const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "scenario-model",
@@ -174,6 +327,31 @@ describe("result structure selection in model execution", () => {
     ).rejects.toMatchObject({
       message: "Scenario model execution result is required",
       field: "result",
+    });
+
+    executionState.executeTrackedDecisionModelRequest.mockImplementation(
+      async ({ normalize }) => ({
+        result: await normalize({
+          rankedAlternatives: [],
+          collectiveEvaluations: {},
+          plotsGraphic: {},
+          consensusMeasure: null,
+          rawOutput: {},
+        }),
+      })
+    );
+    await expect(
+      executeScenarioModel({
+        requestPayload: {},
+        targetRuntimeSnapshot,
+        decisionModelsServiceBaseUrl: "http://decision-models.test",
+        httpClient: {},
+        executionAttemptInput: {},
+      })
+    ).rejects.toMatchObject({
+      message:
+        "Scenario model execution result.rankedAlternatives must be a non-empty array",
+      field: "result.rankedAlternatives",
     });
   });
 });

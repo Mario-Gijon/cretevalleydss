@@ -190,6 +190,13 @@ describe("result structure registry", () => {
       resultStructureKey: "ranking",
       resultStructureVersion: 1,
     });
+    expect(resolveResultStructureMetadata({
+      resultStructureKey: null,
+      resultStructureVersion: null,
+    })).toEqual({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+    });
     expect(() =>
       resolveResultStructureMetadata({ resultStructureKey: "ranking" })
     ).toThrow("must be provided together");

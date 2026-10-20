@@ -684,6 +684,8 @@ describe("criteria weighting compute orchestration", () => {
     });
     expect(stageResult.result.standardResult).not.toHaveProperty("rankedAlternatives");
     expect(stageResult.result.standardResult).not.toHaveProperty("plotsGraphic");
+    expect(stageResult.result).not.toHaveProperty("resultStructureKey");
+    expect(stageResult.result).not.toHaveProperty("resultStructureVersion");
     expect(storedIssue.currentStage).toBe("alternativeEvaluation");
     expect(storedIssue.modelParameters.weights).toEqual({
       [String(leafCriteria[0]._id)]: 0.65,
@@ -954,6 +956,11 @@ describe("alternative compute orchestration", () => {
       consensusPhase: 1,
     }).lean();
     const storedIssue = await Issue.findById(issue._id).lean();
+    const executionAttempt = await IssueExecutionAttempt.findOne({
+      issue: issue._id,
+      evaluationStage: "alternativeEvaluation",
+      consensusPhase: 1,
+    }).lean();
 
     expect(calledUrl).toBe(`http://models.test${issue.apiEndpoint.path}`);
     expect(requestPayload).toMatchObject({
@@ -1003,6 +1010,8 @@ describe("alternative compute orchestration", () => {
       stage: "alternativeEvaluation",
       consensusPhase: 1,
       result: {
+        resultStructureKey: "ranking",
+        resultStructureVersion: 1,
         standardResult: {
           collectiveEvaluations: {
             [String(alternatives[0]._id)]: {
@@ -1025,6 +1034,28 @@ describe("alternative compute orchestration", () => {
       expect.objectContaining({ resultLabel: "High, slightly leaning toward Very High" }),
       expect.objectContaining({ resultLabel: "High, leaning toward Medium" }),
     ]);
+    expect(stageResult.result.standardResult).toEqual({
+      consensusMeasure: null,
+      rankedAlternatives: [
+        { alternativeId: String(alternatives[0]._id), name: "Alternative A", score: 2, rank: 1, resultLabel: "High, slightly leaning toward Very High" },
+        { alternativeId: String(alternatives[1]._id), name: "Alternative B", score: 1, rank: 2, resultLabel: "High, leaning toward Medium" },
+      ],
+      collectiveEvaluations: {
+        [String(alternatives[0]._id)]: { [String(leafCriteria[0]._id)]: 7 },
+        [String(alternatives[1]._id)]: { [String(leafCriteria[0]._id)]: 5 },
+      },
+      plotsGraphic: { scatter: [] },
+    });
+    expect(executionAttempt.normalizedResult).toMatchObject({
+      resultStructureKey: "ranking",
+      resultStructureVersion: 1,
+      standardResult: {
+        rankedAlternatives: stageResult.result.standardResult.rankedAlternatives,
+        collectiveEvaluations: stageResult.result.standardResult.collectiveEvaluations,
+        plotsGraphic: { scatter: [] },
+        rawOutput: { source: "alt-model" },
+      },
+    });
     const serializedPhase = serializePhaseResults({
       phaseResults: [stageResult],
       alternatives: alternatives.map((alternative) => ({
@@ -1052,6 +1083,8 @@ describe("alternative compute orchestration", () => {
       consensusPhase: 1,
       currentStage: "finished",
       result: {
+        resultStructureKey: "ranking",
+        resultStructureVersion: 1,
         collectiveEvaluations: {
           [String(alternatives[0]._id)]: {
             [String(leafCriteria[0]._id)]: 7,
@@ -1917,7 +1950,20 @@ describe("simulated consensus orchestration", () => {
     expect(stageResults.map((result, index) => String(result.executionAttempt))).toEqual(attempts.map((attempt) => String(attempt._id)));
     expect(generatedRevisions).toHaveLength(2);
     expect(generatedRevisions.every((revision) => revision.actorType === "system" && revision.actorUser === null && revision.submittedAt === null && String(revision.sourceExecutionAttempt) === String(attempts[0]._id))).toBe(true);
-    expect(phaseOneSnapshot).toMatchObject({ sourceExecutionAttempt: attempts[0]._id, state: { issue: { consensusPhase: 1 }, evaluations: expect.arrayContaining([expect.objectContaining({ stage: "alternativeEvaluation", consensusPhase: 1, completed: true, submittedAt: null })]), previousPhase: { stageResultId: String(stageResults[0]._id), executionAttemptId: String(attempts[0]._id) } } });
+    expect(phaseOneSnapshot).toMatchObject({
+      sourceExecutionAttempt: attempts[0]._id,
+      state: {
+        issue: { consensusPhase: 1 },
+        evaluations: expect.arrayContaining([expect.objectContaining({ stage: "alternativeEvaluation", consensusPhase: 1, completed: true, submittedAt: null })]),
+        previousPhase: {
+          stageResultId: String(stageResults[0]._id),
+          executionAttemptId: String(attempts[0]._id),
+          resultStructureKey: "ranking",
+          resultStructureVersion: 1,
+          standardResult: stageResults[0].result.standardResult,
+        },
+      },
+    });
     const originalPreviousPhase = structuredClone(phaseOneSnapshot.state.previousPhase);
     const snapshotCount = await IssueStateSnapshot.countDocuments({ issue: issue._id });
     await IssueStageResult.updateOne({ _id: stageResults[0]._id }, { $set: { "result.standardResult.consensusMeasure": 0.01, "result.standardResult.rankedAlternatives": [], "result.standardResult.collectiveEvaluations": { overwritten: true }, "result.modelExecution": { overwritten: true } } });

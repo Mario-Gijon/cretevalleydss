@@ -1,4 +1,6 @@
 import { toIdString } from "../../../utils/common/ids.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import { projectNormalizedResultOrThrow } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const cloneSerializable = (value, fallback) => {
   if (value === undefined) return fallback;
@@ -24,19 +26,21 @@ export const getStageExpertWeights = (stageResult) =>
  */
 export const serializePreviousStageResultForExecution = (stageResult) => {
   const standardResult = getStageStandardResult(stageResult);
+  const resultStructureMetadata = resolveResultStructureMetadata(
+    stageResult?.result ?? {}
+  );
+  const projectedResult = projectNormalizedResultOrThrow({
+    ...resultStructureMetadata,
+    result: standardResult,
+    target: "scenarioInput",
+  });
 
   return {
     _id: toIdString(stageResult?._id),
     issue: toIdString(stageResult?.issue),
     stage: stageResult?.stage ?? null,
     consensusPhase: stageResult?.consensusPhase ?? null,
-    consensusMeasure: standardResult.consensusMeasure ?? null,
-    rankedAlternatives: cloneSerializable(standardResult.rankedAlternatives, []),
-    collectiveEvaluations: cloneSerializable(
-      standardResult.collectiveEvaluations,
-      {}
-    ),
-    plotsGraphic: cloneSerializable(standardResult.plotsGraphic, {}),
+    ...projectedResult,
     modelExecution: cloneSerializable(stageResult?.result?.modelExecution, {}),
     rawOutput: cloneSerializable(stageResult?.result?.rawOutput, {}),
     expertWeights: cloneSerializable(getStageExpertWeights(stageResult), []),

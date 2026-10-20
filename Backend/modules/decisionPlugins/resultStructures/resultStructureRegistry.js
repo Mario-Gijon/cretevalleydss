@@ -12,6 +12,13 @@ const isNonEmptyString = (value) =>
 
 const isPositiveInteger = (value) =>
   Number.isInteger(value) && value > 0;
+const RESULT_PROJECTION_TARGETS = new Set([
+  "stagePersistence",
+  "executionResponse",
+  "scenarioInput",
+  "stateSnapshot",
+  "activeIssueResponse",
+]);
 
 const isValidResultStructure = (value) =>
   value !== null &&
@@ -234,11 +241,55 @@ export const normalizeResultStructureOrThrow = ({
   result,
   messages,
   options,
+  context,
+  registry = RESULT_STRUCTURE_REGISTRY,
 }) => {
   const structure = getResultStructureOrThrow(
     resultStructureKey,
-    resultStructureVersion
+    resultStructureVersion,
+    registry
   );
 
-  return structure.validateAndNormalize({ result, messages, options });
+  return structure.validateAndNormalize({ result, messages, options, context });
+};
+
+/**
+ * Projects normalized data at a named persistence or compatibility boundary:
+ * stagePersistence, executionResponse, scenarioInput, stateSnapshot, or
+ * activeIssueResponse.
+ * Structures without family-specific projections preserve the normalized object.
+ */
+export const projectNormalizedResultOrThrow = ({
+  resultStructureKey,
+  resultStructureVersion,
+  result,
+  target,
+  context = {},
+  registry = RESULT_STRUCTURE_REGISTRY,
+}) => {
+  if (!RESULT_PROJECTION_TARGETS.has(target)) {
+    throw new TypeError(`Unsupported result projection target '${target}'`);
+  }
+
+  const structure = getResultStructureOrThrow(
+    resultStructureKey,
+    resultStructureVersion,
+    registry
+  );
+  const projectedResult = structure.projectNormalizedResult
+    ? structure.projectNormalizedResult({ result, target, context })
+    : result;
+
+  if (
+    projectedResult === null ||
+    typeof projectedResult !== "object" ||
+    Array.isArray(projectedResult) ||
+    Object.getPrototypeOf(projectedResult) !== Object.prototype
+  ) {
+    throw new TypeError(
+      `Result structure '${resultStructureKey}@${resultStructureVersion}' must project '${target}' to a plain object`
+    );
+  }
+
+  return projectedResult;
 };

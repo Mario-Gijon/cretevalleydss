@@ -37,7 +37,7 @@ export const resolveEvaluationComputeLifecycle = ({
     };
   }
 
-  const consensusMeasure = safeComputeResult.consensusMeasure;
+  const consensusMeasure = safeComputeResult.standardResult?.consensusMeasure ?? safeComputeResult.consensusMeasure;
   if (!isFiniteNumber(consensusMeasure)) {
     throw createBadRequestError(
       "Consensus computation must return a finite consensusMeasure",

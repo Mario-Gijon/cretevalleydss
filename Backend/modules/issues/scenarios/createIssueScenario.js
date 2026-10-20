@@ -38,6 +38,8 @@ const buildAttemptInput = ({ context, userId, correlationId, decisionModelsServi
     apiModelKey: context.targetRuntimeSnapshot.targetApiModelKey ?? null,
     apiEndpointPath: context.targetRuntimeSnapshot.targetApiEndpoint?.path ?? null,
     evaluationStructureKey: context.targetRuntimeSnapshot.targetEvaluationStructureKey ?? null,
+    resultStructureKey: context.targetRuntimeSnapshot.targetResultStructureKey ?? null,
+    resultStructureVersion: context.targetRuntimeSnapshot.targetResultStructureVersion ?? null,
     serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "scenario",
   },
 });
@@ -85,6 +87,8 @@ export const createIssueScenario = async ({
         source: { stageResult: context.stageResultId, domainType: context.domainType },
         requestSnapshot,
         result: {
+          resultStructureKey: context.targetRuntimeSnapshot.targetResultStructureKey,
+          resultStructureVersion: context.targetRuntimeSnapshot.targetResultStructureVersion,
           standardResult: cloneJsonCompatibleOrThrow(standardResult, "standardResult"),
           modelExecution: cloneJsonCompatibleOrThrow(modelExecution, "modelExecution"),
           rawOutput: cloneJsonCompatibleOrThrow(rawOutput, "rawOutput"),

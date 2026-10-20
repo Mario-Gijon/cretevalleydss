@@ -53,6 +53,8 @@ const issueStageResultSchema = new Schema(
       default: () => ({ expertWeights: [] }),
     },
     result: {
+      resultStructureKey: String,
+      resultStructureVersion: Number,
       standardResult: {
         type: Schema.Types.Mixed,
         required: true,

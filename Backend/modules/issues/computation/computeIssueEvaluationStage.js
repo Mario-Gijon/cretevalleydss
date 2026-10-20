@@ -46,6 +46,8 @@ import {
 } from "../events/index.js";
 import { tryGenerateFinishedIssueExecutionAnalysis } from "../resultsAnalysis/index.js";
 import { notifyAcceptedExperts } from "../notifications/index.js";
+import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
+import { projectNormalizedResultOrThrow } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
@@ -71,6 +73,29 @@ const getStructureForIssueStage = ({ issue, stage }) => {
   };
 
   return getEvaluationStructureOrThrow(structureKeyByStage[stage]);
+};
+
+const buildAlternativeEvaluationResponseResult = ({
+  issue,
+  computeResult,
+  consensusLifecycle,
+  expertWeights,
+}) => {
+  const resultStructureMetadata = resolveResultStructureMetadata(issue);
+  const projectedResult = projectNormalizedResultOrThrow({
+    ...resultStructureMetadata,
+    result: computeResult.standardResult,
+    target: "executionResponse",
+  });
+
+  return {
+    ...projectedResult,
+    ...resultStructureMetadata,
+    consensusLifecycle,
+    modelExecution: computeResult.modelExecution,
+    rawOutput: computeResult.rawOutput,
+    expertWeights,
+  };
 };
 
 const loadComputeContext = async ({ issueId, userId, stage }) => {
@@ -592,6 +617,7 @@ const saveStageResult = async ({
   session = null,
 }) => {
   let standardResult = null;
+  let resultStructureMetadata = null;
   const modelExecution = withConsensusLifecycleInModelExecution({
     modelExecution: computeResult.modelExecution,
     consensusLifecycle: lifecycleMetadata,
@@ -610,11 +636,11 @@ const saveStageResult = async ({
       collectiveEvaluations: computeResult.collectiveEvaluations,
     };
   } else if (stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
-    if (!Array.isArray(computeResult.rankedAlternatives)) {
+    if (!isPlainObject(computeResult.standardResult)) {
       throw createInternalError(
-        "Alternative evaluation compute result rankedAlternatives must be an array",
+        "Alternative evaluation compute result standardResult must be an object",
         {
-          field: "computeResult.rankedAlternatives",
+          field: "computeResult.standardResult",
           details: {
             issueId: issue?._id ?? null,
             stage,
@@ -623,25 +649,12 @@ const saveStageResult = async ({
       );
     }
 
-    if (!isPlainObject(computeResult.plotsGraphic)) {
-      throw createInternalError(
-        "Alternative evaluation compute result plotsGraphic must be an object",
-        {
-          field: "computeResult.plotsGraphic",
-          details: {
-            issueId: issue?._id ?? null,
-            stage,
-          },
-        }
-      );
-    }
-
-    standardResult = {
-      consensusMeasure: computeResult.consensusMeasure,
-      rankedAlternatives: computeResult.rankedAlternatives,
-      collectiveEvaluations: computeResult.collectiveEvaluations,
-      plotsGraphic: computeResult.plotsGraphic,
-    };
+    resultStructureMetadata = resolveResultStructureMetadata(issue);
+    standardResult = projectNormalizedResultOrThrow({
+      ...resultStructureMetadata,
+      result: computeResult.standardResult,
+      target: "stagePersistence",
+    });
   } else {
     throw createInternalError("Unsupported evaluation stage for stage result persistence", {
       field: "stage",
@@ -663,6 +676,7 @@ const saveStageResult = async ({
         inputSnapshot: { expertWeights },
         executionAttempt: executionAttempt?._id,
         result: {
+          ...(resultStructureMetadata ?? {}),
           standardResult,
           modelExecution,
           rawOutput: computeResult.rawOutput,
@@ -1003,7 +1017,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       expertWeightsByExpertId,
       decisionModelsServiceBaseUrl,
       httpClient,
-      executionAttemptInput: { issue: issue._id, scope: "issueStage", actorType: "user", actorUser, correlationId, evaluationStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, issueStage: issue.currentStage, consensusPhase: currentPhase, modelContext: { modelId: issue.model?._id ?? issue.model ?? null, modelName: issue.model?.name ?? null, apiModelKey: issue.apiModelKey ?? null, apiEndpointPath: issue.apiEndpoint?.path ?? null, evaluationStructureKey: structure.key, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "alternativeEvaluation" } },
+      executionAttemptInput: { issue: issue._id, scope: "issueStage", actorType: "user", actorUser, correlationId, evaluationStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, issueStage: issue.currentStage, consensusPhase: currentPhase, modelContext: { modelId: issue.model?._id ?? issue.model ?? null, modelName: issue.model?.name ?? null, apiModelKey: issue.apiModelKey ?? null, apiEndpointPath: issue.apiEndpoint?.path ?? null, evaluationStructureKey: structure.key, ...resolveResultStructureMetadata(issue), serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "alternativeEvaluation" } },
     });
 
     const {
@@ -1075,14 +1089,12 @@ const computeSimulatedAlternativeConsensusRounds = async ({
     consensusPhase: currentPhase,
     currentStage: issue.currentStage,
     result: {
-      rankedAlternatives: lastComputeResult.rankedAlternatives,
-      collectiveEvaluations: lastComputeResult.collectiveEvaluations,
-      plotsGraphic: lastComputeResult.plotsGraphic,
-      consensusMeasure: lastComputeResult.consensusMeasure,
-      consensusLifecycle: lastLifecycleMetadata,
-      modelExecution: lastComputeResult.modelExecution,
-      rawOutput: lastComputeResult.rawOutput,
-      expertWeights,
+      ...buildAlternativeEvaluationResponseResult({
+        issue,
+        computeResult: lastComputeResult,
+        consensusLifecycle: lastLifecycleMetadata,
+        expertWeights,
+      }),
       simulatedConsensus: {
         enabled: true,
         initialPhase,
@@ -1173,7 +1185,7 @@ export const computeIssueEvaluationStage = async ({
         expertWeightsByExpertId: weightsByExpertId,
         decisionModelsServiceBaseUrl,
         httpClient,
-        executionAttemptInput: { issue: issue._id, scope: "issueStage", actorType: "user", actorUser: userId, correlationId: eventMetadata.correlationId, evaluationStage: stage, issueStage: issue.currentStage, consensusPhase: issue.consensusPhase, modelContext: { modelId: issue.model?._id ?? issue.model ?? null, modelName: issue.model?.name ?? null, apiModelKey: issue.apiModelKey ?? null, apiEndpointPath: issue.apiEndpoint?.path ?? null, evaluationStructureKey: structure.key, serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "alternativeEvaluation" } },
+        executionAttemptInput: { issue: issue._id, scope: "issueStage", actorType: "user", actorUser: userId, correlationId: eventMetadata.correlationId, evaluationStage: stage, issueStage: issue.currentStage, consensusPhase: issue.consensusPhase, modelContext: { modelId: issue.model?._id ?? issue.model ?? null, modelName: issue.model?.name ?? null, apiModelKey: issue.apiModelKey ?? null, apiEndpointPath: issue.apiEndpoint?.path ?? null, evaluationStructureKey: structure.key, ...resolveResultStructureMetadata(issue), serviceBaseUrl: decisionModelsServiceBaseUrl ?? null, modelKind: "alternativeEvaluation" } },
       });
 
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
@@ -1409,14 +1421,12 @@ export const computeIssueEvaluationStage = async ({
     consensusPhase: issue.consensusPhase,
     currentStage: issue.currentStage,
     result: {
-      rankedAlternatives: lifecycleComputeResult.rankedAlternatives,
-      collectiveEvaluations: lifecycleComputeResult.collectiveEvaluations,
-      plotsGraphic: lifecycleComputeResult.plotsGraphic,
-      consensusMeasure: lifecycleComputeResult.consensusMeasure,
-      consensusLifecycle: lifecycleMetadata ?? null,
-      modelExecution: lifecycleComputeResult.modelExecution,
-      rawOutput: lifecycleComputeResult.rawOutput,
-      expertWeights,
+      ...buildAlternativeEvaluationResponseResult({
+        issue,
+        computeResult: lifecycleComputeResult,
+        consensusLifecycle: lifecycleMetadata ?? null,
+        expertWeights,
+      }),
     },
   };
 };

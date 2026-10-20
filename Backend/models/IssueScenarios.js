@@ -60,6 +60,8 @@ const issueScenarioSchema = new Schema(
             required: true,
           },
           result: {
+            resultStructureKey: String,
+            resultStructureVersion: Number,
             standardResult: { type: Schema.Types.Mixed, required: true },
             modelExecution: { type: Schema.Types.Mixed, required: true },
             rawOutput: { type: Schema.Types.Mixed, required: true },

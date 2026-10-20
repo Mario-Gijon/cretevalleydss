@@ -1,5 +1,6 @@
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 import {
+  RESULT_STRUCTURE_REGISTRY,
   normalizeResultStructureOrThrow,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 
@@ -10,18 +11,22 @@ export const buildIssueModelExecutionResult = ({
   structureKey,
   issueUpdates,
   nextCurrentStage,
+  resultStructureRegistry = RESULT_STRUCTURE_REGISTRY,
 }) => {
+  const resultStructureMetadata = resolveResultStructureMetadata(
+    issue,
+    { registry: resultStructureRegistry }
+  );
   const normalizedResult = normalizeResultStructureOrThrow({
-    ...resolveResultStructureMetadata(issue),
+    ...resultStructureMetadata,
     result,
+    registry: resultStructureRegistry,
   });
 
   return {
     message,
-    consensusMeasure: normalizedResult.consensusMeasure,
-    rankedAlternatives: normalizedResult.rankedAlternatives,
-    collectiveEvaluations: normalizedResult.collectiveEvaluations,
-    plotsGraphic: normalizedResult.plotsGraphic,
+    ...resultStructureMetadata,
+    standardResult: normalizedResult,
     modelExecution: {
       kind: "decisionModelsService",
       structureKey,
@@ -29,7 +34,7 @@ export const buildIssueModelExecutionResult = ({
       apiEndpointPath: issue.apiEndpoint.path,
       executedAt: new Date(),
     },
-    rawOutput: normalizedResult.rawOutput,
+    rawOutput: normalizedResult.rawOutput ?? result,
     issueUpdates,
     nextCurrentStage,
   };

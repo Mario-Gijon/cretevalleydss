@@ -4,4 +4,5 @@ export {
   getResultStructureOrThrow,
   loadResultStructures,
   normalizeResultStructureOrThrow,
+  projectNormalizedResultOrThrow,
 } from "./resultStructureRegistry.js";
