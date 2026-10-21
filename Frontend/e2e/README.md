@@ -37,6 +37,37 @@ The authentication smoke test uses `auth.smoke@example.test`. The create-issue s
 
 Coverage: authentication verifies login and logout; issue creation verifies a logged-in owner can select the seeded model and domain, add alternatives, a criterion, and an expert, then create an active issue.
 
+## Run the TOPSIS-Sort Finished Issue visual test
+
+The Scenario Lab scenario creates and records the finished Issue. The Playwright
+test only reads the latest `topsis-sort-2016` entry from its local manifest; it
+does not create or delete Issues and does not depend on a MongoDB ID. First start
+the isolated E2E stack and seed its existing users, model catalog, and numeric
+domain using the commands above. Keep the existing ignored Scenario Lab user
+configuration at `Automation/issue_scenario_lab/.issue-scenario-lab/users.e2e.local.yaml`.
+
+Generate a current finished Issue from the repository root:
+
+```bash
+cd Automation/issue_scenario_lab
+SCENARIO_LAB_API_BASE_URL=http://localhost:5001/api \
+SCENARIO_LAB_USERS_FILE=.issue-scenario-lab/users.e2e.local.yaml \
+python -m issue_scenario_lab generate topsis-sort-2016
+```
+
+Then run the desktop and mobile Chromium checks from `Frontend`:
+
+```bash
+cd ../../Frontend
+bun run test:e2e -- e2e/topsisSortFinishedIssue.spec.js
+```
+
+The test logs in with the existing E2E authentication helper, opens Finished
+Issues, finds the newest Scenario Lab generation, and checks the sorting card,
+category assignments, dialog sections, unavailable ranking analysis, console
+errors, failed requests and HTTP responses, and mobile overflow. It does not
+modify the manifest or clean up existing generations.
+
 ## Teardown
 
 Remove the isolated services and their E2E-only MongoDB volume:
@@ -45,4 +76,6 @@ Remove the isolated services and their E2E-only MongoDB volume:
 docker compose -f docker-compose.e2e.yml down --volumes --remove-orphans
 ```
 
-The current stack starts MongoDB, Backend, and Frontend. DecisionModelsService is intentionally not started: the seeded `E2E Matrix Model` does not use criteria or expert weighting and this smoke flow stops after issue creation, before model execution.
+The isolated stack starts MongoDB, Backend, Frontend, and DecisionModelsService.
+The TOPSIS-Sort runtime opt-in exists only in this E2E stack; the normal model
+definition remains disabled outside it.
