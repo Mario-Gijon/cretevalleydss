@@ -13,6 +13,21 @@ import * as issueService from "../../src/services/issue.service.js";
 import { authFetch } from "../../src/utils/authFetch.js";
 
 describe("issue.service", () => {
+  it("gets a fresh model catalog for Create Issue", async () => {
+    authFetch.mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: { models: [] } }), {
+        status: 200,
+      })
+    );
+
+    await issueService.getModelsInfo();
+
+    expect(authFetch).toHaveBeenCalledWith(
+      "http://localhost:4010/issues/models",
+      expect.objectContaining({ method: "GET", cache: "no-store" })
+    );
+  });
+
   it("getExpressionsDomain requests the visible domains catalog", async () => {
     authFetch.mockResolvedValue(
       new Response(

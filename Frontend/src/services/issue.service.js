@@ -45,7 +45,7 @@ const requestWithAuth = (path, options, fallbackMessage) =>
 export const getModelsInfo = async () =>
   requestWithAuth(
     "/issues/models",
-    { method: "GET" },
+    { method: "GET", cache: "no-store" },
     "Error fetching models info."
   );
 

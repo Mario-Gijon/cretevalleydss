@@ -11,7 +11,11 @@ import {
   isModelActiveInCatalog,
 } from "../logic/formatModelManifestDisplay";
 
-export default function useModelManifestActions({ onCatalogShouldRefresh, onAfterSync } = {}) {
+export default function useModelManifestActions({
+  onCatalogShouldRefresh,
+  onCatalogModelUpdated,
+  onAfterSync,
+} = {}) {
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const [dryRunReport, setDryRunReport] = useState(null);
   const [syncResult, setSyncResult] = useState(null);
@@ -19,6 +23,12 @@ export default function useModelManifestActions({ onCatalogShouldRefresh, onAfte
   const [loadingDryRun, setLoadingDryRun] = useState(false);
   const [loadingSync, setLoadingSync] = useState(false);
   const [visibilityBusyId, setVisibilityBusyId] = useState(null);
+
+  const reportVisibilityFailure = useCallback((message) => {
+    setErrorMessage(message);
+    showSnackbarAlert(message, "error");
+    return false;
+  }, [showSnackbarAlert]);
 
   const runDryRun = useCallback(async () => {
     setLoadingDryRun(true);
@@ -98,7 +108,35 @@ export default function useModelManifestActions({ onCatalogShouldRefresh, onAfte
           return false;
         }
 
-        await onCatalogShouldRefresh?.({ quiet: true });
+        const updatedModel = response?.data?.model;
+        const updatedModelId = String(updatedModel?.id || updatedModel?._id || "");
+        if (
+          updatedModelId !== String(row.mongoId) ||
+          updatedModel?.[visibilityField] !== nextVisibility
+        ) {
+          return reportVisibilityFailure(
+            "The server did not confirm the requested model visibility change."
+          );
+        }
+
+        onCatalogModelUpdated?.(updatedModel);
+
+        if (onCatalogShouldRefresh) {
+          const refreshedModels = await onCatalogShouldRefresh({ quiet: true });
+          const refreshedModel = Array.isArray(refreshedModels)
+            ? refreshedModels.find(
+                (model) =>
+                  String(model?.id || model?._id || "") === String(row.mongoId)
+              )
+            : null;
+
+          if (refreshedModel?.[visibilityField] !== nextVisibility) {
+            return reportVisibilityFailure(
+              "The catalog refresh did not confirm the saved visibility. Reload the catalog and verify its current state."
+            );
+          }
+        }
+
         showSnackbarAlert(response.message || "Model catalog visibility updated", "success");
         return true;
       } catch (error) {
@@ -110,7 +148,12 @@ export default function useModelManifestActions({ onCatalogShouldRefresh, onAfte
         setVisibilityBusyId(null);
       }
     },
-    [onCatalogShouldRefresh, showSnackbarAlert]
+    [
+      onCatalogModelUpdated,
+      onCatalogShouldRefresh,
+      reportVisibilityFailure,
+      showSnackbarAlert,
+    ]
   );
 
   return {

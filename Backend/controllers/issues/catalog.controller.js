@@ -7,6 +7,7 @@ import { sendSuccess } from "../../utils/common/responses.js";
 export const modelsInfo = async (_req, res) => {
   const data = await getAvailableIssueModelsPayload();
 
+  res.set("Cache-Control", "no-store");
   return sendSuccess(res, "Models fetched successfully", data);
 };
 

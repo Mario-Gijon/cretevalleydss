@@ -68,6 +68,7 @@ export const getAllUsersAdmin = async (req, res) => {
 export const getModelCatalogAdmin = async (_req, res) => {
   const data = await getAdminModelCatalog();
 
+  res.set("Cache-Control", "no-store");
   return sendSuccess(res, "Model catalog retrieved successfully", data);
 };
 

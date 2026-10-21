@@ -9,6 +9,20 @@ export default function useAdminModelCatalog() {
   const [catalogError, setCatalogError] = useState("");
   const [loadingCatalog, setLoadingCatalog] = useState(true);
 
+  const applyCatalogModel = useCallback((updatedModel) => {
+    const updatedModelId = String(updatedModel?.id || updatedModel?._id || "");
+    if (!updatedModelId) return false;
+
+    setCatalogModels((currentModels) =>
+      currentModels.map((model) =>
+        String(model?.id || model?._id || "") === updatedModelId
+          ? { ...model, ...updatedModel }
+          : model
+      )
+    );
+    return true;
+  }, []);
+
   const loadCatalog = useCallback(
     async ({ quiet = false } = {}) => {
       if (!quiet) {
@@ -27,10 +41,11 @@ export default function useAdminModelCatalog() {
           return false;
         }
 
-        setCatalogModels(
-          Array.isArray(response?.data?.models) ? response.data.models : []
-        );
-        return true;
+        const models = Array.isArray(response?.data?.models)
+          ? response.data.models
+          : [];
+        setCatalogModels(models);
+        return models;
       } catch (error) {
         console.error(error);
         setCatalogError("Unexpected error fetching model catalog");
@@ -54,5 +69,6 @@ export default function useAdminModelCatalog() {
     catalogError,
     loadingCatalog,
     loadCatalog,
+    applyCatalogModel,
   };
 }

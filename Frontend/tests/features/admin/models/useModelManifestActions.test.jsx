@@ -165,7 +165,16 @@ describe("useModelManifestActions", () => {
     updateModelCatalogVisibility.mockResolvedValueOnce({
       success: true,
       message: "Visibility updated",
+      data: {
+        model: {
+          id: "mongo-issue-model",
+          visibleInIssueCreation: false,
+        },
+      },
     });
+    onCatalogShouldRefresh.mockResolvedValueOnce([
+      { id: "mongo-issue-model", visibleInIssueCreation: false },
+    ]);
 
     const row = {
       mongoId: "mongo-issue-model",
@@ -192,7 +201,16 @@ describe("useModelManifestActions", () => {
   it("updates visibility for criteria weighting models using the correct field", async () => {
     updateModelCatalogVisibility.mockResolvedValueOnce({
       success: true,
+      data: {
+        model: {
+          id: "mongo-criteria-model",
+          visibleInCriteriaWeighting: true,
+        },
+      },
     });
+    onCatalogShouldRefresh.mockResolvedValueOnce([
+      { id: "mongo-criteria-model", visibleInCriteriaWeighting: true },
+    ]);
 
     const row = {
       mongoId: "mongo-criteria-model",
@@ -212,6 +230,48 @@ describe("useModelManifestActions", () => {
     expect(updateModelCatalogVisibility).toHaveBeenCalledWith("mongo-criteria-model", {
       visibleInCriteriaWeighting: true,
     });
+    expect(showSnackbarAlert).toHaveBeenCalledWith(
+      "Model catalog visibility updated",
+      "success"
+    );
+  });
+
+  it("does not report success when the refreshed catalog cannot confirm the saved value", async () => {
+    updateModelCatalogVisibility.mockResolvedValueOnce({
+      success: true,
+      message: "Visibility updated",
+      data: {
+        model: {
+          id: "topsis-sort-mongo-id",
+          visibleInIssueCreation: true,
+        },
+      },
+    });
+    onCatalogShouldRefresh.mockResolvedValueOnce([
+      { id: "topsis-sort-mongo-id", visibleInIssueCreation: false },
+    ]);
+
+    const row = {
+      mongoId: "topsis-sort-mongo-id",
+      modelKind: "issue",
+      visibleInIssueCreation: false,
+    };
+    const { result } = renderHook(() =>
+      useModelManifestActions({ onAfterSync, onCatalogShouldRefresh })
+    );
+    let outcome = null;
+
+    await act(async () => {
+      outcome = await result.current.updateVisibility(row);
+    });
+
+    expect(outcome).toBe(false);
+    expect(result.current.errorMessage).toMatch(/did not confirm the saved visibility/i);
+    expect(showSnackbarAlert).toHaveBeenCalledWith(
+      expect.stringMatching(/did not confirm the saved visibility/i),
+      "error"
+    );
+    expect(showSnackbarAlert).not.toHaveBeenCalledWith("Visibility updated", "success");
   });
 
   it("returns false without calling the service when a row has no mongoId", async () => {

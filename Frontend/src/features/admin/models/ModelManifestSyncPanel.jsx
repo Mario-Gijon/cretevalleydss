@@ -67,7 +67,13 @@ export default function ModelManifestSyncPanel() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const { catalogModels, catalogError, loadingCatalog, loadCatalog } = useAdminModelCatalog();
+  const {
+    catalogModels,
+    catalogError,
+    loadingCatalog,
+    loadCatalog,
+    applyCatalogModel,
+  } = useAdminModelCatalog();
 
   const {
     dryRunReport,
@@ -81,6 +87,7 @@ export default function ModelManifestSyncPanel() {
     updateVisibility,
   } = useModelManifestActions({
     onCatalogShouldRefresh: loadCatalog,
+    onCatalogModelUpdated: applyCatalogModel,
     onAfterSync: () => selectTab(MODEL_MANIFEST_TABS.SYNC),
   });
 

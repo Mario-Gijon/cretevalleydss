@@ -300,6 +300,31 @@ describe("ModelManifestSyncPanel", () => {
 
   it("opens the visibility confirm dialog, warns on scaffold enable, and closes on success", async () => {
     const user = userEvent.setup();
+    const catalogModels = buildAdminCatalogModelsFixture();
+    const refreshedCatalogModels = catalogModels.map((model) =>
+      model.id === "mongo-criteria-model" || model._id === "mongo-criteria-model"
+        ? { ...model, visibleInCriteriaWeighting: true }
+        : model
+    );
+    getAdminModelCatalog
+      .mockResolvedValueOnce({
+        success: true,
+        data: { models: catalogModels },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        data: { models: refreshedCatalogModels },
+      });
+    updateModelCatalogVisibility.mockResolvedValueOnce({
+      success: true,
+      message: "Visibility updated",
+      data: {
+        model: {
+          id: "mongo-criteria-model",
+          visibleInCriteriaWeighting: true,
+        },
+      },
+    });
     renderPanel({ snackbarValue: { showSnackbarAlert } });
 
     await screen.findByText("catalog tab");

@@ -48,7 +48,7 @@ describe("admin.service", () => {
 
     expect(authFetch).toHaveBeenCalledWith(
       "http://localhost:4010/admin/models/catalog",
-      expect.objectContaining({ method: "GET" })
+      expect.objectContaining({ method: "GET", cache: "no-store" })
     );
   });
 

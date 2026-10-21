@@ -313,7 +313,7 @@ export const removeIssueAdminAction = async (issueId) => {
 export const getAdminModelCatalog = async () =>
   requestJson(
     `${API}/admin/models/catalog`,
-    { method: "GET" },
+    { method: "GET", cache: "no-store" },
     {
       fetcher: authFetch,
       fallbackMessage: "Error fetching model catalog.",

@@ -117,4 +117,28 @@ describe("useAdminModelCatalog", () => {
     expect(result.current.catalogModels).toEqual(buildAdminCatalogModelsFixture());
     expect(result.current.loadingCatalog).toBe(false);
   });
+
+  it("applies the model returned by a confirmed visibility update immediately", async () => {
+    getAdminModelCatalog.mockResolvedValueOnce({
+      success: true,
+      data: { models: buildAdminCatalogModelsFixture() },
+    });
+
+    const { result } = renderHook(() => useAdminModelCatalog());
+    await waitFor(() => expect(result.current.catalogModels).toHaveLength(3));
+
+    act(() => {
+      expect(
+        result.current.applyCatalogModel({
+          id: "mongo-issue-model",
+          visibleInIssueCreation: false,
+        })
+      ).toBe(true);
+    });
+
+    expect(
+      result.current.catalogModels.find((model) => model.id === "mongo-issue-model")
+        .visibleInIssueCreation
+    ).toBe(false);
+  });
 });
