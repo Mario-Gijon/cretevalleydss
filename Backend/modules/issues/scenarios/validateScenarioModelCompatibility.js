@@ -134,6 +134,10 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     targetResultStructureVersion:
       targetResultStructureMetadata.resultStructureVersion,
     issueExecutionAuthorized: targetModel.issueExecutionAuthorized === true,
+    targetModelKind: targetModel.modelKind,
+    targetImplementationStatus: targetModel.implementationStatus,
+    targetPublicUsable: targetModel.publicUsable === true,
+    targetManifestSyncIsStale: targetModel.manifestSync?.isStale === true,
     targetSupportsConsensus,
     targetUsesCriteriaWeights,
     targetUsesExpertWeights,

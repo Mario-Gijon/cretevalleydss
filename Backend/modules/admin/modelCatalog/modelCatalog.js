@@ -11,6 +11,7 @@ import {
   isResultStructureCapabilityEnabled,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { isIssueModelExecutionAllowed } from "../../issues/index.js";
+import { isIssueModelResultStructureCapabilityEnabled } from "../../issues/e2eIssueExecutionOverride.js";
 
 export const mapIssueModelCatalogItem = (model) => {
   const id = toIdString(model._id);
@@ -19,8 +20,9 @@ export const mapIssueModelCatalogItem = (model) => {
     ? resolveResultStructureMetadata(model)
     : null;
   const resultStructureIssueExecutionEnabled = resultStructureMetadata
-    ? isResultStructureCapabilityEnabled({
-        ...resultStructureMetadata,
+    ? isIssueModelResultStructureCapabilityEnabled({
+        model,
+        resultStructureMetadata,
         capability: "issueExecution",
       })
     : null;

@@ -1,0 +1,45 @@
+{
+  "description": "Sintético reproducible para TOPSIS-Sort original (Sabokbar et al., 2016). No representa datos observados.",
+  "criteria": [
+    { "key": "quality", "name": "Quality", "type": "benefit" },
+    { "key": "cost", "name": "Cost", "type": "cost" }
+  ],
+  "criteriaWeights": {
+    "quality": 0.6,
+    "cost": 0.4
+  },
+  "alternatives": [
+    { "key": "budget", "name": "Budget option", "description": "Low quality and high cost." },
+    { "key": "balanced", "name": "Balanced option", "description": "Intermediate quality and cost." },
+    { "key": "premium", "name": "Premium option", "description": "High quality and low cost." }
+  ],
+  "orderedCategories": [
+    { "categoryId": "low", "label": "Low", "order": 0 },
+    { "categoryId": "medium", "label": "Medium", "order": 1 },
+    { "categoryId": "high", "label": "High", "order": 2 }
+  ],
+  "boundaryProfiles": {
+    "profiles": [
+      {
+        "profileId": "medium-boundary",
+        "categoryId": "medium",
+        "valuesByCriterionId": { "quality": 4, "cost": 6 }
+      },
+      {
+        "profileId": "high-boundary",
+        "categoryId": "high",
+        "valuesByCriterionId": { "quality": 7, "cost": 3 }
+      }
+    ]
+  },
+  "evaluations": {
+    "budget": { "quality": 2, "cost": 8 },
+    "balanced": { "quality": 5, "cost": 5 },
+    "premium": { "quality": 8, "cost": 2 }
+  },
+  "expectedAssignments": {
+    "budget": "low",
+    "balanced": "medium",
+    "premium": "high"
+  }
+}

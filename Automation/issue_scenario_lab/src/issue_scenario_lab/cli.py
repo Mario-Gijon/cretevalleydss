@@ -28,6 +28,8 @@ from issue_scenario_lab.scenarios.no_consensus_expert_weights import SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_expert_weights import generate as generate_no_consensus_expert_weights
 from issue_scenario_lab.scenarios.topsis_2tuple_greece import SCENARIO_ID as TOPSIS_2TUPLE_GREECE_SCENARIO_ID
 from issue_scenario_lab.scenarios.topsis_2tuple_greece import generate as generate_topsis_2tuple_greece
+from issue_scenario_lab.scenarios.topsis_sort_2016 import SCENARIO_ID as TOPSIS_SORT_2016_SCENARIO_ID
+from issue_scenario_lab.scenarios.topsis_sort_2016 import generate as generate_topsis_sort_2016
 from issue_scenario_lab.scenarios.two_tuple_greece import SCENARIO_ID as TWO_TUPLE_GREECE_SCENARIO_ID
 from issue_scenario_lab.scenarios.two_tuple_greece import generate as generate_two_tuple_greece
 from issue_scenario_lab.scenarios.two_tuple_greece_video import SCENARIO_ID as TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID
@@ -293,6 +295,15 @@ def generate(
             generate_topsis_2tuple_greece,
             {"model": "2-TUPLE TOPSIS", "criteriaWeightingModel": "Preference Order Criteria Weights"},
         ),
+        TOPSIS_SORT_2016_SCENARIO_ID: (
+            generate_topsis_sort_2016,
+            {
+                "model": "TOPSIS-Sort 2016",
+                "criteriaWeights": {"Quality": 0.6, "Cost": 0.4},
+                "resultStructure": "sorting@1",
+                "consensus": False,
+            },
+        ),
         TWO_TUPLE_GREECE_SCENARIO_ID: (
             generate_two_tuple_greece,
             {
@@ -333,5 +344,6 @@ def generate(
             "experts": result.expert_aliases,
             "finalStage": "finished",
             "manifest": result.manifest_path,
+            **({"assignments": result.assignments_by_alternative_name} if scenario_id == TOPSIS_SORT_2016_SCENARIO_ID else {}),
         }
     )

@@ -232,6 +232,60 @@ const twoTupleIssueModel = {
   response: null,
 };
 
+const topsisSort2016E2eEnabled =
+  process.env.E2E_ENABLE_TOPSIS_SORT_2016 === "true";
+
+const topsisSort2016IssueModel = {
+  name: "E2E TOPSIS-Sort 2016",
+  apiModelKey: "topsis_sort_2016",
+  modelKind: "issue",
+  supportsCreatorCriteriaWeighting: false,
+  supportsExpertCriteriaWeighting: false,
+  requiresHomogeneousExpressionDomains: false,
+  visibleInIssueCreation: topsisSort2016E2eEnabled,
+  visibleInCriteriaWeighting: false,
+  apiEndpoint: { method: "POST", path: "/topsis_sort_2016" },
+  manifestSync: { isStale: false },
+  isMultiCriteria: true,
+  smallDescription: "Isolated E2E fixture for TOPSIS-Sort 2016.",
+  extendDescription:
+    "Execution is enabled only by the explicitly opted-in isolated E2E stack.",
+  implementationStatus: topsisSort2016E2eEnabled ? "ready" : "scaffold",
+  publicUsable: topsisSort2016E2eEnabled,
+  issueExecutionAuthorized: topsisSort2016E2eEnabled,
+  parameters: [
+    {
+      key: "orderedCategories",
+      name: "Ordered categories",
+      label: "Ordered categories",
+      parameterStructureKey: "orderedCategories",
+      required: true,
+    },
+    {
+      key: "boundaryProfiles",
+      name: "Boundary profiles",
+      label: "Boundary profiles",
+      parameterStructureKey: "boundaryProfiles",
+      required: true,
+    },
+  ],
+  evaluationStructureKey: "alternativeCriteriaMatrix",
+  resultStructureKey: "sorting",
+  resultStructureVersion: 1,
+  supportsConsensus: false,
+  supportsConsensusSimulation: false,
+  usesCriteriaWeights: true,
+  usesExpertWeights: false,
+  usesFuzzyCriteriaWeights: false,
+  usesCriterionTypes: true,
+  supportedExpressionDomains: [
+    { typeKey: "numericContinuous", constraints: {} },
+    { typeKey: "numericDiscrete", constraints: {} },
+  ],
+  request: null,
+  response: null,
+};
+
 const manualCriteriaWeightingModel = {
   name: "Manual Criteria Weights",
   apiModelKey: "manual_criteria_weights",
@@ -326,6 +380,11 @@ const seedCreateIssueSmokeFixtures = async () => {
       Model: IssueModel,
       lookup: { apiModelKey: twoTupleIssueModel.apiModelKey },
       document: twoTupleIssueModel,
+    }),
+    upsertByLookup({
+      Model: IssueModel,
+      lookup: { apiModelKey: topsisSort2016IssueModel.apiModelKey },
+      document: topsisSort2016IssueModel,
     }),
     upsertByLookup({
       Model: IssueModel,

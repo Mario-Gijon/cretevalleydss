@@ -1,9 +1,9 @@
 # CreteValleyDSS Issue Scenario Lab
 
 Issue Scenario Lab is a small Python CLI/library for generating local
-CreteValleyDSS issue variants through the real Backend HTTP API. It currently
-implements `no-consensus-basic`, `no-consensus-criteria-weighting`, and
-`no-consensus-expert-weights`.
+CreteValleyDSS issue variants through the real Backend HTTP API. It includes
+ranking, consensus, and sorting scenarios, including original
+`topsis-sort-2016`.
 
 Every future operation will use existing HTTP routes so that authentication,
 authorization, workflows, and persistence match normal development users. The
@@ -45,6 +45,7 @@ python -m issue_scenario_lab show-config
 python -m issue_scenario_lab generate no-consensus-basic
 python -m issue_scenario_lab generate no-consensus-criteria-weighting
 python -m issue_scenario_lab generate no-consensus-expert-weights
+python -m issue_scenario_lab generate topsis-sort-2016
 python -m issue_scenario_lab generate consensus-first-round
 python -m issue_scenario_lab generate consensus-later-round
 python -m issue_scenario_lab generate consensus-max-rounds
@@ -143,6 +144,56 @@ The synthetic matrix stores human-readable labels (`Very low`, `Low`, `Medium`,
 `High`, `Very high`) rather than domain keys. At generation time Scenario Lab
 reads the actual alternative-evaluation context and resolves those labels to
 the configured domain's persisted `labelKey` values before submission.
+
+`topsis-sort-2016` creates a complete non-consensus Issue with three synthetic
+alternatives, numeric Quality (benefit) and Cost (cost) criteria, creator-set
+weights `0.6/0.4`, three ordered categories, two raw-scale boundary profiles,
+and two equally weighted experts. Its fixture stores the inputs and expected
+assignments: Budget option → Low, Balanced option → Medium, and Premium option
+→ High. Before recording a generation, the scenario checks the Backend's model
+authorization, canonical IDs, remapped profiles, final weights, expert
+evaluations, sorting result, diagnostics, and Finished Issue. The generator
+never constructs or persists a sorting result itself.
+
+## TOPSIS-Sort E2E stack
+
+TOPSIS-Sort remains `scaffold` and unauthorized in the normal DecisionModels
+Service definition. The dedicated `docker-compose.e2e.yml` opts in explicitly
+with `E2E_ENABLE_TOPSIS_SORT_2016=true`. The Python service also checks the E2E
+stack, database name, and Mongo host markers. Backend verifies the actual Mongo
+URI and database through `assertIsolatedE2eEnvironment`. Only
+`topsis_sort_2016` receives this E2E runtime view. The checked-in model
+definition and `sorting@1` Result Plugin remain disabled by default; the E2E
+exception does not enable consensus or results analysis.
+
+Validate and start the isolated stack, then seed its test users, model catalog,
+and numeric domain:
+
+```bash
+docker compose -f docker-compose.e2e.yml config
+docker compose -f docker-compose.e2e.yml up --build -d
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:auth
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:create-issue
+```
+
+Configure the ignored local file
+`.issue-scenario-lab/users.e2e.local.yaml` with aliases `owner`, `expert_a`,
+and `expert_b` for the three E2E users created by those seed commands. Then run
+the generator with that file and the isolated API URL:
+
+```bash
+SCENARIO_LAB_API_BASE_URL=http://localhost:5001/api \
+SCENARIO_LAB_USERS_FILE=.issue-scenario-lab/users.e2e.local.yaml \
+python -m issue_scenario_lab generate topsis-sort-2016
+```
+
+Open the finished Issue from the E2E Frontend at
+`http://localhost:5174/dashboard/finished`. Use
+`python -m issue_scenario_lab list-generated` to find its generation, then
+`python -m issue_scenario_lab delete GENERATION_ID` to remove that one finished
+Issue through the Backend. `delete-all` remains limited to generations in the
+local manifest; `delete-active ISSUE_ID` is available if generation fails after
+issue creation.
 
 ## Development checks
 
