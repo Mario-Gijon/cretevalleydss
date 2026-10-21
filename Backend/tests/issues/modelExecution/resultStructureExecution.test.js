@@ -52,6 +52,7 @@ const makeUsableIssueModel = (overrides = {}) => ({
   modelKind: "issue",
   implementationStatus: "ready",
   publicUsable: true,
+  issueExecutionAuthorized: true,
   visibleInIssueCreation: true,
   apiModelKey: "ranking-model",
   apiEndpoint: { method: "POST", path: "/execute" },
@@ -194,8 +195,10 @@ describe("result structure selection in model execution", () => {
   it("prevents disabled sorting models from reaching DecisionModelsService", async () => {
     expect(() => buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "sorting-contract-only",
+      modelKind: "issue",
       implementationStatus: "ready",
       publicUsable: true,
+      issueExecutionAuthorized: true,
       apiEndpoint: { method: "POST", path: "/sorting" },
       evaluationStructureKey: "alternativeCriteriaMatrix",
       resultStructureKey: "sorting",
@@ -217,11 +220,51 @@ describe("result structure selection in model execution", () => {
     await expect(executeScenarioModel({
       requestPayload: { context: { alternatives: [] } },
       targetRuntimeSnapshot: {
+        issueExecutionAuthorized: true,
         targetResultStructureKey: "sorting",
         targetResultStructureVersion: 1,
       },
     })).rejects.toThrow("not enabled for model execution");
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+  });
+
+  it("blocks unauthorized Decision Plugins in issue and scenario execution before dispatch", async () => {
+    const httpClient = { post: vi.fn() };
+    const unauthorizedModel = makeUsableIssueModel({
+      apiModelKey: "synthetic-sorting-plugin",
+      issueExecutionAuthorized: false,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+    });
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(unauthorizedModel),
+      httpClient,
+    })).rejects.toMatchObject({
+      code: "ISSUE_MODEL_EXECUTION_NOT_AUTHORIZED",
+    });
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(httpClient.post).not.toHaveBeenCalled();
+
+    expect(() => buildTargetModelRuntimeSnapshotOrThrow(unauthorizedModel)).toThrow(
+      expect.objectContaining({
+        code: "ISSUE_MODEL_EXECUTION_NOT_AUTHORIZED",
+      })
+    );
+    await expect(executeScenarioModel({
+      requestPayload: { context: { alternatives: [] } },
+      targetRuntimeSnapshot: {
+        issueExecutionAuthorized: false,
+        targetResultStructureKey: "sorting",
+        targetResultStructureVersion: 1,
+      },
+      httpClient,
+    })).rejects.toMatchObject({
+      code: "ISSUE_MODEL_EXECUTION_NOT_AUTHORIZED",
+    });
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(httpClient.post).not.toHaveBeenCalled();
   });
 
   it("blocks scaffold, non-public, and stale models despite visibility metadata", async () => {
@@ -405,8 +448,10 @@ describe("result structure selection in model execution", () => {
   it("preserves scenario-specific options while selecting the target model structure", async () => {
     const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "scenario-model",
+      modelKind: "issue",
       implementationStatus: "ready",
       publicUsable: true,
+      issueExecutionAuthorized: true,
       apiEndpoint: { method: "POST", path: "/scenario" },
       evaluationStructureKey: "alternativeCriteriaMatrix",
     });
@@ -441,6 +486,7 @@ describe("result structure selection in model execution", () => {
     });
 
     expect(targetRuntimeSnapshot).toMatchObject({
+      issueExecutionAuthorized: true,
       targetResultStructureKey: "ranking",
       targetResultStructureVersion: 1,
     });
@@ -496,6 +542,7 @@ describe("result structure selection in model execution", () => {
         targetApiModelKey: "cluster-model",
         targetApiEndpoint: { path: "/scenario" },
         targetEvaluationStructureKey: "alternativeCriteriaMatrix",
+        issueExecutionAuthorized: true,
         targetResultStructureKey: "clusterSummary",
         targetResultStructureVersion: 3,
       },
@@ -529,8 +576,10 @@ describe("result structure selection in model execution", () => {
   it("keeps scenario-specific public validation messages", async () => {
     const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "scenario-model",
+      modelKind: "issue",
       implementationStatus: "ready",
       publicUsable: true,
+      issueExecutionAuthorized: true,
       apiEndpoint: { method: "POST", path: "/scenario" },
       evaluationStructureKey: "alternativeCriteriaMatrix",
     });

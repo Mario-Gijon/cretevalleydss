@@ -4,6 +4,7 @@ from .executor import execute_aras
 from .examples import ARAS_REQUEST_EXAMPLES, ARAS_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="aras",
     api_endpoint_path="/aras",
     request_model=GenericModelExecutionRequest,

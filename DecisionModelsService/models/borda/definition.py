@@ -4,6 +4,7 @@ from .executor import execute_borda
 from .examples import BORDA_REQUEST_EXAMPLES, BORDA_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="borda",
     api_endpoint_path="/borda",
     request_model=GenericModelExecutionRequest,

@@ -10,6 +10,7 @@ import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStru
 import {
   isResultStructureCapabilityEnabled,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
+import { isIssueModelExecutionAllowed } from "../../issues/index.js";
 
 export const mapIssueModelCatalogItem = (model) => {
   const id = toIdString(model._id);
@@ -17,21 +18,21 @@ export const mapIssueModelCatalogItem = (model) => {
   const resultStructureMetadata = model.modelKind === "issue"
     ? resolveResultStructureMetadata(model)
     : null;
-  const issueExecutionEnabled = resultStructureMetadata
+  const resultStructureIssueExecutionEnabled = resultStructureMetadata
     ? isResultStructureCapabilityEnabled({
         ...resultStructureMetadata,
         capability: "issueExecution",
       })
-    : true;
+    : null;
+  const issueExecutionEnabled =
+    model.modelKind === "issue" && isIssueModelExecutionAllowed(model);
   const consensusEnabled = !resultStructureMetadata ||
     isResultStructureCapabilityEnabled({
       ...resultStructureMetadata,
       capability: "consensus",
     });
   const publicUsable =
-    model.modelKind === "criteriaWeighting"
-      ? model.visibleInCriteriaWeighting !== false && !isStale
-      : model.visibleInIssueCreation !== false && !isStale && issueExecutionEnabled;
+    model.publicUsable === true;
 
   return {
     _id: id,
@@ -42,8 +43,10 @@ export const mapIssueModelCatalogItem = (model) => {
     implementationStatus: model.implementationStatus || "ready",
     publicUsable,
     protectedHistoricalModel: isStale,
-    visibleInIssueCreation:
-      model.visibleInIssueCreation !== false && issueExecutionEnabled,
+    visibleInIssueCreation: model.visibleInIssueCreation !== false,
+    issueExecutionAuthorized: model.issueExecutionAuthorized === true,
+    issueExecutionEnabled,
+    resultStructureIssueExecutionEnabled,
     visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
     apiEndpoint: model.apiEndpoint,
     manifestSync: model.manifestSync,

@@ -44,6 +44,9 @@ describe("admin model catalog", () => {
       modelKind: "issue",
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
+      implementationStatus: "ready",
+      publicUsable: true,
+      issueExecutionAuthorized: true,
       visibleInIssueCreation: true,
       supportsConsensus: true,
       supportsConsensusSimulation: true,
@@ -51,8 +54,11 @@ describe("admin model catalog", () => {
     });
 
     expect(mapped).toMatchObject({
-      publicUsable: false,
-      visibleInIssueCreation: false,
+      publicUsable: true,
+      visibleInIssueCreation: true,
+      issueExecutionAuthorized: true,
+      issueExecutionEnabled: false,
+      resultStructureIssueExecutionEnabled: false,
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       supportsConsensus: false,
@@ -92,6 +98,10 @@ describe("admin model catalog", () => {
         _id: "000000000000000000000001",
         name: "Available",
         modelKind: "issue",
+        implementationStatus: "ready",
+        publicUsable: true,
+        issueExecutionAuthorized: true,
+        manifestSync: { isStale: false },
       },
     ]);
     const select = vi.fn(() => ({ lean }));
@@ -102,6 +112,8 @@ describe("admin model catalog", () => {
         {
           name: "Available",
           publicUsable: true,
+          issueExecutionAuthorized: true,
+          issueExecutionEnabled: true,
           resultStructureKey: "ranking",
           resultStructureVersion: 1,
         },

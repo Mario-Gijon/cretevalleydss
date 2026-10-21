@@ -4,6 +4,7 @@ from .executor import execute_waspas
 from .examples import WASPAS_REQUEST_EXAMPLES, WASPAS_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="waspas",
     api_endpoint_path="/waspas",
     request_model=GenericModelExecutionRequest,

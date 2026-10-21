@@ -12,6 +12,7 @@ from .examples import (
 )
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="two_tuple",
     api_endpoint_path="/two_tuple",
     request_model=GenericModelExecutionRequest,

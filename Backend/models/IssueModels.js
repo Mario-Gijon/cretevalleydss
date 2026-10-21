@@ -181,6 +181,10 @@ const issueModelSchema = new Schema({
     type: Boolean,
     default: true,
   },
+  issueExecutionAuthorized: {
+    type: Boolean,
+    default: undefined,
+  },
   parameters: {
     type: [parameterSchema],
     default: [],

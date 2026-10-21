@@ -54,6 +54,7 @@ export const createIssueModel = async (overrides = {}) => {
     extendDescription: "Test model for backend issue creation",
     implementationStatus: "ready",
     publicUsable: true,
+    issueExecutionAuthorized: true,
     parameters: [],
     evaluationStructureKey: "alternativeCriteriaMatrix",
     supportsConsensus: false,
@@ -71,6 +72,12 @@ export const createIssueModel = async (overrides = {}) => {
     request: null,
     response: null,
     ...overrides,
+    ...(Object.hasOwn(overrides, "issueExecutionAuthorized")
+      ? {}
+      : {
+          issueExecutionAuthorized:
+            overrides.modelKind === "criteriaWeighting" ? undefined : true,
+        }),
   });
 };
 

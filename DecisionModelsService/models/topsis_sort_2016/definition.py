@@ -70,6 +70,7 @@ MODEL_DEFINITION = ModelDefinition(
     result_structure_version=1,
     supports_consensus=False,
     supports_consensus_simulation=False,
+    issue_execution_authorized=False,
     is_multi_criteria=True,
     uses_criteria_weights=True,
     uses_expert_weights=False,

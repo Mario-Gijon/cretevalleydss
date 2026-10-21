@@ -4,6 +4,7 @@ from .executor import execute_topsis
 from .examples import TOPSIS_REQUEST_EXAMPLES, TOPSIS_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="topsis",
     api_endpoint_path="/topsis",
     request_model=GenericModelExecutionRequest,

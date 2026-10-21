@@ -4,6 +4,7 @@ from .executor import execute_edas
 from .examples import EDAS_REQUEST_EXAMPLES, EDAS_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="edas",
     api_endpoint_path="/edas",
     request_model=GenericModelExecutionRequest,

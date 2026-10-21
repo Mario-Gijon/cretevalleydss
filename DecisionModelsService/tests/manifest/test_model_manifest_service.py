@@ -199,6 +199,7 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
     assert manifest_entry["apiEndpoint"] == {"method": "POST", "path": "/alpha"}
     assert manifest_entry["implementationStatus"] == "ready"
     assert manifest_entry["publicUsable"] is True
+    assert manifest_entry["issueExecutionAuthorized"] is False
     assert manifest_entry["supportsConsensus"] is True
     assert manifest_entry["supportsConsensusSimulation"] is True
     assert manifest_entry["usesCriteriaWeights"] is True
@@ -221,6 +222,34 @@ def test_scaffold_implementation_status_is_not_publicly_usable(model_definition_
 
     assert manifest_entry["implementationStatus"] == "scaffold"
     assert manifest_entry["publicUsable"] is False
+    assert manifest_entry["issueExecutionAuthorized"] is False
+
+
+def test_manifest_publishes_explicit_issue_execution_authorization(
+    model_definition_factory,
+):
+    model = model_definition_factory(issue_execution_authorized=True)
+
+    assert _build_manifest_entry(model)["issueExecutionAuthorized"] is True
+
+
+def test_ready_issue_model_definitions_explicitly_authorize_current_ranking_plugins():
+    from registry.model_registry import get_model_definitions
+
+    issue_models = [
+        model for model in get_model_definitions() if model.model_kind == "issue"
+    ]
+    ready_models = [
+        model for model in issue_models if model.implementation_status == "ready"
+    ]
+    sorting_model = next(
+        model for model in issue_models if model.api_model_key == "topsis_sort_2016"
+    )
+
+    assert ready_models
+    assert all(model.issue_execution_authorized is True for model in ready_models)
+    assert sorting_model.implementation_status == "scaffold"
+    assert sorting_model.issue_execution_authorized is False
 
 
 @pytest.mark.parametrize(
@@ -240,6 +269,7 @@ def test_criteria_weighting_manifest_preserves_creator_and_expert_capabilities(
     assert "creatorExecutionEnabled" not in manifest_entry
     assert "resultStructureKey" not in manifest_entry
     assert "resultStructureVersion" not in manifest_entry
+    assert "issueExecutionAuthorized" not in manifest_entry
 
 
 def test_build_model_manifest_returns_models_wrapper(monkeypatch, model_definition_factory):

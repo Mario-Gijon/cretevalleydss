@@ -6,6 +6,10 @@ const model = (overrides = {}) => ({
   _id: "model-ranking",
   name: "Ranking model",
   modelKind: "issue",
+  implementationStatus: "ready",
+  publicUsable: true,
+  issueExecutionAuthorized: true,
+  manifestSync: { isStale: false },
   evaluationStructureKey: "alternativeCriteriaMatrix",
   resultStructureKey: "ranking",
   resultStructureVersion: 1,
@@ -41,6 +45,11 @@ describe("Finished Issue model compatibility serialization", () => {
         model({
           _id: "model-ranking-compatible",
           name: "Another ranking model",
+        }),
+        model({
+          _id: "model-ranking-not-authorized",
+          name: "Not authorized",
+          issueExecutionAuthorized: false,
         }),
       ],
       expressionDomains: [],

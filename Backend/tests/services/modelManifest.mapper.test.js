@@ -13,6 +13,7 @@ it("preserves modelSection in the backend technical projection", () => {
       displayName: "Demo",
       modelKind: "issue",
       implementationStatus: "ready",
+  issueExecutionAuthorized: true,
       modelSection: {
         whatItDoes: "Explains the model.",
         whenToUse: "Use it for this decision.",
@@ -38,6 +39,7 @@ const buildManifest = (parameters, overrides = {}) => ({
   resultStructureVersion: 1,
   implementationStatus: "ready",
   publicUsable: true,
+  issueExecutionAuthorized: true,
   isMultiCriteria: true,
   usesCriteriaWeights: false,
   usesExpertWeights: false,
@@ -208,7 +210,20 @@ describe("model manifest result structure metadata", () => {
     expect(buildManifestTechnicalProjection(manifestModel)).toMatchObject({
       resultStructureKey: "ranking",
       resultStructureVersion: 1,
+      issueExecutionAuthorized: true,
     });
+  });
+
+  it("requires explicit per-model execution authorization for issue plugins", () => {
+    const manifestModel = buildManifest([]);
+    delete manifestModel.issueExecutionAuthorized;
+
+    expect(validateSyncableManifestModel(manifestModel)).toEqual([
+      "issueExecutionAuthorized",
+    ]);
+    expect(
+      buildManifestTechnicalProjection(manifestModel).issueExecutionAuthorized
+    ).toBe(false);
   });
 
   it("defaults a legacy manifest with both fields absent to ranking version 1", () => {

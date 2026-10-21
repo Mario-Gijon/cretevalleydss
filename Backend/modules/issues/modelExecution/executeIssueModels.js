@@ -6,9 +6,6 @@ import { buildIssueModelExecutionResult } from "./buildIssueModelExecutionResult
 import { buildIssueModelRequestPayload } from "./buildIssueModelRequestPayload.js";
 import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
-import {
-  isResultStructureCapabilityEnabled,
-} from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { buildIssueResultStructureContextOrThrow } from "./buildIssueResultStructureContext.js";
 import { assertPopulatedIssueModelUsableOrThrow } from "../issueModelUsability.js";
@@ -104,19 +101,6 @@ export const executeAlternativeEvaluationModel = async ({
     model,
     runtime: modelRuntime,
   });
-
-  const resultStructureMetadata = resolveResultStructureMetadata(issue);
-  if (
-    !isResultStructureCapabilityEnabled({
-      ...resultStructureMetadata,
-      capability: "issueExecution",
-    })
-  ) {
-    throw createBadRequestError(
-      "The selected result structure is not enabled for model execution",
-      { field: "resultStructureKey" }
-    );
-  }
 
   const requestPayload = await buildIssueModelRequestPayload({
     issue,

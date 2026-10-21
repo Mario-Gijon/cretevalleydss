@@ -10,7 +10,7 @@ import { toIdString } from "../../../utils/common/ids.js";
 import {
   isDomainSnapshotSupportedByModel,
 } from "../../expressionDomains/domainCompatibility.js";
-import { assertIssueModelUsableOrThrow } from "../issueModelUsability.js";
+import { assertIssueModelExecutionAllowedOrThrow } from "../issueModelUsability.js";
 
 const normalizeEndpointPath = (value) => {
   if (typeof value !== "string") {
@@ -58,7 +58,9 @@ const getRequiredTrimmedRuntimeString = ({ targetModel, field, value }) => {
 };
 
 export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
-  assertIssueModelUsableOrThrow(targetModel, { field: "targetModelId" });
+  assertIssueModelExecutionAllowedOrThrow(targetModel, {
+    field: "targetModelId",
+  });
   const apiEndpoint = targetModel.apiEndpoint;
   if (!apiEndpoint || typeof apiEndpoint !== "object") {
     throw createInternalError(
@@ -87,17 +89,6 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     });
   const targetResultStructureMetadata =
     resolveResultStructureMetadata(targetModel);
-  if (
-    !isResultStructureCapabilityEnabled({
-      ...targetResultStructureMetadata,
-      capability: "issueExecution",
-    })
-  ) {
-    throw createBadRequestError(
-      "The selected result structure is not enabled for model execution",
-      { field: "targetModelId" }
-    );
-  }
   if (
     targetModel.supportsConsensus === true &&
     !isResultStructureCapabilityEnabled({
@@ -142,6 +133,7 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
       targetResultStructureMetadata.resultStructureKey,
     targetResultStructureVersion:
       targetResultStructureMetadata.resultStructureVersion,
+    issueExecutionAuthorized: targetModel.issueExecutionAuthorized === true,
     targetSupportsConsensus,
     targetUsesCriteriaWeights,
     targetUsesExpertWeights,

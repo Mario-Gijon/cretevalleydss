@@ -4,6 +4,7 @@ from .executor import execute_vikor
 from .examples import VIKOR_REQUEST_EXAMPLES, VIKOR_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="vikor",
     api_endpoint_path="/vikor",
     request_model=GenericModelExecutionRequest,

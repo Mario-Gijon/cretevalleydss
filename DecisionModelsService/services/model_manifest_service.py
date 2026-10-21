@@ -97,6 +97,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
     if model.model_kind == "issue":
         manifest_entry["resultStructureKey"] = model.result_structure_key
         manifest_entry["resultStructureVersion"] = model.result_structure_version
+        manifest_entry["issueExecutionAuthorized"] = model.issue_execution_authorized
 
     return manifest_entry
 

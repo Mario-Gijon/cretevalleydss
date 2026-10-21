@@ -4,6 +4,7 @@ from .executor import execute_promethee_vi
 from .examples import PROMETHEE_VI_REQUEST_EXAMPLES, PROMETHEE_VI_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="promethee_vi",
     api_endpoint_path="/promethee_vi",
     request_model=GenericModelExecutionRequest,

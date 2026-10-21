@@ -283,6 +283,7 @@ export const validateSyncableManifestModel = (manifestModel) => {
     manifestModel?.implementationStatus
   );
   const publicUsable = manifestModel?.publicUsable;
+  const issueExecutionAuthorized = manifestModel?.issueExecutionAuthorized;
   const supportsCreatorCriteriaWeighting =
     manifestModel?.supportsCreatorCriteriaWeighting;
   const supportsExpertCriteriaWeighting =
@@ -306,6 +307,9 @@ export const validateSyncableManifestModel = (manifestModel) => {
   }
   if (typeof publicUsable !== "boolean") {
     missingFields.push("publicUsable");
+  }
+  if (modelKind === "issue" && typeof issueExecutionAuthorized !== "boolean") {
+    missingFields.push("issueExecutionAuthorized");
   }
   if (typeof requiresHomogeneousExpressionDomains !== "boolean") {
     missingFields.push("requiresHomogeneousExpressionDomains");
@@ -421,6 +425,11 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     request: normalizeDynamicObject(manifestModel?.request),
     response: normalizeDynamicObject(manifestModel?.response),
   };
+
+  if (modelKind === "issue") {
+    projection.issueExecutionAuthorized =
+      manifestModel?.issueExecutionAuthorized === true;
+  }
 
   if (resultStructureMetadata) {
     Object.assign(projection, resultStructureMetadata);

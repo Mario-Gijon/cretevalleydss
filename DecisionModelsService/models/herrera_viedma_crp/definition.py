@@ -7,6 +7,7 @@ from .examples import (
 )
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="herrera_viedma_crp",
     api_endpoint_path="/herrera_viedma_crp",
     request_model=GenericModelExecutionRequest,

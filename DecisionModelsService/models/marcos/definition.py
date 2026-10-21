@@ -4,6 +4,7 @@ from .executor import execute_marcos
 from .examples import MARCOS_REQUEST_EXAMPLES, MARCOS_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="marcos",
     api_endpoint_path="/marcos",
     request_model=GenericModelExecutionRequest,

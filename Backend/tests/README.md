@@ -32,6 +32,10 @@ Current layers cover:
 
 Tests use a MongoDB in-memory replica set via `mongodb-memory-server`, so transaction-backed flows can run without an external database.
 
+## Per-model Issue execution authorization
+
+DecisionModelsService issue-model manifests publish `issueExecutionAuthorized` separately from `publicUsable` and the Result Structure's `issueExecution` capability. New model definitions default this permission to `false`; current ranking plugins opt in explicitly. After deploying the manifest contract, run the existing confirmed model-manifest synchronization to backfill the field on historical `IssueModel` records. Records missing the field fail closed until that sync applies the manifest value. Criteria Weighting Plugins do not use this permission.
+
 ## Backend and DecisionModelsService integration
 
 The PROMETHEE VI criterion-parameter and TOPSIS-Sort 2016 result-contract integrations are opt-in and are not included in the normal Backend test suite. They call the real DecisionModelsService input preparer and executor, so set `DECISION_MODELS_PYTHON` to an interpreter with that service's Python dependencies installed. The TOPSIS-Sort integration uses a test-only persisted contract fixture; public issue creation and execution remain disabled while its model is a scaffold.

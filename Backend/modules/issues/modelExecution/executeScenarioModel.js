@@ -16,6 +16,20 @@ export const executeScenarioModel = async ({
   resultStructureContext = {},
   resultStructureRegistry = RESULT_STRUCTURE_REGISTRY,
 }) => {
+  if (targetRuntimeSnapshot?.issueExecutionAuthorized !== true) {
+    throw createBadRequestError(
+      "Selected model is not authorized for issue execution",
+      {
+        code: "ISSUE_MODEL_EXECUTION_NOT_AUTHORIZED",
+        field: "targetModelId",
+        details: {
+          issueExecutionAuthorized:
+            targetRuntimeSnapshot?.issueExecutionAuthorized ?? null,
+        },
+      }
+    );
+  }
+
   const resultStructureMetadata = resolveResultStructureMetadata({
     resultStructureKey: targetRuntimeSnapshot.targetResultStructureKey,
     resultStructureVersion: targetRuntimeSnapshot.targetResultStructureVersion,

@@ -4,6 +4,7 @@ from .executor import execute_fuzzy_topsis
 from .examples import FUZZY_TOPSIS_REQUEST_EXAMPLES, FUZZY_TOPSIS_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="fuzzy_topsis",
     api_endpoint_path="/fuzzy_topsis",
     request_model=GenericModelExecutionRequest,

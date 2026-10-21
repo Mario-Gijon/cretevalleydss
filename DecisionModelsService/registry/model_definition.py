@@ -43,6 +43,8 @@ class ModelDefinition:
     result_structure_version: int | None = None
     supports_consensus: bool = False
     supports_consensus_simulation: bool = False
+    # Separate model permission; default closed and independent of readiness.
+    issue_execution_authorized: bool = False
     is_multi_criteria: bool | None = None
     uses_criteria_weights: bool = False
     uses_expert_weights: bool = False
@@ -159,6 +161,18 @@ class ModelDefinition:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
                 "requires_homogeneous_expression_domains to be boolean."
+            )
+
+        if not isinstance(self.issue_execution_authorized, bool):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires boolean "
+                "issue_execution_authorized."
+            )
+
+        if self.model_kind == "criteriaWeighting" and self.issue_execution_authorized:
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' must not authorize "
+                "issue execution for a criteriaWeighting model."
             )
 
         if not isinstance(self.evaluation_structure_key, str) or (

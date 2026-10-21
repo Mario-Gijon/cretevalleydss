@@ -25,6 +25,7 @@ const issueManifestModel = (overrides = {}) => ({
   resultStructureVersion: 1,
   implementationStatus: "ready",
   publicUsable: true,
+  issueExecutionAuthorized: true,
   apiEndpoint: { method: "POST", path: "/ranking" },
   smallDescription: "Ranking model",
   extendedDescription: "A ranking model for tests.",
@@ -80,7 +81,41 @@ describe("result structure metadata in manifest synchronization", () => {
     expect(persisted).toMatchObject({
       resultStructureKey: "ranking",
       resultStructureVersion: 1,
+      issueExecutionAuthorized: true,
     });
+  });
+
+  it("migrates a historical ranking model without authorization metadata from the manifest", async () => {
+    const manifestModel = issueManifestModel();
+    const historicalPayload = technicalMongoModel(manifestModel);
+    delete historicalPayload.issueExecutionAuthorized;
+    const historicalModel = await IssueModel.create(historicalPayload);
+    fetchModelManifest.mockResolvedValue({ models: [manifestModel] });
+
+    const result = await syncModelManifestToIssueModels();
+    const persisted = await IssueModel.findById(historicalModel._id).lean();
+
+    expect(result.summary.updated).toBe(1);
+    expect(result.updated[0].updatedFields).toContain(
+      "issueExecutionAuthorized"
+    );
+    expect(persisted.issueExecutionAuthorized).toBe(true);
+  });
+
+  it("fails closed when an issue model manifest omits per-model authorization", async () => {
+    const modelWithoutAuthorization = issueManifestModel();
+    delete modelWithoutAuthorization.issueExecutionAuthorized;
+    fetchModelManifest.mockResolvedValue({
+      models: [modelWithoutAuthorization],
+    });
+
+    const result = await syncModelManifestToIssueModels();
+
+    expect(result.summary.skipped).toBe(1);
+    expect(result.skipped[0].missingFields).toContain(
+      "issueExecutionAuthorized"
+    );
+    expect(await IssueModel.countDocuments()).toBe(0);
   });
 
   it("treats a legacy model with both fields absent as ranking version 1 without rewriting it", async () => {
@@ -199,6 +234,7 @@ describe("result structure metadata in manifest synchronization", () => {
     });
     delete manifestModel.resultStructureKey;
     delete manifestModel.resultStructureVersion;
+    delete manifestModel.issueExecutionAuthorized;
     fetchModelManifest.mockResolvedValue({ models: [manifestModel] });
 
     const result = await syncModelManifestToIssueModels();

@@ -785,6 +785,13 @@ describe("users and models catalogs", () => {
       },
     });
     await createIssueModel({
+      name: "Visible but individually unauthorized issue model",
+      modelKind: "issue",
+      issueExecutionAuthorized: false,
+      visibleInIssueCreation: true,
+      manifestSync: { isStale: false },
+    });
+    await createIssueModel({
       name: "Hidden issue model",
       modelKind: "issue",
       visibleInIssueCreation: false,

@@ -33,8 +33,13 @@ def test_valid_issue_model_definition():
 
     assert definition.model_kind == "issue"
     assert definition.implementation_status == "ready"
+    assert definition.issue_execution_authorized is False
     assert definition.result_structure_key == "ranking"
     assert definition.result_structure_version == 1
+
+
+def test_issue_execution_authorization_is_explicit_model_metadata():
+    assert _build_definition(issue_execution_authorized=True).issue_execution_authorized is True
 
 
 def test_issue_model_definition_accepts_the_supported_result_contract():
@@ -139,6 +144,7 @@ def test_valid_criteria_weighting_definition_with_expert_side_support():
     ("overrides", "message_fragment"),
     [
         ({"implementation_status": "draft"}, "invalid implementation_status"),
+        ({"issue_execution_authorized": "yes"}, "requires boolean issue_execution_authorized"),
         ({"model_kind": "ranking"}, "requires model_kind"),
         ({"evaluation_structure_key": ""}, "non-empty evaluation_structure_key"),
         ({"evaluation_structure_key": "   "}, "non-empty evaluation_structure_key"),
@@ -168,6 +174,15 @@ def test_valid_criteria_weighting_definition_with_expert_side_support():
                 "supports_expert_criteria_weighting": False,
             },
             "must support creator-side or expert-side criteria weighting",
+        ),
+        (
+            {
+                "model_kind": "criteriaWeighting",
+                "evaluation_structure_key": "manualCriteriaWeights",
+                "supports_creator_criteria_weighting": True,
+                "issue_execution_authorized": True,
+            },
+            "must not authorize issue execution",
         ),
         (
             {

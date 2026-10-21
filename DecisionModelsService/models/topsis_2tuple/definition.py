@@ -11,6 +11,7 @@ from .examples import (
 )
 
 MODEL_DEFINITION = ModelDefinition(
+    issue_execution_authorized=True,
     api_model_key="topsis_2tuple",
     api_endpoint_path="/topsis_2tuple",
     request_model=GenericModelExecutionRequest,

@@ -48,6 +48,7 @@ const issueModel = {
   extendDescription: "Minimal model used only by the isolated Playwright create-issue smoke flow.",
   implementationStatus: "ready",
   publicUsable: true,
+  issueExecutionAuthorized: true,
   parameters: [],
   evaluationStructureKey: "alternativeCriteriaMatrix",
   supportsConsensus: false,
@@ -77,6 +78,7 @@ const weightedIssueModel = {
   extendDescription: "Minimal weighted model used only by the isolated Playwright criteria-weighting flow.",
   implementationStatus: "ready",
   publicUsable: true,
+  issueExecutionAuthorized: true,
   parameters: [],
   evaluationStructureKey: "alternativeCriteriaMatrix",
   supportsConsensus: false,
@@ -163,6 +165,7 @@ const bordaResolveIssueModel = {
   extendDescription: "Real Borda model used only by the isolated Playwright resolve flow.",
   implementationStatus: "ready",
   publicUsable: true,
+  issueExecutionAuthorized: true,
   parameters: [],
   evaluationStructureKey: "alternativeCriteriaMatrix",
   supportsConsensus: false,
@@ -196,6 +199,7 @@ const twoTupleIssueModel = {
     "Real Decision Models Service 2-tuple model used only by the isolated Playwright flow.",
   implementationStatus: "ready",
   publicUsable: true,
+  issueExecutionAuthorized: true,
   parameters: [
     {
       key: "expertAggregation",
