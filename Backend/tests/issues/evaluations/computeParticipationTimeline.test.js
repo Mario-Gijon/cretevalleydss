@@ -17,6 +17,7 @@ import {
   createIssueEvaluationFixture,
   createIssueExpressionDomainSnapshotFixture,
   createIssueFixture,
+  createIssueModel,
   createParticipationFixture,
 } from "../../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
@@ -113,10 +114,17 @@ const createAlternativeTimelineFixture = async ({
   const readdedExpert = await createConfirmedUser({
     email: "readded@example.com",
   });
+  const issueModel = await createIssueModel({
+    supportsConsensus: isConsensus || simulateConsensus,
+    supportsConsensusSimulation: simulateConsensus,
+  });
 
   const issue = await createIssueFixture({
     ownerId: owner._id,
     createdBy: owner._id,
+    modelId: issueModel._id,
+    apiModelKey: issueModel.apiModelKey,
+    apiEndpoint: issueModel.apiEndpoint,
     currentStage,
     consensusPhase,
     active: true,

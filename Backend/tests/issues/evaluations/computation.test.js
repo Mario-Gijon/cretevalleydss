@@ -25,6 +25,7 @@ import {
   createIssueEvaluationFixture,
   createIssueExpressionDomainSnapshotFixture,
   createIssueFixture,
+  createIssueModel,
   createParticipationFixture,
 } from "../../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
@@ -255,9 +256,19 @@ const createAlternativeComputeFixture = async ({
       })
     )
   );
+  const issueModel = await createIssueModel({
+    evaluationStructureKey:
+      issueOverrides.evaluationStructureKey ?? "alternativeCriteriaMatrix",
+    supportsConsensus: issueOverrides.supportsConsensus === true ||
+      issueOverrides.isConsensus === true || issueOverrides.simulateConsensus === true,
+    supportsConsensusSimulation: issueOverrides.simulateConsensus === true,
+  });
   const issue = await createIssueFixture({
     ownerId: owner._id,
     createdBy: owner._id,
+    modelId: issueModel._id,
+    apiModelKey: issueModel.apiModelKey,
+    apiEndpoint: issueModel.apiEndpoint,
     active,
     currentStage,
     consensusPhase,

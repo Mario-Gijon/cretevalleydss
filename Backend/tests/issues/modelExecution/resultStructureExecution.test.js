@@ -2,11 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const executionState = vi.hoisted(() => ({
   executeTrackedDecisionModelRequest: vi.fn(),
+  buildIssueModelRequestPayload: vi.fn(),
+  buildIssueResultStructureContextOrThrow: vi.fn(),
 }));
 
 vi.mock("../../../modules/issues/modelExecution/executionEvidence.js", () => ({
   executeTrackedDecisionModelRequest:
     executionState.executeTrackedDecisionModelRequest,
+}));
+
+vi.mock("../../../modules/issues/modelExecution/buildIssueModelRequestPayload.js", () => ({
+  buildIssueModelRequestPayload: executionState.buildIssueModelRequestPayload,
+}));
+
+vi.mock("../../../modules/issues/modelExecution/buildIssueResultStructureContext.js", () => ({
+  buildIssueResultStructureContextOrThrow:
+    executionState.buildIssueResultStructureContextOrThrow,
 }));
 
 import { buildIssueModelExecutionResult } from "../../../modules/issues/modelExecution/buildIssueModelExecutionResult.js";
@@ -35,9 +46,54 @@ const standardRankingResult = (overrides = {}) => ({
   ...overrides,
 });
 
+const makeUsableIssueModel = (overrides = {}) => ({
+  _id: "issue-model-1",
+  name: "Ranking model",
+  modelKind: "issue",
+  implementationStatus: "ready",
+  publicUsable: true,
+  visibleInIssueCreation: true,
+  apiModelKey: "ranking-model",
+  apiEndpoint: { method: "POST", path: "/execute" },
+  evaluationStructureKey: "alternativeCriteriaMatrix",
+  resultStructureKey: "ranking",
+  resultStructureVersion: 1,
+  supportsConsensus: false,
+  supportsConsensusSimulation: false,
+  usesCriteriaWeights: false,
+  usesExpertWeights: false,
+  usesFuzzyCriteriaWeights: false,
+  usesCriterionTypes: false,
+  isMultiCriteria: true,
+  requiresHomogeneousExpressionDomains: false,
+  ...overrides,
+});
+
+const makeIssueUsingModel = (model, overrides = {}) => ({
+  _id: "issue-1",
+  model,
+  populated: (path) => path === "model" && model?._id ? model._id : undefined,
+  apiModelKey: model?.apiModelKey ?? "ranking-model",
+  apiEndpoint: model?.apiEndpoint ?? { method: "POST", path: "/execute" },
+  evaluationStructureKey: model?.evaluationStructureKey ?? "alternativeCriteriaMatrix",
+  resultStructureKey: model?.resultStructureKey ?? "ranking",
+  resultStructureVersion: model?.resultStructureVersion ?? 1,
+  supportsConsensus: model?.supportsConsensus ?? false,
+  simulateConsensus: false,
+  ...overrides,
+});
+
 describe("result structure selection in model execution", () => {
   beforeEach(() => {
     executionState.executeTrackedDecisionModelRequest.mockReset();
+    executionState.buildIssueModelRequestPayload.mockReset();
+    executionState.buildIssueResultStructureContextOrThrow.mockReset();
+    executionState.buildIssueModelRequestPayload.mockResolvedValue({
+      context: { alternatives: [{ id: "alternative-1" }] },
+      evaluations: [],
+      modelParameters: {},
+    });
+    executionState.buildIssueResultStructureContextOrThrow.mockResolvedValue({});
     executionState.executeTrackedDecisionModelRequest.mockImplementation(
       async ({ normalize }) => ({
         result: await normalize(standardRankingResult()),
@@ -110,6 +166,31 @@ describe("result structure selection in model execution", () => {
     ).toThrow("Unsupported resultStructureKey 'unsupported-structure'");
   });
 
+  it("allows a populated ready model when its issueExecution capability is enabled", async () => {
+    const httpClient = { post: vi.fn() };
+    const issue = makeIssueUsingModel(makeUsableIssueModel());
+
+    const result = await executeAlternativeEvaluationModel({
+      issue,
+      structureKey: "alternativeCriteriaMatrix",
+      evaluations: [],
+      phase: 0,
+      decisionModelsServiceBaseUrl: "http://decision-models.test",
+      httpClient,
+    });
+
+    expect(result.standardResult.rankedAlternatives[0].alternativeId).toBe(
+      "alternative-1"
+    );
+    expect(executionState.executeTrackedDecisionModelRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiEndpointPath: "/execute",
+        decisionModelsServiceBaseUrl: "http://decision-models.test",
+      })
+    );
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
   it("prevents disabled sorting models from reaching DecisionModelsService", async () => {
     expect(() => buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "sorting-contract-only",
@@ -122,12 +203,15 @@ describe("result structure selection in model execution", () => {
       supportsConsensus: false,
     })).toThrow("not enabled for model execution");
 
+    const sortingModel = makeUsableIssueModel({
+      apiModelKey: "sorting-contract-only",
+      apiEndpoint: { method: "POST", path: "/sorting" },
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+    });
     await expect(executeAlternativeEvaluationModel({
-      issue: {
-        resultStructureKey: "sorting",
-        resultStructureVersion: 1,
-      },
-    })).rejects.toThrow("not enabled for model execution");
+      issue: makeIssueUsingModel(sortingModel),
+    })).rejects.toThrow("does not currently support issue execution");
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
 
     await expect(executeScenarioModel({
@@ -140,38 +224,34 @@ describe("result structure selection in model execution", () => {
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
   });
 
-  it("blocks scaffold or non-public-usable models even when their result structure allows execution", async () => {
-    const scaffoldModel = {
-      _id: "scaffold-model-id",
-      implementationStatus: "scaffold",
-      publicUsable: true,
-    };
-    const nonPublicModel = {
-      _id: "non-public-model-id",
-      implementationStatus: "ready",
-      publicUsable: false,
-    };
+  it("blocks scaffold, non-public, and stale models despite visibility metadata", async () => {
+    const blockedModels = [
+      makeUsableIssueModel({
+        _id: "scaffold-model-id",
+        implementationStatus: "scaffold",
+        publicUsable: true,
+        visibleInIssueCreation: true,
+      }),
+      makeUsableIssueModel({
+        _id: "non-public-model-id",
+        implementationStatus: "ready",
+        publicUsable: false,
+        visibleInIssueCreation: true,
+      }),
+      makeUsableIssueModel({
+        _id: "stale-model-id",
+        manifestSync: { source: "DecisionModelsService", isStale: true },
+      }),
+    ];
 
-    await expect(executeAlternativeEvaluationModel({
-      issue: {
-        model: scaffoldModel,
-        resultStructureKey: "ranking",
-        resultStructureVersion: 1,
-      },
-    })).rejects.toMatchObject({
-      code: "ISSUE_MODEL_NOT_USABLE",
-      field: "resultStructureKey",
-    });
-    await expect(executeAlternativeEvaluationModel({
-      issue: {
-        model: nonPublicModel,
-        resultStructureKey: "ranking",
-        resultStructureVersion: 1,
-      },
-    })).rejects.toMatchObject({
-      code: "ISSUE_MODEL_NOT_USABLE",
-      field: "resultStructureKey",
-    });
+    for (const model of blockedModels) {
+      await expect(executeAlternativeEvaluationModel({
+        issue: makeIssueUsingModel(model),
+      })).rejects.toMatchObject({
+        code: "ISSUE_MODEL_NOT_USABLE",
+        field: "resultStructureKey",
+      });
+    }
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
 
     expect(() => buildTargetModelRuntimeSnapshotOrThrow({
@@ -185,6 +265,66 @@ describe("result structure selection in model execution", () => {
       resultStructureVersion: 1,
       supportsConsensus: false,
     })).toThrow("not ready for issue execution");
+  });
+
+  it("fails closed for an unpopulated, missing, or unresolved model reference", async () => {
+    const unpopulatedIssue = makeIssueUsingModel("issue-model-1", {
+      populated: () => undefined,
+    });
+    const missingModelIssues = [
+      makeIssueUsingModel(null),
+      makeIssueUsingModel(undefined),
+    ];
+
+    for (const issue of [unpopulatedIssue, ...missingModelIssues]) {
+      await expect(executeAlternativeEvaluationModel({ issue })).rejects.toMatchObject({
+        code: "ISSUE_MODEL_NOT_USABLE",
+        field: "resultStructureKey",
+      });
+    }
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+  });
+
+  it("blocks models with incomplete runtime metadata before dispatch", async () => {
+    const model = makeUsableIssueModel({ apiModelKey: "" });
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(model),
+    })).rejects.toThrow("apiModelKey must be a non-empty string");
+
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+  });
+
+  it("blocks when persisted issue runtime metadata no longer matches its loaded model", async () => {
+    const model = makeUsableIssueModel();
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(model, { apiEndpoint: { method: "POST", path: "/stale" } }),
+    })).rejects.toMatchObject({
+      code: "ISSUE_MODEL_RUNTIME_MISMATCH",
+      field: "modelId",
+      details: { mismatchedFields: ["apiEndpoint.path"] },
+    });
+
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+  });
+
+  it("rejects partial result-structure metadata on the issue before dispatch", async () => {
+    const model = makeUsableIssueModel();
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(model, { resultStructureVersion: undefined }),
+    })).rejects.toMatchObject({
+      code: "ISSUE_MODEL_RUNTIME_MISMATCH",
+      field: "modelId",
+      details: { mismatchedFields: ["resultStructure"] },
+    });
+
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
   });
 
   it("transports and projects a synthetic result structure without ranking fields", () => {

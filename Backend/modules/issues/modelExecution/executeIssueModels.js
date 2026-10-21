@@ -11,7 +11,75 @@ import {
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { buildIssueResultStructureContextOrThrow } from "./buildIssueResultStructureContext.js";
-import { assertIssueModelUsableOrThrow } from "../issueModelUsability.js";
+import { assertPopulatedIssueModelUsableOrThrow } from "../issueModelUsability.js";
+import { validateIssueModelRuntimeConfigOrThrow } from "../creation/validateIssueModelRuntime.js";
+
+const normalizeRuntimeKey = (value) =>
+  typeof value === "string" ? value.trim().replace(/^\/+|\/+$/g, "") : "";
+
+const normalizeRuntimePath = (value) => {
+  const normalized = normalizeRuntimeKey(value);
+  return normalized ? `/${normalized}` : null;
+};
+
+const normalizeRuntimeMethod = (value) =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
+
+const assertIssueRuntimeMatchesModelOrThrow = ({ issue, model, runtime }) => {
+  const mismatchedFields = [];
+  let issueResultStructure = null;
+
+  try {
+    issueResultStructure = resolveResultStructureMetadata(issue);
+  } catch {
+    mismatchedFields.push("resultStructure");
+  }
+
+  if (model.modelKind !== "issue") mismatchedFields.push("modelKind");
+  if (normalizeRuntimeKey(issue.apiModelKey) !== runtime.apiModelKey) {
+    mismatchedFields.push("apiModelKey");
+  }
+  if (normalizeRuntimePath(issue.apiEndpoint?.path) !== runtime.apiEndpoint.path) {
+    mismatchedFields.push("apiEndpoint.path");
+  }
+  if (
+    normalizeRuntimeMethod(issue.apiEndpoint?.method) !==
+    runtime.apiEndpoint.method
+  ) {
+    mismatchedFields.push("apiEndpoint.method");
+  }
+  if (issue.evaluationStructureKey !== runtime.evaluationStructureKey) {
+    mismatchedFields.push("evaluationStructureKey");
+  }
+  if (
+    issueResultStructure?.resultStructureKey !== runtime.resultStructureKey ||
+    issueResultStructure?.resultStructureVersion !== runtime.resultStructureVersion
+  ) {
+    if (!mismatchedFields.includes("resultStructure")) {
+      mismatchedFields.push("resultStructure");
+    }
+  }
+  if (issue.supportsConsensus === true && runtime.supportsConsensus !== true) {
+    mismatchedFields.push("supportsConsensus");
+  }
+  if (
+    issue.simulateConsensus === true &&
+    runtime.supportsConsensusSimulation !== true
+  ) {
+    mismatchedFields.push("supportsConsensusSimulation");
+  }
+
+  if (mismatchedFields.length > 0) {
+    throw createBadRequestError(
+      "Selected model runtime no longer matches the issue configuration",
+      {
+        code: "ISSUE_MODEL_RUNTIME_MISMATCH",
+        field: "modelId",
+        details: { mismatchedFields },
+      }
+    );
+  }
+};
 
 export const executeAlternativeEvaluationModel = async ({
   issue,
@@ -27,9 +95,16 @@ export const executeAlternativeEvaluationModel = async ({
   nextCurrentStage = null,
   executionAttemptInput,
 }) => {
-  if (issue?.model && typeof issue.model === "object" && issue.model._id) {
-    assertIssueModelUsableOrThrow(issue.model, { field: "resultStructureKey" });
-  }
+  const model = assertPopulatedIssueModelUsableOrThrow(issue, {
+    field: "resultStructureKey",
+  });
+  const modelRuntime = validateIssueModelRuntimeConfigOrThrow(model);
+  assertIssueRuntimeMatchesModelOrThrow({
+    issue,
+    model,
+    runtime: modelRuntime,
+  });
+
   const resultStructureMetadata = resolveResultStructureMetadata(issue);
   if (
     !isResultStructureCapabilityEnabled({
