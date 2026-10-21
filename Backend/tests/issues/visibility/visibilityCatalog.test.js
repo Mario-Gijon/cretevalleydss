@@ -810,12 +810,23 @@ describe("users and models catalogs", () => {
     await createIssueModel({
       name: "Sorting contract only",
       modelKind: "issue",
+      issueExecutionAuthorized: false,
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       visibleInIssueCreation: true,
       manifestSync: {
         isStale: false,
       },
+    });
+    await createIssueModel({
+      name: "TOPSIS-Sort 2016",
+      apiModelKey: "topsis_sort_2016",
+      modelKind: "issue",
+      issueExecutionAuthorized: true,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      visibleInIssueCreation: true,
+      manifestSync: { isStale: false },
     });
     await createIssueModel({
       name: "Admin visible scaffold",
@@ -872,6 +883,7 @@ describe("users and models catalogs", () => {
     });
     expect(response.body.data.models.map((model) => model.name)).toEqual([
       "Visible issue model",
+      "TOPSIS-Sort 2016",
     ]);
     expect(
       response.body.data.criteriaWeightingModels.map((model) => model.name)

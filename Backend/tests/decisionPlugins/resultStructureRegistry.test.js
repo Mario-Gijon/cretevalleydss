@@ -82,7 +82,7 @@ describe("result structure registry", () => {
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       capability: "issueExecution",
-    })).toBe(false);
+    })).toBe(true);
     expect(isResultStructureCapabilityEnabled({
       resultStructureKey: "sorting",
       resultStructureVersion: 1,

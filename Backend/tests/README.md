@@ -38,7 +38,7 @@ DecisionModelsService issue-model manifests publish `issueExecutionAuthorized` s
 
 ## Backend and DecisionModelsService integration
 
-The PROMETHEE VI criterion-parameter and TOPSIS-Sort 2016 result-contract integrations are opt-in and are not included in the normal Backend test suite. They call the real DecisionModelsService input preparer and executor, so set `DECISION_MODELS_PYTHON` to an interpreter with that service's Python dependencies installed. The TOPSIS-Sort integration uses a test-only persisted contract fixture; public issue creation and execution remain disabled while its model is a scaffold.
+The PROMETHEE VI criterion-parameter and TOPSIS-Sort 2016 result-contract integrations are opt-in and are not included in the normal Backend test suite. They call the real DecisionModelsService input preparer and executor, so set `DECISION_MODELS_PYTHON` to an interpreter with that service's Python dependencies installed. The TOPSIS-Sort integration uses a test-only persisted contract fixture; the normal Decision Plugin manifest now authorizes its issue execution through the per-model flag and `sorting@1` capability. Its consensus and result-analysis capabilities remain disabled.
 
 From `Backend`, on POSIX shells:
 

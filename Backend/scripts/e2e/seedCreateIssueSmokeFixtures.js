@@ -247,12 +247,12 @@ const topsisSort2016IssueModel = {
   apiEndpoint: { method: "POST", path: "/topsis_sort_2016" },
   manifestSync: { isStale: false },
   isMultiCriteria: true,
-  smallDescription: "Isolated E2E fixture for TOPSIS-Sort 2016.",
+  smallDescription: "TOPSIS-Sort 2016 issue model fixture.",
   extendDescription:
-    "Execution is enabled only by the explicitly opted-in isolated E2E stack.",
-  implementationStatus: topsisSort2016E2eEnabled ? "ready" : "scaffold",
-  publicUsable: topsisSort2016E2eEnabled,
-  issueExecutionAuthorized: topsisSort2016E2eEnabled,
+    "This isolated fixture mirrors the ready model manifest; its E2E opt-in only controls visibility in issue creation.",
+  implementationStatus: "ready",
+  publicUsable: true,
+  issueExecutionAuthorized: true,
   parameters: [
     {
       key: "orderedCategories",

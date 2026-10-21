@@ -1,10 +1,8 @@
-from dataclasses import replace
 from importlib import import_module, invalidate_caches, reload
 from pathlib import Path
 import sys
 
 from registry.model_definition import ModelDefinition
-from registry.e2e_model_activation import topsis_sort_2016_e2e_enabled
 
 
 MODELS_ROOT = Path(__file__).resolve().parents[1] / "models"
@@ -47,19 +45,6 @@ def _load_model_definition(model_dir: Path) -> ModelDefinition:
             f"{module_path} folder name '{model_dir.name}' must match "
             f"api_model_key '{model_definition.api_model_key}'"
         )
-
-    if (
-        model_dir.name == "topsis_sort_2016"
-        and topsis_sort_2016_e2e_enabled()
-    ):
-        # Keep the checked-in model definition disabled. Only this isolated
-        # runtime view is executable, and only when the E2E stack opts in.
-        definition = replace(
-            model_definition,
-            implementation_status="ready",
-            issue_execution_authorized=True,
-        )
-        return definition
 
     return model_definition
 

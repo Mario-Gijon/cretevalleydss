@@ -15,7 +15,7 @@ export const sortingV1ResultStructure = Object.freeze({
     authorizedCategories: "orderedCategories",
   }),
   capabilities: Object.freeze({
-    issueExecution: false,
+    issueExecution: true,
     consensus: false,
     resultsAnalysis: false,
   }),

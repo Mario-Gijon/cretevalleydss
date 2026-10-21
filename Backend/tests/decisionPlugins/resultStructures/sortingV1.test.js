@@ -49,7 +49,7 @@ describe("sorting@1 result contract", () => {
       key: "sorting",
       version: 1,
       capabilities: {
-        issueExecution: false,
+        issueExecution: true,
         consensus: false,
         resultsAnalysis: false,
       },

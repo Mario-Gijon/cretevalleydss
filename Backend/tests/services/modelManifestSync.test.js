@@ -102,6 +102,63 @@ describe("result structure metadata in manifest synchronization", () => {
     expect(persisted.issueExecutionAuthorized).toBe(true);
   });
 
+  it("updates a persisted TOPSIS-Sort scaffold from the ready manifest and preserves Admin visibility", async () => {
+    const previousManifestModel = issueManifestModel({
+      apiModelKey: "topsis_sort_2016",
+      displayName: "TOPSIS-Sort",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      implementationStatus: "scaffold",
+      publicUsable: false,
+      issueExecutionAuthorized: false,
+    });
+    const previousPayload = technicalMongoModel(previousManifestModel);
+    previousPayload.resultStructureKey = "sorting";
+    previousPayload.resultStructureVersion = 1;
+    previousPayload.visibleInIssueCreation = false;
+    await IssueModel.create(previousPayload);
+
+    const readyManifestModel = issueManifestModel({
+      apiModelKey: "topsis_sort_2016",
+      displayName: "TOPSIS-Sort",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      implementationStatus: "ready",
+      publicUsable: true,
+      issueExecutionAuthorized: true,
+      supportsConsensus: false,
+      supportsConsensusSimulation: false,
+    });
+    fetchModelManifest.mockResolvedValue({ models: [readyManifestModel] });
+
+    const result = await syncModelManifestToIssueModels();
+    const persisted = await IssueModel.findOne({
+      apiModelKey: "topsis_sort_2016",
+    }).lean();
+
+    expect(result.summary.updated).toBe(1);
+    expect(result.summary.deleted).toBe(0);
+    expect(result.updated[0].updatedFields).toEqual(
+      expect.arrayContaining([
+        "implementationStatus",
+        "publicUsable",
+        "issueExecutionAuthorized",
+      ])
+    );
+    expect(persisted).toMatchObject({
+      apiModelKey: "topsis_sort_2016",
+      implementationStatus: "ready",
+      publicUsable: true,
+      issueExecutionAuthorized: true,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      visibleInIssueCreation: false,
+      supportsConsensus: false,
+      supportsConsensusSimulation: false,
+      manifestSync: { isStale: false },
+    });
+  });
+
   it("fails closed when an issue model manifest omits per-model authorization", async () => {
     const modelWithoutAuthorization = issueManifestModel();
     delete modelWithoutAuthorization.issueExecutionAuthorized;

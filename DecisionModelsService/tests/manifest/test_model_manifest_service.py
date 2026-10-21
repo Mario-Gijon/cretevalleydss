@@ -233,7 +233,7 @@ def test_manifest_publishes_explicit_issue_execution_authorization(
     assert _build_manifest_entry(model)["issueExecutionAuthorized"] is True
 
 
-def test_ready_issue_model_definitions_explicitly_authorize_current_ranking_plugins():
+def test_ready_issue_model_definitions_explicitly_authorize_models_individually():
     from registry.model_registry import get_model_definitions
 
     issue_models = [
@@ -248,8 +248,13 @@ def test_ready_issue_model_definitions_explicitly_authorize_current_ranking_plug
 
     assert ready_models
     assert all(model.issue_execution_authorized is True for model in ready_models)
-    assert sorting_model.implementation_status == "scaffold"
-    assert sorting_model.issue_execution_authorized is False
+    assert sorting_model.implementation_status == "ready"
+    assert sorting_model.issue_execution_authorized is True
+    sorting_models = [
+        model for model in issue_models if model.result_structure_key == "sorting"
+    ]
+    assert sorting_models == [sorting_model]
+    assert all(model.issue_execution_authorized is True for model in sorting_models)
 
 
 @pytest.mark.parametrize(

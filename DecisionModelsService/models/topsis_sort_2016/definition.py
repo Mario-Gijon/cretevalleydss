@@ -1,4 +1,4 @@
-"""Decision Plugin definition for the isolated TOPSIS-Sort 2016 adapter."""
+"""Decision Plugin definition for the TOPSIS-Sort 2016 adapter."""
 
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
@@ -63,14 +63,14 @@ MODEL_DEFINITION = ModelDefinition(
     response_examples=TOPSIS_SORT_2016_RESPONSE_EXAMPLES,
     more_info_url="https://doi.org/10.15240/tul/001/2016-2-006",
     model_kind="issue",
-    implementation_status="scaffold",
+    implementation_status="ready",
     requires_homogeneous_expression_domains=False,
     evaluation_structure_key="alternativeCriteriaMatrix",
     result_structure_key="sorting",
     result_structure_version=1,
     supports_consensus=False,
     supports_consensus_simulation=False,
-    issue_execution_authorized=False,
+    issue_execution_authorized=True,
     is_multi_criteria=True,
     uses_criteria_weights=True,
     uses_expert_weights=False,

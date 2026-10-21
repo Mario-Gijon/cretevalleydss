@@ -7,7 +7,6 @@ import {
   isResultStructureCapabilityEnabled,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { assertIssueModelExecutionAuthorizedOrThrow } from "../issueModelUsability.js";
-import { isIssueModelResultStructureCapabilityEnabled } from "../e2eIssueExecutionOverride.js";
 
 const normalizeEndpointPath = (value) => {
   const path = normalizeNonEmptyString(value);
@@ -115,9 +114,8 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       });
     }
     if (
-      !isIssueModelResultStructureCapabilityEnabled({
-        model,
-        resultStructureMetadata,
+      !isResultStructureCapabilityEnabled({
+        ...resultStructureMetadata,
         capability: "issueExecution",
       })
     ) {

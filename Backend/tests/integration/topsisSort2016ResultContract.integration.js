@@ -3,20 +3,6 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-// This module override is local to this opt-in Vitest file; production capabilities stay false.
-vi.mock("../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    isResultStructureCapabilityEnabled: (options) =>
-      options?.resultStructureKey === "sorting" &&
-      options?.resultStructureVersion === 1 &&
-      options?.capability === "issueExecution"
-        ? true
-        : actual.isResultStructureCapabilityEnabled(options),
-  };
-});
-
 import { Alternative } from "../../models/Alternatives.js";
 import { Criterion } from "../../models/Criteria.js";
 import { Issue } from "../../models/Issues.js";
@@ -332,6 +318,16 @@ describe("Backend to DecisionModelsService TOPSIS-Sort 2016 contract integration
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       capability: "issueExecution",
+    })).toBe(true);
+    expect(productionRegistry.isResultStructureCapabilityEnabled({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      capability: "consensus",
+    })).toBe(false);
+    expect(productionRegistry.isResultStructureCapabilityEnabled({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      capability: "resultsAnalysis",
     })).toBe(false);
 
     const {

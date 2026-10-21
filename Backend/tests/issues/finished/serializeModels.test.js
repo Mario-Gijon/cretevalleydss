@@ -21,7 +21,7 @@ const model = (overrides = {}) => ({
 });
 
 describe("Finished Issue model compatibility serialization", () => {
-  it("does not offer sorting contract only models as scenario targets", () => {
+  it("offers authorized sorting models and excludes other sorting models without individual authorization", () => {
     const baseModel = model();
     const payload = serializeModels({
       issue: {
@@ -37,10 +37,18 @@ describe("Finished Issue model compatibility serialization", () => {
       },
       compatibleModels: [
         model({
-          _id: "model-sorting",
-          name: "Sorting contract only",
+          _id: "model-topsis-sort",
+          name: "TOPSIS-Sort 2016",
+          apiModelKey: "topsis_sort_2016",
           resultStructureKey: "sorting",
-          supportsConsensus: true,
+          supportsConsensus: false,
+        }),
+        model({
+          _id: "model-sorting-unauthorized",
+          name: "Unauthorized sorting model",
+          apiModelKey: "another-sorting-plugin",
+          resultStructureKey: "sorting",
+          issueExecutionAuthorized: false,
         }),
         model({
           _id: "model-ranking-compatible",
@@ -58,6 +66,7 @@ describe("Finished Issue model compatibility serialization", () => {
 
     expect(payload.compatible.map((entry) => entry.id)).toEqual([
       "model-ranking-compatible",
+      "model-topsis-sort",
     ]);
   });
 });

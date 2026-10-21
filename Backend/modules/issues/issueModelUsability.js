@@ -3,8 +3,8 @@ import { sameId } from "../../utils/common/ids.js";
 import { resolveResultStructureMetadata } from "../decisionPlugins/resultStructureMetadata.js";
 import {
   RESULT_STRUCTURE_REGISTRY,
+  isResultStructureCapabilityEnabled,
 } from "../decisionPlugins/resultStructures/resultStructureRegistry.js";
-import { isIssueModelResultStructureCapabilityEnabled } from "./e2eIssueExecutionOverride.js";
 
 export const isIssueModelUsable = (model) =>
   Boolean(model) &&
@@ -48,9 +48,8 @@ export const isIssueModelExecutionAllowed = (
     const resultStructure = resolveResultStructureMetadata(model, {
       registry: resultStructureRegistry,
     });
-    return isIssueModelResultStructureCapabilityEnabled({
-      model,
-      resultStructureMetadata: resultStructure,
+    return isResultStructureCapabilityEnabled({
+      ...resultStructure,
       capability: "issueExecution",
       registry: resultStructureRegistry,
     });
@@ -97,9 +96,8 @@ export const assertResultStructureIssueExecutionEnabledOrThrow = (
     registry: resultStructureRegistry,
   });
   if (
-    !isIssueModelResultStructureCapabilityEnabled({
-      model,
-      resultStructureMetadata: resultStructure,
+    !isResultStructureCapabilityEnabled({
+      ...resultStructure,
       capability: "issueExecution",
       registry: resultStructureRegistry,
     })

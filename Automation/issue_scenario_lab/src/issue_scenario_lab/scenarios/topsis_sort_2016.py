@@ -133,11 +133,8 @@ def _compatible_model(models_data: Any) -> dict[str, Any]:
     )
     if model is None:
         raise ScenarioLabError(f"TOPSIS-Sort 2016 (apiModelKey '{MODEL_KEY}') is unavailable")
-    # The Backend catalog exposes model authorization, but it intentionally
-    # does not surface the Result Plugin's static capability flags. The
-    # isolated E2E override is enforced by the create/compute routes themselves.
     if model.get("issueExecutionAuthorized") is not True:
-        raise ScenarioLabError("TOPSIS-Sort 2016 is not authorized for execution in this isolated E2E environment")
+        raise ScenarioLabError("TOPSIS-Sort 2016 is not authorized for issue execution")
     endpoint = model.get("apiEndpoint")
     checks = {
         "modelKind": model.get("modelKind") == "issue",

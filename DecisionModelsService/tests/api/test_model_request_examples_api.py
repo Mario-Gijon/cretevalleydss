@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import io
 import warnings
@@ -5,6 +6,7 @@ from collections.abc import Mapping
 from contextlib import redirect_stderr, redirect_stdout
 from typing import Any
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -130,15 +132,27 @@ def _post_example(client: TestClient, path: str, payload: dict[str, Any]) -> Any
             return client.post(path, json=payload)
 
 
+async def _post_example_asgi(app: FastAPI, path: str, payload: dict[str, Any]) -> Any:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        timeout=3.0,
+    ) as client:
+        return await asyncio.wait_for(
+            client.post(path, json=payload),
+            timeout=5.0,
+        )
+
+
 @pytest.fixture(scope="module")
-def api_client() -> TestClient: # type: ignore
-    with TestClient(_load_fastapi_app()) as client:
-        yield client
+def api_app() -> FastAPI:
+    return _load_fastapi_app()
 
 
 @pytest.mark.parametrize(("model", "request_example"), _build_example_params())
 def test_registered_model_request_examples_execute_via_api(
-    api_client: TestClient,
+    api_app: FastAPI,
     model: Any,
     request_example: dict[str, Any] | None,
 ) -> None:
@@ -146,7 +160,15 @@ def test_registered_model_request_examples_execute_via_api(
         pytest.skip("No request example provided for this model.")
 
     endpoint_path = model.api_endpoint_path
-    response = _post_example(api_client, endpoint_path, request_example["value"])
+    if _get_model_key(model) == "topsis_sort_2016":
+        # Exercise this numpy-backed handler with direct ASGI transport; the
+        # synchronous TestClient portal stalls on this request in our harness.
+        response = asyncio.run(
+            _post_example_asgi(api_app, endpoint_path, request_example["value"])
+        )
+    else:
+        with TestClient(api_app) as api_client:
+            response = _post_example(api_client, endpoint_path, request_example["value"])
     expected = _get_success_response_example(model)
 
     assert 200 <= response.status_code < 300, (

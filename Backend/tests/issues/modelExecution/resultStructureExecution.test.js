@@ -192,39 +192,40 @@ describe("result structure selection in model execution", () => {
     expect(httpClient.post).not.toHaveBeenCalled();
   });
 
-  it("prevents disabled sorting models from reaching DecisionModelsService", async () => {
+  it("prevents individually unauthorized sorting models from reaching DecisionModelsService", async () => {
     expect(() => buildTargetModelRuntimeSnapshotOrThrow({
       apiModelKey: "sorting-contract-only",
       modelKind: "issue",
       implementationStatus: "ready",
       publicUsable: true,
-      issueExecutionAuthorized: true,
+      issueExecutionAuthorized: false,
       apiEndpoint: { method: "POST", path: "/sorting" },
       evaluationStructureKey: "alternativeCriteriaMatrix",
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       supportsConsensus: false,
-    })).toThrow("not enabled for model execution");
+    })).toThrow("not authorized for issue execution");
 
     const sortingModel = makeUsableIssueModel({
       apiModelKey: "sorting-contract-only",
+      issueExecutionAuthorized: false,
       apiEndpoint: { method: "POST", path: "/sorting" },
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
     });
     await expect(executeAlternativeEvaluationModel({
       issue: makeIssueUsingModel(sortingModel),
-    })).rejects.toThrow("does not currently support issue execution");
+    })).rejects.toThrow("not authorized for issue execution");
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
 
     await expect(executeScenarioModel({
       requestPayload: { context: { alternatives: [] } },
       targetRuntimeSnapshot: {
-        issueExecutionAuthorized: true,
+        issueExecutionAuthorized: false,
         targetResultStructureKey: "sorting",
         targetResultStructureVersion: 1,
       },
-    })).rejects.toThrow("not enabled for model execution");
+    })).rejects.toThrow("not authorized for issue execution");
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
   });
 

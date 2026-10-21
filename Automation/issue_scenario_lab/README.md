@@ -155,16 +155,29 @@ authorization, canonical IDs, remapped profiles, final weights, expert
 evaluations, sorting result, diagnostics, and Finished Issue. The generator
 never constructs or persists a sorting result itself.
 
-## TOPSIS-Sort E2E stack
+## TOPSIS-Sort 2016
 
-TOPSIS-Sort remains `scaffold` and unauthorized in the normal DecisionModels
-Service definition. The dedicated `docker-compose.e2e.yml` opts in explicitly
-with `E2E_ENABLE_TOPSIS_SORT_2016=true`. The Python service also checks the E2E
-stack, database name, and Mongo host markers. Backend verifies the actual Mongo
-URI and database through `assertIsolatedE2eEnvironment`. Only
-`topsis_sort_2016` receives this E2E runtime view. The checked-in model
-definition and `sorting@1` Result Plugin remain disabled by default; the E2E
-exception does not enable consensus or results analysis.
+TOPSIS-Sort 2016 is a normal ready Decision Plugin. Its manifest authorizes
+issue execution for this model, and `sorting@1` supports issue execution. Model
+visibility remains the existing per-model Admin setting. Consensus and results
+analysis remain disabled for sorting results. The isolated E2E stack uses the
+same contracts and no longer applies a model-specific execution bypass.
+
+With the usual development stack running and the manifest synchronized, inspect
+TOPSIS-Sort in Admin → Models. Its issue-creation visibility can be enabled or
+disabled there. Configure the Scenario Lab's ignored local credentials file
+for the development users, then run the existing generator against the dev API
+base URL (the command creates a new synthetic Issue and records it in the
+Scenario Lab manifest):
+
+```bash
+SCENARIO_LAB_API_BASE_URL=http://localhost:5000/api \
+  .venv/bin/python -m issue_scenario_lab generate topsis-sort-2016 \
+  --users-file users.local.yaml
+```
+
+For the isolated E2E stack below, the seed's opt-in controls fixture visibility
+only. It does not change model readiness or execution authorization.
 
 Validate and start the isolated stack, then seed its test users, model catalog,
 and numeric domain:

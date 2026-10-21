@@ -128,9 +128,25 @@ describe("issue model runtime configuration", () => {
     ).toThrow(/supportsConsensus is not supported by the selected result structure/);
   });
 
+  it("accepts sorting@1 for an authorized issue model without consensus", () => {
+    expect(
+      validateIssueModelRuntimeConfigOrThrow(buildRuntimeModelConfig({
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        supportsConsensus: false,
+        supportsConsensusSimulation: false,
+      }))
+    ).toMatchObject({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      supportsConsensus: false,
+      supportsConsensusSimulation: false,
+    });
+  });
+
   it.each([
     [{ resultStructureKey: "ranking" }, /provided together/],
-    [{ resultStructureKey: "sorting", resultStructureVersion: 1 }, /does not currently support issue execution/],
+    [{ resultStructureKey: "unsupported", resultStructureVersion: 1 }, /Unsupported resultStructureKey/],
     [{ resultStructureKey: "ranking", resultStructureVersion: 2 }, /Unsupported resultStructureVersion/],
     [{ resultStructureKey: "ranking", resultStructureVersion: 0 }, /positive integer/],
   ])("rejects incompatible result structure metadata %o", (metadata, message) => {

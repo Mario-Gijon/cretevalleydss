@@ -36,18 +36,18 @@ describe("admin model catalog", () => {
     expect(mapped).not.toHaveProperty("resultStructureVersion");
   });
 
-  it("does not expose a sorting structure as publicly usable or consensus-capable", () => {
+  it("exposes sorting execution capability while preserving per-model authorization and visibility", () => {
     const mapped = mapIssueModelCatalogItem({
       _id: "000000000000000000000003",
-      name: "Sorting contract only",
-      apiModelKey: "sorting-contract-only",
+      name: "TOPSIS-Sort 2016",
+      apiModelKey: "topsis_sort_2016",
       modelKind: "issue",
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       implementationStatus: "ready",
       publicUsable: true,
       issueExecutionAuthorized: true,
-      visibleInIssueCreation: true,
+      visibleInIssueCreation: false,
       supportsConsensus: true,
       supportsConsensusSimulation: true,
       manifestSync: { isStale: false },
@@ -55,15 +55,82 @@ describe("admin model catalog", () => {
 
     expect(mapped).toMatchObject({
       publicUsable: true,
-      visibleInIssueCreation: true,
+      visibleInIssueCreation: false,
       issueExecutionAuthorized: true,
-      issueExecutionEnabled: false,
-      resultStructureIssueExecutionEnabled: false,
+      issueExecutionEnabled: true,
+      resultStructureIssueExecutionEnabled: true,
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       supportsConsensus: false,
       supportsConsensusSimulation: false,
     });
+  });
+
+  it("allows Admin visibility to be toggled independently of execution readiness", async () => {
+    const currentModel = {
+      _id: "000000000000000000000003",
+      apiModelKey: "topsis_sort_2016",
+      modelKind: "issue",
+      implementationStatus: "ready",
+      publicUsable: true,
+      issueExecutionAuthorized: true,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      manifestSync: { isStale: false },
+      set: vi.fn(),
+      save: vi.fn(async () => {}),
+    };
+    const hiddenPersistedModel = {
+      ...currentModel,
+      visibleInIssueCreation: false,
+      visibleInCriteriaWeighting: false,
+    };
+    const visiblePersistedModel = {
+      ...hiddenPersistedModel,
+      visibleInIssueCreation: true,
+    };
+    const selectHidden = vi.fn(() => ({ lean: vi.fn(async () => hiddenPersistedModel) }));
+    const selectVisible = vi.fn(() => ({ lean: vi.fn(async () => visiblePersistedModel) }));
+    const issueModelModel = {
+      findById: vi
+        .fn()
+        .mockResolvedValueOnce(currentModel)
+        .mockReturnValueOnce({ select: selectHidden })
+        .mockResolvedValueOnce(currentModel)
+        .mockReturnValueOnce({ select: selectVisible }),
+    };
+
+    await expect(
+      updateAdminModelCatalogVisibility(
+        {
+          modelId: currentModel._id,
+          visibleInIssueCreation: false,
+        },
+        { issueModelModel, isValidModelId: () => true }
+      )
+    ).resolves.toMatchObject({
+      model: {
+        id: currentModel._id,
+        visibleInIssueCreation: false,
+      },
+    });
+    await expect(
+      updateAdminModelCatalogVisibility(
+        {
+          modelId: currentModel._id,
+          visibleInIssueCreation: true,
+        },
+        { issueModelModel, isValidModelId: () => true }
+      )
+    ).resolves.toMatchObject({
+      model: {
+        id: currentModel._id,
+        visibleInIssueCreation: true,
+      },
+    });
+    expect(currentModel.set).toHaveBeenNthCalledWith(1, { visibleInIssueCreation: false });
+    expect(currentModel.set).toHaveBeenNthCalledWith(2, { visibleInIssueCreation: true });
+    expect(currentModel.save).toHaveBeenCalledTimes(2);
   });
 
   it("sorts by public visibility rank and then name", () => {

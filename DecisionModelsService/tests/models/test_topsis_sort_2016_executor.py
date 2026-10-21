@@ -28,7 +28,7 @@ def _json(result):
     return result
 
 
-def test_scaffold_plugin_is_auto_discovered_with_sorting_metadata_and_not_public():
+def test_ready_plugin_is_auto_discovered_with_sorting_metadata_and_authorized():
     definitions = {model.api_model_key: model for model in get_model_definitions()}
     discovered = definitions["topsis_sort_2016"]
     manifest = _build_manifest_entry(discovered)
@@ -41,8 +41,10 @@ def test_scaffold_plugin_is_auto_discovered_with_sorting_metadata_and_not_public
         "sorting",
         1,
     )
-    assert discovered.implementation_status == "scaffold"
-    assert manifest["publicUsable"] is False
+    assert discovered.implementation_status == "ready"
+    assert discovered.issue_execution_authorized is True
+    assert manifest["publicUsable"] is True
+    assert manifest["issueExecutionAuthorized"] is True
     assert manifest["resultStructureKey"] == "sorting"
     assert manifest["resultStructureVersion"] == 1
     assert {parameter["parameterStructureKey"] for parameter in discovered.parameters} == {

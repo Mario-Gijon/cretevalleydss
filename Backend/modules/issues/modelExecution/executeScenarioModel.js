@@ -2,10 +2,10 @@ import { executeTrackedDecisionModelRequest } from "./executionEvidence.js";
 import { resolveResultStructureMetadata } from "../../decisionPlugins/resultStructureMetadata.js";
 import {
   RESULT_STRUCTURE_REGISTRY,
+  isResultStructureCapabilityEnabled,
   normalizeResultStructureOrThrow,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-import { isIssueModelResultStructureCapabilityEnabled } from "../e2eIssueExecutionOverride.js";
 
 export const executeScenarioModel = async ({
   requestPayload,
@@ -35,19 +35,8 @@ export const executeScenarioModel = async ({
     resultStructureVersion: targetRuntimeSnapshot.targetResultStructureVersion,
   }, { registry: resultStructureRegistry });
   if (
-    !isIssueModelResultStructureCapabilityEnabled({
-      model: {
-        modelKind: targetRuntimeSnapshot.targetModelKind,
-        apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
-        implementationStatus: targetRuntimeSnapshot.targetImplementationStatus,
-        publicUsable: targetRuntimeSnapshot.targetPublicUsable,
-        manifestSync: {
-          isStale: targetRuntimeSnapshot.targetManifestSyncIsStale,
-        },
-        issueExecutionAuthorized:
-          targetRuntimeSnapshot.issueExecutionAuthorized,
-      },
-      resultStructureMetadata,
+    !isResultStructureCapabilityEnabled({
+      ...resultStructureMetadata,
       capability: "issueExecution",
       registry: resultStructureRegistry,
     })
