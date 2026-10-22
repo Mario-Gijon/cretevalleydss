@@ -22,7 +22,13 @@ const storedExpertCollectiveProjection = (execution) => {
   if (standardized && typeof standardized === "object" && Object.keys(standardized).length) {
     return standardized;
   }
-  return execution?.genericAnalysis?.facts?.expertCollectiveRelationship?.projection;
+  const relationship = execution?.genericAnalysis?.facts?.expertCollectiveRelationship;
+  if (relationship?.projection && typeof relationship.projection === "object") {
+    return relationship.projection;
+  }
+  return relationship?.unavailableReason
+    ? { reason: relationship.unavailableReason }
+    : null;
 };
 
 /**
@@ -411,21 +417,22 @@ const buildConsensusVisualization = (payload, executions) => {
   };
 };
 
-const buildSingleScatter = (execution) => {
+const buildSingleScatter = (execution, canonicalProjection) => {
   const normalized = normalizePlotsGraphic(
     storedExpertCollectiveProjection(execution),
   );
+  const canonical = canonicalProjection?.displayAvailable
+    ? canonicalProjection
+    : null;
   return {
-    available: Boolean(normalized?.isValid),
+    available: Boolean(normalized?.isValid && canonical),
     unavailableReason: unavailableReason(normalized),
-    // Single-execution rendering intentionally keeps the approved stored view;
-    // absolute reconstruction is only needed to compare independent MDS frames.
     sourcePhase: execution?.sourcePhase ?? 0,
-    data: normalized?.isValid
+    data: normalized?.isValid && canonical
       ? {
           [execution?.sourcePhase ?? 0]: {
-            expertPoints: normalized.expertPoints,
-            collectivePoint: normalized.collectivePoint,
+            expertPoints: canonical.expertPoints,
+            collectivePoint: canonical.collectivePoint,
           },
         }
       : null,
@@ -443,7 +450,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
       mode: "single",
       expertCollective: projection,
       canonicalProjections: projections,
-      singleScatter: buildSingleScatter(executions[0]),
+      singleScatter: buildSingleScatter(executions[0], projection),
       consensus,
     };
   }

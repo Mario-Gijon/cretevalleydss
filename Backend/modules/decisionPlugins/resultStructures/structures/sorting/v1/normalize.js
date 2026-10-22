@@ -18,6 +18,80 @@ const normalizeRequiredId = (value, message, field) => {
   return id;
 };
 
+const normalizePlotsGraphic = (value) => {
+  if (!isPlainObject(value)) {
+    throwInvalid("Sorting plotsGraphic must be an object", "result.plotsGraphic");
+  }
+  if (Object.hasOwn(value, "reason")) {
+    const reason = normalizeNonEmptyString(value.reason);
+    if (!reason) {
+      throwInvalid("Sorting plotsGraphic.reason must be a non-empty string", "result.plotsGraphic.reason");
+    }
+    return { reason };
+  }
+
+  const expertPoints = value.expert_points;
+  const collectivePoint = value.collective_point;
+  const validPoint = (point) =>
+    Array.isArray(point) &&
+    point.length === 2 &&
+    point.every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate));
+  if (
+    !Array.isArray(expertPoints) ||
+    expertPoints.length === 0 ||
+    !expertPoints.every(validPoint) ||
+    !validPoint(collectivePoint)
+  ) {
+    throwInvalid(
+      "Sorting plotsGraphic must contain finite two-dimensional expert and collective points",
+      "result.plotsGraphic",
+    );
+  }
+
+  const normalized = {
+    expert_points: expertPoints.map((point) => [...point]),
+    collective_point: [...collectivePoint],
+  };
+  if (Object.hasOwn(value, "expert_ids")) {
+    const ids = value.expert_ids;
+    const normalizedIds = Array.isArray(ids)
+      ? ids.map((id) => normalizeNonEmptyString(id))
+      : [];
+    if (
+      !Array.isArray(ids) ||
+      ids.length !== expertPoints.length ||
+      normalizedIds.some((id) => !id) ||
+      new Set(normalizedIds).size !== normalizedIds.length
+    ) {
+      throwInvalid("Sorting plotsGraphic.expert_ids must be unique non-empty IDs matching the expert points", "result.plotsGraphic.expert_ids");
+    }
+    normalized.expert_ids = normalizedIds;
+  }
+  for (const field of ["expert_labels", "expert_emails"]) {
+    if (!Object.hasOwn(value, field)) continue;
+    const entries = value[field];
+    const validEntry = field === "expert_emails"
+      ? (entry) => entry === null || typeof entry === "string"
+      : (entry) => typeof entry === "string" && Boolean(entry.trim());
+    if (
+      !Array.isArray(entries) ||
+      entries.length !== expertPoints.length ||
+      !entries.every(validEntry)
+    ) {
+      throwInvalid(`Sorting plotsGraphic.${field} must match the expert points`, `result.plotsGraphic.${field}`);
+    }
+    normalized[field] = entries.map((entry) => typeof entry === "string" ? entry.trim() : null);
+  }
+  if (Object.hasOwn(value, "projection_space")) {
+    const projectionSpace = normalizeNonEmptyString(value.projection_space);
+    if (!projectionSpace) {
+      throwInvalid("Sorting plotsGraphic.projection_space must be a non-empty string", "result.plotsGraphic.projection_space");
+    }
+    normalized.projection_space = projectionSpace;
+  }
+  return normalized;
+};
+
 const resolveAuthorizedAlternativeIds = (context) => {
   if (!Array.isArray(context?.authorizedAlternativeIds)) {
     throwInvalid(
@@ -196,6 +270,10 @@ export const normalizeSortingResult = ({ result, context }) => {
     );
   }
 
+  const plotsGraphic = Object.hasOwn(result, "plotsGraphic")
+    ? normalizePlotsGraphic(result.plotsGraphic)
+    : undefined;
+
   return {
     categories,
     categoryOrderSemantics: SORTING_CATEGORY_ORDER_SEMANTICS,
@@ -203,5 +281,6 @@ export const normalizeSortingResult = ({ result, context }) => {
     ...(Object.hasOwn(result, "diagnostics")
       ? { diagnostics: result.diagnostics }
       : {}),
+    ...(plotsGraphic !== undefined ? { plotsGraphic } : {}),
   };
 };

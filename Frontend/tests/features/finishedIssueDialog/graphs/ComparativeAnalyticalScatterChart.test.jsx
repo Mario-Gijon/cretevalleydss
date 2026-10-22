@@ -44,4 +44,29 @@ describe("ComparativeAnalyticalScatterChart", () => {
     expect(scatterState.options.plugins.tooltip.callbacks.label({ raw: experts.data[0] })).toContain("Expert One");
     expect(scatterState.options.plugins.tooltip.callbacks.label({ raw: collective.data[0] })).toContain("Collective");
   });
+
+  it("disambiguates duplicate expert labels while comparing executions", () => {
+    render(
+      <ComparativeAnalyticalScatterChart
+        groups={[{
+          groupLabel: "Base",
+          tooltipLabel: "Base execution",
+          color: "#27d5e4",
+          representedExecutions: [{ key: "base" }],
+          expertPoints: [
+            { x: -1, y: 0, label: "Shared name", identity: "expert-1", email: "one@example.test" },
+            { x: 1, y: 0, label: "Shared name", identity: "expert-2", email: "two@example.test" },
+          ],
+          collectivePoint: { x: 0, y: 0 },
+        }]}
+      />
+    );
+
+    const [experts] = scatterState.data.datasets;
+    const tooltipLabel = scatterState.options.plugins.tooltip.callbacks.label({ raw: experts.data[0] });
+
+    expect(tooltipLabel).toContain("Shared name");
+    expect(tooltipLabel).toContain("one@example.test");
+    expect(tooltipLabel).toContain("Base execution");
+  });
 });

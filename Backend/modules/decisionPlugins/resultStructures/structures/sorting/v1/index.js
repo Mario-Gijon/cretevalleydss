@@ -4,6 +4,7 @@ const projectStandardSortingResult = (result) => ({
   categories: result.categories,
   categoryOrderSemantics: result.categoryOrderSemantics,
   assignments: result.assignments,
+  ...(result.plotsGraphic ? { plotsGraphic: result.plotsGraphic } : {}),
   ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
 });
 

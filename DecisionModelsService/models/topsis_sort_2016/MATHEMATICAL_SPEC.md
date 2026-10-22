@@ -123,3 +123,31 @@ does not implement TOPSIS-Sort-B's 2020 normalization choices or TOPSIS-Sort-C
 characteristic-profile procedure. It does not produce rankings or rank
 positions; multiple alternatives can share a category and a category can be
 empty.
+
+## Expert–collective visualization evidence
+
+The executor may attach an optional `plotsGraphic` projection for General
+Analysis. It uses the same individual numeric matrices and arithmetic collective
+matrix extracted for the execution. Before flattening each alternative-by-
+criterion matrix for the shared MDS helper, every criterion is independently
+scaled by its frozen numeric domain `[min, max]` to `[0, 1]`. Criteria therefore
+share a comparable display range and have equal weight in this visualization;
+criterion decision weights and benefit/cost direction do not enter the plot.
+Reversing a criterion's direction would preserve its Euclidean distances.
+
+The helper uses deterministic two-dimensional metric MDS on Euclidean
+dissimilarities. Its axes and distances are coordinates in the projected display
+space, not TOPSIS scores, probabilities, consensus measures, or percentages of
+agreement. The projection is not used by Eq. (7), weights, ideal solutions,
+distances, closeness coefficients, or category assignments. `expert_points` are
+stored relative to `collective_point`; consumers add that point back to display
+experts and the collective in one coordinate frame. For identical matrices the
+exact coincident projection is `[0, 0]` for every point. Incomplete, incompatible,
+non-finite, or out-of-domain evidence yields a reason without coordinates.
+
+Historical TOPSIS-Sort executions without `plotsGraphic` may rebuild this
+evidence from their frozen `selectedExecution.input`. The rebuild validates the
+saved numeric domains and complete individual matrices and recomputes only the
+arithmetic collective for the display. It does not execute the sorting core or
+replace persisted assignments; insufficient evidence leaves the projection
+unavailable.

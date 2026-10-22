@@ -209,6 +209,8 @@ describe("sorting@1 result contract", () => {
       { alternativeId: authorizedAlternativeIds[1], categoryId: "acceptable" },
     ] }), "alternativeId"],
     [validResult({ diagnostics: [] }), "diagnostics must be an object"],
+    [validResult({ plotsGraphic: { expert_points: [[0, Number.NaN]], collective_point: [0, 0] } }), "finite two-dimensional"],
+    [validResult({ plotsGraphic: { reason: " " } }), "reason must be a non-empty string"],
   ])("rejects invalid result input", (result, message) => {
     expect(() => normalize(result)).toThrow(message);
   });
@@ -226,6 +228,29 @@ describe("sorting@1 result contract", () => {
     expect(result.diagnostics).toEqual({ iterations: 12, modelTrace: ["profile-A"] });
     expect(result).not.toHaveProperty("rankedAlternatives");
     expect(result).not.toHaveProperty("score");
+  });
+
+  it("accepts and preserves optional validated expert projection evidence", () => {
+    const plotsGraphic = {
+      expert_points: [[0, 0]],
+      collective_point: [0, 0],
+      expert_ids: ["expert-1"],
+      expert_labels: ["Ada"],
+      expert_emails: ["ada@example.test"],
+      projection_space: "criterion_domain_minmax",
+    };
+    const normalized = normalize(validResult({ plotsGraphic }));
+
+    expect(normalized.plotsGraphic).toEqual(plotsGraphic);
+    for (const target of ["stagePersistence", "finishedIssuePhaseResult", "finishedIssueScenarioPhaseResult"]) {
+      const projection = projectNormalizedResultOrThrow({
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        result: normalized,
+        target,
+      });
+      expect(JSON.stringify(projection)).toContain("criterion_domain_minmax");
+    }
   });
 
   it("carries sorting data through execution, persistence, snapshots, active and Finished projections", () => {

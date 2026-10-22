@@ -44,3 +44,10 @@ This result structure supports issue execution and the system's generic Results
 Analysis. Consensus remains disabled. Generic analysis uses only the configured
 categories and persisted assignments; it does not interpret model diagnostics
 or convert categories into ranks or scores.
+
+An optional `plotsGraphic` object may carry finite two-dimensional expert and
+collective points for Results Analysis. It is presentation evidence only; the
+sorting contract does not require it, and its absence does not affect execution.
+The coordinates may be omitted with a `reason` when a meaningful projection
+cannot be built. Sorting results without this field remain valid for historical
+records and sorting models that do not provide an expert projection.

@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+from .analytical_projection_reconstruction import reconstruct_sorting_projection
+
 _SORTING_ORDER_SEMANTICS = "lower-order-is-less-preferred"
 
 
@@ -124,6 +126,9 @@ def build_generic_round_context(analysis_context: dict, round_entry: dict) -> di
     else:
         raise ValueError(f"Generic Results Analysis does not support {result_structure['key']}@{result_structure['version']}")
     start = round_entry.get("start")
+    projection = standard_result.get("plotsGraphic")
+    if result_structure == {"key": "sorting", "version": 1} and not projection:
+        projection = reconstruct_sorting_projection(execution)
 
     return deepcopy(
         {
@@ -137,7 +142,7 @@ def build_generic_round_context(analysis_context: dict, round_entry: dict) -> di
                 "resultStructure": result_structure,
                 **projected_result,
                 "consensusMeasure": standard_result.get("consensusMeasure"),
-                "expertCollectiveProjection": standard_result.get("plotsGraphic"),
+                "expertCollectiveProjection": projection,
             },
         }
     )

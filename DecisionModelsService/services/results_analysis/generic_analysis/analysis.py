@@ -227,6 +227,12 @@ def _analyze_sorting_issue(context, issue, rounds):
         if isinstance(round_entry.get("execution", {}).get("expertCollectiveProjection"), dict)
         and round_entry["execution"]["expertCollectiveProjection"]
     ]
+    expert_collective_projection = projections[-1] if projections else None
+    projection_reason = (
+        expert_collective_projection.get("reason")
+        if isinstance(expert_collective_projection, dict)
+        else None
+    )
     facts = {
         "resultStructure": {"key": result_structure.get("key"), "version": result_structure.get("version")},
         "issueId": issue.get("id"),
@@ -241,8 +247,9 @@ def _analyze_sorting_issue(context, issue, rounds):
         "participants": participants,
         "execution": _issue_attempt_summary(rounds),
         "expertCollectiveRelationship": {
-            "projection": projections[-1] if projections else None,
-            "unavailableReason": None if projections else "missing_analytical_projection",
+            "projection": expert_collective_projection,
+            "unavailableReason": projection_reason
+            or (None if expert_collective_projection else "missing_analytical_projection"),
         },
     }
     return normalize_analysis_result(

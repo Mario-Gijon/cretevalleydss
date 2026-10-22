@@ -13,6 +13,21 @@ const parseCoordinatePair = (point) => {
   return { x, y };
 };
 
+const normalizedText = (value) =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
+
+const buildExpertIdentity = ({ label, email, id, index }) => {
+  const normalizedLabel = normalizedText(label);
+  const normalizedEmail = normalizedText(email);
+  const normalizedId = normalizedText(id);
+  const displayLabel = normalizedLabel || normalizedEmail || normalizedId || `Expert ${index + 1}`;
+  return {
+    label: displayLabel,
+    email: normalizedEmail || displayLabel,
+    identity: normalizedId || normalizedEmail || normalizedLabel || `Expert ${index + 1}`,
+  };
+};
+
 const buildCanonicalExpertPoints = (current) => {
   if (Array.isArray(current.expertPoints)) {
     return current.expertPoints
@@ -24,12 +39,16 @@ const buildCanonicalExpertPoints = (current) => {
           return null;
         }
 
-        const label =
-          typeof entry?.label === "string" && entry.label.trim()
-            ? entry.label.trim()
-            : `Expert ${index + 1}`;
-
-        return { x, y, email: label };
+        return {
+          x,
+          y,
+          ...buildExpertIdentity({
+            label: entry?.label,
+            email: entry?.email,
+            id: entry?.identity,
+            index,
+          }),
+        };
       })
       .filter(Boolean);
   }
@@ -42,7 +61,12 @@ const buildCanonicalExpertPoints = (current) => {
       .map(([email, point]) => {
         const parsed = parseCoordinatePair(point);
 
-        return parsed ? { ...parsed, email: String(email) } : null;
+        return parsed
+          ? {
+              ...parsed,
+              ...buildExpertIdentity({ label: email, email, id: email, index: 0 }),
+            }
+          : null;
       })
       .filter(Boolean);
   }
@@ -51,6 +75,16 @@ const buildCanonicalExpertPoints = (current) => {
     const labels = Array.isArray(current.expert_labels)
       ? current.expert_labels
       : [];
+    const ids = Array.isArray(current.expert_ids)
+      ? current.expert_ids
+      : Array.isArray(current.expertIds)
+        ? current.expertIds
+        : [];
+    const emails = Array.isArray(current.expert_emails)
+      ? current.expert_emails
+      : Array.isArray(current.expertEmails)
+        ? current.expertEmails
+        : [];
 
     return current.expert_points
       .map((point, index) => {
@@ -60,13 +94,15 @@ const buildCanonicalExpertPoints = (current) => {
           return null;
         }
 
-        const labelCandidate = labels[index];
-        const email =
-          typeof labelCandidate === "string" && labelCandidate.trim()
-            ? labelCandidate.trim()
-            : `Expert ${index + 1}`;
-
-        return { ...parsed, email };
+        return {
+          ...parsed,
+          ...buildExpertIdentity({
+            label: labels[index],
+            email: emails[index],
+            id: ids[index],
+            index,
+          }),
+        };
       })
       .filter(Boolean);
   }

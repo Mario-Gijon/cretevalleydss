@@ -56,7 +56,7 @@ MODEL_DEFINITION = ModelDefinition(
         "limitations": [
             "Requires numerical evaluations and one boundary profile per category boundary.",
             "Equal alternative and profile closeness values have no assignment in the paper.",
-            "Consensus and results analysis are not implemented for this sorting result.",
+            "Consensus and model-specific mathematical analysis are not provided for this sorting result.",
         ],
     },
     request_examples=TOPSIS_SORT_2016_REQUEST_EXAMPLES,

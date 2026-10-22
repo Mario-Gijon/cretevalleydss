@@ -7,6 +7,7 @@ import pytest
 from api.routers import results_analysis
 from api.routers.results_analysis import analyze_generic_issue, analyze_model_issue
 from core.application import create_application
+from models.topsis_sort_2016.examples import TOPSIS_SORT_2016_REQUEST_EXAMPLES
 
 
 def analysis_context():
@@ -145,6 +146,28 @@ def test_generic_issue_endpoint_analyzes_sorting_assignments_without_ranking_or_
     assert [entry["type"] for entry in result["visualizations"]] == ["alternativeRelationships"]
     assert result["visualizations"][0]["mode"] == "categorical"
     assert "diagnostics" not in str(result)
+
+
+def test_generic_issue_endpoint_rebuilds_historical_sorting_projection_from_frozen_input():
+    context = sorting_analysis_context()
+    execution = context["rounds"][0]["selectedExecution"]
+    execution["modelContext"] = {"apiModelKey": "topsis_sort_2016"}
+    execution["input"] = deepcopy(
+        TOPSIS_SORT_2016_REQUEST_EXAMPLES["numeric_benefit_cost_sorting"]["value"]
+    )
+    assignments_before = deepcopy(execution["result"]["standardResult"]["assignments"])
+
+    result = asyncio.run(analyze_generic_issue(context))["data"]
+
+    projection = result["facts"]["expertCollectiveRelationship"]
+    assert projection["unavailableReason"] is None
+    assert projection["projection"]["expert_ids"] == ["expert-1"]
+    assert projection["projection"]["expert_labels"] == ["Expert One"]
+    assert projection["projection"]["expert_points"] == [[0.0, 0.0]]
+    assert projection["projection"]["collective_point"] == [0.0, 0.0]
+    assert execution["result"]["standardResult"]["assignments"] == assignments_before
+    assert "evaluations" not in result["facts"]
+    assert "modelParameters" not in result["facts"]
 
 
 def test_sorting_all_alternatives_in_one_category_does_not_invent_differences():

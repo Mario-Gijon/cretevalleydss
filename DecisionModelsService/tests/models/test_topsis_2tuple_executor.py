@@ -504,6 +504,7 @@ def test_topsis_2tuple_single_expert_projection_is_available_without_disagreemen
                 "attemptId": "attempt-1",
                 "startedAt": "start",
                 "completedAt": "end",
+                "resultStructure": {"key": "ranking", "version": 1},
                 "result": {"standardResult": data},
             },
         }],

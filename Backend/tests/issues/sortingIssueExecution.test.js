@@ -16,7 +16,7 @@ const issueModel = (overrides = {}) => ({
 });
 
 describe("normal sorting issue execution authorization", () => {
-  it("enables sorting@1 issue execution while keeping consensus and analysis disabled", () => {
+  it("enables sorting@1 issue execution and generic Results Analysis while keeping consensus disabled", () => {
     expect(isResultStructureCapabilityEnabled({
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
@@ -31,7 +31,7 @@ describe("normal sorting issue execution authorization", () => {
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       capability: "resultsAnalysis",
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it("allows TOPSIS-Sort and denies another sorting model without individual authorization", () => {

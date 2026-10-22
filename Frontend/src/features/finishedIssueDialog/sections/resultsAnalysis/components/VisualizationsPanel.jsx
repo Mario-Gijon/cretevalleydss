@@ -67,6 +67,20 @@ const unavailableMessage = (reason) => {
     return "The analytical projection is unavailable because there are not enough expert points.";
   if (reason === "projection_failed")
     return "The stored analytical projection could not be generated.";
+  if (reason === "duplicate_expert_identity")
+    return "The frozen execution does not contain unique expert identities for this projection.";
+  if (reason === "missing_frozen_numeric_evidence")
+    return "The stored execution does not contain the frozen numeric evaluations needed to rebuild this projection.";
+  if (reason === "invalid_frozen_numeric_evidence")
+    return "The frozen execution evaluations are incomplete or invalid, so no projection was generated.";
+  if (reason === "incompatible_matrix_dimensions")
+    return "The expert evaluation matrices have incompatible dimensions, so no projection was generated.";
+  if (reason === "invalid_normalization_domains")
+    return "The criteria do not contain valid numeric domains for a comparable projection.";
+  if (reason === "values_outside_normalization_domain")
+    return "An expert evaluation is outside its frozen numeric domain, so no projection was generated.";
+  if (reason === "non_finite_input" || reason === "invalid_matrix_values")
+    return "The expert evaluation matrices contain invalid numeric values, so no projection was generated.";
   return "No stored expert–collective analytical projection is available for this execution.";
 };
 
@@ -201,12 +215,18 @@ const SingleVisualization = ({ visualizations }) => {
 };
 
 const ComparisonVisualization = ({ comparison }) => {
-  if (comparison.presentation === "unavailable")
+  if (comparison.presentation === "unavailable") {
+    const unavailableReason = comparison.unavailableExecutions?.find(
+      (execution) => execution.unavailableReason,
+    )?.unavailableReason;
     return (
       <Box sx={{ minWidth: 0 }}>
-        <VisualizationUnavailableState description={comparison.footerMessage} />
+        <VisualizationUnavailableState
+          description={unavailableReason ? unavailableMessage(unavailableReason) : comparison.footerMessage}
+        />
       </Box>
     );
+  }
   if (comparison.presentation === "separate")
     return (
       <Stack spacing={1.1}>
@@ -697,8 +717,13 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
     executions,
     "rankingEvolution",
   );
+  const sortingProjectionUnavailable = executions.some(
+    (execution) => execution?.resultStructureKey === "sorting" &&
+      execution?.genericAnalysis?.facts?.expertCollectiveRelationship?.unavailableReason,
+  );
   const expertCollectiveAvailable = hasRenderableExpertCollectiveMap(visualizations) ||
-    renderableDistanceProjections(visualizations.canonicalProjections).length > 0;
+    renderableDistanceProjections(visualizations.canonicalProjections).length > 0 ||
+    sortingProjectionUnavailable;
   const consensusIssueEnabled = visualizations.consensus?.issueEnabled === true;
   const consensusAvailable = consensusIssueEnabled && visualizations.consensus?.available === true;
   const alternativeRelationshipsAvailable =

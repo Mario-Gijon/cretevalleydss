@@ -104,7 +104,37 @@ describe("Results Analysis analytical projection comparison", () => {
 
     expect(result.singleScatter).toMatchObject({
       available: true,
-      data: { 0: { collectivePoint: { x: 3, y: 4 } } },
+      data: { 0: {
+        collectivePoint: { x: 3, y: 4 },
+        expertPoints: [
+          expect.objectContaining({ x: 3, y: 3 }),
+          expect.objectContaining({ x: 5, y: 4 }),
+        ],
+      } },
+    });
+  });
+
+  it("shows an unavailable-reason projection from sorting Generic Analysis", () => {
+    const result = buildResultsVisualizationsData({
+      payload,
+      executions: [{
+        ...execution({ key: "base", points: [] }),
+        resultStructureKey: "sorting",
+        standardizedOutput: { plotsGraphic: {} },
+        genericAnalysis: {
+          facts: {
+            expertCollectiveRelationship: {
+              projection: { reason: "invalid_frozen_numeric_evidence" },
+              unavailableReason: "invalid_frozen_numeric_evidence",
+            },
+          },
+        },
+      }],
+    });
+
+    expect(result.singleScatter).toMatchObject({
+      available: false,
+      unavailableReason: "invalid_frozen_numeric_evidence",
     });
   });
 

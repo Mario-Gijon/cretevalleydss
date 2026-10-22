@@ -8,7 +8,13 @@ from models.topsis_sort_2016.examples import (
     TOPSIS_SORT_2016_REQUEST_EXAMPLES,
     TOPSIS_SORT_2016_RESPONSE_EXAMPLES,
 )
-from models.topsis_sort_2016.executor import _input, execute_topsis_sort_2016
+from models.topsis_sort_2016 import executor as topsis_sort_executor
+from models.topsis_sort_2016.executor import (
+    _input,
+    build_plots_graphic_from_execution_input,
+    execute_topsis_sort_2016,
+)
+from models.topsis_sort_2016.run import run_topsis_sort_2016
 from registry.model_registry import get_model_definitions
 from schemas.model_requests import GenericModelExecutionRequest
 from services.model_manifest_service import _build_manifest_entry
@@ -109,6 +115,7 @@ def test_internal_adapter_transforms_result_to_sorting_v1_without_ranking_fields
         "categoryOrderSemantics",
         "assignments",
         "diagnostics",
+        "plotsGraphic",
     }
     assert data["categoryOrderSemantics"] == "lower-order-is-less-preferred"
     assert [category["categoryId"] for category in data["categories"]] == [
@@ -121,6 +128,14 @@ def test_internal_adapter_transforms_result_to_sorting_v1_without_ranking_fields
         {"alternativeId": "alt-b", "categoryId": "middle"},
         {"alternativeId": "alt-c", "categoryId": "low"},
     ]
+    assert data["plotsGraphic"] == {
+        "expert_points": [[0.0, 0.0]],
+        "collective_point": [0.0, 0.0],
+        "projection_space": "criterion_domain_minmax",
+        "expert_ids": ["expert-1"],
+        "expert_labels": ["Expert One"],
+        "expert_emails": ["expert-one@example.com"],
+    }
 
     def assert_no_ranking_fields(value):
         if isinstance(value, dict):
@@ -134,6 +149,108 @@ def test_internal_adapter_transforms_result_to_sorting_v1_without_ranking_fields
                 assert_no_ranking_fields(nested)
 
     assert_no_ranking_fields(data)
+
+
+def test_topsis_sort_projection_uses_domain_scaled_inputs_and_stable_expert_ids():
+    payload = deepcopy(
+        TOPSIS_SORT_2016_REQUEST_EXAMPLES["numeric_benefit_cost_sorting"]["value"]
+    )
+    second_expert = deepcopy(payload["evaluations"][0])
+    second_expert["expert"] = {
+        "id": "expert-2",
+        "name": "Expert One",
+        "email": "expert-two@example.com",
+    }
+    payload["evaluations"].append(second_expert)
+
+    response = _json(execute_topsis_sort_2016(_request(payload)))
+    projection = response["data"]["plotsGraphic"]
+
+    assert response["data"]["assignments"] == [
+        {"alternativeId": "alt-a", "categoryId": "high"},
+        {"alternativeId": "alt-b", "categoryId": "middle"},
+        {"alternativeId": "alt-c", "categoryId": "low"},
+    ]
+    assert projection["expert_ids"] == ["expert-1", "expert-2"]
+    assert projection["expert_labels"] == ["Expert One", "Expert One"]
+    assert projection["expert_emails"] == [
+        "expert-one@example.com",
+        "expert-two@example.com",
+    ]
+    assert projection["projection_space"] == "criterion_domain_minmax"
+    assert len(projection["expert_points"]) == 2
+    assert all(
+        len(point) == 2 and all(map(lambda value: isinstance(value, float), point))
+        for point in [*projection["expert_points"], projection["collective_point"]]
+    )
+    assert projection == build_plots_graphic_from_execution_input(payload)
+
+
+def test_topsis_sort_projection_with_real_disagreement_does_not_change_assignments():
+    payload = deepcopy(
+        TOPSIS_SORT_2016_REQUEST_EXAMPLES["numeric_benefit_cost_sorting"]["value"]
+    )
+    payload["evaluations"].append({
+        "expert": {"id": "expert-2", "name": "Expert Two"},
+        "payload": {
+            "alt-a": {"quality": 7.5, "cost": 5.5},
+            "alt-b": {"quality": 5.0, "cost": 4.0},
+            "alt-c": {"quality": 4.0, "cost": 6.5},
+        },
+    })
+    execution_input = _input(_request(payload))
+    mathematical_result = run_topsis_sort_2016(
+        alternatives=execution_input["alternatives"],
+        criteria=execution_input["criteria"],
+        profiles=execution_input["profiles"],
+        categories=execution_input["categories"],
+    )
+    expected_assignments = [
+        {"alternativeId": entry["alternative_id"], "categoryId": entry["category_id"]}
+        for entry in mathematical_result["assignments"]
+    ]
+
+    response = _json(execute_topsis_sort_2016(_request(payload)))
+    projection = response["data"]["plotsGraphic"]
+
+    assert response["success"] is True
+    assert response["data"]["assignments"] == expected_assignments
+    assert projection["expert_ids"] == ["expert-1", "expert-2"]
+    assert projection["expert_points"] != [[0.0, 0.0], [0.0, 0.0]]
+    assert projection["projection_space"] == "criterion_domain_minmax"
+
+
+def test_projection_failure_is_optional_and_does_not_fail_classification(monkeypatch):
+    def fail_projection(*_args, **_kwargs):
+        raise RuntimeError("visualization backend failed")
+
+    monkeypatch.setattr(
+        topsis_sort_executor,
+        "get_plots_graphics_from_matrices",
+        fail_projection,
+    )
+
+    response = _json(execute_topsis_sort_2016(_request()))
+
+    assert response["success"] is True
+    assert response["data"]["assignments"] == [
+        {"alternativeId": "alt-a", "categoryId": "high"},
+        {"alternativeId": "alt-b", "categoryId": "middle"},
+        {"alternativeId": "alt-c", "categoryId": "low"},
+    ]
+    assert response["data"]["plotsGraphic"] == {"reason": "projection_failed"}
+
+
+def test_historical_projection_rebuild_needs_only_frozen_numeric_evidence():
+    payload = deepcopy(
+        TOPSIS_SORT_2016_REQUEST_EXAMPLES["numeric_benefit_cost_sorting"]["value"]
+    )
+    payload.pop("modelParameters")
+
+    projection = build_plots_graphic_from_execution_input(payload)
+
+    assert projection["expert_ids"] == ["expert-1"]
+    assert projection["projection_space"] == "criterion_domain_minmax"
 
 
 def test_example_response_matches_internal_execution_and_uses_only_sorting_fields():

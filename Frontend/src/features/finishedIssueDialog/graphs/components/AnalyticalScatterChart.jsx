@@ -74,10 +74,27 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color }) 
           label: (ctx) => {
             const { datasetIndex, raw } = ctx;
             if (datasetIndex === 0) {
-              const name = raw.email || raw.label || raw.identity || "Expert";
+              const name = raw.label || raw.email || raw.identity || "Expert";
+              const duplicateLabel = expertPoints.filter(
+                (point) => (point.label || point.email || point.identity || "Expert") === name,
+              ).length > 1;
+              const uniqueIdentity = (field, value) =>
+                value && value !== name && expertPoints.filter(
+                  (point) =>
+                    (point.label || point.email || point.identity || "Expert") === name &&
+                    point[field] === value,
+                ).length === 1;
+              const stableIdentity = uniqueIdentity("email", raw.email)
+                ? raw.email
+                : uniqueIdentity("identity", raw.identity)
+                  ? raw.identity
+                  : null;
+              const disambiguator = duplicateLabel && stableIdentity
+                ? ` (${stableIdentity})`
+                : "";
               const x = Number.isFinite(raw.x) ? raw.x.toFixed(2) : "—";
               const y = Number.isFinite(raw.y) ? raw.y.toFixed(2) : "—";
-              return `${name} (${x}, ${y})`;
+              return `${name}${disambiguator} (${x}, ${y})`;
             }
             const x = Number.isFinite(raw.x) ? raw.x.toFixed(2) : "—";
             const y = Number.isFinite(raw.y) ? raw.y.toFixed(2) : "—";

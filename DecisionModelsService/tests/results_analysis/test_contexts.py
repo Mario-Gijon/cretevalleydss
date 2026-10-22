@@ -2,6 +2,8 @@ from copy import deepcopy
 
 import pytest
 
+from models.topsis_sort_2016.executor import build_plots_graphic_from_execution_input
+from models.topsis_sort_2016.examples import TOPSIS_SORT_2016_REQUEST_EXAMPLES
 from services.results_analysis.contexts import (
     build_generic_issue_context,
     build_generic_round_context,
@@ -173,6 +175,41 @@ def test_sorting_generic_context_projects_only_validated_categorical_evidence():
     assert "diagnostics" not in nested_keys(issue_context)
     assert "rank" not in nested_keys(issue_context)
     assert "score" not in nested_keys(issue_context)
+
+
+def test_historical_topsis_sort_projection_rebuild_uses_frozen_input_without_reexecution():
+    source = sorting_context()
+    execution = source["rounds"][1]["selectedExecution"]
+    execution["modelContext"] = {"apiModelKey": "topsis_sort_2016"}
+    frozen_input = deepcopy(
+        TOPSIS_SORT_2016_REQUEST_EXAMPLES["numeric_benefit_cost_sorting"]["value"]
+    )
+    execution["input"] = frozen_input
+    expected_projection = build_plots_graphic_from_execution_input(frozen_input)
+
+    projected_round = build_generic_round_context(source, source["rounds"][1])
+    issue_context = build_generic_issue_context(source)
+
+    assert projected_round["execution"]["expertCollectiveProjection"] == expected_projection
+    assert issue_context["rounds"][0]["execution"]["expertCollectiveProjection"] == expected_projection
+    assert issue_context["rounds"][-1]["execution"]["assignments"] == projected_round["execution"]["assignments"]
+    assert {"evaluations", "modelParameters"}.isdisjoint(nested_keys(issue_context))
+
+
+def test_historical_projection_reports_invalid_frozen_evidence_without_coordinates():
+    source = sorting_context()
+    execution = source["rounds"][1]["selectedExecution"]
+    execution["modelContext"] = {"apiModelKey": "topsis_sort_2016"}
+    execution["input"] = deepcopy(
+        TOPSIS_SORT_2016_REQUEST_EXAMPLES["numeric_benefit_cost_sorting"]["value"]
+    )
+    execution["input"]["evaluations"][0]["payload"]["alt-a"].pop("quality")
+
+    projection = build_generic_round_context(source, source["rounds"][1])["execution"][
+        "expertCollectiveProjection"
+    ]
+
+    assert projection == {"reason": "invalid_frozen_numeric_evidence"}
 
 
 @pytest.mark.parametrize(

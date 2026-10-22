@@ -13,6 +13,7 @@ from models.shared_expression_domains import expression_domain_type_key
 from schemas.model_requests import GenericModelExecutionRequest
 from services.criteria_weights import ordered_numeric_weights
 from services.model_executors.responses import error_response, success_response
+from utils.get_plots_graphics_from_matrices import get_plots_graphics_from_matrices
 
 from .run import run_topsis_sort_2016
 
@@ -107,6 +108,16 @@ def _expert_key(expert: dict[str, Any], index: int) -> str:
     return f"expert_{index + 1}"
 
 
+def _expert_label(expert: Mapping[str, Any], index: int) -> str:
+    for field in ("name", "email", "id"):
+        value = expert.get(field)
+        if value is not None:
+            normalized = str(value).strip()
+            if normalized:
+                return normalized
+    return f"Expert {index + 1}"
+
+
 def _criterion_direction(value: Any) -> str:
     key = str(value or "").strip().lower()
     if key in {"benefit", "max"}:
@@ -114,6 +125,118 @@ def _criterion_direction(value: Any) -> str:
     if key in {"cost", "min"}:
         return "cost"
     raise ValueError(f"Unsupported criterion type: {value}")
+
+
+def _matrix_evidence(payload: GenericModelExecutionRequest) -> dict[str, Any]:
+    context = payload.context or {}
+    criteria_context = context.get("criteria") or []
+
+    # Fail early on non-numeric domains, including for direct adapter callers.
+    for index, criterion in enumerate(criteria_context):
+        if not isinstance(criterion, Mapping):
+            raise ValueError(f"context.criteria[{index}] must be an object")
+        _numeric_domain(
+            criterion.get("expressionDomain"),
+            f"context.criteria[{index}].expressionDomain",
+        )
+
+    extracted = extract_id_keyed_alternative_criteria_input(
+        payload=payload,
+        expert_key_fn=_expert_key,
+        evaluation_value_fn=_evaluation_value,
+    )
+    ranges = []
+    for index, criterion in enumerate(extracted["criterion_items"]):
+        minimum, maximum, _ = _numeric_domain(
+            criterion["expressionDomain"],
+            f"context.criteria[{index}].expressionDomain",
+        )
+        ranges.append([minimum, maximum])
+
+    evaluations = list(payload.evaluations or [])
+    expert_keys = list(extracted["matrices"])
+    expert_labels = [
+        _expert_label(evaluation.get("expert") or {}, index)
+        for index, evaluation in enumerate(evaluations)
+    ]
+    expert_emails = [
+        (str((evaluation.get("expert") or {}).get("email") or "").strip() or None)
+        for evaluation in evaluations
+    ]
+    expert_matrices = [
+        np.asarray(extracted["matrices"][key], dtype=float) for key in expert_keys
+    ]
+    collective_matrix = np.mean(expert_matrices, axis=0)
+    return {
+        **extracted,
+        "expert_keys": expert_keys,
+        "expert_labels": expert_labels,
+        "expert_emails": expert_emails,
+        "visualization_ranges": ranges,
+        "expert_matrices": expert_matrices,
+        "collective_matrix": collective_matrix,
+    }
+
+
+def _is_finite_projection_point(point: Any) -> bool:
+    return (
+        isinstance(point, list)
+        and len(point) == 2
+        and all(
+            isinstance(value, Real) and math.isfinite(float(value))
+            for value in point
+        )
+    )
+
+
+def _plots_graphic(matrix_evidence: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        projection = get_plots_graphics_from_matrices(
+            matrix_evidence["expert_matrices"],
+            matrix_evidence["collective_matrix"],
+            method="MDS",
+            feature_ranges=matrix_evidence["visualization_ranges"],
+        )
+        if projection.get("reason"):
+            return projection
+
+        expert_points = projection.get("expert_points")
+        collective_point = projection.get("collective_point")
+        expert_keys = matrix_evidence["expert_keys"]
+        expert_labels = matrix_evidence["expert_labels"]
+        expert_emails = matrix_evidence["expert_emails"]
+        if (
+            not isinstance(expert_points, list)
+            or len(expert_points) != len(expert_keys)
+            or len(expert_labels) != len(expert_keys)
+            or len(expert_emails) != len(expert_keys)
+            or not all(_is_finite_projection_point(point) for point in expert_points)
+            or not _is_finite_projection_point(collective_point)
+        ):
+            return {"reason": "projection_failed"}
+        if len(set(expert_keys)) != len(expert_keys):
+            return {"reason": "duplicate_expert_identity"}
+
+        result = {
+            **projection,
+            "expert_ids": expert_keys,
+            "expert_labels": expert_labels,
+        }
+        if any(expert_emails):
+            result["expert_emails"] = expert_emails
+        return result
+    except Exception:
+        # Optional analytical evidence must never make a valid classification
+        # fail if a visualization backend encounters an unexpected edge case.
+        return {"reason": "projection_failed"}
+
+
+def build_plots_graphic_from_execution_input(
+    execution_input: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Rebuild presentation-only evidence from a frozen execution request."""
+    payload = GenericModelExecutionRequest.model_validate(execution_input)
+    return _plots_graphic(_matrix_evidence(payload))
 
 
 def _categories(model_parameters: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -202,23 +325,8 @@ def _profiles(model_parameters: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     model_parameters = payload.modelParameters or {}
-    context = payload.context or {}
-    criteria_context = context.get("criteria") or []
-
-    # Fail early on non-numeric domains, including for direct adapter callers.
-    for index, criterion in enumerate(criteria_context):
-        if not isinstance(criterion, Mapping):
-            raise ValueError(f"context.criteria[{index}] must be an object")
-        _numeric_domain(
-            criterion.get("expressionDomain"),
-            f"context.criteria[{index}].expressionDomain",
-        )
-
-    extracted = extract_id_keyed_alternative_criteria_input(
-        payload=payload,
-        expert_key_fn=_expert_key,
-        evaluation_value_fn=_evaluation_value,
-    )
+    matrix_evidence = _matrix_evidence(payload)
+    extracted = matrix_evidence
     weights = ordered_numeric_weights(
         payload,
         allow_empty=False,
@@ -229,10 +337,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
     criteria = []
     for index, criterion in enumerate(extracted["criterion_items"]):
-        minimum, maximum, _ = _numeric_domain(
-            criterion["expressionDomain"],
-            f"context.criteria[{index}].expressionDomain",
-        )
+        minimum, maximum = matrix_evidence["visualization_ranges"][index]
         criteria.append(
             {
                 "criterion_id": criterion["id"],
@@ -243,10 +348,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
             }
         )
 
-    expert_matrices = [
-        np.asarray(matrix, dtype=float) for matrix in extracted["matrices"].values()
-    ]
-    collective_matrix = np.mean(expert_matrices, axis=0)
+    collective_matrix = matrix_evidence["collective_matrix"]
     alternatives = [
         {
             "alternative_id": alternative_id,
@@ -263,6 +365,12 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
         "criteria": criteria,
         "profiles": _profiles(model_parameters),
         "categories": _categories(model_parameters),
+        "expert_matrices": matrix_evidence["expert_matrices"],
+        "collective_matrix": collective_matrix,
+        "expert_keys": matrix_evidence["expert_keys"],
+        "expert_labels": matrix_evidence["expert_labels"],
+        "expert_emails": matrix_evidence["expert_emails"],
+        "visualization_ranges": matrix_evidence["visualization_ranges"],
     }
 
 
@@ -294,10 +402,18 @@ def execute_topsis_sort_2016(
     """Execute TOPSIS-Sort internally and return the ``sorting@1`` shape."""
 
     try:
-        result = run_topsis_sort_2016(**_input(payload))
+        execution_input = _input(payload)
+        result = run_topsis_sort_2016(
+            alternatives=execution_input["alternatives"],
+            criteria=execution_input["criteria"],
+            profiles=execution_input["profiles"],
+            categories=execution_input["categories"],
+        )
+        output = _output(result)
+        output["plotsGraphic"] = _plots_graphic(execution_input)
         return success_response(
             "TOPSIS-Sort 2016 executed successfully",
-            _output(result),
+            output,
         )
     except Exception as error:
         return error_response(

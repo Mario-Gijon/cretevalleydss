@@ -20,8 +20,8 @@ describe("buildAnalyticalScatterViewModel", () => {
 
     expect(result).toEqual({
       expertPoints: [
-        { x: 1, y: 2, email: "Expert A" },
-        { x: 2, y: 4, email: "Expert 3" },
+        { x: 1, y: 2, label: "Expert A", email: "Expert A", identity: "Expert A" },
+        { x: 2, y: 4, label: "Expert 3", email: "Expert 3", identity: "Expert 3" },
       ],
       collectivePoint: { x: 3, y: 5 },
       xRange: { min: 0.6, max: 3.4 },
@@ -45,8 +45,8 @@ describe("buildAnalyticalScatterViewModel", () => {
     });
 
     expect(result.expertPoints).toEqual([
-      { x: 0.5, y: 0.25, email: "one@example.test" },
-      { x: 1.5, y: 0.75, email: "two@example.test" },
+      { x: 0.5, y: 0.25, label: "one@example.test", email: "one@example.test", identity: "one@example.test" },
+      { x: 1.5, y: 0.75, label: "two@example.test", email: "two@example.test", identity: "two@example.test" },
     ]);
     expect(result.collectivePoint).toEqual({ x: 1, y: 0.5 });
   });
@@ -63,8 +63,8 @@ describe("buildAnalyticalScatterViewModel", () => {
     });
 
     expect(result.expertPoints).toEqual([
-      { x: 2, y: 3, email: "First" },
-      { x: 4, y: 5, email: "Expert 2" },
+      { x: 2, y: 3, label: "First", email: "First", identity: "First" },
+      { x: 4, y: 5, label: "Expert 2", email: "Expert 2", identity: "Expert 2" },
     ]);
     expect(result.collectivePoint).toEqual({ x: 0, y: 0 });
   });
@@ -94,7 +94,27 @@ describe("buildAnalyticalScatterViewModel", () => {
     });
 
     expect(emailMapResult.expertPoints).toEqual([
-      { x: 1, y: 2, email: "email" },
+      { x: 1, y: 2, label: "email", email: "email", identity: "email" },
+    ]);
+  });
+
+  it("preserves duplicate visible labels with stable IDs and email identities", () => {
+    const result = buildAnalyticalScatterViewModel({
+      data: {
+        0: {
+          expertPoints: [
+            { x: 0, y: 0, label: "Shared name", identity: "expert-1", email: "one@example.test" },
+            { x: 1, y: 1, label: "Shared name", identity: "expert-2", email: "two@example.test" },
+          ],
+          collectivePoint: { x: 0.5, y: 0.5 },
+        },
+      },
+      phase: 0,
+    });
+
+    expect(result.expertPoints.map(({ label, identity, email }) => ({ label, identity, email }))).toEqual([
+      { label: "Shared name", identity: "expert-1", email: "one@example.test" },
+      { label: "Shared name", identity: "expert-2", email: "two@example.test" },
     ]);
   });
 

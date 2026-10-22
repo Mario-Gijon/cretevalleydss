@@ -377,6 +377,71 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
   });
 
+  it("renders TOPSIS-Sort Expert–collective views before its categorical relationships", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        resultStructureKey: "sorting",
+        genericAnalysis: {
+          facts: { alternativeRelationships: { phases: [] } },
+          visualizations: [{
+            type: "alternativeRelationships",
+            mode: "categorical",
+            phases: [{
+              phase: 0,
+              categoryOrderSemantics: "lower-order-is-less-preferred",
+              categories: [
+                { categoryId: "low", label: "Low", order: 0 },
+                { categoryId: "high", label: "High", order: 1 },
+              ],
+              alternatives: [
+                { alternativeId: "a", name: "Alpha", categoryId: "high" },
+                { alternativeId: "b", name: "Beta", categoryId: "low" },
+              ],
+            }],
+          }],
+        },
+      }]}
+      visualizations={{
+        mode: "single",
+        singleScatter: { available: true, sourcePhase: 0, data: { 0: { expertPoints: [{ identity: "expert-1", label: "Ada", x: 1, y: 0 }, { identity: "expert-2", label: "Grace", x: -1, y: 0 }], collectivePoint: { x: 0, y: 0 } } } },
+        canonicalProjections: [{ key: "base", available: true, collectivePoint: { x: 0, y: 0 }, expertPoints: [{ identity: "expert-1", label: "Ada", x: 1, y: 0 }, { identity: "expert-2", label: "Grace", x: -1, y: 0 }] }],
+        consensus: { enabled: false },
+      }}
+    /></ThemeProvider>);
+
+    const primaryRow = screen.getByTestId("general-visualization-primary-row");
+    const relationshipRow = screen.getByTestId("alternative-relationships-secondary-row");
+    expect(within(primaryRow).getByTestId("expert-collective-relationship")).toBeInTheDocument();
+    expect(primaryRow.compareDocumentPosition(relationshipRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("button", { name: "MAP" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "DISTANCES" }));
+
+    expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Ada|Grace");
+    expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "distances");
+  });
+
+  it("shows why a historical sorting projection could not be rebuilt", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        resultStructureKey: "sorting",
+        genericAnalysis: { facts: { expertCollectiveRelationship: { unavailableReason: "invalid_frozen_numeric_evidence" } } },
+      }]}
+      visualizations={{
+        mode: "single",
+        singleScatter: { available: false, unavailableReason: "invalid_frozen_numeric_evidence" },
+        canonicalProjections: [],
+        consensus: { enabled: false },
+      }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("expert-collective-relationship")).toBeInTheDocument();
+    expect(screen.getByText(/frozen execution evaluations are incomplete or invalid/)).toBeInTheDocument();
+  });
+
   it("places consensus below Expert and keeps one relationship matrix last", () => {
     const alternatives = [
       { alternativeId: "alpha", name: "Alpha", rank: 1 },
