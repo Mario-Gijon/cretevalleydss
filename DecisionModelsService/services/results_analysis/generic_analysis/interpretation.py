@@ -80,6 +80,131 @@ def _overall_outcome(facts):
     return "### Overall outcome\n\n" + sentence
 
 
+def _limited_names(items, *, key="name"):
+    values = [item.get(key) for item in items or []]
+    values = [value.strip() for value in values if isinstance(value, str) and value.strip()]
+    if len(values) > 3:
+        values = values[:3] + ["others"]
+    if len(values) < 2:
+        return f"**{values[0]}**" if values and values[0] != "others" else (values[0] if values else "")
+    rendered = [f"**{value}**" if value != "others" else value for value in values]
+    if len(rendered) == 2:
+        return f"{rendered[0]} and {rendered[1]}"
+    return ", ".join(rendered[:-1]) + f", and {rendered[-1]}"
+
+
+def _final_categorical_phase(facts):
+    relationships = facts.get("alternativeRelationships") or {}
+    phases = relationships.get("phases") or []
+    final_phase = facts.get("finalPhase")
+    if final_phase is None and len(phases) == 1:
+        return phases[0]
+    return next((item for item in phases if item.get("phase") == final_phase), None)
+
+
+def _overall_sorting_outcome(facts):
+    phase = _final_categorical_phase(facts)
+    if not phase:
+        return (
+            "### Overall outcome\n\n"
+            "The stored generic results do not include a final category assignment "
+            "that can be interpreted."
+        )
+    groups = [group for group in phase.get("groups") or [] if group.get("alternatives")]
+    alternatives = phase.get("alternatives") or []
+    if not groups or not alternatives:
+        return None
+    if len(groups) == 1:
+        label = groups[0].get("label") or "the configured category"
+        if len(alternatives) == 1:
+            sentence = f"Only {_limited_names(alternatives)} appears in the final recorded result, in the **{label}** category."
+        else:
+            sentence = (
+                f"All alternatives share the **{label}** category. This shared "
+                "classification does not establish that their underlying evaluations were identical."
+            )
+        return "### Overall outcome\n\n" + sentence
+
+    most_favorable = max(groups, key=lambda group: group["order"])
+    least_favorable = min(groups, key=lambda group: group["order"])
+    sentence = (
+        f"The final classification places {_limited_names(most_favorable['alternatives'])} "
+        f"in the most favorable occupied category, **{most_favorable['label']}**, "
+        f"while {_limited_names(least_favorable['alternatives'])} are in the "
+        f"least favorable occupied category, **{least_favorable['label']}**."
+    )
+    if len(groups) > 2:
+        sentence += " Other alternatives occupy intermediate categories in the configured preference order."
+    return "### Overall outcome\n\n" + sentence
+
+
+def _categorical_alternative_relationships(facts):
+    phase = _final_categorical_phase(facts)
+    if not phase:
+        return None
+    groups = [group for group in phase.get("groups") or [] if group.get("alternatives")]
+    alternatives = phase.get("alternatives") or []
+    if len(alternatives) < 2:
+        return None
+    shared = [group for group in groups if len(group.get("alternatives") or []) > 1]
+    if len(groups) == 1:
+        return (
+            "### Alternative relationships\n\n"
+            f"All alternatives share the **{groups[0]['label']}** category. "
+            "A shared classification does not imply identical underlying evaluations."
+        )
+    if shared:
+        group = max(shared, key=lambda item: (len(item["alternatives"]), item["order"]))
+        other_groups = [item for item in groups if item["categoryId"] != group["categoryId"]]
+        contrast = other_groups[0]["alternatives"]
+        return (
+            "### Alternative relationships\n\n"
+            f"{_limited_names(group['alternatives'])} share the **{group['label']}** category, "
+            f"while {_limited_names(contrast)} are classified differently. "
+            "Sharing a category records the same classification, not identical evaluations."
+        )
+    return (
+        "### Alternative relationships\n\n"
+        "Each alternative falls into a separate category group in this result; no two alternatives share a category assignment."
+    )
+
+
+def _categorical_decision_process(facts):
+    relationships = facts.get("alternativeRelationships") or {}
+    transitions = relationships.get("transitions") or []
+    if not transitions:
+        return None
+    transition = transitions[-1]
+    changes = transition.get("changes") or []
+    unchanged = transition.get("unchanged") or []
+    from_label = phase_label(transition.get("fromPhase"))
+    to_label = phase_label(transition.get("toPhase"))
+    if not changes:
+        return (
+            "### Decision process\n\n"
+            f"Alternative category assignments remained unchanged from {from_label} to {to_label}."
+        )
+    descriptions = []
+    for entry in changes[:3]:
+        from_label = entry["fromCategoryLabel"]
+        to_label = entry["toCategoryLabel"]
+        if from_label == to_label and entry["fromCategoryId"] != entry["toCategoryId"]:
+            direction = "more preferred" if entry["toCategoryOrder"] > entry["fromCategoryOrder"] else "less preferred"
+            descriptions.append(
+                f"**{entry['name']}** moved from one **{from_label}** category to another with the same label ({direction})"
+            )
+        else:
+            descriptions.append(
+                f"**{entry['name']}** changed from **{from_label}** to **{to_label}**"
+            )
+    if len(changes) > 3:
+        descriptions.append("other alternatives")
+    sentence = f"Between {from_label} and {to_label}, " + "; ".join(descriptions) + "."
+    if unchanged:
+        sentence += f" {_limited_names(unchanged)} retained their category assignments."
+    return "### Decision process\n\n" + sentence
+
+
 def _phase_relationship(facts):
     relationships = facts.get("alternativeRelationships") or {}
     phases = relationships.get("phases") or []
@@ -381,6 +506,18 @@ def _participation(facts):
 
 def build_issue_interpretation(facts):
     """Summarize common issue results without assigning model-specific meaning."""
+    if (facts.get("resultStructure") or {}).get("key") == "sorting":
+        consensus = facts.get("consensus") or {}
+        include_consensus = consensus.get("enabled") is True and bool(consensus.get("points"))
+        sections = [
+            _overall_sorting_outcome(facts),
+            _categorical_alternative_relationships(facts),
+            _categorical_decision_process(facts),
+            _consensus(facts) if include_consensus else None,
+            _participation(facts),
+        ]
+        return "\n\n".join(section for section in sections if section)
+
     sections = [
         _overall_outcome(facts),
         _alternative_relationships(facts),

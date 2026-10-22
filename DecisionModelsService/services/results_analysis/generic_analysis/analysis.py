@@ -1,6 +1,7 @@
 from services.results_analysis.contracts import normalize_analysis_result
 
 from .alternative_relationships import alternative_relationships
+from .categorical import categorical_alternative_relationships
 from .common import attempt_summary, fmt, ranking
 from .consensus import issue_consensus, round_consensus
 from .interpretation import build_issue_interpretation
@@ -190,10 +191,76 @@ def _visualizations(facts):
     return result
 
 
+def _sorting_visualizations(facts):
+    relationships = facts.get("alternativeRelationships") or {}
+    phases = relationships.get("phases") or []
+    visualizable = [phase for phase in phases if len(phase.get("alternatives") or []) >= 2]
+    if not visualizable:
+        return []
+    return [
+        {
+            "type": "alternativeRelationships",
+            "mode": "categorical",
+            "phases": [
+                {
+                    "phase": phase["phase"],
+                    "categoryOrderSemantics": phase["categoryOrderSemantics"],
+                    "categories": phase["categories"],
+                    "alternatives": phase["alternatives"],
+                }
+                for phase in visualizable
+            ],
+        }
+    ]
+
+
+def _analyze_sorting_issue(context, issue, rounds):
+    result_structure = context.get("resultStructure") or {}
+    relationships = categorical_alternative_relationships(rounds)
+    phases = relationships.get("phases") or []
+    final_phase = phases[-1] if phases else None
+    consensus = issue_consensus(context, rounds)
+    participants = participant_summary(context, rounds)
+    projections = [
+        round_entry.get("execution", {}).get("expertCollectiveProjection")
+        for round_entry in rounds
+        if isinstance(round_entry.get("execution", {}).get("expertCollectiveProjection"), dict)
+        and round_entry["execution"]["expertCollectiveProjection"]
+    ]
+    facts = {
+        "resultStructure": {"key": result_structure.get("key"), "version": result_structure.get("version")},
+        "issueId": issue.get("id"),
+        "issueName": issue.get("name"),
+        "executedRounds": len(rounds),
+        "firstPhase": rounds[0]["phase"] if rounds else None,
+        "finalPhase": rounds[-1]["phase"] if rounds else None,
+        "finalCategories": final_phase["categories"] if final_phase else [],
+        "finalAssignments": final_phase["alternatives"] if final_phase else [],
+        "alternativeRelationships": relationships,
+        "consensus": consensus,
+        "participants": participants,
+        "execution": _issue_attempt_summary(rounds),
+        "expertCollectiveRelationship": {
+            "projection": projections[-1] if projections else None,
+            "unavailableReason": None if projections else "missing_analytical_projection",
+        },
+    }
+    return normalize_analysis_result(
+        {
+            "facts": facts,
+            "interpretation": build_issue_interpretation(facts),
+            "visualizations": _sorting_visualizations(facts),
+        }
+    )
+
+
 def analyze_issue(context):
     """Analyze a completed issue without interpreting model-specific semantics."""
     issue = context.get("issue") or {}
     rounds = _executed_rounds(context)
+    if (context.get("resultStructure") or {}).get("key") == "sorting":
+        return _analyze_sorting_issue(context, issue, rounds)
+
     rankings = rankings_by_phase(context, rounds)
     final_ranking = rankings[-1]["ranking"] if rankings else []
 

@@ -40,7 +40,7 @@ are outside this result contract. They belong to model parameters and issue
 configuration; profile requirements vary between sorting methods and are
 documented with the `orderedCategories` parameter structure.
 
-This result structure is available to validate and project stored results,
-but its `issueExecution`, `consensus`, and `resultsAnalysis` capabilities are
-disabled. They must be enabled only after model execution and the relevant
-consensus or analysis contracts are implemented.
+This result structure supports issue execution and the system's generic Results
+Analysis. Consensus remains disabled. Generic analysis uses only the configured
+categories and persisted assignments; it does not interpret model diagnostics
+or convert categories into ranks or scores.

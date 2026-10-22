@@ -10,7 +10,7 @@ describe("Finished Issue result presentation registry", () => {
   it("autodetects the ranking@1 and sorting@1 presentation entries", () => {
     expect(Object.keys(RESULT_PRESENTATION_REGISTRY).sort()).toEqual(["ranking@1", "sorting@1"]);
     expect(RESULT_PRESENTATION_REGISTRY["ranking@1"].capabilities.resultsAnalysis).toBe(true);
-    expect(RESULT_PRESENTATION_REGISTRY["sorting@1"].capabilities.resultsAnalysis).toBe(false);
+    expect(RESULT_PRESENTATION_REGISTRY["sorting@1"].capabilities.resultsAnalysis).toBe(true);
   });
 
   it("selects a presentation only by result structure key and version", () => {

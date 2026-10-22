@@ -118,9 +118,10 @@ describe("finished Issue execution analysis service", () => {
     expect(result.stageAnalyses).toMatchObject({ criteriaWeighting: { apiModelKey: "criteria-model", analysis: { interpretation: "criteria-model:1" } }, alternativeEvaluation: { apiModelKey: "alternative-model", analysis: { interpretation: "alternative-model:1" } } });
   });
 
-  it("blocks generic analysis for sorting base results and sorting scenario results", async () => {
+  it("generates and persists generic analysis for sorting base and scenario executions when model analysis is absent", async () => {
     const { issueId, userId, dependencies } = fixture();
-    const requestAnalysis = vi.fn(async () => ({ interpretation: "must not run" }));
+    const requestAnalysis = vi.fn(async ({ analysisContext }) => ({ facts: { execution: analysisContext.projectedFor }, interpretation: `General ${analysisContext.projectedFor}`, visualizations: [] }));
+    const requestModelAnalysis = vi.fn(async () => null);
     dependencies.getIssue.mockResolvedValue({
       _id: issueId,
       ownerId: userId,
@@ -129,15 +130,6 @@ describe("finished Issue execution analysis service", () => {
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
     });
-
-    await expect(getOrGenerateFinishedIssueExecutionAnalysis({
-      issueId,
-      userId,
-      executionKey: "base",
-      requestAnalysis,
-      ...dependencies,
-    })).rejects.toThrow("Results analysis is not enabled for this result structure");
-
     const scenarioId = new mongoose.Types.ObjectId();
     await IssueScenario.create({
       _id: scenarioId,
@@ -164,26 +156,35 @@ describe("finished Issue execution analysis service", () => {
         },
       }],
     });
-    dependencies.getIssue.mockResolvedValue({
-      _id: issueId,
-      ownerId: userId,
-      active: false,
-      currentStage: "finished",
-      resultStructureKey: "ranking",
-      resultStructureVersion: 1,
-    });
+    dependencies.executionProjector.mockImplementation(({ executionKey }) => ({
+      execution: { key: executionKey },
+      analysisContext: {
+        projectedFor: executionKey,
+        rounds: [{ selectedExecution: { modelContext: { apiModelKey: executionKey === "base" ? "topsis_sort_2016" : "scenario-sort-model" } } }],
+      },
+    }));
 
-    await expect(getOrGenerateFinishedIssueExecutionAnalysis({
+    const common = { issueId, userId, ...dependencies, requestAnalysis, requestModelAnalysis };
+    const base = await getOrGenerateFinishedIssueExecutionAnalysis({
+      issueId,
+      userId,
+      executionKey: "base",
+      ...common,
+    });
+    const scenario = await getOrGenerateFinishedIssueExecutionAnalysis({
       issueId,
       userId,
       executionKey: String(scenarioId),
-      requestAnalysis,
-      ...dependencies,
-    })).rejects.toThrow("Results analysis is not enabled for this result structure");
+      ...common,
+    });
 
-    expect(requestAnalysis).not.toHaveBeenCalled();
-    expect(dependencies.historyBuilder).not.toHaveBeenCalled();
-    expect(await IssueResultsAnalysis.countDocuments({ issue: issueId })).toBe(0);
+    expect(base.genericAnalysis).toMatchObject({ facts: { execution: "base" }, interpretation: "General base" });
+    expect(scenario).toMatchObject({ executionKey: String(scenarioId), genericAnalysis: { facts: { execution: String(scenarioId) } } });
+    expect(base.stageAnalyses.alternativeEvaluation).toEqual({ apiModelKey: "topsis_sort_2016", analysis: null });
+    expect(scenario.stageAnalyses.alternativeEvaluation).toEqual({ apiModelKey: "scenario-sort-model", analysis: null });
+    expect(requestAnalysis).toHaveBeenCalledTimes(2);
+    expect(requestModelAnalysis).toHaveBeenCalledTimes(2);
+    expect(await IssueResultsAnalysis.countDocuments({ issue: issueId })).toBe(2);
   });
 
   it("keeps model analyses isolated when reloading multiple executions", async () => {

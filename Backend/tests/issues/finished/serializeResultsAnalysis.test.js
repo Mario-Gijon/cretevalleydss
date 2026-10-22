@@ -11,7 +11,7 @@ const analysis = (executionKey, executionType, scenario = null) => ({
 });
 
 describe("Finished Issue result analysis serialization", () => {
-  it("does not expose analysis for sorting base results", () => {
+  it("exposes persisted analysis for sorting base results", () => {
     const serialized = serializeResultsAnalysis({
       issue: {
         resultStructureKey: "sorting",
@@ -21,10 +21,11 @@ describe("Finished Issue result analysis serialization", () => {
       analyses: [analysis("base", "base")],
     });
 
-    expect(serialized).toEqual({ executions: [] });
+    expect(serialized.executions).toHaveLength(1);
+    expect(serialized.executions[0]).toMatchObject({ executionKey: "base", genericAnalysis: { interpretation: "synthetic" } });
   });
 
-  it("does not expose analysis for sorting scenarios on a ranking issue", () => {
+  it("exposes a sorting scenario analysis when its own structure supports it", () => {
     const scenarioId = "scenario-1";
     const serialized = serializeResultsAnalysis({
       issue: {
@@ -43,7 +44,8 @@ describe("Finished Issue result analysis serialization", () => {
       analyses: [analysis(scenarioId, "scenario", scenarioId)],
     });
 
-    expect(serialized).toEqual({ executions: [] });
+    expect(serialized.executions).toHaveLength(1);
+    expect(serialized.executions[0]).toMatchObject({ executionKey: scenarioId, executionType: "scenario" });
   });
 
   it("preserves ranking analysis output", () => {

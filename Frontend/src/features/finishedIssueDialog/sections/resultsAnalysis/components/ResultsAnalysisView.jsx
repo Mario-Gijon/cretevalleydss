@@ -17,7 +17,7 @@ const ResultsAnalysisView = ({ data, selection, navigation, reload }) => {
       <ResultsAnalysisNavigation activeView={activeView} onChange={navigation.setActiveView} />
       <ExecutionSelectionToolbar data={data} selectedExecutionKeys={selection.selectedExecutionKeys} onToggleExecution={selection.toggleExecution} onRemoveExecution={selection.removeExecution} reload={reload} />
       {!analysisAvailable ? <Alert severity="info" data-testid="results-analysis-unavailable">{data.analysisUnavailableReason}</Alert> : null}
-      {analysisAvailable && activeView === RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS ? <VisualizationsPanel visualizations={data.visualizations} executions={data.selected} /> : null}
+      {analysisAvailable && activeView === RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS ? <VisualizationsPanel visualizations={data.visualizations} executions={data.selected} categoricalComparisons={data.categoricalComparisons} /> : null}
       {analysisAvailable && activeView === RESULTS_ANALYSIS_VIEWS.INTERPRETATION ? <InterpretationPanel executions={data.selected} /> : null}
     </Stack>
   );

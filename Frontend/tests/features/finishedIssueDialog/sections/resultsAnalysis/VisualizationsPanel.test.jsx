@@ -742,6 +742,55 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByText("Ranking similarity between rounds")).not.toBeInTheDocument();
   });
 
+  it("renders sorting relationships as category membership without ranking or score visualizations", () => {
+    const categories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "medium", label: "Medium", order: 1 },
+      { categoryId: "high", label: "High", order: 2 },
+    ];
+    const alternatives = [
+      { alternativeId: "a", name: "Alpha", categoryId: "high", categoryLabel: "High" },
+      { alternativeId: "b", name: "Balanced", categoryId: "medium", categoryLabel: "Medium" },
+      { alternativeId: "c", name: "Budget", categoryId: "high", categoryLabel: "High" },
+    ];
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "sorting",
+        resultStructureKey: "sorting",
+        displayLabel: "TOPSIS-SORT",
+        categoricalPhases: [{ phase: 5, categoryOrderSemantics: "lower-order-is-less-preferred", categories, alternatives }],
+        genericAnalysis: { visualizations: [{ type: "alternativeRelationships", mode: "categorical", phases: [{ phase: 5, categoryOrderSemantics: "lower-order-is-less-preferred", categories, alternatives }] }] },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("categorical-relationship-matrix")).toBeInTheDocument();
+    expect(screen.getAllByText("Same category: High")).toHaveLength(2);
+    expect(screen.getAllByText("Different categories").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("categorical-category-order")).toHaveTextContent("Low → Medium → High");
+    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent(/does not imply identical underlying evaluations/);
+    expect(screen.queryByText("Ranking evolution")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ranking stability")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("alternative-relationships-heatmap")).not.toBeInTheDocument();
+  });
+
+  it("shows cross-execution assignment changes only when the workspace provides a comparable category configuration", () => {
+    const categories = [{ categoryId: "low", label: "Low", order: 0 }, { categoryId: "high", label: "High", order: 1 }];
+    const phases = [{ phase: 1, categoryOrderSemantics: "lower-order-is-less-preferred", categories, alternatives: [
+      { alternativeId: "a", name: "Alpha", categoryId: "high", categoryLabel: "High" },
+      { alternativeId: "b", name: "Balanced", categoryId: "low", categoryLabel: "Low" },
+    ] }];
+    const genericAnalysis = { visualizations: [{ type: "alternativeRelationships", mode: "categorical", phases }] };
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", resultStructureKey: "sorting", displayLabel: "Base", categoricalPhases: phases, genericAnalysis }, { key: "scenario", resultStructureKey: "sorting", displayLabel: "Scenario", categoricalPhases: phases, genericAnalysis }]}
+      categoricalComparisons={[{ leftKey: "base", rightKey: "scenario", changes: [{ alternativeId: "a", name: "Alpha", fromCategoryLabel: "High", toCategoryLabel: "Low" }], unchanged: [] }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("categorical-execution-comparisons")).toHaveTextContent("Base → Scenario");
+    expect(screen.getByTestId("categorical-execution-comparisons")).toHaveTextContent("Alpha: High → Low");
+  });
+
   it("places both secondary visualizations side by side for one execution", () => {
     const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);

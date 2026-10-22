@@ -96,7 +96,7 @@ const buildSortingFindings = (result, execution) => {
 const sortingV1ResultPresentation = Object.freeze({
   resultStructureKey: "sorting",
   resultStructureVersion: 1,
-  capabilities: Object.freeze({ resultsAnalysis: false }),
+  capabilities: Object.freeze({ resultsAnalysis: true }),
   DashboardResultComponent: SortingDashboardResult,
   ResultHeaderIconComponent: CategoryRoundedIcon,
   FinishedIssueCardSummaryComponent: SortingFinishedIssueCardSummary,

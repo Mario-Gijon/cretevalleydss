@@ -117,6 +117,26 @@ describe("buildAnalysisContext", () => {
     expect(input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.standardResult.rawOutput).toEqual({ internal: true });
   });
 
+  it("projects result-structure identity from creation and applied execution snapshots", () => {
+    const input = history();
+    input.stateSnapshots.creation.state.issue.resultStructureKey = "sorting";
+    input.stateSnapshots.creation.state.issue.resultStructureVersion = 1;
+    input.evidence.executionAttempts[0].application.resultSnapshot.result.resultStructureKey = "sorting";
+    input.evidence.executionAttempts[0].application.resultSnapshot.result.resultStructureVersion = 1;
+    input.evidence.executionAttempts[1].application.resultSnapshot.result.resultStructureKey = "sorting";
+    input.evidence.executionAttempts[1].application.resultSnapshot.result.resultStructureVersion = 1;
+    input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.resultStructureKey = "sorting";
+    input.evidence.executionAttempts[2].application.resultSnapshot.phaseResults[0].result.resultStructureVersion = 1;
+
+    const context = buildAnalysisContext(input);
+    expect(context.issue.resultStructure).toEqual({ key: "sorting", version: 1 });
+    expect(context.rounds.map((round) => round.selectedExecution.resultStructure)).toEqual([
+      { key: "sorting", version: 1 },
+      { key: "sorting", version: 1 },
+    ]);
+    expect(context.scenarios.current[0].phaseResults[0].execution.resultStructure).toEqual({ key: "sorting", version: 1 });
+  });
+
   it("keeps applied criteria-weighting execution evidence separate from alternative rounds and unchanged for scenarios", () => {
     const input = history();
     input.evidence.executionAttempts.unshift({

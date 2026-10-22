@@ -692,7 +692,7 @@ const StageVisualizations = ({ executions, stage }) => {
   return <Box><Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>{stage.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>{stage.description}</Typography><Stack spacing={1.4}>{sections.map((section) => <SemanticSection key={section.id} section={section} />)}</Stack></Box>;
 };
 
-const VisualizationsPanel = ({ visualizations = {}, executions = [] }) => {
+const VisualizationsPanel = ({ visualizations = {}, executions = [], categoricalComparisons = [] }) => {
   const hasRankingEvolution = executionWithVisualization(
     executions,
     "rankingEvolution",
@@ -718,7 +718,7 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [] }) => {
       return <ConsensusCard key={type} consensus={visualizations.consensus} />;
     }
     if (type === "alternativeRelationships") {
-      return <AlternativeRelationshipsVisualization key={type} executions={executions} />;
+      return <AlternativeRelationshipsVisualization key={type} executions={executions} categoricalComparisons={categoricalComparisons} />;
     }
     return null;
   };

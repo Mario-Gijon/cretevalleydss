@@ -253,47 +253,77 @@ describe("Results analysis workspace", () => {
     await waitFor(() => expect(result.current.selectedExecutionKeys).toEqual(["scenario-a", "scenario-b"]));
   });
 
-  it("marks sorting executions unavailable for ranking analysis and keeps eligible ranking runs usable", () => {
+  it("supports sorting analysis without creating ranking comparisons in a mixed selection", () => {
     const payload = buildFinishedIssuePayloadFixture();
     const sorting = completeScenario("scenario-sorting", []);
     sorting.phaseResults[0].resultStructureKey = "sorting";
     sorting.phaseResults[0].resultStructureVersion = 1;
     sorting.phaseResults[0].standardizedOutput = {
-      categories: [{ categoryId: "high", label: "High", order: 1 }],
+      categories: [{ categoryId: "low", label: "Low", order: 0 }, { categoryId: "high", label: "High", order: 1 }],
       categoryOrderSemantics: "lower-order-is-less-preferred",
-      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "high" }],
+      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "low" }],
     };
     payload.scenarios.push(sorting);
 
     const options = buildResultsAnalysisSelectableOptions(payload);
     expect(options.find((option) => option.key === "scenario-sorting")).toMatchObject({
-      selectable: false,
-      unavailableReason: "Results Analysis is not available for sorting@1.",
+      selectable: true,
+      unavailableReason: null,
     });
     expect(options.find((option) => option.key === "base").selectable).toBe(true);
 
     const mixed = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base", "scenario-sorting"] });
-    expect(mixed.selected.map((execution) => execution.key)).toEqual(["base"]);
+    expect(mixed.selected.map((execution) => execution.key)).toEqual(["base", "scenario-sorting"]);
     expect(mixed.comparison).toBeNull();
     expect(mixed.primary.ranking.map((entry) => entry.id)).toEqual(["b", "a"]);
+    expect(mixed.selected[1].ranking).toEqual([]);
+    expect(mixed.categoricalComparisons).toEqual([]);
   });
 
-  it("does not build rankings or visualizations for a sorting-only workspace", () => {
+  it("builds categorical analysis and no ranking facts for a sorting-only workspace", () => {
     const payload = buildFinishedIssuePayloadFixture();
-    payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5).resultStructureKey = "sorting";
-    payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5).resultStructureVersion = 1;
-    payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5).standardizedOutput = {
-      categories: [{ categoryId: "high", label: "High", order: 1 }],
-      categoryOrderSemantics: "lower-order-is-less-preferred",
-      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "high" }],
-    };
+    const finalPhase = payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5);
+    finalPhase.resultStructureKey = "sorting";
+    finalPhase.resultStructureVersion = 1;
+    finalPhase.standardizedOutput = { categories: [{ categoryId: "low", label: "Low", order: 0 }, { categoryId: "high", label: "High", order: 1 }], categoryOrderSemantics: "lower-order-is-less-preferred", assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "low" }] };
 
     const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
-    expect(data.analysisAvailable).toBe(false);
-    expect(data.analysisUnavailableReason).toBe("Results Analysis is not available for sorting@1.");
-    expect(data.selected).toEqual([]);
-    expect(data.visualizations).toBeNull();
+    expect(data.analysisAvailable).toBe(true);
+    expect(data.analysisUnavailableReason).toBeNull();
+    expect(data.selected).toHaveLength(1);
+    expect(data.primary.ranking).toEqual([]);
+    expect(data.primary.sorting.categories.map((category) => category.label)).toEqual(["Low", "High"]);
+    expect(data.primary.categoricalPhases).toHaveLength(1);
+    expect(data.visualizations).not.toBeNull();
     expect(data.comparison).toBeNull();
+  });
+
+  it("compares sorting executions only when category semantics and alternative IDs match", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const makeSorting = (id, assignment, label = "High") => {
+      const scenario = completeScenario(id, []);
+      scenario.phaseResults[0].resultStructureKey = "sorting";
+      scenario.phaseResults[0].resultStructureVersion = 1;
+      scenario.phaseResults[0].standardizedOutput = {
+        categoryOrderSemantics: "lower-order-is-less-preferred",
+        categories: [{ categoryId: "low", label: "Low", order: 0 }, { categoryId: "high", label, order: 1 }],
+        assignments: [{ alternativeId: "a", categoryId: assignment }, { alternativeId: "b", categoryId: assignment === "high" ? "low" : "high" }],
+      };
+      return scenario;
+    };
+    payload.scenarios = [makeSorting("sorting-a", "high"), makeSorting("sorting-b", "low")];
+
+    const comparable = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["sorting-a", "sorting-b"] });
+    expect(comparable.comparison).toBeNull();
+    expect(comparable.categoricalComparisons).toEqual([{ leftKey: "sorting-a", rightKey: "sorting-b", leftPhase: 5, rightPhase: 5, changes: [
+      { alternativeId: "a", name: "Alpha", fromCategoryId: "high", fromCategoryLabel: "High", fromCategoryOrder: 1, toCategoryId: "low", toCategoryLabel: "Low", toCategoryOrder: 0 },
+      { alternativeId: "b", name: "Beta", fromCategoryId: "low", fromCategoryLabel: "Low", fromCategoryOrder: 0, toCategoryId: "high", toCategoryLabel: "High", toCategoryOrder: 1 },
+    ], unchanged: [] }]);
+
+    payload.scenarios[1] = makeSorting("sorting-b", "low", "Preferred");
+    const incomparable = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["sorting-a", "sorting-b"] });
+    expect(incomparable.categoricalComparisons).toEqual([]);
+    expect(incomparable.categoricalUnavailableComparisons).toEqual([{ leftKey: "sorting-a", rightKey: "sorting-b", reason: "category_configuration_changed" }]);
   });
 
   it("resolves Results Analysis capability from the phase selected in Finished Issue", () => {
@@ -302,12 +332,12 @@ describe("Results analysis workspace", () => {
     initialPhase.resultStructureKey = "sorting";
     initialPhase.resultStructureVersion = 1;
     initialPhase.standardizedOutput = {
-      categories: [{ categoryId: "high", label: "High", order: 1 }],
+      categories: [{ categoryId: "low", label: "Low", order: 0 }, { categoryId: "high", label: "High", order: 1 }],
       categoryOrderSemantics: "lower-order-is-less-preferred",
-      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "high" }],
+      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "low" }],
     };
 
-    expect(buildResultsAnalysisSelectableOptions(payload, 0).find((option) => option.key === "base").selectable).toBe(false);
+    expect(buildResultsAnalysisSelectableOptions(payload, 0).find((option) => option.key === "base").selectable).toBe(true);
     expect(buildResultsAnalysisSelectableOptions(payload, 5).find((option) => option.key === "base").selectable).toBe(true);
   });
 

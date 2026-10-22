@@ -98,6 +98,9 @@ const selectedExecutionFromAttempt = (selected, field) => {
     startedAt: selected.startedAt,
     completedAt: selected.completedAt,
     modelContext: clone(selected.modelContext),
+    ...(typeof result.resultStructureKey === "string" && Number.isInteger(result.resultStructureVersion)
+      ? { resultStructure: { key: result.resultStructureKey, version: result.resultStructureVersion } }
+      : {}),
     input: clone(attemptInput(selected, field)),
     result: {
       standardResult: semanticStandardResult(result.standardResult, `${field}.application.resultSnapshot.result.standardResult`),
@@ -173,6 +176,9 @@ const buildCurrentScenario = (scenario, attemptsById) => {
         execution: {
           modelContext: clone(attempt.modelContext),
           input: clone(attemptInput(attempt, `history.evidence.executionAttempts.${attempt.id}`)),
+          ...(typeof result.resultStructureKey === "string" && Number.isInteger(result.resultStructureVersion)
+            ? { resultStructure: { key: result.resultStructureKey, version: result.resultStructureVersion } }
+            : {}),
           result: {
             standardResult: semanticStandardResult(result.standardResult, `history.evidence.executionAttempts.${attempt.id}.application.resultSnapshot.phaseResults.result.standardResult`),
             modelExecution: clone(result.modelExecution),
@@ -211,7 +217,7 @@ export const buildAnalysisContext = (history) => {
   const context = {
     schemaVersion: 1,
     source: { issueHistorySchemaVersion: 1, issueId: history.issueId, completeness: clone(history.completeness) },
-    issue: { id: creationIssue.id, name: creationIssue.name, description: creationIssue.description, owner: clone(owner), creator: clone(creator), lifecycle: { active: history.currentState.issue.active, currentStage: history.currentState.issue.currentStage, currentPhase: history.currentState.issue.consensusPhase, finishedAt: history.currentState.issue.finishedAt }, consensus: { enabled: creationIssue.isConsensus, simulated: creationIssue.simulateConsensus, threshold: creationIssue.consensusThreshold, maxPhases: creationIssue.consensusMaxPhases }, evaluationStructureKey: creationIssue.evaluationStructureKey, model: clone(state.model), criteriaWeighting: clone(state.criteriaWeighting) },
+    issue: { id: creationIssue.id, name: creationIssue.name, description: creationIssue.description, owner: clone(owner), creator: clone(creator), lifecycle: { active: history.currentState.issue.active, currentStage: history.currentState.issue.currentStage, currentPhase: history.currentState.issue.consensusPhase, finishedAt: history.currentState.issue.finishedAt }, consensus: { enabled: creationIssue.isConsensus, simulated: creationIssue.simulateConsensus, threshold: creationIssue.consensusThreshold, maxPhases: creationIssue.consensusMaxPhases }, evaluationStructureKey: creationIssue.evaluationStructureKey, ...(typeof creationIssue.resultStructureKey === "string" && Number.isInteger(creationIssue.resultStructureVersion) ? { resultStructure: { key: creationIssue.resultStructureKey, version: creationIssue.resultStructureVersion } } : {}), model: clone(state.model), criteriaWeighting: clone(state.criteriaWeighting) },
     decisionSpace: { alternatives: clone(alternatives), criteria: clone(criteria), expressionDomains: clone(domains) },
     participants: { historicalIdentities: clone(historicalIdentities), current: clone(history.currentState.participants) },
     semanticDirectory: { owner: clone(owner), creator: clone(creator), expertsById: byId(historicalIdentities, (entry) => [entry.id, clone(entry)]), alternativesById: byId(alternatives, (entry) => [entry.id, { id: entry.id, name: entry.name, description: entry.description }]), criteriaById: byId(criteria, (entry) => [entry.id, { id: entry.id, name: entry.name, description: entry.description, type: entry.type, isLeaf: entry.isLeaf, parentCriterionId: entry.parentCriterionId, expressionDomainId: entry.expressionDomainId }]), expressionDomainsById: byId(domains, (entry) => [entry.id, { id: entry.id, name: entry.name, typeKey: entry.typeKey }]) },

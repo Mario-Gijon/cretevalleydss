@@ -14,6 +14,7 @@ def analysis_context():
         "issue": {
             "id": "issue-1", "name": "Issue", "description": "Description",
             "lifecycle": {"active": False}, "consensus": {"enabled": True, "threshold": 0.8},
+            "resultStructure": {"key": "ranking", "version": 1},
             "model": {"id": "model-1"}, "criteriaWeighting": {}, "evaluationStructureKey": "matrix",
         },
         "participants": {"historicalIdentities": [], "current": [{"evaluationCompleted": True}, {"evaluationCompleted": True}]},
@@ -81,6 +82,102 @@ def test_generic_issue_analysis_keeps_a_stored_projection_but_marks_an_empty_one
         "projection": {"expert_points": [[0, 1]], "collective_point": [0, 0]},
         "unavailableReason": None,
     }
+
+
+def sorting_analysis_context(assignments=None):
+    context = analysis_context()
+    context["issue"]["resultStructure"] = {"key": "sorting", "version": 1}
+    context["issue"]["consensus"] = {"enabled": False, "threshold": None}
+    context["semanticDirectory"]["alternativesById"] = {
+        "a": {"name": "Alpha"},
+        "b": {"name": "Balanced"},
+        "c": {"name": "Budget"},
+    }
+    context["participants"]["current"] = [
+        {"evaluationCompleted": True},
+        {"evaluationCompleted": False},
+    ]
+    categories = [
+        {"categoryId": "low", "label": "Shared label", "order": 0},
+        {"categoryId": "middle", "label": "Shared label", "order": 1},
+        {"categoryId": "high", "label": "High", "order": 2},
+        {"categoryId": "empty", "label": "Unused", "order": 3},
+    ]
+    standard = {
+        "categoryOrderSemantics": "lower-order-is-less-preferred",
+        "categories": categories,
+        "assignments": assignments or [
+            {"alternativeId": "a", "categoryId": "high"},
+            {"alternativeId": "b", "categoryId": "high"},
+            {"alternativeId": "c", "categoryId": "low"},
+        ],
+        "diagnostics": {"privateModelDiagnostic": True},
+    }
+    execution = context["rounds"][0]["selectedExecution"]
+    execution["resultStructure"] = {"key": "sorting", "version": 1}
+    execution["result"]["standardResult"] = standard
+    context["rounds"] = context["rounds"][:1]
+    context["rounds"][0]["start"]["participants"] = [{"id": "expert-1"}]
+    return context
+
+
+def test_generic_issue_endpoint_analyzes_sorting_assignments_without_ranking_or_model_diagnostics():
+    result = asyncio.run(analyze_generic_issue(sorting_analysis_context()))["data"]
+    facts = result["facts"]
+
+    assert facts["resultStructure"] == {"key": "sorting", "version": 1}
+    assert facts["finalCategories"][0] == {"categoryId": "low", "label": "Shared label", "order": 0}
+    assert facts["finalAssignments"] == [
+        {"alternativeId": "c", "name": "Budget", "categoryId": "low", "categoryLabel": "Shared label", "categoryOrder": 0},
+        {"alternativeId": "a", "name": "Alpha", "categoryId": "high", "categoryLabel": "High", "categoryOrder": 2},
+        {"alternativeId": "b", "name": "Balanced", "categoryId": "high", "categoryLabel": "High", "categoryOrder": 2},
+    ]
+    assert "finalRanking" not in facts
+    assert "rankingEvolution" not in facts
+    assert "rankingAgreement" not in facts
+    assert "### Overall outcome" in result["interpretation"]
+    assert "**Alpha** and **Balanced**" in result["interpretation"]
+    assert "### Alternative relationships" in result["interpretation"]
+    assert "Sharing a category records the same classification, not identical evaluations." in result["interpretation"]
+    assert "### Participation records" in result["interpretation"]
+    assert "### Consensus" not in result["interpretation"]
+    assert "### Decision process" not in result["interpretation"]
+    assert [entry["type"] for entry in result["visualizations"]] == ["alternativeRelationships"]
+    assert result["visualizations"][0]["mode"] == "categorical"
+    assert "diagnostics" not in str(result)
+
+
+def test_sorting_all_alternatives_in_one_category_does_not_invent_differences():
+    context = sorting_analysis_context([
+        {"alternativeId": "a", "categoryId": "middle"},
+        {"alternativeId": "b", "categoryId": "middle"},
+        {"alternativeId": "c", "categoryId": "middle"},
+    ])
+    result = asyncio.run(analyze_generic_issue(context))["data"]
+
+    assert "All alternatives share the **Shared label** category" in result["interpretation"]
+    assert "does not establish that their underlying evaluations were identical" in result["interpretation"]
+    assert result["visualizations"][0]["type"] == "alternativeRelationships"
+    assert not any("ranking" in visualization["type"].lower() for visualization in result["visualizations"])
+
+
+def test_sorting_phase_transitions_require_identical_category_configuration_and_alternatives():
+    context = sorting_analysis_context()
+    second = deepcopy(context["rounds"][0])
+    second["phase"] = 1
+    second_standard = second["selectedExecution"]["result"]["standardResult"]
+    second_standard["assignments"][2]["categoryId"] = "middle"
+    context["rounds"].append(second)
+    result = asyncio.run(analyze_generic_issue(context))["data"]
+    assert "**Budget** moved from one **Shared label** category to another with the same label (more preferred)" in result["interpretation"]
+    assert result["facts"]["alternativeRelationships"]["transitions"][0]["changes"][0]["alternativeId"] == "c"
+    assert "### Decision process" in result["interpretation"]
+
+    second_standard["categories"][1]["label"] = "Different meaning"
+    incomparable = asyncio.run(analyze_generic_issue(context))["data"]
+    assert incomparable["facts"]["alternativeRelationships"]["transitions"] == []
+    assert incomparable["facts"]["alternativeRelationships"]["unavailableTransitions"][0]["reason"] == "category_configuration_changed"
+    assert "### Decision process" not in incomparable["interpretation"]
 
 
 def test_issue_analysis_keeps_ranking_evolution_visualization_without_narrative_inventory():

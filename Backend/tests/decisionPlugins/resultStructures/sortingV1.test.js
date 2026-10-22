@@ -51,7 +51,7 @@ describe("sorting@1 result contract", () => {
       capabilities: {
         issueExecution: true,
         consensus: false,
-        resultsAnalysis: false,
+        resultsAnalysis: true,
       },
     });
   });

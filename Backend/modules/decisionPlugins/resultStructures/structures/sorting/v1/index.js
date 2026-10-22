@@ -17,7 +17,7 @@ export const sortingV1ResultStructure = Object.freeze({
   capabilities: Object.freeze({
     issueExecution: true,
     consensus: false,
-    resultsAnalysis: false,
+    resultsAnalysis: true,
   }),
   validateAndNormalize: normalizeSortingResult,
   projectNormalizedResult: ({ result, target }) => {

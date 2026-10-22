@@ -43,6 +43,7 @@ def analysis_context():
             "description": "Frozen description",
             "lifecycle": {"active": False, "currentStage": "finished"},
             "consensus": {"enabled": True, "threshold": 0.8},
+            "resultStructure": {"key": "ranking", "version": 1},
             "model": {"id": "model-1", "name": "Model"},
             "criteriaWeighting": {"mode": "creatorManual"},
             "evaluationStructureKey": "alternativeCriteriaMatrix",
@@ -79,6 +80,7 @@ def test_generic_contexts_exclude_model_semantics_and_are_detached():
             "attemptId": "attempt-1",
             "startedAt": "2026-01-01T00:00:01.000Z",
             "completedAt": "2026-01-01T00:00:02.000Z",
+            "resultStructure": {"key": "ranking", "version": 1},
             "ranking": [{"alternativeId": "alternative-1", "rank": 1, "score": 0.9}, {"alternativeId": "alternative-2", "rank": 2}],
             "consensusMeasure": 0.85,
             "expertCollectiveProjection": {"opaque": True},
@@ -115,3 +117,85 @@ def test_round_contexts_require_selected_execution(builder):
     source = analysis_context()
     with pytest.raises(ValueError, match="selectedExecution"):
         builder(source, source["rounds"][2])
+
+
+def sorting_context():
+    source = analysis_context()
+    source["issue"]["resultStructure"] = {"key": "sorting", "version": 1}
+    source["semanticDirectory"]["alternativesById"] = {
+        "alternative-1": {"name": "Alpha"},
+        "alternative-2": {"name": "Beta"},
+    }
+    for round_entry in source["rounds"][:2]:
+        standard = round_entry["selectedExecution"]["result"]["standardResult"]
+        standard.clear()
+        standard.update({
+            "categoryOrderSemantics": "lower-order-is-less-preferred",
+            "categories": [
+                {"categoryId": "low-id", "label": "Same label", "order": 0},
+                {"categoryId": "middle-id", "label": "Same label", "order": 1},
+                {"categoryId": "empty-id", "label": "Unused", "order": 2},
+            ],
+            "assignments": [
+                {"alternativeId": "alternative-1", "categoryId": "middle-id"},
+                {"alternativeId": "alternative-2", "categoryId": "low-id"},
+            ],
+            "diagnostics": {"mustNotReachGenericAnalysis": True},
+        })
+        round_entry["selectedExecution"]["resultStructure"] = {"key": "sorting", "version": 1}
+    return source
+
+
+def test_sorting_generic_context_projects_only_validated_categorical_evidence():
+    source = sorting_context()
+    round_context = build_generic_round_context(source, source["rounds"][1])
+    issue_context = build_generic_issue_context(source)
+
+    assert issue_context["resultStructure"] == {"key": "sorting", "version": 1}
+    assert round_context["execution"] == {
+        "attemptId": "attempt-1",
+        "startedAt": "2026-01-01T00:00:01.000Z",
+        "completedAt": "2026-01-01T00:00:02.000Z",
+        "resultStructure": {"key": "sorting", "version": 1},
+        "categories": [
+            {"categoryId": "low-id", "label": "Same label", "order": 0},
+            {"categoryId": "middle-id", "label": "Same label", "order": 1},
+            {"categoryId": "empty-id", "label": "Unused", "order": 2},
+        ],
+        "categoryOrderSemantics": "lower-order-is-less-preferred",
+        "assignments": [
+            {"alternativeId": "alternative-2", "name": "Beta", "categoryId": "low-id", "categoryLabel": "Same label", "categoryOrder": 0},
+                {"alternativeId": "alternative-1", "name": "Alpha", "categoryId": "middle-id", "categoryLabel": "Same label", "categoryOrder": 1},
+        ],
+            "consensusMeasure": None,
+            "expertCollectiveProjection": None,
+    }
+    assert "diagnostics" not in nested_keys(issue_context)
+    assert "rank" not in nested_keys(issue_context)
+    assert "score" not in nested_keys(issue_context)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda result: result["assignments"].append({"alternativeId": "alternative-1", "categoryId": "low-id"}), "exactly one assignment"),
+        (lambda result: result["assignments"].pop(), "cover every configured alternative"),
+        (lambda result: result["assignments"].__setitem__(0, {"alternativeId": "alternative-1", "categoryId": "missing"}), "unknown category"),
+        (lambda result: result["assignments"].__setitem__(0, {"alternativeId": "unknown", "categoryId": "low-id"}), "unknown alternative"),
+        (lambda result: result["categories"][1].__setitem__("order", 0), "unique IDs and orders"),
+    ],
+)
+def test_sorting_generic_context_rejects_invalid_category_relationships(mutation, message):
+    source = sorting_context()
+    standard = source["rounds"][1]["selectedExecution"]["result"]["standardResult"]
+    mutation(standard)
+    with pytest.raises(ValueError, match=message):
+        build_generic_round_context(source, source["rounds"][1])
+
+
+def test_generic_issue_context_rejects_result_structure_changes_between_phases():
+    source = sorting_context()
+    source["rounds"][1]["selectedExecution"]["resultStructure"] = {"key": "ranking", "version": 1}
+
+    with pytest.raises(ValueError, match="cannot mix result structures across phases"):
+        build_generic_issue_context(source)
