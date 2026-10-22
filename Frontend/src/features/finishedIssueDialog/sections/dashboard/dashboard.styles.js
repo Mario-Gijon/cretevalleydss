@@ -162,6 +162,11 @@ export const rankingBarCellSx = { display: { xs: "none", sm: "flex" }, alignItem
 export const findingCardSx = (kind) => {
   const colors = {
     winner: { fg: "success.light", bg: "rgba(66, 194, 139, 0.085)", border: "rgba(66, 194, 139, 0.26)" },
+    most_favorable_classification: { fg: "success.light", bg: "rgba(66, 194, 139, 0.085)", border: "rgba(66, 194, 139, 0.26)" },
+    closest_boundary: { fg: "#e8c66a", bg: "rgba(232, 198, 106, 0.075)", border: "rgba(232, 198, 106, 0.20)" },
+    classification_separation: { fg: "secondary.light", bg: "rgba(52, 170, 199, 0.055)", border: "rgba(89, 213, 218, 0.17)" },
+    classification_spread: { fg: "secondary.light", bg: "rgba(52, 170, 199, 0.055)", border: "rgba(89, 213, 218, 0.17)" },
+    least_favorable_classification: { fg: "#c3a6e8", bg: "rgba(151, 110, 201, 0.075)", border: "rgba(177, 137, 220, 0.20)" },
     overview: { fg: "secondary.light", bg: "rgba(52, 170, 199, 0.055)", border: "rgba(89, 213, 218, 0.17)" },
     last: { fg: "#c3a6e8", bg: "rgba(151, 110, 201, 0.075)", border: "rgba(177, 137, 220, 0.20)" },
   };
@@ -213,7 +218,13 @@ export const findingBodySx = {
 
 export const findingTitleSx = (kind) => ({
   fontWeight: 600,
-  color: kind === "winner" ? "success.light" : kind === "last" ? "#c3a6e8" : "secondary.light",
+  color: kind === "winner" || kind === "most_favorable_classification"
+    ? "success.light"
+    : kind === "last" || kind === "least_favorable_classification"
+      ? "#c3a6e8"
+      : kind === "closest_boundary"
+        ? "#e8c66a"
+        : "secondary.light",
 });
 
 // Legacy preview styles remain for reusable dashboard cards still covered by

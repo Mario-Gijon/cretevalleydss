@@ -1,6 +1,7 @@
 import SortingDashboardResult from "./SortingDashboardResult.jsx";
 import SortingFinishedIssueCardSummary from "./SortingFinishedIssueCardSummary.jsx";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
+import { buildTopsisSort2016Findings } from "../../../modelFindings/topsis_sort_2016.js";
 
 const ORDER_SEMANTICS = "lower-order-is-less-preferred";
 const asArray = (value) => Array.isArray(value) ? value : [];
@@ -62,8 +63,11 @@ const normalizeSortingDashboardResult = ({ execution, alternatives }) => {
   return { available: true, unavailableReason: null, categories, assignmentCount: assignedIds.size };
 };
 
-const buildSortingFindings = (result) => {
+const buildSortingFindings = (result, execution) => {
   if (!result.available) return [];
+  const apiModelKey = execution?.model?.technical?.apiModelKey || execution?.model?.apiModelKey;
+  if (apiModelKey === "topsis_sort_2016") return buildTopsisSort2016Findings(result, execution);
+
   const categories = result.categories;
   const assignmentCount = result.assignmentCount;
   const items = [

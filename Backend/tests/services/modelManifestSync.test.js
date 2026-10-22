@@ -105,7 +105,7 @@ describe("result structure metadata in manifest synchronization", () => {
   it("updates a persisted TOPSIS-Sort scaffold from the ready manifest and preserves Admin visibility", async () => {
     const previousManifestModel = issueManifestModel({
       apiModelKey: "topsis_sort_2016",
-      displayName: "TOPSIS-Sort",
+      displayName: "TOPSIS-SORT",
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       implementationStatus: "scaffold",
@@ -120,7 +120,7 @@ describe("result structure metadata in manifest synchronization", () => {
 
     const readyManifestModel = issueManifestModel({
       apiModelKey: "topsis_sort_2016",
-      displayName: "TOPSIS-Sort",
+      displayName: "TOPSIS-SORT",
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       implementationStatus: "ready",
@@ -147,6 +147,7 @@ describe("result structure metadata in manifest synchronization", () => {
     );
     expect(persisted).toMatchObject({
       apiModelKey: "topsis_sort_2016",
+      name: "TOPSIS-SORT",
       implementationStatus: "ready",
       publicUsable: true,
       issueExecutionAuthorized: true,

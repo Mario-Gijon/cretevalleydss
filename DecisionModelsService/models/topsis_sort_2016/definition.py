@@ -15,7 +15,7 @@ MODEL_DEFINITION = ModelDefinition(
     api_endpoint_path="/topsis_sort_2016",
     request_model=GenericModelExecutionRequest,
     handler=execute_topsis_sort_2016,
-    display_name="TOPSIS-Sort",
+    display_name="TOPSIS-SORT",
     small_description=(
         "Classifies numerical alternatives into ordered categories using the "
         "original TOPSIS-Sort limiting-profile method."

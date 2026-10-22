@@ -34,7 +34,7 @@ def test_ready_plugin_is_auto_discovered_with_sorting_metadata_and_authorized():
     manifest = _build_manifest_entry(discovered)
 
     assert discovered.api_model_key == MODEL_DEFINITION.api_model_key
-    assert discovered.display_name == "TOPSIS-Sort"
+    assert discovered.display_name == "TOPSIS-SORT"
     assert discovered.model_kind == "issue"
     assert discovered.evaluation_structure_key == "alternativeCriteriaMatrix"
     assert (discovered.result_structure_key, discovered.result_structure_version) == (

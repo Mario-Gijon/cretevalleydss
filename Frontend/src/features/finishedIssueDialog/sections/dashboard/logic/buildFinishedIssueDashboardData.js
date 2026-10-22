@@ -28,7 +28,7 @@ export const buildDashboardData = ({ payload, selectedExecution }) => {
     },
     resultPresentation: resolution.presentation,
     findings: resolution.presentation && normalized.available
-      ? resolution.presentation.buildDashboardFindings(normalized)
+      ? resolution.presentation.buildDashboardFindings(normalized, execution)
       : [],
   };
 };

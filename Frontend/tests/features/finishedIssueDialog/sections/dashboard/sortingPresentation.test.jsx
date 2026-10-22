@@ -12,6 +12,12 @@ const alternatives = [
   { id: "mongo-c", name: "Alternative C" },
 ];
 
+const topsisAlternatives = [
+  { id: "mongo-a", name: "Premium option" },
+  { id: "mongo-b", name: "Balanced option" },
+  { id: "mongo-c", name: "Budget option" },
+];
+
 const sortingExecution = (overrides = {}) => ({
   resultStructureKey: "sorting",
   resultStructureVersion: 1,
@@ -31,6 +37,55 @@ const sortingExecution = (overrides = {}) => ({
   },
   ...overrides,
 });
+
+const topsisExecution = ({ assignments, diagnostics, categories } = {}) => {
+  const base = sortingExecution();
+  const baseOutput = { ...base.standardizedOutput };
+  delete baseOutput.diagnostics;
+  return {
+    ...base,
+    model: { name: "TOPSIS-SORT", technical: { apiModelKey: "topsis_sort_2016" } },
+    modelParameters: {
+      boundaryProfiles: { profiles: [
+        { profileId: "profile-medium", categoryId: "cat-medium" },
+        { profileId: "profile-high", categoryId: "cat-high" },
+      ] },
+    },
+    standardizedOutput: {
+      ...baseOutput,
+      categories: categories || [
+        { categoryId: "cat-low", label: "Low", order: 0 },
+        { categoryId: "cat-medium", label: "Medium", order: 1 },
+        { categoryId: "cat-high", label: "High", order: 2 },
+      ],
+      assignments: assignments || [
+        { alternativeId: "mongo-a", categoryId: "cat-high" },
+        { alternativeId: "mongo-b", categoryId: "cat-medium" },
+        { alternativeId: "mongo-c", categoryId: "cat-low" },
+      ],
+      ...(diagnostics === undefined ? {} : { diagnostics }),
+    },
+  };
+};
+
+const topsisDiagnostics = (overrides = {}) => ({
+  closeness_by_alternative_id: {
+    "mongo-a": 0.71,
+    "mongo-b": 0.54,
+    "mongo-c": 0.22,
+  },
+  closeness_by_profile_id: {
+    "profile-medium": 0.5,
+    "profile-high": 0.7,
+  },
+  ...overrides,
+});
+
+const renderTopsisDashboard = (execution = topsisExecution({ diagnostics: topsisDiagnostics() })) => {
+  const data = buildDashboardData({ payload: { alternatives: topsisAlternatives }, selectedExecution: execution });
+  render(<ThemeProvider theme={createTheme()}><DashboardView data={data} /></ThemeProvider>);
+  return data;
+};
 
 const renderDashboard = (execution = sortingExecution()) => {
   const data = buildDashboardData({ payload: { alternatives }, selectedExecution: execution });
@@ -95,5 +150,82 @@ describe("sorting@1 Finished Issue presentation", () => {
     const unsupported = renderDashboard({ ...sortingExecution(), resultStructureKey: "sorting", resultStructureVersion: 2 });
     expect(unsupported.result.available).toBe(false);
     expect(screen.getByText("Result presentation for sorting@2 is not available.")).toBeInTheDocument();
+  });
+
+  it("shows model-specific classification findings and maps persisted diagnostics by ID", () => {
+    const data = renderTopsisDashboard();
+    expect(data.findings.map(({ title }) => title)).toEqual([
+      "Most favorable classification",
+      "Closest category boundary",
+      "Least favorable classification",
+    ]);
+    expect(data.findings[0]).toMatchObject({ headline: "High", alternatives: [{ name: "Premium option" }] });
+    expect(data.findings[1]).toMatchObject({ headline: "Medium / High" });
+    expect(data.findings[1].text).toContain("Premium option is closest");
+    expect(data.findings[1].text).toContain("closeness difference 0.01");
+    expect(data.findings[1].text).toContain("not uncertainty or sensitivity");
+    expect(data.findings[2]).toMatchObject({ headline: "Low", alternatives: [{ name: "Budget option" }] });
+    expect(screen.getAllByText("Premium option")).toHaveLength(2);
+    expect(screen.getByText("Balanced option")).toBeInTheDocument();
+    expect(screen.getAllByText("Budget option")).toHaveLength(2);
+    expect(screen.queryByText(/position|rank|score|winner/i)).not.toBeInTheDocument();
+  });
+
+  it("uses the highest and lowest non-empty categories when an extreme category is empty", () => {
+    const data = renderTopsisDashboard(topsisExecution({
+      diagnostics: topsisDiagnostics(),
+      assignments: [
+        { alternativeId: "mongo-a", categoryId: "cat-medium" },
+        { alternativeId: "mongo-b", categoryId: "cat-low" },
+        { alternativeId: "mongo-c", categoryId: "cat-low" },
+      ],
+    }));
+    expect(data.result.categories[0].label).toBe("High");
+    expect(data.result.categories[0].alternatives).toHaveLength(0);
+    expect(data.findings[0]).toMatchObject({ headline: "Medium", alternatives: [{ name: "Premium option" }] });
+    expect(data.findings[2]).toMatchObject({ headline: "Low", alternatives: [{ name: "Balanced option" }, { name: "Budget option" }] });
+  });
+
+  it("reports no classification separation when every alternative shares one category", () => {
+    const data = renderTopsisDashboard(topsisExecution({
+      diagnostics: topsisDiagnostics(),
+      assignments: topsisAlternatives.map(({ id }) => ({ alternativeId: id, categoryId: "cat-medium" })),
+    }));
+    expect(data.findings[1]).toMatchObject({
+      kind: "classification_separation",
+      headline: "No separation between classifications",
+    });
+    expect(data.findings[1].text).toContain("All alternatives were assigned to Medium");
+    expect(data.findings[1].text).not.toContain(" / ");
+    expect(data.findings[0].alternatives).toHaveLength(3);
+    expect(data.findings[2].alternatives).toHaveLength(3);
+  });
+
+  it.each([
+    ["missing diagnostics", undefined],
+    ["malformed alternative closeness", { closeness_by_alternative_id: { "mongo-a": 0.4 }, closeness_by_profile_id: { "profile-medium": 0.5, "profile-high": 0.7 } }],
+    ["non-finite profile closeness", { closeness_by_alternative_id: { "mongo-a": 0.71, "mongo-b": 0.54, "mongo-c": 0.22 }, closeness_by_profile_id: { "profile-medium": Number.NaN, "profile-high": 0.7 } }],
+    ["missing profile configuration", topsisDiagnostics(), true],
+  ])("falls back to category evidence for %s", (_label, diagnostics, missingProfiles = false) => {
+    const execution = topsisExecution({ diagnostics });
+    if (missingProfiles) execution.modelParameters.boundaryProfiles.profiles = [];
+    const data = renderTopsisDashboard(execution);
+    expect(data.findings).toHaveLength(3);
+    expect(data.findings[1]).toMatchObject({ kind: "classification_spread", headline: "Low to High" });
+    expect(data.findings[1].text).toContain("3 non-empty categories");
+  });
+
+  it("shows every exactly tied closest alternative-boundary pair", () => {
+    const data = renderTopsisDashboard(topsisExecution({
+      diagnostics: topsisDiagnostics({
+        closeness_by_alternative_id: { "mongo-a": 0.71, "mongo-b": 0.49, "mongo-c": 0.22 },
+      }),
+    }));
+    expect(data.findings[1]).toMatchObject({ kind: "closest_boundary", boundaryPairs: expect.any(Array) });
+    expect(data.findings[1].boundaryPairs).toHaveLength(2);
+    expect(data.findings[1].boundaryPairs.map(({ label }) => label)).toEqual(expect.arrayContaining([
+      expect.stringContaining("Premium option: Medium / High"),
+      expect.stringContaining("Balanced option: Low / Medium"),
+    ]));
   });
 });

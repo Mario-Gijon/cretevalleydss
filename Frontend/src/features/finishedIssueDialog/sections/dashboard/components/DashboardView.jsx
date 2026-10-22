@@ -1,6 +1,8 @@
 import { Box, Typography } from "@mui/material";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
+import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
+import CompareArrowsRoundedIcon from "@mui/icons-material/CompareArrowsRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -39,6 +41,11 @@ const findingIcons = {
   winner: EmojiEventsRoundedIcon,
   gap: BarChartRoundedIcon,
   last: TrendingDownRoundedIcon,
+  most_favorable_classification: CategoryRoundedIcon,
+  closest_boundary: CompareArrowsRoundedIcon,
+  classification_separation: InfoOutlinedIcon,
+  classification_spread: ViewListRoundedIcon,
+  least_favorable_classification: CategoryRoundedIcon,
 };
 
 const FindingCard = ({ finding }) => {
@@ -56,6 +63,16 @@ const FindingCard = ({ finding }) => {
           <>
             <Typography variant="body1" sx={findingHeadlineSx}>{finding.headline}</Typography>
             <Typography variant="body2" sx={findingBodySx}>{finding.text}</Typography>
+            {Array.isArray(finding.alternatives) && finding.alternatives.length > 0 && (
+              <Box component="ul" sx={findingListSx}>
+                {finding.alternatives.map((alternative) => <Box component="li" key={alternative.id}><Typography variant="body2">{alternative.name}</Typography></Box>)}
+              </Box>
+            )}
+            {Array.isArray(finding.boundaryPairs) && finding.boundaryPairs.length > 0 && (
+              <Box component="ul" sx={findingListSx}>
+                {finding.boundaryPairs.map(({ label }) => <Box component="li" key={label}><Typography variant="body2">{label}</Typography></Box>)}
+              </Box>
+            )}
           </>
         )}
       </Box>
