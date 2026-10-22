@@ -191,29 +191,6 @@ def _visualizations(facts):
     return result
 
 
-def _sorting_visualizations(facts):
-    relationships = facts.get("alternativeRelationships") or {}
-    phases = relationships.get("phases") or []
-    visualizable = [phase for phase in phases if len(phase.get("alternatives") or []) >= 2]
-    if not visualizable:
-        return []
-    return [
-        {
-            "type": "alternativeRelationships",
-            "mode": "categorical",
-            "phases": [
-                {
-                    "phase": phase["phase"],
-                    "categoryOrderSemantics": phase["categoryOrderSemantics"],
-                    "categories": phase["categories"],
-                    "alternatives": phase["alternatives"],
-                }
-                for phase in visualizable
-            ],
-        }
-    ]
-
-
 def _analyze_sorting_issue(context, issue, rounds):
     result_structure = context.get("resultStructure") or {}
     relationships = categorical_alternative_relationships(rounds)
@@ -256,7 +233,11 @@ def _analyze_sorting_issue(context, issue, rounds):
         {
             "facts": facts,
             "interpretation": build_issue_interpretation(facts),
-            "visualizations": _sorting_visualizations(facts),
+            # Categorical assignments and phase transitions remain available
+            # as facts for interpretation and compatible comparisons. The
+            # old pairwise membership matrix repeated the final assignments
+            # and is intentionally not emitted as a visualization.
+            "visualizations": [],
         }
     )
 

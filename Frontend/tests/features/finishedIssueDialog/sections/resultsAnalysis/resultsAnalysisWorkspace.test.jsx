@@ -294,6 +294,7 @@ describe("Results analysis workspace", () => {
     expect(data.primary.ranking).toEqual([]);
     expect(data.primary.sorting.categories.map((category) => category.label)).toEqual(["Low", "High"]);
     expect(data.primary.categoricalPhases).toHaveLength(1);
+    expect(data.primary.categoricalTransitions).toEqual([]);
     expect(data.visualizations).not.toBeNull();
     expect(data.comparison).toBeNull();
   });
@@ -318,12 +319,126 @@ describe("Results analysis workspace", () => {
     expect(comparable.categoricalComparisons).toEqual([{ leftKey: "sorting-a", rightKey: "sorting-b", leftPhase: 5, rightPhase: 5, changes: [
       { alternativeId: "a", name: "Alpha", fromCategoryId: "high", fromCategoryLabel: "High", fromCategoryOrder: 1, toCategoryId: "low", toCategoryLabel: "Low", toCategoryOrder: 0 },
       { alternativeId: "b", name: "Beta", fromCategoryId: "low", fromCategoryLabel: "Low", fromCategoryOrder: 0, toCategoryId: "high", toCategoryLabel: "High", toCategoryOrder: 1 },
-    ], unchanged: [] }]);
+    ] }]);
 
     payload.scenarios[1] = makeSorting("sorting-b", "low", "Preferred");
     const incomparable = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["sorting-a", "sorting-b"] });
     expect(incomparable.categoricalComparisons).toEqual([]);
     expect(incomparable.categoricalUnavailableComparisons).toEqual([{ leftKey: "sorting-a", rightKey: "sorting-b", reason: "category_configuration_changed" }]);
+  });
+
+  it("omits no-change comparisons and rejects category configurations with different IDs despite matching labels", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const makeSorting = (id, categoryIds = ["low", "high"]) => {
+      const scenario = completeScenario(id, []);
+      scenario.phaseResults[0].resultStructureKey = "sorting";
+      scenario.phaseResults[0].resultStructureVersion = 1;
+      scenario.phaseResults[0].standardizedOutput = {
+        categoryOrderSemantics: "lower-order-is-less-preferred",
+        categories: [
+          { categoryId: categoryIds[0], label: "Shared", order: 0 },
+          { categoryId: categoryIds[1], label: "Shared", order: 1 },
+        ],
+        assignments: [{ alternativeId: "a", categoryId: categoryIds[1] }, { alternativeId: "b", categoryId: categoryIds[0] }],
+      };
+      return scenario;
+    };
+    payload.scenarios = [makeSorting("sorting-a"), makeSorting("sorting-same")];
+
+    const unchanged = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["sorting-a", "sorting-same"] });
+    expect(unchanged.categoricalComparisons).toEqual([]);
+    expect(unchanged.categoricalUnavailableComparisons).toEqual([]);
+
+    payload.scenarios[1] = makeSorting("sorting-different-ids", ["other-low", "other-high"]);
+    const differentIds = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["sorting-a", "sorting-different-ids"] });
+    expect(differentIds.categoricalComparisons).toEqual([]);
+    expect(differentIds.categoricalUnavailableComparisons).toEqual([
+      { leftKey: "sorting-a", rightKey: "sorting-different-ids", reason: "category_configuration_changed" },
+    ]);
+  });
+
+  it("uses only validated Python phase transitions and ignores stale categorical visualization descriptors", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const finalPhase = payload.phaseResults.find((phase) => phase.stage === "alternativeEvaluation" && phase.phase === 5);
+    finalPhase.resultStructureKey = "sorting";
+    finalPhase.resultStructureVersion = 1;
+    finalPhase.standardizedOutput = {
+      categories: [{ categoryId: "low", label: "Low", order: 0 }, { categoryId: "high", label: "High", order: 1 }],
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: [{ alternativeId: "a", categoryId: "high" }, { alternativeId: "b", categoryId: "low" }],
+    };
+    const phaseFour = {
+      ...finalPhase,
+      phase: 4,
+      standardizedOutput: {
+        ...finalPhase.standardizedOutput,
+        assignments: [{ alternativeId: "a", categoryId: "low" }, { alternativeId: "b", categoryId: "high" }],
+      },
+    };
+    payload.phaseResults = payload.phaseResults.filter((phase) => !(phase.stage === "alternativeEvaluation" && phase.phase === 4));
+    payload.phaseResults.push(phaseFour);
+    const categories = finalPhase.standardizedOutput.categories;
+    const phase = (number, categoryA) => ({
+      phase: number,
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      categories,
+      alternatives: [
+        { alternativeId: "a", name: "Alpha", categoryId: categoryA, categoryLabel: categoryA === "high" ? "High" : "Low", categoryOrder: categoryA === "high" ? 1 : 0 },
+        { alternativeId: "b", name: "Beta", categoryId: categoryA === "high" ? "low" : "high", categoryLabel: categoryA === "high" ? "Low" : "High", categoryOrder: categoryA === "high" ? 0 : 1 },
+      ],
+    });
+    const before = phase(4, "low");
+    const after = phase(5, "high");
+    payload.resultsAnalysis = { executions: [{
+      executionKey: "base",
+      genericAnalysis: {
+        facts: { alternativeRelationships: {
+          phases: [before, after],
+          transitions: [{ fromPhase: 4, toPhase: 5, changes: [
+            { alternativeId: "a", name: "Alpha", fromCategoryId: "low", fromCategoryLabel: "Low", fromCategoryOrder: 0, toCategoryId: "high", toCategoryLabel: "High", toCategoryOrder: 1 },
+            { alternativeId: "b", name: "Beta", fromCategoryId: "high", fromCategoryLabel: "High", fromCategoryOrder: 1, toCategoryId: "low", toCategoryLabel: "Low", toCategoryOrder: 0 },
+          ], unchanged: [] }],
+        } },
+        visualizations: [{ type: "alternativeRelationships", mode: "categorical", phases: [before, after] }],
+      },
+    }] };
+
+    const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+    expect(data.primary.categoricalPhases).toEqual([before, after]);
+    expect(data.primary.categoricalTransitions).toEqual([{
+      fromPhase: 4,
+      toPhase: 5,
+      categories: [
+        { id: "low", label: "Low", order: 0 },
+        { id: "high", label: "High", order: 1 },
+      ],
+      changes: [
+        { alternativeId: "a", name: "Alpha", fromCategoryId: "low", fromCategoryLabel: "Low", fromCategoryOrder: 0, toCategoryId: "high", toCategoryLabel: "High", toCategoryOrder: 1 },
+        { alternativeId: "b", name: "Beta", fromCategoryId: "high", fromCategoryLabel: "High", fromCategoryOrder: 1, toCategoryId: "low", toCategoryLabel: "Low", toCategoryOrder: 0 },
+      ],
+    }]);
+
+    payload.resultsAnalysis.executions[0].genericAnalysis.facts.alternativeRelationships.transitions[0].changes[0].toCategoryId = "unknown";
+    const invalid = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+    expect(invalid.primary.categoricalTransitions).toEqual([]);
+
+    const unchangedAfter = phase(5, "low");
+    finalPhase.standardizedOutput.assignments = [
+      { alternativeId: "a", categoryId: "low" },
+      { alternativeId: "b", categoryId: "high" },
+    ];
+    payload.resultsAnalysis.executions[0].genericAnalysis.facts.alternativeRelationships.phases[1] = unchangedAfter;
+    payload.resultsAnalysis.executions[0].genericAnalysis.facts.alternativeRelationships.transitions[0] = {
+      fromPhase: 4,
+      toPhase: 5,
+      changes: [],
+      unchanged: [
+        { alternativeId: "a", name: "Alpha", categoryId: "low", categoryLabel: "Low" },
+        { alternativeId: "b", name: "Beta", categoryId: "high", categoryLabel: "High" },
+      ],
+    };
+    const unchanged = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+    expect(unchanged.primary.categoricalTransitions).toEqual([]);
   });
 
   it("resolves Results Analysis capability from the phase selected in Finished Issue", () => {

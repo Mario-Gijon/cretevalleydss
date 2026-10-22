@@ -113,6 +113,8 @@ const normalizeSorting = ({ payload, output }) => {
 };
 
 const sortingPhases = ({ payload, execution, genericAnalysis }) => {
+  const factPhases = asArray(genericAnalysis?.facts?.alternativeRelationships?.phases);
+  if (factPhases.length) return factPhases;
   const descriptor = asArray(genericAnalysis?.visualizations).find((visualization) => visualization?.type === "alternativeRelationships" && visualization?.mode === "categorical");
   if (Array.isArray(descriptor?.phases)) return descriptor.phases;
   return asArray(execution?.phaseResults)
@@ -122,6 +124,147 @@ const sortingPhases = ({ payload, execution, genericAnalysis }) => {
       return normalized ? { phase: phase.phase, ...normalized } : null;
     })
     .filter(Boolean);
+};
+
+const normalizeCategoricalFactPhase = (phase) => {
+  if (!Number.isInteger(phase?.phase) || phase?.categoryOrderSemantics !== SORTING_ORDER_SEMANTICS) return null;
+  const categories = asArray(phase.categories).map((category) => ({
+    id: nonEmptyString(category?.categoryId),
+    label: nonEmptyString(category?.label),
+    order: category?.order,
+  }));
+  if (
+    !categories.length ||
+    categories.some((category) => !category.id || !category.label || !Number.isInteger(category.order) || category.order < 0)
+  ) return null;
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const categoryOrders = new Set(categories.map((category) => category.order));
+  if (
+    categoryIds.size !== categories.length ||
+    categoryOrders.size !== categories.length ||
+    categories.some((_, index) => !categoryOrders.has(index))
+  ) return null;
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const alternatives = asArray(phase.alternatives).map((alternative) => {
+    const id = nonEmptyString(alternative?.alternativeId);
+    const categoryId = nonEmptyString(alternative?.categoryId);
+    const category = categoriesById.get(categoryId);
+    const name = nonEmptyString(alternative?.name);
+    if (
+      !id || !name || !category ||
+      alternative?.categoryLabel !== category.label ||
+      alternative?.categoryOrder !== category.order
+    ) return null;
+    return { id, name, categoryId, categoryLabel: category.label, categoryOrder: category.order };
+  });
+  const alternativeIds = new Set(alternatives.filter(Boolean).map((alternative) => alternative.id));
+  if (
+    alternatives.some((alternative) => !alternative) ||
+    alternativeIds.size !== alternatives.length
+  ) return null;
+  return {
+    phase: phase.phase,
+    categoryOrderSemantics: phase.categoryOrderSemantics,
+    categories: categories.sort((left, right) => left.order - right.order),
+    alternatives,
+  };
+};
+
+const categorySignature = (phase) => JSON.stringify(
+  phase.categories.map(({ id, label, order }) => ({ id, label, order })),
+);
+
+const categoricalFactMatchesStoredResult = ({ phase, execution, payload }) => {
+  const phaseResult = asArray(execution?.phaseResults).find((candidate) =>
+    candidate?.phase === phase.phase &&
+    candidate?.resultStructureKey === "sorting" &&
+    candidate?.resultStructureVersion === 1,
+  );
+  const actual = phaseResult
+    ? normalizeSorting({ payload, output: phaseResult.standardizedOutput })
+    : null;
+  if (!actual) return false;
+  const actualPhase = {
+    categories: actual.categories.map((category) => ({ id: category.id, label: category.label, order: category.order })),
+    alternatives: actual.assignments.map((assignment) => ({
+      id: assignment.alternativeId,
+      categoryId: assignment.categoryId,
+    })),
+  };
+  if (categorySignature(phase) !== categorySignature(actualPhase)) return false;
+  const actualById = new Map(actualPhase.alternatives.map((alternative) => [alternative.id, alternative]));
+  return phase.alternatives.length === actualById.size && phase.alternatives.every((alternative) =>
+    actualById.get(alternative.id)?.categoryId === alternative.categoryId,
+  );
+};
+
+const normalizeCategoricalTransitions = (genericAnalysis, { execution, payload }) => {
+  const relationships = genericAnalysis?.facts?.alternativeRelationships;
+  const rawPhases = asArray(relationships?.phases);
+  const phases = rawPhases.map(normalizeCategoricalFactPhase);
+  if (
+    phases.length < 2 ||
+    phases.some((phase) => !phase || !categoricalFactMatchesStoredResult({ phase, execution, payload }))
+  ) return [];
+  phases.sort((left, right) => left.phase - right.phase);
+  if (new Set(phases.map((phase) => phase.phase)).size !== phases.length) return [];
+  const phaseIndices = new Map(phases.map((phase, index) => [phase.phase, index]));
+  const emittedPairs = new Set();
+  return asArray(relationships?.transitions).flatMap((transition) => {
+    const fromIndex = phaseIndices.get(transition?.fromPhase);
+    const toIndex = phaseIndices.get(transition?.toPhase);
+    if (
+      fromIndex === undefined ||
+      toIndex !== fromIndex + 1 ||
+      emittedPairs.has(`${transition.fromPhase}:${transition.toPhase}`)
+    ) return [];
+    const before = phases[fromIndex];
+    const after = phases[toIndex];
+    if (
+      before.categoryOrderSemantics !== after.categoryOrderSemantics ||
+      categorySignature(before) !== categorySignature(after)
+    ) return [];
+    const beforeById = new Map(before.alternatives.map((alternative) => [alternative.id, alternative]));
+    const afterById = new Map(after.alternatives.map((alternative) => [alternative.id, alternative]));
+    if (
+      beforeById.size !== afterById.size ||
+      [...beforeById.keys()].some((id) => !afterById.has(id))
+    ) return [];
+    const expectedChanges = [...beforeById].flatMap(([id, previous]) => {
+      const current = afterById.get(id);
+      if (previous.categoryId === current.categoryId) return [];
+      return [{
+        alternativeId: id,
+        name: current.name,
+        fromCategoryId: previous.categoryId,
+        fromCategoryLabel: previous.categoryLabel,
+        fromCategoryOrder: previous.categoryOrder,
+        toCategoryId: current.categoryId,
+        toCategoryLabel: current.categoryLabel,
+        toCategoryOrder: current.categoryOrder,
+      }];
+    }).sort((left, right) => left.alternativeId.localeCompare(right.alternativeId));
+    if (!expectedChanges.length) return [];
+    const recordedChanges = asArray(transition?.changes);
+    if (recordedChanges.length !== expectedChanges.length) return [];
+    const recordedById = new Map(recordedChanges.map((change) => [change?.alternativeId, change]));
+    if (recordedById.size !== recordedChanges.length) return [];
+    const evidenceMatches = expectedChanges.every((expected) => {
+      const recorded = recordedById.get(expected.alternativeId);
+      return recorded && [
+        "fromCategoryId", "fromCategoryLabel", "fromCategoryOrder",
+        "toCategoryId", "toCategoryLabel", "toCategoryOrder",
+      ].every((key) => recorded[key] === expected[key]);
+    });
+    if (!evidenceMatches) return [];
+    emittedPairs.add(`${transition.fromPhase}:${transition.toPhase}`);
+    return [{
+      fromPhase: before.phase,
+      toPhase: after.phase,
+      categories: before.categories,
+      changes: expectedChanges,
+    }];
+  });
 };
 
 const getUnavailableReason = (execution, ranking, sorting, resolution) => {
@@ -164,6 +307,9 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
   const categoricalPhases = resultPresentation.resultStructureKey === "sorting"
     ? sortingPhases({ payload, execution, genericAnalysis })
     : [];
+  const categoricalTransitions = resultPresentation.resultStructureKey === "sorting"
+    ? normalizeCategoricalTransitions(genericAnalysis, { execution, payload })
+    : [];
   const unavailableReason = getUnavailableReason(execution, ranking, sorting, resultPresentation);
   const name = option.label || execution?.label || "—";
   const modelName = option.modelName || execution?.model?.name || "—";
@@ -190,6 +336,7 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     ranking,
     sorting,
     categoricalPhases,
+    categoricalTransitions,
     resultStructureKey: resultPresentation.resultStructureKey,
     resultStructureVersion: resultPresentation.resultStructureVersion,
     analysisSupported,
@@ -265,22 +412,23 @@ export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKe
         categoricalUnavailableComparisons.push({ leftKey: left.key, rightKey: right.key, reason: "alternative_set_changed" });
       } else {
         const rightById = new Map(right.sorting.assignments.map((assignment) => [assignment.alternativeId, assignment]));
+        const changes = left.sorting.assignments.filter((assignment) => assignment.categoryId !== rightById.get(assignment.alternativeId)?.categoryId).map((assignment) => ({
+          alternativeId: assignment.alternativeId,
+          name: assignment.name,
+          fromCategoryId: assignment.categoryId,
+          fromCategoryLabel: assignment.categoryLabel,
+          fromCategoryOrder: assignment.categoryOrder,
+          toCategoryId: rightById.get(assignment.alternativeId)?.categoryId,
+          toCategoryLabel: rightById.get(assignment.alternativeId)?.categoryLabel,
+          toCategoryOrder: rightById.get(assignment.alternativeId)?.categoryOrder,
+        }));
+        if (!changes.length) continue;
         categoricalComparisons.push({
           leftKey: left.key,
           rightKey: right.key,
           leftPhase: left.sourcePhase,
           rightPhase: right.sourcePhase,
-          changes: left.sorting.assignments.filter((assignment) => assignment.categoryId !== rightById.get(assignment.alternativeId)?.categoryId).map((assignment) => ({
-            alternativeId: assignment.alternativeId,
-            name: assignment.name,
-            fromCategoryId: assignment.categoryId,
-            fromCategoryLabel: assignment.categoryLabel,
-            fromCategoryOrder: assignment.categoryOrder,
-            toCategoryId: rightById.get(assignment.alternativeId)?.categoryId,
-            toCategoryLabel: rightById.get(assignment.alternativeId)?.categoryLabel,
-            toCategoryOrder: rightById.get(assignment.alternativeId)?.categoryOrder,
-          })),
-          unchanged: left.sorting.assignments.filter((assignment) => assignment.categoryId === rightById.get(assignment.alternativeId)?.categoryId).map((assignment) => ({ alternativeId: assignment.alternativeId, name: assignment.name, categoryId: assignment.categoryId, categoryLabel: assignment.categoryLabel })),
+          changes,
         });
       }
     }

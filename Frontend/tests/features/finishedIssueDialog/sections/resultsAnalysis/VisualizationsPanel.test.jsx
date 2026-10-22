@@ -34,6 +34,7 @@ describe("VisualizationsPanel", () => {
     expect(layout.primaryRow).toEqual(["expertCollective"]);
     expect(layout.primaryGridTemplateColumns).toBe("minmax(0, 1fr)");
     expect(layout.alternativeRelationshipsBelow).toBe(true);
+    expect(layout.categoryChangesBelow).toBe(false);
   });
 
   it("places Expert, Consensus and relationships in full-width vertical order", () => {
@@ -65,6 +66,17 @@ describe("VisualizationsPanel", () => {
     expect(onlyRelationships.alternativeRelationshipsBelow).toBe(true);
     expect(unavailableConsensus.primaryRow).toEqual(["expertCollective"]);
     expect(unavailableConsensus.alternativeRelationshipsBelow).toBe(true);
+  });
+
+  it("places category changes below General visualizations only when they exist", () => {
+    const layout = buildGeneralVisualizationsLayout({
+      expertCollectiveAvailable: true,
+      categoryChangesAvailable: true,
+    });
+
+    expect(layout.primaryRow).toEqual(["expertCollective"]);
+    expect(layout.alternativeRelationshipsBelow).toBe(false);
+    expect(layout.categoryChangesBelow).toBe(true);
   });
 
   it("passes the selected execution phase to the stored scatter projection", () => {
@@ -377,7 +389,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
   });
 
-  it("renders TOPSIS-Sort Expert–collective views before its categorical relationships", () => {
+  it("keeps the sorting Expert–collective view without historical categorical relationships", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{
         key: "base",
@@ -412,9 +424,10 @@ describe("VisualizationsPanel", () => {
     /></ThemeProvider>);
 
     const primaryRow = screen.getByTestId("general-visualization-primary-row");
-    const relationshipRow = screen.getByTestId("alternative-relationships-secondary-row");
     expect(within(primaryRow).getByTestId("expert-collective-relationship")).toBeInTheDocument();
-    expect(primaryRow.compareDocumentPosition(relationshipRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId("alternative-relationships-secondary-row")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("alternative-relationships-section")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("category-changes-secondary-row")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "MAP" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "DISTANCES" }));
@@ -807,7 +820,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByText("Ranking similarity between rounds")).not.toBeInTheDocument();
   });
 
-  it("renders sorting relationships as category membership without ranking or score visualizations", () => {
+  it("ignores the historical sorting matrix while preserving Expert–collective and ranking-free content", () => {
     const categories = [
       { categoryId: "low", label: "Low", order: 0 },
       { categoryId: "medium", label: "Medium", order: 1 },
@@ -826,17 +839,90 @@ describe("VisualizationsPanel", () => {
         categoricalPhases: [{ phase: 5, categoryOrderSemantics: "lower-order-is-less-preferred", categories, alternatives }],
         genericAnalysis: { visualizations: [{ type: "alternativeRelationships", mode: "categorical", phases: [{ phase: 5, categoryOrderSemantics: "lower-order-is-less-preferred", categories, alternatives }] }] },
       }]}
-      visualizations={{ mode: "single", consensus: { enabled: false } }}
+      visualizations={{ mode: "single", singleScatter: { available: true, sourcePhase: 5, data: { 5: { expertPoints: [], collectivePoint: { x: 0, y: 0 } } } }, consensus: { enabled: false } }}
     /></ThemeProvider>);
 
-    expect(screen.getByTestId("categorical-relationship-matrix")).toBeInTheDocument();
-    expect(screen.getAllByText("Same category: High")).toHaveLength(2);
-    expect(screen.getAllByText("Different categories").length).toBeGreaterThan(0);
-    expect(screen.getByTestId("categorical-category-order")).toHaveTextContent("Low → Medium → High");
-    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent(/does not imply identical underlying evaluations/);
+    expect(screen.getByTestId("expert-collective-relationship")).toBeInTheDocument();
+    expect(screen.queryByTestId("categorical-relationship-matrix")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("alternative-relationships-section")).not.toBeInTheDocument();
+    expect(screen.queryByText("Category changes")).not.toBeInTheDocument();
+    expect(screen.queryByText("Alternative relationships")).not.toBeInTheDocument();
     expect(screen.queryByText("Ranking evolution")).not.toBeInTheDocument();
     expect(screen.queryByText("Ranking stability")).not.toBeInTheDocument();
     expect(screen.queryByTestId("alternative-relationships-heatmap")).not.toBeInTheDocument();
+  });
+
+  it("renders validated phase transitions and distinguishes categories with duplicate labels by ID and order", () => {
+    const categories = [
+      { id: "lower-a", label: "Shared", order: 0 },
+      { id: "lower-b", label: "Shared", order: 1 },
+      { id: "high", label: "High", order: 2 },
+    ];
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "sorting",
+        resultStructureKey: "sorting",
+        displayLabel: "TOPSIS-SORT",
+        categoricalTransitions: [{
+          fromPhase: 0,
+          toPhase: 1,
+          categories,
+          changes: [{ alternativeId: "a", name: "Alpha", fromCategoryId: "lower-a", fromCategoryLabel: "Shared", fromCategoryOrder: 0, toCategoryId: "lower-b", toCategoryLabel: "Shared", toCategoryOrder: 1 }],
+        }],
+        genericAnalysis: { visualizations: [{ type: "alternativeRelationships", mode: "categorical", phases: [] }] },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("category-changes-section")).toBeInTheDocument();
+    expect(screen.getByTestId("categorical-phase-transitions")).toHaveTextContent("Initial → Round 1");
+    expect(screen.getByLabelText("Alpha: Shared (order 0) to Shared (order 1). More preferred by configured order")).toBeInTheDocument();
+    expect(screen.getByTestId("categorical-phase-transitions")).toHaveTextContent("More preferred by configured order");
+    expect(screen.queryByTestId("categorical-relationship-matrix")).not.toBeInTheDocument();
+    expect(screen.getByText(/not numeric scores or utility gains/)).toBeInTheDocument();
+  });
+
+  it("omits category changes when phases and comparable executions have no changes", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        resultStructureKey: "sorting",
+        categoricalTransitions: [{ fromPhase: 0, toPhase: 1, changes: [] }],
+      }, {
+        key: "scenario",
+        resultStructureKey: "sorting",
+      }]}
+      categoricalComparisons={[{ leftKey: "base", rightKey: "scenario", changes: [] }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.queryByTestId("category-changes-section")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("category-changes-secondary-row")).not.toBeInTheDocument();
+  });
+
+  it("keeps ranking Alternative relationships in a mixed ranking and sorting selection", () => {
+    const categories = [{ categoryId: "low", label: "Low", order: 0 }, { categoryId: "high", label: "High", order: 1 }];
+    const categorical = [{ phase: 0, categoryOrderSemantics: "lower-order-is-less-preferred", categories, alternatives: [
+      { alternativeId: "a", name: "Alpha", categoryId: "high", categoryLabel: "High" },
+      { alternativeId: "b", name: "Beta", categoryId: "low", categoryLabel: "Low" },
+    ] }];
+    const ranking = { type: "alternativeRelationships", phases: [{
+      phase: 0,
+      alternatives: [{ alternativeId: "a", name: "Alpha", rank: 1 }, { alternativeId: "b", name: "Beta", rank: 2 }],
+      pairs: [{ leftAlternativeId: "a", rightAlternativeId: "b", relativeSeparation: 0.5 }],
+    }] };
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[
+        { key: "ranking", resultStructureKey: "ranking", displayLabel: "Ranking", genericAnalysis: { visualizations: [ranking] } },
+        { key: "sorting", resultStructureKey: "sorting", categoricalPhases: categorical, genericAnalysis: { visualizations: [{ type: "alternativeRelationships", mode: "categorical", phases: categorical }] } },
+      ]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("alternative-relationships-section")).toBeInTheDocument();
+    expect(screen.getByTestId("alternative-relationships-heatmap")).toBeInTheDocument();
+    expect(screen.queryByTestId("categorical-relationship-matrix")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("category-changes-section")).not.toBeInTheDocument();
   });
 
   it("shows cross-execution assignment changes only when the workspace provides a comparable category configuration", () => {
@@ -848,12 +934,14 @@ describe("VisualizationsPanel", () => {
     const genericAnalysis = { visualizations: [{ type: "alternativeRelationships", mode: "categorical", phases }] };
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{ key: "base", resultStructureKey: "sorting", displayLabel: "Base", categoricalPhases: phases, genericAnalysis }, { key: "scenario", resultStructureKey: "sorting", displayLabel: "Scenario", categoricalPhases: phases, genericAnalysis }]}
-      categoricalComparisons={[{ leftKey: "base", rightKey: "scenario", changes: [{ alternativeId: "a", name: "Alpha", fromCategoryLabel: "High", toCategoryLabel: "Low" }], unchanged: [] }]}
+      categoricalComparisons={[{ leftKey: "base", rightKey: "scenario", changes: [{ alternativeId: "a", name: "Alpha", fromCategoryId: "high", fromCategoryLabel: "High", fromCategoryOrder: 1, toCategoryId: "low", toCategoryLabel: "Low", toCategoryOrder: 0 }] }]}
       visualizations={{ mode: "single", consensus: { enabled: false } }}
     /></ThemeProvider>);
 
+    expect(screen.getByTestId("category-changes-section")).toBeInTheDocument();
     expect(screen.getByTestId("categorical-execution-comparisons")).toHaveTextContent("Base → Scenario");
-    expect(screen.getByTestId("categorical-execution-comparisons")).toHaveTextContent("Alpha: High → Low");
+    expect(screen.getByLabelText("Alpha: High to Low. Less preferred by configured order")).toBeInTheDocument();
+    expect(screen.getByTestId("categorical-execution-comparisons")).toHaveTextContent("Less preferred by configured order");
   });
 
   it("places both secondary visualizations side by side for one execution", () => {

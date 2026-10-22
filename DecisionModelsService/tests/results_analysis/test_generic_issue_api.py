@@ -8,6 +8,7 @@ from api.routers import results_analysis
 from api.routers.results_analysis import analyze_generic_issue, analyze_model_issue
 from core.application import create_application
 from models.topsis_sort_2016.examples import TOPSIS_SORT_2016_REQUEST_EXAMPLES
+from services.results_analysis.generic_analysis.categorical import categorical_alternative_relationships
 
 
 def analysis_context():
@@ -143,8 +144,7 @@ def test_generic_issue_endpoint_analyzes_sorting_assignments_without_ranking_or_
     assert "### Participation records" in result["interpretation"]
     assert "### Consensus" not in result["interpretation"]
     assert "### Decision process" not in result["interpretation"]
-    assert [entry["type"] for entry in result["visualizations"]] == ["alternativeRelationships"]
-    assert result["visualizations"][0]["mode"] == "categorical"
+    assert result["visualizations"] == []
     assert "diagnostics" not in str(result)
 
 
@@ -180,8 +180,7 @@ def test_sorting_all_alternatives_in_one_category_does_not_invent_differences():
 
     assert "All alternatives share the **Shared label** category" in result["interpretation"]
     assert "does not establish that their underlying evaluations were identical" in result["interpretation"]
-    assert result["visualizations"][0]["type"] == "alternativeRelationships"
-    assert not any("ranking" in visualization["type"].lower() for visualization in result["visualizations"])
+    assert result["visualizations"] == []
 
 
 def test_sorting_phase_transitions_require_identical_category_configuration_and_alternatives():
@@ -194,6 +193,7 @@ def test_sorting_phase_transitions_require_identical_category_configuration_and_
     result = asyncio.run(analyze_generic_issue(context))["data"]
     assert "**Budget** moved from one **Shared label** category to another with the same label (more preferred)" in result["interpretation"]
     assert result["facts"]["alternativeRelationships"]["transitions"][0]["changes"][0]["alternativeId"] == "c"
+    assert result["visualizations"] == []
     assert "### Decision process" in result["interpretation"]
 
     second_standard["categories"][1]["label"] = "Different meaning"
@@ -201,6 +201,80 @@ def test_sorting_phase_transitions_require_identical_category_configuration_and_
     assert incomparable["facts"]["alternativeRelationships"]["transitions"] == []
     assert incomparable["facts"]["alternativeRelationships"]["unavailableTransitions"][0]["reason"] == "category_configuration_changed"
     assert "### Decision process" not in incomparable["interpretation"]
+
+
+def test_sorting_phase_transitions_remain_in_facts_without_generating_visualizations():
+    context = sorting_analysis_context()
+    second = deepcopy(context["rounds"][0])
+    second["phase"] = 1
+    second_standard = second["selectedExecution"]["result"]["standardResult"]
+    second_standard["assignments"][2]["categoryId"] = "middle"
+    context["rounds"].append(second)
+
+    result = asyncio.run(analyze_generic_issue(context))["data"]
+
+    relationships = result["facts"]["alternativeRelationships"]
+    assert relationships["transitions"][0]["changes"][0]["alternativeId"] == "c"
+    assert relationships["transitions"][0]["changes"][0]["fromCategoryId"] == "low"
+    assert relationships["transitions"][0]["changes"][0]["toCategoryId"] == "middle"
+    assert result["visualizations"] == []
+
+
+def test_sorting_phase_transitions_reject_categories_with_equal_labels_but_different_ids():
+    context = sorting_analysis_context()
+    second = deepcopy(context["rounds"][0])
+    second["phase"] = 1
+    standard = second["selectedExecution"]["result"]["standardResult"]
+    category_id_map = {"low": "other-low", "middle": "other-middle", "high": "other-high", "empty": "other-empty"}
+    for category in standard["categories"]:
+        category["categoryId"] = category_id_map[category["categoryId"]]
+    for assignment in standard["assignments"]:
+        assignment["categoryId"] = category_id_map[assignment["categoryId"]]
+    context["rounds"].append(second)
+
+    result = asyncio.run(analyze_generic_issue(context))["data"]
+
+    relationships = result["facts"]["alternativeRelationships"]
+    assert relationships["transitions"] == []
+    assert relationships["unavailableTransitions"] == [{
+        "fromPhase": 0,
+        "toPhase": 1,
+        "reason": "category_configuration_changed",
+    }]
+    assert result["visualizations"] == []
+
+
+def test_sorting_phase_transitions_reject_different_alternative_id_sets():
+    categories = [{"categoryId": "low", "label": "Low", "order": 0}]
+    first = {
+        "phase": 0,
+        "execution": {
+            "categoryOrderSemantics": "lower-order-is-less-preferred",
+            "categories": categories,
+            "assignments": [
+                {"alternativeId": "a", "name": "Alpha", "categoryId": "low", "categoryLabel": "Low", "categoryOrder": 0},
+                {"alternativeId": "b", "name": "Beta", "categoryId": "low", "categoryLabel": "Low", "categoryOrder": 0},
+            ],
+        },
+    }
+    second = {
+        "phase": 1,
+        "execution": {
+            "categoryOrderSemantics": "lower-order-is-less-preferred",
+            "categories": categories,
+            "assignments": [
+                {"alternativeId": "a", "name": "Alpha", "categoryId": "low", "categoryLabel": "Low", "categoryOrder": 0},
+            ],
+        },
+    }
+
+    relationships = categorical_alternative_relationships([first, second])
+    assert relationships["transitions"] == []
+    assert relationships["unavailableTransitions"] == [{
+        "fromPhase": 0,
+        "toPhase": 1,
+        "reason": "alternative_set_changed",
+    }]
 
 
 def test_issue_analysis_keeps_ranking_evolution_visualization_without_narrative_inventory():

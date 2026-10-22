@@ -5,6 +5,7 @@ export const buildGeneralVisualizationsLayout = ({
   issueConsensusEnabled = false,
   consensusAvailable = false,
   alternativeRelationshipsAvailable = false,
+  categoryChangesAvailable = false,
 }) => {
   const primaryRow = [];
   if (expertCollectiveAvailable) primaryRow.push("expertCollective");
@@ -15,6 +16,7 @@ export const buildGeneralVisualizationsLayout = ({
     issueConsensusEnabled,
     primaryRow,
     alternativeRelationshipsBelow: alternativeRelationshipsAvailable,
+    categoryChangesBelow: categoryChangesAvailable,
     primaryGridTemplateColumns: FULL_WIDTH_COLUMNS,
   };
 };

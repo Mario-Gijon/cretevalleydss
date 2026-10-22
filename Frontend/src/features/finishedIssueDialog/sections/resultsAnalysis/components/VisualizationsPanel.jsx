@@ -15,6 +15,7 @@ import AnalyticsIcon from "@mui/icons-material/Analytics";
 
 import { AnalyticalGraph } from "../../../../../components/analyticalGraphs";
 import AlternativeRelationshipsVisualization, { hasAlternativeRelationshipsVisualization } from "./AlternativeRelationshipsVisualization.jsx";
+import CategoryChangesVisualization from "./CategoryChangesVisualization.jsx";
 import { AnalyticalScatterChart } from "../../../graphs/components/AnalyticalScatterChart";
 import { ComparativeAnalyticalScatterChart } from "../../../graphs/components/ComparativeAnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../../../graphs/components/AnalyticalConsensusLineChart";
@@ -94,6 +95,12 @@ const renderableDistanceProjections = (projections) =>
   (Array.isArray(projections) ? projections : []).filter(
     (projection) => buildProjectedExpertDistances(projection).length > 0,
   );
+
+const hasCategoryChanges = (executions, comparisons) =>
+  executions.some((execution) => execution?.resultStructureKey === "sorting" &&
+    Array.isArray(execution.categoricalTransitions) &&
+    execution.categoricalTransitions.some((transition) => Array.isArray(transition?.changes) && transition.changes.length > 0)) ||
+  comparisons.some((comparison) => Array.isArray(comparison?.changes) && comparison.changes.length > 0);
 
 const hasRenderableExpertCollectiveMap = (visualizations) => {
   if (visualizations?.mode !== "comparison")
@@ -735,11 +742,13 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
   const consensusAvailable = consensusIssueEnabled && visualizations.consensus?.available === true;
   const alternativeRelationshipsAvailable =
     hasAlternativeRelationshipsVisualization(executions);
+  const categoryChangesAvailable = hasCategoryChanges(executions, categoricalComparisons);
   const generalLayout = buildGeneralVisualizationsLayout({
     expertCollectiveAvailable,
     issueConsensusEnabled: consensusIssueEnabled,
     consensusAvailable,
     alternativeRelationshipsAvailable,
+    categoryChangesAvailable,
   });
 
   const renderGeneralVisualization = (type) => {
@@ -750,7 +759,10 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
       return <ConsensusCard key={type} consensus={visualizations.consensus} />;
     }
     if (type === "alternativeRelationships") {
-      return <AlternativeRelationshipsVisualization key={type} executions={executions} categoricalComparisons={categoricalComparisons} />;
+      return <AlternativeRelationshipsVisualization key={type} executions={executions} />;
+    }
+    if (type === "categoryChanges") {
+      return <CategoryChangesVisualization key={type} executions={executions} categoricalComparisons={categoricalComparisons} />;
     }
     return null;
   };
@@ -792,6 +804,11 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
         {generalLayout.alternativeRelationshipsBelow ? (
           <Box data-testid="alternative-relationships-secondary-row" sx={{ mt: 1.4, minWidth: 0 }}>
             {renderGeneralVisualization("alternativeRelationships")}
+          </Box>
+        ) : null}
+        {generalLayout.categoryChangesBelow ? (
+          <Box data-testid="category-changes-secondary-row" sx={{ mt: 1.4, minWidth: 0 }}>
+            {renderGeneralVisualization("categoryChanges")}
           </Box>
         ) : null}
         <Box sx={{ mt: 1.4 }}>
