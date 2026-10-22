@@ -4,7 +4,7 @@ import { formatFinishedIssuePhaseLabel } from "../../../logic/formatFinishedIssu
 import { buildRankingMovement, buildSpearmanCorrelationMatrix } from "./buildRankingComparison.js";
 import { buildResultsVisualizationsData } from "./buildResultsVisualizationsData.js";
 import { RESULTS_ANALYSIS_SLOT_COLORS } from "./resultsAnalysisColors.js";
-import { selectExecutionGenericAnalysis } from "./selectExecutionGenericAnalysis.js";
+import { selectExecutionGenericAnalysisEntry } from "./selectExecutionGenericAnalysis.js";
 import { selectExecutionAlternativeEvaluationAnalysis } from "./selectExecutionAlternativeEvaluationAnalysis.js";
 import { selectExecutionStageAnalyses } from "./selectExecutionStageAnalyses.js";
 
@@ -157,7 +157,10 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
   const sorting = analysisSupported && resultPresentation.resultStructureKey === "sorting"
     ? normalizeSorting({ payload, output: execution?.standardizedOutput })
     : null;
-  const genericAnalysis = analysisSupported ? selectExecutionGenericAnalysis(payload, option.key) : null;
+  const genericAnalysisEntry = analysisSupported
+    ? selectExecutionGenericAnalysisEntry(payload, option.key)
+    : null;
+  const genericAnalysis = genericAnalysisEntry?.genericAnalysis ?? null;
   const categoricalPhases = resultPresentation.resultStructureKey === "sorting"
     ? sortingPhases({ payload, execution, genericAnalysis })
     : [];
@@ -168,6 +171,13 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
   const shortLabel = type === "base" ? baseLabel(modelName) : name;
   const fullLabel = type === "base" ? shortLabel : `${name} · ${modelName}`;
   const stageAnalyses = selectExecutionStageAnalyses(payload, option.key);
+  const selectedPhaseResult = execution?.phaseResults?.find(
+    (phaseResult) => phaseResult?.phase === execution?.sourcePhase,
+  );
+  const modelApiKey = execution?.model?.technical?.apiModelKey
+    || execution?.model?.apiModelKey
+    || execution?.modelSpecificOutput?.apiModelKey
+    || null;
   return {
     key: option.key,
     type,
@@ -186,10 +196,16 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     available: analysisSupported && !unavailableReason,
     unavailableReason,
     sourcePhase: execution?.sourcePhase ?? null,
+    modelApiKey,
+    genericAnalysisExecutionKey: genericAnalysisEntry?.executionKey ?? null,
+    genericAnalysisGeneratedAt: genericAnalysisEntry?.generatedAt ?? null,
+    sourceExecutionCompletedAt: execution?.type === "scenario"
+      ? selectedPhaseResult?.execution?.completedAt ?? null
+      : selectedPhaseResult?.computedAt ?? null,
     phaseLabel: formatFinishedIssuePhaseLabel({ phase: execution?.sourcePhase, orderedPhases: execution?.phaseResults?.map((result) => result.phase) }),
-    // Keep the controlled stored result and its persisted Generic Analysis
-    // together. The visualization builder may use Generic Analysis only when
-    // the stored standardized projection is absent.
+    // Keep the controlled stored result and its execution-keyed Generic
+    // Analysis together. TOPSIS-Sort projection selection also checks source
+    // phase and timestamps before preferring reconstructed evidence.
     standardizedOutput: analysisSupported ? execution?.standardizedOutput ?? null : null,
     consensusMeasure: execution?.consensusMeasure ?? null,
     modelSpecificOutput: execution?.modelSpecificOutput ?? null,

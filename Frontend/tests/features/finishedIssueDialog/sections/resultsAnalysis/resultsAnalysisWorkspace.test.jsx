@@ -600,4 +600,79 @@ describe("Results analysis workspace", () => {
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.queryByText("An alternative description")).not.toBeInTheDocument();
   });
+
+  it("binds reconstructed TOPSIS-Sort evidence to the selected Base or Scenario execution", () => {
+    const projection = (offset) => ({
+      expert_points: [[offset + 0.123456789, 0.25], [offset + 0.75, 0.5]],
+      collective_point: [0.1, 0.2],
+      expert_ids: ["expert-1", "expert-2"],
+      expert_labels: ["Ada Lovelace", "Grace Hopper"],
+      expert_emails: ["ada@example.test", "grace@example.test"],
+      identical_evaluation_groups: [],
+      collective_identical_expert_ids: [],
+    });
+    const sortingOutput = (offset) => ({
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      categories: [{ categoryId: "category-1", label: "Preferred", order: 0 }],
+      assignments: [{ alternativeId: "alternative-1", categoryId: "category-1" }],
+      plotsGraphic: {
+        ...projection(offset),
+        expert_points: [[offset + 0.12, 0.25], [offset + 0.75, 0.5]],
+      },
+    });
+    const analysis = (offset) => ({
+      facts: {
+        resultStructure: { key: "sorting", version: 1 },
+        finalPhase: 2,
+        expertCollectiveRelationship: { projection: projection(offset), unavailableReason: null },
+      },
+      visualizations: [],
+    });
+    const payload = {
+      alternatives: [{ id: "alternative-1", name: "Alternative" }],
+      models: {
+        base: { id: "base-model", name: "TOPSIS-SORT", technical: { apiModelKey: "topsis_sort_2016" } },
+        compatible: [],
+      },
+      phaseResults: [{
+        stage: "alternativeEvaluation",
+        phase: 2,
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        standardizedOutput: sortingOutput(0),
+        computedAt: "2026-01-01T00:00:00.000Z",
+      }],
+      scenarios: [{
+        id: "scenario-1",
+        name: "Scenario",
+        targetModel: { id: "scenario-model", name: "TOPSIS-SORT" },
+        phaseResults: [{
+          phase: 2,
+          resultStructureKey: "sorting",
+          resultStructureVersion: 1,
+          standardizedOutput: sortingOutput(10),
+          modelSpecificOutput: { apiModelKey: "topsis_sort_2016" },
+          execution: { completedAt: "2026-01-01T00:00:00.000Z" },
+        }],
+      }],
+      resultsAnalysis: { executions: [
+        { executionKey: "base", generatedAt: "2026-01-02T00:00:00.000Z", genericAnalysis: analysis(0) },
+        { executionKey: "scenario-1", generatedAt: "2026-01-02T00:00:00.000Z", genericAnalysis: analysis(10) },
+      ] },
+    };
+
+    const workspace = buildResultsAnalysisWorkspaceData({
+      payload,
+      selectedExecutionKeys: ["base", "scenario-1"],
+    });
+
+    expect(workspace.visualizations.canonicalProjections.map((entry) => [entry.key, entry.projectionSource])).toEqual([
+      ["base", "reconstructed"],
+      ["scenario-1", "reconstructed"],
+    ]);
+    expect(workspace.visualizations.canonicalProjections.map((entry) => entry.expertPoints[0].x)).toEqual([
+      0.223456789,
+      10.223456789,
+    ]);
+  });
 });

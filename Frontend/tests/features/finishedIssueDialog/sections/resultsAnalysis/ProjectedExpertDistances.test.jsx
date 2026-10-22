@@ -53,6 +53,6 @@ describe("ProjectedExpertDistances", () => {
     expect(chartState.props.series[0].data).toEqual([0.0000004]);
     expect(chartState.props.series[0].valueFormatter(0.0000004, { dataIndex: 0 })).toContain("4e-7");
     expect(chartState.props.barLabel({ value: 0.0000004, dataIndex: 0 })).toBe("4e-7");
-    expect(screen.getByTestId("projected-distance-interpretation").textContent).toContain("positive");
+    expect(screen.getByTestId("projected-distance-interpretation").textContent).toContain("scientific notation");
   });
 });

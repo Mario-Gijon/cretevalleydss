@@ -1,7 +1,13 @@
 const finitePoint = (point) =>
   Number.isFinite(point?.x) && Number.isFinite(point?.y);
 export const formatProjectedDistance = (value) =>
-  value === 0 ? "0.000" : String(value);
+  value === 0
+    ? "0.000"
+    : !Number.isFinite(value)
+      ? String(value)
+      : Math.abs(value) >= 0.001
+        ? Number(value.toFixed(3)).toString()
+        : Number(value.toPrecision(8)).toString();
 
 export const closestProjectedDistanceIdentities = (entries) => {
   if (!entries.length) return new Set();

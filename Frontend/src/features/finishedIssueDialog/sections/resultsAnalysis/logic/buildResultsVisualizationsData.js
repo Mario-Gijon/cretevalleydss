@@ -13,18 +13,142 @@ const unavailableReason = (normalized) => {
   return null;
 };
 
-const storedExpertCollectiveProjection = (execution) => {
+const isTopsisSortExecution = (execution) =>
+  execution?.resultStructureKey === "sorting" &&
+  execution?.resultStructureVersion === 1 &&
+  execution?.modelApiKey === "topsis_sort_2016";
+
+const standardizedExpertCollectiveProjection = (execution) => {
   const standardized = execution?.standardizedOutput?.plotsGraphic;
   if (standardized && typeof standardized === "object" && Object.keys(standardized).length) {
     return standardized;
   }
+  return null;
+};
+
+const genericExpertCollectiveRelationship = (execution) => {
   const relationship = execution?.genericAnalysis?.facts?.expertCollectiveRelationship;
-  if (relationship?.projection && typeof relationship.projection === "object") {
-    return relationship.projection;
+  return relationship && typeof relationship === "object" ? relationship : null;
+};
+
+const analysisMatchesExecution = (execution) => {
+  const facts = execution?.genericAnalysis?.facts;
+  const generatedAt = Date.parse(execution?.genericAnalysisGeneratedAt);
+  const sourceCompletedAt = Date.parse(execution?.sourceExecutionCompletedAt);
+  return isTopsisSortExecution(execution) &&
+    execution?.genericAnalysisExecutionKey === execution?.key &&
+    facts?.resultStructure?.key === "sorting" &&
+    facts?.resultStructure?.version === 1 &&
+    Number.isInteger(execution?.sourcePhase) &&
+    facts?.finalPhase === execution.sourcePhase &&
+    Number.isFinite(generatedAt) &&
+    Number.isFinite(sourceCompletedAt) &&
+    generatedAt >= sourceCompletedAt;
+};
+
+const hasSameExpertIdentitySet = (left, right) => {
+  const leftIds = left.map((point) => point.identity).sort();
+  const rightIds = right.map((point) => point.identity).sort();
+  return leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);
+};
+
+const nonEmptyText = (value) =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
+
+const reconstructionMatchesStoredIdentities = (rebuilt, standardized) => {
+  if (!rebuilt?.isValid) return false;
+  if (!rebuilt.expertPoints.every((point) => point.identitySource === "id")) return false;
+  if (new Set(rebuilt.expertPoints.map((point) => point.identity)).size !== rebuilt.expertPoints.length) return false;
+  const stored = normalizePlotsGraphic(standardized);
+  if (!stored?.isValid) return true;
+  if (stored.expertPoints.length !== rebuilt.expertPoints.length) return false;
+
+  const storedIds = Array.isArray(standardized?.expert_ids)
+    ? standardized.expert_ids
+    : Array.isArray(standardized?.expertIds)
+      ? standardized.expertIds
+      : null;
+  if (storedIds?.length === stored.expertPoints.length && storedIds.every((id) => typeof id === "string" && id.trim())) {
+    if (!hasSameExpertIdentitySet(
+      rebuilt.expertPoints,
+      storedIds.map((identity) => ({ identity: identity.trim() })),
+    )) return false;
   }
-  return relationship?.unavailableReason
-    ? { reason: relationship.unavailableReason }
-    : null;
+
+  const storedEmails = Array.isArray(standardized?.expert_emails)
+    ? standardized.expert_emails
+    : Array.isArray(standardized?.expertEmails)
+      ? standardized.expertEmails
+      : null;
+  if (storedEmails?.length === stored.expertPoints.length && storedEmails.every((email) => typeof email === "string" && email.trim())) {
+    const rebuiltEmails = rebuilt.expertPoints.map((point) => point.email).filter(Boolean);
+    const sortedStoredEmails = storedEmails.map((value) => value.trim()).sort();
+    return rebuiltEmails.length === storedEmails.length &&
+      [...rebuiltEmails].sort().every((email, index) => email === sortedStoredEmails[index]);
+  }
+  return true;
+};
+
+const preserveStoredExpertMetadata = (rebuilt, standardized) => {
+  const normalizedStored = normalizePlotsGraphic(standardized);
+  if (!normalizedStored?.isValid) return rebuilt;
+  const storedById = new Map(
+    normalizedStored.expertPoints
+      .filter((point) => point.identitySource === "id")
+      .map((point) => [point.identity, point]),
+  );
+  const ids = Array.isArray(rebuilt?.expert_ids) ? rebuilt.expert_ids : [];
+  if (!ids.length || !ids.every((id) => storedById.has(id))) return rebuilt;
+  const labels = Array.isArray(rebuilt.expert_labels) ? rebuilt.expert_labels : [];
+  const emails = Array.isArray(rebuilt.expert_emails) ? rebuilt.expert_emails : [];
+  const mergedLabels = ids.map((id, index) =>
+    nonEmptyText(labels[index]) || storedById.get(id)?.label || id,
+  );
+  const mergedEmails = ids.map((id, index) =>
+    nonEmptyText(emails[index]) || storedById.get(id)?.email || null,
+  );
+  return {
+    ...rebuilt,
+    expert_labels: mergedLabels,
+    ...(mergedEmails.some(Boolean) ? { expert_emails: mergedEmails } : {}),
+  };
+};
+
+const storedExpertCollectiveProjection = (execution) => {
+  const standardized = standardizedExpertCollectiveProjection(execution);
+  const relationship = genericExpertCollectiveRelationship(execution);
+
+  if (isTopsisSortExecution(execution)) {
+    const rebuilt = relationship?.projection;
+    const normalizedRebuilt = normalizePlotsGraphic(rebuilt);
+    if (
+      analysisMatchesExecution(execution) &&
+      normalizedRebuilt?.isValid &&
+      !normalizedRebuilt.reason &&
+      !normalizedRebuilt.hasInvalidCoordinates &&
+      normalizedRebuilt.hasEvaluationEqualityEvidence &&
+      reconstructionMatchesStoredIdentities(normalizedRebuilt, standardized)
+    ) {
+      return {
+        projection: preserveStoredExpertMetadata(rebuilt, standardized),
+        source: "reconstructed",
+      };
+    }
+    if (standardized) return { projection: standardized, source: "standardized" };
+    if (analysisMatchesExecution(execution) && relationship?.unavailableReason) {
+      return { projection: { reason: relationship.unavailableReason }, source: "generic-analysis" };
+    }
+    return { projection: null, source: null };
+  }
+
+  if (standardized) return { projection: standardized, source: "standardized" };
+  if (relationship?.projection && typeof relationship.projection === "object") {
+    return { projection: relationship.projection, source: "generic-analysis" };
+  }
+  return {
+    projection: relationship?.unavailableReason ? { reason: relationship.unavailableReason } : null,
+    source: relationship?.unavailableReason ? "generic-analysis" : null,
+  };
 };
 
 /**
@@ -38,9 +162,8 @@ export const buildCanonicalAnalyticalProjection = ({
   execution,
   slotIndex = 0,
 }) => {
-  const normalized = normalizePlotsGraphic(
-    storedExpertCollectiveProjection(execution),
-  );
+  const selectedProjection = storedExpertCollectiveProjection(execution);
+  const normalized = normalizePlotsGraphic(selectedProjection.projection);
   const base = {
     key: execution?.key || "",
     executionName: execution?.name || "—",
@@ -50,6 +173,7 @@ export const buildCanonicalAnalyticalProjection = ({
       execution?.fullLabel || execution?.displayLabel || execution?.name || "—",
     color: execution?.color,
     sourcePhase: execution?.sourcePhase ?? null,
+    projectionSource: selectedProjection.source,
     slotIndex,
     available: false,
     displayAvailable: false,
@@ -421,17 +545,14 @@ const buildConsensusVisualization = (payload, executions) => {
 };
 
 const buildSingleScatter = (execution, canonicalProjection) => {
-  const normalized = normalizePlotsGraphic(
-    storedExpertCollectiveProjection(execution),
-  );
   const canonical = canonicalProjection?.displayAvailable
     ? canonicalProjection
     : null;
   return {
-    available: Boolean(normalized?.isValid && canonical),
-    unavailableReason: unavailableReason(normalized),
+    available: Boolean(canonical),
+    unavailableReason: canonicalProjection?.unavailableReason || "missing_analytical_projection",
     sourcePhase: execution?.sourcePhase ?? 0,
-    data: normalized?.isValid && canonical
+    data: canonical
       ? {
           [execution?.sourcePhase ?? 0]: {
             expertPoints: canonical.expertPoints,
@@ -445,20 +566,42 @@ const buildSingleScatter = (execution, canonicalProjection) => {
   };
 };
 
+const withRelationshipProjections = (visualizations) => {
+  if (visualizations.mode === "single") {
+    return {
+      ...visualizations,
+      expertCollectiveRelationshipProjections: visualizations.expertCollective?.displayAvailable
+        ? [visualizations.expertCollective]
+        : [],
+    };
+  }
+
+  const comparison = visualizations.expertCollectiveComparison;
+  const projections = comparison?.available !== true
+    ? []
+    : comparison.presentation === "shared"
+      ? [comparison.sharedProjection]
+      : comparison.presentation === "aligned-overlay"
+        ? comparison.alignedExecutions
+        : comparison.separateExecutions;
+  return { ...visualizations, expertCollectiveRelationshipProjections: projections || [] };
+};
+
 export const buildResultsVisualizationsData = ({ payload, executions }) => {
+  const finalize = (visualizations) => withRelationshipProjections(visualizations);
   const projections = executions.map((execution, slotIndex) =>
     buildCanonicalAnalyticalProjection({ execution, slotIndex }),
   );
   const consensus = buildConsensusVisualization(payload, executions);
   if (projections.length <= 1) {
     const projection = projections[0] || null;
-    return {
+    return finalize({
       mode: "single",
       expertCollective: projection,
       canonicalProjections: projections,
       singleScatter: buildSingleScatter(executions[0], projection),
       consensus,
-    };
+    });
   }
   const valid = projections.filter((projection) => projection.available);
   if (!valid.length) {
@@ -466,7 +609,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
       (projection) => projection.displayAvailable,
     );
     if (displayable.length)
-      return {
+      return finalize({
         mode: "comparison",
         consensus,
         canonicalProjections: projections,
@@ -500,8 +643,8 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
             "The different stored projections could not be aligned safely, so each unique projection is shown separately.",
           referenceGroupId: null,
         },
-      };
-    return {
+      });
+    return finalize({
       mode: "comparison",
       consensus,
       canonicalProjections: projections,
@@ -519,12 +662,12 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
           "No stored analytical projections are available for the selected executions.",
         referenceGroupId: null,
       },
-    };
+    });
   }
   const groups = groupEquivalentProjections(valid);
   if (valid.length === projections.length && groups.length === 1) {
     const sharedProjection = { ...visualGroup(groups[0]), legendLabel: null };
-    return {
+    return finalize({
       mode: "comparison",
       consensus,
       canonicalProjections: projections,
@@ -540,7 +683,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
         footerMessage: sharedProjection.equalityMessage,
         referenceGroupId: groups[0].id,
       },
-    };
+    });
   }
   const referenceGroup = groups[0];
   const reference = referenceGroup.representative;
@@ -562,7 +705,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
       ...alignedGroups.map((group) => group.equalityMessage).filter(Boolean),
       "Different projections are aligned to the first selected projection for visual comparison.",
     ];
-    return {
+    return finalize({
       mode: "comparison",
       consensus,
       canonicalProjections: projections,
@@ -577,7 +720,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
         footerMessage: footerMessages.at(-1),
         referenceGroupId: referenceGroup.id,
       },
-    };
+    });
   }
   const allGroups = [
     ...groupEquivalentProjections(valid).map((group) => visualGroup(group)),
@@ -597,7 +740,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
   const footerMessages = [
     "The different stored projections could not be aligned safely, so each unique projection is shown separately.",
   ];
-  return {
+  return finalize({
     mode: "comparison",
     consensus,
     canonicalProjections: projections,
@@ -614,7 +757,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
       footerMessage: footerMessages[0],
       referenceGroupId: referenceGroup.id,
     },
-  };
+  });
 };
 
 export default buildResultsVisualizationsData;

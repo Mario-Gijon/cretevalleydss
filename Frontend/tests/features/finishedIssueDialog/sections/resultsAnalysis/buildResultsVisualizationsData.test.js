@@ -9,6 +9,7 @@ import {
 } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsVisualizationsData.js";
 import { buildComparativeAnalyticalScatterData } from "../../../../../src/features/finishedIssueDialog/graphs/logic/buildComparativeAnalyticalScatterData.js";
 import { collectiveColorFor } from "../../../../../src/features/finishedIssueDialog/graphs/logic/analyticalScatterColors.js";
+import { buildProjectedExpertDistances } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildProjectedExpertDistances.js";
 
 const colors = ["#27d5e4", "#6fdc68", "#a960e8"];
 const execution = ({ key, points, collective = [0, 0], labels = ["a@example.test", "b@example.test"], rawOutput, modelSpecificOutput, color = colors[["base", "scenario-a", "scenario-b"].indexOf(key)], name = key, displayLabel = key }) => ({
@@ -23,6 +24,61 @@ const execution = ({ key, points, collective = [0, 0], labels = ["a@example.test
 });
 
 const payload = { consensus: { enabled: false }, phaseResults: [] };
+
+const topsisSortingExecution = ({
+  key = "base",
+  modelApiKey = "topsis_sort_2016",
+  sourcePhase = 1,
+  genericAnalysisExecutionKey = key,
+  genericAnalysisGeneratedAt = "2026-01-02T00:00:00.000Z",
+  sourceExecutionCompletedAt = "2026-01-01T00:00:00.000Z",
+  originalPoints = [[0.12, 0.2], [0.12, 0.2]],
+  reconstructedPoints = [[0.123456789, 0.234567891], [0.123456789, 0.234567891]],
+  reconstructedProjection = {},
+}) => {
+  const ids = ["expert-1", "expert-2"];
+  const projection = {
+    expert_points: reconstructedPoints,
+    collective_point: [0.876543219, 0.765432198],
+    expert_ids: ids,
+    expert_labels: ["Ada Lovelace", "Grace Hopper"],
+    expert_emails: ["ada@example.test", "grace@example.test"],
+    identical_evaluation_groups: [[...ids]],
+    collective_identical_expert_ids: [],
+    ...reconstructedProjection,
+  };
+  return {
+    ...execution({ key, points: originalPoints, labels: ["Ada Lovelace", "Grace Hopper"] }),
+    resultStructureKey: "sorting",
+    resultStructureVersion: 1,
+    modelApiKey,
+    sourcePhase,
+    genericAnalysisExecutionKey,
+    genericAnalysisGeneratedAt,
+    sourceExecutionCompletedAt,
+    standardizedOutput: {
+      plotsGraphic: {
+        expert_points: originalPoints,
+        collective_point: [0.88, 0.77],
+        expert_ids: ids,
+        expert_labels: ["Ada Lovelace", "Grace Hopper"],
+        expert_emails: ["ada@example.test", "grace@example.test"],
+        identical_evaluation_groups: [[...ids]],
+        collective_identical_expert_ids: [],
+      },
+    },
+    genericAnalysis: {
+      facts: {
+        resultStructure: { key: "sorting", version: 1 },
+        finalPhase: sourcePhase,
+        expertCollectiveRelationship: {
+          projection,
+          unavailableReason: null,
+        },
+      },
+    },
+  };
+};
 
 describe("Results Analysis analytical projection comparison", () => {
   it("uses issue consensus configuration and available generic phase data for the consensus chart", () => {
@@ -182,6 +238,114 @@ describe("Results Analysis analytical projection comparison", () => {
     expect(result.singleScatter).toMatchObject({
       available: false,
       unavailableReason: "invalid_frozen_numeric_evidence",
+    });
+  });
+
+  it("prefers a current TOPSIS-Sort reconstruction over rounded historical plots and preserves its evidence", () => {
+    const selected = topsisSortingExecution({});
+    const result = buildResultsVisualizationsData({ payload, executions: [selected] });
+
+    expect(result.expertCollective).toMatchObject({
+      projectionSource: "reconstructed",
+      available: true,
+      collectivePoint: { x: 0.876543219, y: 0.765432198 },
+      expertPoints: [
+        expect.objectContaining({ identity: "expert-1", label: "Ada Lovelace", email: "ada@example.test", x: 1.000000008, y: 1.000000089 }),
+        expect.objectContaining({ identity: "expert-2", label: "Grace Hopper", email: "grace@example.test", x: 1.000000008, y: 1.000000089 }),
+      ],
+      hasEvaluationEqualityEvidence: true,
+      identicalEvaluationGroups: [["expert-1", "expert-2"]],
+      collectiveIdenticalExpertIds: [],
+    });
+    expect(result.singleScatter.data[1].expertPoints).toEqual(result.expertCollective.expertPoints);
+    expect(result.singleScatter.data[1].collectivePoint).toEqual(result.expertCollective.collectivePoint);
+    expect(selected.standardizedOutput.plotsGraphic.expert_points).toEqual([[0.12, 0.2], [0.12, 0.2]]);
+  });
+
+  it("uses a reconstruction only for its matching execution and falls back to a valid original", () => {
+    const scenario = topsisSortingExecution({
+      key: "scenario-a",
+      genericAnalysisExecutionKey: "scenario-a",
+      originalPoints: [[0.4, 0.3], [0.4, 0.3]],
+      reconstructedPoints: [[0.987654321, 0.123456789], [0.987654321, 0.123456789]],
+    });
+    const wrongExecution = { ...scenario, key: "base" };
+    const staleAnalysis = {
+      ...scenario,
+      genericAnalysisGeneratedAt: "2025-12-31T23:59:59.000Z",
+    };
+    const wrongPhaseAnalysis = { ...scenario, sourcePhase: 0 };
+    const differentExperts = topsisSortingExecution({
+      key: "scenario-a",
+      reconstructedProjection: { expert_ids: ["other-1", "other-2"] },
+    });
+    const wrongKeyProjection = buildCanonicalAnalyticalProjection({ execution: wrongExecution });
+    const staleProjection = buildCanonicalAnalyticalProjection({ execution: staleAnalysis });
+    const wrongPhaseProjection = buildCanonicalAnalyticalProjection({ execution: wrongPhaseAnalysis });
+    const differentExpertProjection = buildCanonicalAnalyticalProjection({ execution: differentExperts });
+
+    expect(wrongKeyProjection).toMatchObject({ projectionSource: "standardized", expertPoints: [expect.objectContaining({ x: 1.28, y: 1.07 }), expect.objectContaining({ x: 1.28, y: 1.07 })] });
+    expect(staleProjection).toMatchObject({ projectionSource: "standardized", expertPoints: [expect.objectContaining({ x: 1.28, y: 1.07 }), expect.objectContaining({ x: 1.28, y: 1.07 })] });
+    expect(wrongPhaseProjection.projectionSource).toBe("standardized");
+    expect(differentExpertProjection.projectionSource).toBe("standardized");
+    expect(buildCanonicalAnalyticalProjection({ execution: scenario })).toMatchObject({
+      projectionSource: "reconstructed",
+      expertPoints: [expect.objectContaining({ x: 1.86419754, y: 0.888888987 }), expect.objectContaining({ x: 1.86419754, y: 0.888888987 })],
+    });
+  });
+
+  it("falls back to the original when reconstruction is invalid and marks both-invalid data unavailable", () => {
+    const invalidReconstruction = topsisSortingExecution({
+      reconstructedProjection: { expert_points: [], reason: "projection_failed" },
+    });
+    expect(buildCanonicalAnalyticalProjection({ execution: invalidReconstruction })).toMatchObject({
+      projectionSource: "standardized",
+      available: true,
+    });
+
+    const noProjection = topsisSortingExecution({
+      originalPoints: [],
+      reconstructedProjection: { expert_points: [], reason: "projection_failed" },
+    });
+    expect(buildCanonicalAnalyticalProjection({ execution: noProjection })).toMatchObject({
+      projectionSource: "standardized",
+      available: false,
+      unavailableReason: "invalid_analytical_projection",
+    });
+  });
+
+  it("does not apply TOPSIS-Sort reconstruction priority to other sorting models", () => {
+    const otherSorting = topsisSortingExecution({ modelApiKey: "another_sorting_model" });
+    expect(buildCanonicalAnalyticalProjection({ execution: otherSorting })).toMatchObject({
+      projectionSource: "standardized",
+      expertPoints: [expect.objectContaining({ x: 1, y: 0.97 }), expect.objectContaining({ x: 1, y: 0.97 })],
+    });
+  });
+
+  it("feeds MAP and DISTANCES from the same aligned scenario projections", () => {
+    const result = buildResultsVisualizationsData({
+      payload,
+      executions: [
+        topsisSortingExecution({
+          key: "base",
+          reconstructedPoints: [[1, 0], [0, 1]],
+          reconstructedProjection: { collective_point: [0, 0], identical_evaluation_groups: [], collective_identical_expert_ids: [] },
+        }),
+        topsisSortingExecution({
+          key: "scenario-a",
+          reconstructedPoints: [[8, -3], [8, -5]],
+          reconstructedProjection: { collective_point: [2, 7], identical_evaluation_groups: [], collective_identical_expert_ids: [] },
+        }),
+      ],
+    });
+
+    expect(result.expertCollectiveComparison.presentation).toBe("aligned-overlay");
+    expect(result.expertCollectiveRelationshipProjections).toBe(result.expertCollectiveComparison.alignedExecutions);
+    result.expertCollectiveRelationshipProjections.forEach((projection) => {
+      const rows = buildProjectedExpertDistances(projection);
+      expect(rows.map((row) => row.distance)).toEqual(
+        projection.expertPoints.map((point) => Math.hypot(point.x - projection.collectivePoint.x, point.y - projection.collectivePoint.y)).sort((left, right) => left - right),
+      );
     });
   });
 

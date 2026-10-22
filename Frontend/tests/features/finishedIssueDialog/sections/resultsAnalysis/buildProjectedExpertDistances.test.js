@@ -37,4 +37,30 @@ describe("buildProjectedExpertDistances", () => {
     expect(rows.map((row) => row.formattedDistance)).toEqual(["0.000", "0.000"]);
     expect(rows.every((row) => row.closest)).toBe(true);
   });
+
+  it("keeps full numeric ordering and exact closest ties when displayed values round alike", () => {
+    const rows = buildProjectedExpertDistances({
+      available: true,
+      collectivePoint: { x: 0, y: 0 },
+      expertPoints: [
+        { x: 1.23449, y: 0, identity: "expert-far" },
+        { x: 1.2344, y: 0, identity: "expert-close" },
+      ],
+    });
+
+    expect(rows.map((row) => row.distance)).toEqual([1.2344, 1.23449]);
+    expect(rows.map((row) => row.formattedDistance)).toEqual(["1.234", "1.234"]);
+    expect(rows.map((row) => row.closest)).toEqual([true, false]);
+  });
+
+  it("shows extra significant digits near the usual display threshold", () => {
+    const rows = buildProjectedExpertDistances({
+      available: true,
+      collectivePoint: { x: 0, y: 0 },
+      expertPoints: [{ x: 0.0009999, y: 0, identity: "expert-near-threshold" }],
+    });
+
+    expect(rows[0].distance).toBe(0.0009999);
+    expect(rows[0].formattedDistance).toBe("0.0009999");
+  });
 });

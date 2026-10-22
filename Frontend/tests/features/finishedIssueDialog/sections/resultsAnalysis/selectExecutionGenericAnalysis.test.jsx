@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { selectExecutionGenericAnalysis } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/selectExecutionGenericAnalysis.js";
+import { selectExecutionGenericAnalysis, selectExecutionGenericAnalysisEntry } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/selectExecutionGenericAnalysis.js";
 import { selectExecutionAlternativeEvaluationAnalysis } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/selectExecutionAlternativeEvaluationAnalysis.js";
 
 describe("selectExecutionGenericAnalysis", () => {
@@ -17,6 +17,11 @@ describe("selectExecutionGenericAnalysis", () => {
     expect(selectExecutionGenericAnalysis(payload, "base")).toEqual({ interpretation: "Base" });
     expect(selectExecutionGenericAnalysis(payload, "scenario-1")).toEqual({ interpretation: "Scenario" });
     expect(selectExecutionGenericAnalysis(payload, "missing")).toBeNull();
+    expect(selectExecutionGenericAnalysisEntry(payload, "scenario-1")).toMatchObject({
+      executionKey: "scenario-1",
+      genericAnalysis: { interpretation: "Scenario" },
+    });
+    expect(selectExecutionGenericAnalysisEntry(payload, "base").executionKey).toBe("base");
   });
 
   it("resolves optional alternative evaluation analysis by its own execution key", () => {

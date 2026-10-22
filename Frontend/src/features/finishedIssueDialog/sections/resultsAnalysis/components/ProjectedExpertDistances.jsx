@@ -46,13 +46,11 @@ const DistanceChart = ({ projection, rows, phase, showLabel, chartHeight }) => {
   });
   const axisLabels = labels.map((label) => truncate(label));
   const allZero = rows.every((row) => row.distance === 0);
-  const positiveBelowThreeDecimals = rows.some(
-    (row) => row.distance > 0 && row.distance.toFixed(3) === "0.000",
-  );
+  const positiveBelowThreeDecimals = rows.some((row) => row.distance > 0 && row.distance < 0.001);
   const distanceMessage = allZero
     ? "The bars have no visible height because every expert-to-collective distance in this stored 2D projection is zero. These projected distances are not direct measures of agreement between experts."
     : positiveBelowThreeDecimals
-      ? "Some projected distances are positive but smaller than the usual three-decimal display precision; their labels show additional precision."
+      ? "Some projected distances are positive but smaller than the usual three-decimal display precision; their labels and tooltips show additional precision or scientific notation."
       : null;
   const minWidth = Math.max(360, rows.length * 98);
   return <Box sx={{ minWidth: 0 }} data-phase={phase ?? ""}>
