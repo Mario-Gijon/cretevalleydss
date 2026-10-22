@@ -84,8 +84,8 @@ const unavailableMessage = (reason) => {
   return "No stored expert–collective analytical projection is available for this execution.";
 };
 
-const EXPERT_COLLECTIVE_MAP_GUIDE = "Each dot marks an expert or the collective result in a simplified view of the stored projection. Dots closer together are more similar in this displayed representation; the axes are not geographic coordinates.";
-const EXPERT_COLLECTIVE_DISTANCES_GUIDE = "Each bar measures the distance from one expert's point to the collective point in the stored projection. Shorter bars mean closer positions in that display; these are projection distances, not geographic distances.";
+const EXPERT_COLLECTIVE_MAP_GUIDE = "Each marker shows an expert or the collective result in a simplified 2D projection. Overlapping markers are grouped for identification; a shared projected position alone does not establish identical original evaluations.";
+const EXPERT_COLLECTIVE_DISTANCES_GUIDE = "Each bar measures the distance from one expert's point to the collective point in the stored 2D projection. These projected distances describe positions in the display, not direct measures of agreement between experts.";
 const RANKING_STABILITY_GUIDE = getVisualizationReadingGuide({ type: "rankingStability" });
 const RANKING_AGREEMENT_GUIDE = getVisualizationReadingGuide({ type: "rankingAgreement" });
 const finitePoint = (point) => Number.isFinite(point?.x) && Number.isFinite(point?.y);

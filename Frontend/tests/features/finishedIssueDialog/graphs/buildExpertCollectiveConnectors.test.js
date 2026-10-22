@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildExpertCollectiveConnectors, findHoveredConnector, pointToSegmentDistance } from "../../../../src/features/finishedIssueDialog/graphs/logic/buildExpertCollectiveConnectors.js";
+import { expertCollectiveConnectorPlugin } from "../../../../src/features/finishedIssueDialog/graphs/logic/expertCollectiveConnectorPlugin.js";
 
 describe("buildExpertCollectiveConnectors", () => {
   const collectivePoint = { x: 0, y: 0 };
@@ -18,9 +19,59 @@ describe("buildExpertCollectiveConnectors", () => {
     expect(buildExpertCollectiveConnectors({ expertPoints: [{ x: 1, y: 0 }, { x: -1, y: 0 }], collectivePoint }).every((entry) => entry.isClosest)).toBe(true);
   });
 
+  it("does not treat distinct small distances as tied because of three-decimal presentation", () => {
+    const connectors = buildExpertCollectiveConnectors({
+      expertPoints: [
+        { identity: "closer", x: 0.0004, y: 0 },
+        { identity: "farther", x: 0.00045, y: 0 },
+      ],
+      collectivePoint,
+    });
+
+    expect(connectors.map((entry) => entry.projectedDistance)).toEqual([0.0004, 0.00045]);
+    expect(connectors.map((entry) => entry.isClosest)).toEqual([true, false]);
+  });
+
   it("finds hover targets with point-to-segment distance", () => {
     const connector = buildExpertCollectiveConnectors({ expertPoints: [{ label: "Expert", x: 10, y: 0 }], collectivePoint })[0];
     expect(pointToSegmentDistance({ x: 5, y: 3 }, connector.from, connector.to)).toBe(3);
     expect(findHoveredConnector({ point: { x: 5, y: 4 }, connectors: [connector], tolerance: 5 })).toBe(connector);
+  });
+
+  it("draws a discreet overlap count at the shared pixel without moving the marker", () => {
+    const drawCalls = [];
+    const textLabels = [];
+    const ctx = {
+      save() {},
+      restore() {},
+      measureText: (text) => ({ width: text.length * 6 }),
+      fillRect() {},
+      fillText: (text, x, y) => textLabels.push({ text, x, y }),
+    };
+    const expertElement = {
+      x: 25.2,
+      y: 40.3,
+      skip: false,
+      draw() { drawCalls.push([this.x, this.y]); },
+    };
+    const chart = {
+      ctx,
+      chartArea: { right: 100, top: 0 },
+      data: { datasets: [
+        { expertCollectiveRole: "experts", data: [{ expertCount: 2 }] },
+        { expertCollectiveRole: "collective", data: [{}] },
+      ] },
+      isDatasetVisible: () => true,
+      getDatasetMeta: (index) => ({
+        data: [index === 0 ? expertElement : { x: 25.4, y: 40.2, skip: false }],
+      }),
+    };
+
+    expertCollectiveConnectorPlugin.afterDatasetsDraw(chart);
+
+    expect(drawCalls).toEqual([[25.2, 40.3]]);
+    expect(textLabels).toEqual([expect.objectContaining({ text: "×3" })]);
+    expect(expertElement.x).toBe(25.2);
+    expect(expertElement.y).toBe(40.3);
   });
 });

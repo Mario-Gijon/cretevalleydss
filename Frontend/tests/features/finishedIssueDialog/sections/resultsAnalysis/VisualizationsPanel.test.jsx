@@ -357,8 +357,8 @@ describe("VisualizationsPanel", () => {
     expect(within(screen.getByTestId("alternative-relationships-section")).getByTestId("visualization-reading-guide")).toHaveTextContent(/relative to the observed score range/);
     expect(screen.getByText(/not a percentage of superiority/)).toBeInTheDocument();
     expect(screen.queryByText("Relationship network")).not.toBeInTheDocument();
-    expect(screen.getByText(/axes are not geographic coordinates/)).toBeInTheDocument();
-    expect(screen.queryByText(/projection distances, not geographic distances/)).not.toBeInTheDocument();
+    expect(screen.getByText(/shared projected position alone does not establish identical original evaluations/)).toBeInTheDocument();
+    expect(screen.queryByText(/not direct measures of agreement between experts/)).not.toBeInTheDocument();
     expect(screen.queryByText("Dispersion chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Bar chart")).not.toBeInTheDocument();
     expect(screen.queryByText("Projected distance to collective")).not.toBeInTheDocument();
@@ -368,8 +368,8 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "distances");
     expect(screen.queryByTestId("analytical-scatter")).not.toBeInTheDocument();
     expect(screen.getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Expert 1|Expert 2");
-    expect(screen.getByText(/projection distances, not geographic distances/)).toBeInTheDocument();
-    expect(screen.queryByText(/axes are not geographic coordinates/)).not.toBeInTheDocument();
+    expect(screen.getByText(/not direct measures of agreement between experts/)).toBeInTheDocument();
+    expect(screen.queryByText(/shared projected position alone does not establish identical original evaluations/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "MAP" }));
     expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "map");
@@ -682,7 +682,7 @@ describe("VisualizationsPanel", () => {
 
     expect(screen.queryByRole("group", { name: "Expert collective representation" })).not.toBeInTheDocument();
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
-    expect(screen.getByText(/axes are not geographic coordinates/)).toBeInTheDocument();
+    expect(screen.getByText(/shared projected position alone does not establish identical original evaluations/)).toBeInTheDocument();
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
   });
 
@@ -701,7 +701,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("analytical-scatter")).not.toBeInTheDocument();
     expect(screen.getByTestId("projected-distance-bars")).toBeInTheDocument();
     expect(screen.getByText(/Each bar measures the distance/)).toBeInTheDocument();
-    expect(screen.queryByText(/axes are not geographic coordinates/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/shared projected position alone does not establish identical original evaluations/)).not.toBeInTheDocument();
   });
 
   it("switches the comparison map and distances using expert identities from valid projections", () => {

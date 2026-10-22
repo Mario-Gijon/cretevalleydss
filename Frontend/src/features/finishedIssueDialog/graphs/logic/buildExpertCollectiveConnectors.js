@@ -1,19 +1,17 @@
 const finitePoint = (point) =>
   Number.isFinite(point?.x) && Number.isFinite(point?.y);
-export const displayedProjectedDistance = (value) => Number(value.toFixed(3));
+export const formatProjectedDistance = (value) =>
+  value === 0 ? "0.000" : String(value);
 
 export const closestProjectedDistanceIdentities = (entries) => {
   if (!entries.length) return new Set();
   const minimum = Math.min(
-    ...entries.map((entry) =>
-      displayedProjectedDistance(entry.projectedDistance),
-    ),
+    ...entries.map((entry) => entry.projectedDistance),
   );
   return new Set(
     entries
       .filter(
-        (entry) =>
-          displayedProjectedDistance(entry.projectedDistance) === minimum,
+        (entry) => entry.projectedDistance === minimum,
       )
       .map((entry) => entry.expertIdentity),
   );

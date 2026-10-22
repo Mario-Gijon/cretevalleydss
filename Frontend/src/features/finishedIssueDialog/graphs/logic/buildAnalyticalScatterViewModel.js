@@ -1,3 +1,8 @@
+import {
+  buildExpertCollectiveOverlapGroups,
+  groupCoincidentExpertPoints,
+} from "./expertCollectiveOverlap.js";
+
 const parseCoordinatePair = (point) => {
   if (!Array.isArray(point) || point.length !== 2) {
     return null;
@@ -160,10 +165,21 @@ export const buildAnalyticalScatterViewModel = ({ data, phase }) => {
   }
 
   const collectivePoint = buildCollectivePoint(current);
+  const markerGroups = groupCoincidentExpertPoints(expertPoints);
+  const overlapGroups = buildExpertCollectiveOverlapGroups({
+    expertPoints,
+    collectivePoint,
+    hasEvaluationEqualityEvidence:
+      current.hasEvaluationEqualityEvidence === true,
+    identicalEvaluationGroups: current.identicalEvaluationGroups,
+    collectiveIdenticalExpertIds: current.collectiveIdenticalExpertIds,
+  });
 
   return {
     expertPoints,
+    expertMarkerGroups: markerGroups,
     collectivePoint,
+    overlapGroups,
     xRange: buildAxisRange([
       ...expertPoints.map((point) => point.x),
       collectivePoint.x,

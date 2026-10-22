@@ -23,7 +23,12 @@ describe("buildAnalyticalScatterViewModel", () => {
         { x: 1, y: 2, label: "Expert A", email: "Expert A", identity: "Expert A" },
         { x: 2, y: 4, label: "Expert 3", email: "Expert 3", identity: "Expert 3" },
       ],
+      expertMarkerGroups: [
+        { x: 1, y: 2, experts: [{ x: 1, y: 2, label: "Expert A", email: "Expert A", identity: "Expert A" }] },
+        { x: 2, y: 4, experts: [{ x: 2, y: 4, label: "Expert 3", email: "Expert 3", identity: "Expert 3" }] },
+      ],
       collectivePoint: { x: 3, y: 5 },
+      overlapGroups: [],
       xRange: { min: 0.6, max: 3.4 },
       yRange: { min: 1.4, max: 5.6 },
     });
@@ -116,6 +121,81 @@ describe("buildAnalyticalScatterViewModel", () => {
       { label: "Shared name", identity: "expert-1", email: "one@example.test" },
       { label: "Shared name", identity: "expert-2", email: "two@example.test" },
     ]);
+  });
+
+  it("distinguishes exact evaluation evidence from an exact overlap in stored projection coordinates", () => {
+    const identical = buildAnalyticalScatterViewModel({
+      data: {
+        0: {
+          expertPoints: [
+            { x: 0, y: 0, label: "Adrian Popescu", identity: "expert-1", email: "adrian@example.test" },
+            { x: 0, y: 0, label: "Alicia Moreno", identity: "expert-2", email: "alicia@example.test" },
+          ],
+          collectivePoint: { x: 0, y: 0 },
+          hasEvaluationEqualityEvidence: true,
+          identicalEvaluationGroups: [["expert-1", "expert-2"]],
+          collectiveIdenticalExpertIds: ["expert-1", "expert-2"],
+        },
+      },
+      phase: 0,
+    });
+
+    expect(identical.expertMarkerGroups).toHaveLength(1);
+    expect(identical.expertMarkerGroups[0].experts).toHaveLength(2);
+    expect(identical.overlapGroups).toHaveLength(1);
+    expect(identical.overlapGroups[0].message).toContain("numeric matrices used for the projection");
+    expect(identical.overlapGroups[0].message).toContain("the collective");
+
+    const projectionOnly = buildAnalyticalScatterViewModel({
+      data: {
+        0: {
+          expertPoints: [
+            { x: 0, y: 0, label: "Expert One", identity: "expert-1" },
+            { x: 0, y: 0, label: "Expert Two", identity: "expert-2" },
+          ],
+          collectivePoint: { x: 0, y: 0 },
+        },
+      },
+      phase: 0,
+    });
+
+    expect(projectionOnly.overlapGroups[0].message).toContain("does not establish");
+  });
+
+  it("does not treat near or rounded-to-the-same-display coordinates as equal", () => {
+    const result = buildAnalyticalScatterViewModel({
+      data: {
+        0: {
+          expertPoints: [
+            { x: 1.23451, y: 0, label: "Expert One", identity: "expert-1" },
+            { x: 1.23452, y: 0, label: "Expert Two", identity: "expert-2" },
+          ],
+          collectivePoint: { x: 3, y: 1 },
+        },
+      },
+      phase: 0,
+    });
+
+    expect(result.expertMarkerGroups).toHaveLength(2);
+    expect(result.overlapGroups).toEqual([]);
+
+    const degenerateProjection = buildAnalyticalScatterViewModel({
+      data: {
+        0: {
+          expertPoints: [
+            { x: 0, y: 0, label: "Expert One", identity: "expert-1" },
+            { x: 0, y: 0, label: "Expert Two", identity: "expert-2" },
+          ],
+          collectivePoint: { x: 0, y: 0 },
+          hasEvaluationEqualityEvidence: true,
+          identicalEvaluationGroups: [],
+          collectiveIdenticalExpertIds: [],
+        },
+      },
+      phase: 0,
+    });
+    expect(degenerateProjection.overlapGroups[0].message).toContain("not all identical");
+    expect(degenerateProjection.overlapGroups[0].message).toContain("projection effect");
   });
 
   it("returns null for missing phases and phases without valid expert points", () => {

@@ -106,11 +106,51 @@ export const normalizePlotsGraphic = (plotsGraphic) => {
     : null;
   if (collectivePointRaw && !collectivePoint) hasInvalidCoordinates = true;
 
+  const rawEqualityGroups = plotsGraphic.identical_evaluation_groups;
+  const rawCollectiveMatches = plotsGraphic.collective_identical_expert_ids;
+  const knownExpertIds = new Set(expertPoints.map((point) => point.identity));
+  const flattenedEqualityIds = Array.isArray(rawEqualityGroups)
+    ? rawEqualityGroups.flat()
+    : [];
+  const normalizedCollectiveMatches = Array.isArray(rawCollectiveMatches)
+    ? rawCollectiveMatches.map(normalizedIdentity)
+    : [];
+  const hasEvaluationEqualityEvidence =
+    Array.isArray(rawEqualityGroups) &&
+    Array.isArray(rawCollectiveMatches) &&
+    rawEqualityGroups.every(
+      (group) =>
+        Array.isArray(group) &&
+        group.length > 1 &&
+        group.every(
+          (identity) =>
+            normalizedIdentity(identity) &&
+            knownExpertIds.has(normalizedIdentity(identity)),
+        ),
+    ) &&
+    rawCollectiveMatches.every(
+      (identity) =>
+        normalizedIdentity(identity) &&
+        knownExpertIds.has(normalizedIdentity(identity)),
+    ) &&
+    new Set(flattenedEqualityIds.map(normalizedIdentity)).size ===
+      flattenedEqualityIds.length &&
+    new Set(normalizedCollectiveMatches).size === normalizedCollectiveMatches.length;
+  const identicalEvaluationGroups = hasEvaluationEqualityEvidence
+    ? rawEqualityGroups.map((group) => group.map(normalizedIdentity))
+    : [];
+  const collectiveIdenticalExpertIds = hasEvaluationEqualityEvidence
+    ? rawCollectiveMatches.map(normalizedIdentity)
+    : [];
+
   return {
     expertPoints,
     collectivePoint,
     reason,
     raw: plotsGraphic,
+    hasEvaluationEqualityEvidence,
+    identicalEvaluationGroups,
+    collectiveIdenticalExpertIds,
     hasInvalidCoordinates,
     isValid:
       expertPoints.length > 0 &&

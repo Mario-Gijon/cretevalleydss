@@ -222,6 +222,29 @@ def _plots_graphic(matrix_evidence: Mapping[str, Any]) -> dict[str, Any]:
             "expert_ids": expert_keys,
             "expert_labels": expert_labels,
         }
+        identical_groups: list[list[str]] = []
+        remaining = set(range(len(expert_keys)))
+        while remaining:
+            index = min(remaining)
+            group = [
+                candidate
+                for candidate in sorted(remaining)
+                if np.array_equal(
+                    matrix_evidence["expert_matrices"][index],
+                    matrix_evidence["expert_matrices"][candidate],
+                )
+            ]
+            remaining.difference_update(group)
+            if len(group) > 1:
+                identical_groups.append([expert_keys[item] for item in group])
+        result["identical_evaluation_groups"] = identical_groups
+        result["collective_identical_expert_ids"] = [
+            expert_key
+            for expert_key, expert_matrix in zip(
+                expert_keys, matrix_evidence["expert_matrices"]
+            )
+            if np.array_equal(expert_matrix, matrix_evidence["collective_matrix"])
+        ]
         if any(expert_emails):
             result["expert_emails"] = expert_emails
         return result

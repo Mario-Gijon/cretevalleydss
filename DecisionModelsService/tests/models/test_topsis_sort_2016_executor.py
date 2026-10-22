@@ -135,6 +135,8 @@ def test_internal_adapter_transforms_result_to_sorting_v1_without_ranking_fields
         "expert_ids": ["expert-1"],
         "expert_labels": ["Expert One"],
         "expert_emails": ["expert-one@example.com"],
+        "identical_evaluation_groups": [],
+        "collective_identical_expert_ids": ["expert-1"],
     }
 
     def assert_no_ranking_fields(value):
@@ -178,6 +180,8 @@ def test_topsis_sort_projection_uses_domain_scaled_inputs_and_stable_expert_ids(
         "expert-two@example.com",
     ]
     assert projection["projection_space"] == "criterion_domain_minmax"
+    assert projection["identical_evaluation_groups"] == [["expert-1", "expert-2"]]
+    assert projection["collective_identical_expert_ids"] == ["expert-1", "expert-2"]
     assert len(projection["expert_points"]) == 2
     assert all(
         len(point) == 2 and all(map(lambda value: isinstance(value, float), point))
@@ -218,6 +222,8 @@ def test_topsis_sort_projection_with_real_disagreement_does_not_change_assignmen
     assert projection["expert_ids"] == ["expert-1", "expert-2"]
     assert projection["expert_points"] != [[0.0, 0.0], [0.0, 0.0]]
     assert projection["projection_space"] == "criterion_domain_minmax"
+    assert projection["identical_evaluation_groups"] == []
+    assert projection["collective_identical_expert_ids"] == []
 
 
 def test_projection_failure_is_optional_and_does_not_fail_classification(monkeypatch):

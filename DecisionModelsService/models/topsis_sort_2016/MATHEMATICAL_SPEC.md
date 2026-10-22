@@ -141,13 +141,18 @@ space, not TOPSIS scores, probabilities, consensus measures, or percentages of
 agreement. The projection is not used by Eq. (7), weights, ideal solutions,
 distances, closeness coefficients, or category assignments. `expert_points` are
 stored relative to `collective_point`; consumers add that point back to display
-experts and the collective in one coordinate frame. For identical matrices the
-exact coincident projection is `[0, 0]` for every point. Incomplete, incompatible,
-non-finite, or out-of-domain evidence yields a reason without coordinates.
+experts and the collective in one coordinate frame. Full floating-point MDS
+coordinates are retained so serialization does not collapse nearby points.
+Optional `identical_evaluation_groups` and
+`collective_identical_expert_ids` report only exact equality of the source
+numeric matrices; projected coordinate overlap alone is not equality evidence.
+For identical matrices the exact coincident projection is `[0, 0]` for every
+point. Incomplete, incompatible, non-finite, or out-of-domain evidence yields
+a reason without coordinates.
 
-Historical TOPSIS-Sort executions without `plotsGraphic` may rebuild this
-evidence from their frozen `selectedExecution.input`. The rebuild validates the
-saved numeric domains and complete individual matrices and recomputes only the
-arithmetic collective for the display. It does not execute the sorting core or
-replace persisted assignments; insufficient evidence leaves the projection
-unavailable.
+Historical TOPSIS-Sort executions may rebuild or refresh this evidence from
+their frozen `selectedExecution.input`. The rebuild validates the saved numeric
+domains and complete individual matrices and recomputes only the arithmetic
+collective and MDS display. It does not execute the sorting core or replace
+persisted assignments; insufficient evidence leaves the projection unavailable
+or retains a previously stored projection when one is usable.

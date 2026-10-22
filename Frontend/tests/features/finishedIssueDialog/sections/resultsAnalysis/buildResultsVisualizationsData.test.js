@@ -82,6 +82,53 @@ describe("Results Analysis analytical projection comparison", () => {
     expect(result).toMatchObject({ available: true, expertPoints: [{ identity: "a@example.test", x: 3, y: 3 }, { identity: "b@example.test", x: 5, y: 4 }], collectivePoint: { x: 3, y: 4 } });
   });
 
+  it("carries exact matrix equality evidence into single and comparison visualizations", () => {
+    const executionWithEvidence = {
+      ...execution({
+        key: "base",
+        points: [[0, 0], [0, 0]],
+        collective: [0, 0],
+        labels: ["Adrian Popescu", "Alicia Moreno"],
+      }),
+      standardizedOutput: {
+        plotsGraphic: {
+          expert_points: [[0, 0], [0, 0]],
+          collective_point: [0, 0],
+          expert_ids: ["expert-1", "expert-2"],
+          expert_labels: ["Adrian Popescu", "Alicia Moreno"],
+          identical_evaluation_groups: [["expert-1", "expert-2"]],
+          collective_identical_expert_ids: ["expert-1", "expert-2"],
+        },
+      },
+    };
+    const single = buildResultsVisualizationsData({ payload, executions: [executionWithEvidence] });
+
+    expect(single.expertCollective).toMatchObject({
+      hasEvaluationEqualityEvidence: true,
+      identicalEvaluationGroups: [["expert-1", "expert-2"]],
+      collectiveIdenticalExpertIds: ["expert-1", "expert-2"],
+    });
+    expect(single.singleScatter.data[0]).toMatchObject({
+      hasEvaluationEqualityEvidence: true,
+      identicalEvaluationGroups: [["expert-1", "expert-2"]],
+      collectiveIdenticalExpertIds: ["expert-1", "expert-2"],
+    });
+
+    const comparison = buildResultsVisualizationsData({
+      payload,
+      executions: [executionWithEvidence, {
+        ...executionWithEvidence,
+        key: "scenario-a",
+        name: "Scenario A",
+        displayLabel: "Scenario A",
+      }],
+    });
+    expect(comparison.expertCollectiveComparison.sharedProjection).toMatchObject({
+      hasEvaluationEqualityEvidence: true,
+      identicalEvaluationGroups: [["expert-1", "expert-2"]],
+    });
+  });
+
   it("uses the persisted Generic Analysis projection for one execution when its standardized result has none", () => {
     const result = buildResultsVisualizationsData({
       payload,
@@ -180,12 +227,14 @@ describe("Results Analysis analytical projection comparison", () => {
     expect(result.singleScatter).toMatchObject({ available: true });
   });
 
-  it("detects equivalent projections independently of expert order and includes the collective point", () => {
+  it("detects exact equivalent projections independently of expert order and includes the collective point", () => {
     const first = buildCanonicalAnalyticalProjection({ execution: execution({ key: "base", points: [[1, 2], [3, 4]] }) });
     const reordered = buildCanonicalAnalyticalProjection({ execution: execution({ key: "scenario-a", points: [[3, 4], [1, 2]], labels: ["b@example.test", "a@example.test"] }) });
     const changedCollective = buildCanonicalAnalyticalProjection({ execution: execution({ key: "scenario-b", points: [[1, 2], [3, 4]], collective: [0.001, 0] }) });
+    const nearbyCollective = buildCanonicalAnalyticalProjection({ execution: execution({ key: "scenario-b", points: [[1, 2], [3, 4]], collective: [0.00005, 0] }) });
     expect(areAnalyticalProjectionsEquivalent(first, reordered)).toBe(true);
     expect(areAnalyticalProjectionsEquivalent(first, changedCollective)).toBe(false);
+    expect(areAnalyticalProjectionsEquivalent(first, nearbyCollective)).toBe(false);
   });
 
   it("aligns translation, rotation, reflection and scale without mutating source points", () => {

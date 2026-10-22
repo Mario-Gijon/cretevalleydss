@@ -51,3 +51,9 @@ sorting contract does not require it, and its absence does not affect execution.
 The coordinates may be omitted with a `reason` when a meaningful projection
 cannot be built. Sorting results without this field remain valid for historical
 records and sorting models that do not provide an expert projection.
+
+When available, `plotsGraphic.identical_evaluation_groups` and
+`plotsGraphic.collective_identical_expert_ids` identify exact equality in the
+numeric matrices used to build the display. These fields are optional,
+validated presentation evidence: coincident 2D coordinates alone never imply
+equal original evaluations.

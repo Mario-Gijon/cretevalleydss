@@ -1,11 +1,7 @@
 import { normalizePlotsGraphic } from "../../../shared/logic/buildFinishedIssueGraphs.js";
 
-export const ANALYTICAL_PROJECTION_TOLERANCE = 1e-4;
-
 const finite = (value) => typeof value === "number" && Number.isFinite(value);
-const samePoint = (left, right, tolerance) =>
-  Math.abs(left.x - right.x) <= tolerance &&
-  Math.abs(left.y - right.y) <= tolerance;
+const samePoint = (left, right) => left.x === right.x && left.y === right.y;
 const byIdentity = (left, right) => left.identity.localeCompare(right.identity);
 const pointCopy = (point) => ({ ...point });
 
@@ -60,6 +56,9 @@ export const buildCanonicalAnalyticalProjection = ({
     unavailableReason: unavailableReason(normalized),
     expertPoints: [],
     collectivePoint: null,
+    hasEvaluationEqualityEvidence: false,
+    identicalEvaluationGroups: [],
+    collectiveIdenticalExpertIds: [],
   };
   if (!normalized?.isValid) return base;
 
@@ -72,6 +71,11 @@ export const buildCanonicalAnalyticalProjection = ({
     x: point.x + collectivePoint.x,
     y: point.y + collectivePoint.y,
   }));
+  const evaluationEvidence = {
+    hasEvaluationEqualityEvidence: normalized.hasEvaluationEqualityEvidence,
+    identicalEvaluationGroups: normalized.identicalEvaluationGroups,
+    collectiveIdenticalExpertIds: normalized.collectiveIdenticalExpertIds,
+  };
   if (
     !expertPoints.every(
       (point) => point.identity && finite(point.x) && finite(point.y),
@@ -84,6 +88,7 @@ export const buildCanonicalAnalyticalProjection = ({
       displayAvailable: true,
       expertPoints,
       collectivePoint: pointCopy(collectivePoint),
+      ...evaluationEvidence,
       unavailableReason: "missing_stable_expert_identity",
     };
   }
@@ -97,6 +102,7 @@ export const buildCanonicalAnalyticalProjection = ({
       displayAvailable: true,
       expertPoints,
       collectivePoint: pointCopy(collectivePoint),
+      ...evaluationEvidence,
       unavailableReason: "duplicate_expert_identity",
     };
   }
@@ -107,6 +113,7 @@ export const buildCanonicalAnalyticalProjection = ({
     unavailableReason: null,
     expertPoints,
     collectivePoint: pointCopy(collectivePoint),
+    ...evaluationEvidence,
   };
 };
 
@@ -116,11 +123,7 @@ const sameIdentitySet = (left, right) =>
     (point, index) => point.identity === right.expertPoints[index]?.identity,
   );
 
-export const areAnalyticalProjectionsEquivalent = (
-  left,
-  right,
-  tolerance = ANALYTICAL_PROJECTION_TOLERANCE,
-) => {
+export const areAnalyticalProjectionsEquivalent = (left, right) => {
   if (
     !left?.available ||
     !right?.available ||
@@ -131,8 +134,8 @@ export const areAnalyticalProjectionsEquivalent = (
     return false;
   return (
     left.expertPoints.every((point, index) =>
-      samePoint(point, right.expertPoints[index], tolerance),
-    ) && samePoint(left.collectivePoint, right.collectivePoint, tolerance)
+      samePoint(point, right.expertPoints[index]),
+    ) && samePoint(left.collectivePoint, right.collectivePoint)
   );
 };
 
@@ -433,6 +436,9 @@ const buildSingleScatter = (execution, canonicalProjection) => {
           [execution?.sourcePhase ?? 0]: {
             expertPoints: canonical.expertPoints,
             collectivePoint: canonical.collectivePoint,
+            hasEvaluationEqualityEvidence: canonical.hasEvaluationEqualityEvidence,
+            identicalEvaluationGroups: canonical.identicalEvaluationGroups,
+            collectiveIdenticalExpertIds: canonical.collectiveIdenticalExpertIds,
           },
         }
       : null,

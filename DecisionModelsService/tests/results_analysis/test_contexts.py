@@ -196,6 +196,33 @@ def test_historical_topsis_sort_projection_rebuild_uses_frozen_input_without_ree
     assert {"evaluations", "modelParameters"}.isdisjoint(nested_keys(issue_context))
 
 
+def test_prechange_stored_topsis_projection_is_refreshed_from_frozen_input_only():
+    source = sorting_context()
+    execution = source["rounds"][1]["selectedExecution"]
+    execution["modelContext"] = {"apiModelKey": "topsis_sort_2016"}
+    frozen_input = deepcopy(
+        TOPSIS_SORT_2016_REQUEST_EXAMPLES["numeric_benefit_cost_sorting"]["value"]
+    )
+    second_expert = deepcopy(frozen_input["evaluations"][0])
+    second_expert["expert"] = {"id": "expert-2", "name": "Second expert"}
+    frozen_input["evaluations"].append(second_expert)
+    execution["input"] = frozen_input
+    execution["result"]["standardResult"]["plotsGraphic"] = {
+        "expert_points": [[0.0, 0.0]],
+        "collective_point": [0.0, 0.0],
+        "expert_ids": ["expert-1"],
+    }
+
+    projection = build_generic_round_context(source, source["rounds"][1])["execution"][
+        "expertCollectiveProjection"
+    ]
+
+    assert projection["expert_ids"] == ["expert-1", "expert-2"]
+    assert projection["identical_evaluation_groups"] == [["expert-1", "expert-2"]]
+    assert projection["collective_identical_expert_ids"] == ["expert-1", "expert-2"]
+    assert len(projection["expert_points"]) == 2
+
+
 def test_historical_projection_reports_invalid_frozen_evidence_without_coordinates():
     source = sorting_context()
     execution = source["rounds"][1]["selectedExecution"]

@@ -89,6 +89,53 @@ const normalizePlotsGraphic = (value) => {
     }
     normalized.projection_space = projectionSpace;
   }
+  const normalizedExpertIds = normalized.expert_ids || [];
+  const knownExpertIds = new Set(normalizedExpertIds);
+  if (Object.hasOwn(value, "identical_evaluation_groups")) {
+    const groups = value.identical_evaluation_groups;
+    const groupedIds = new Set();
+    if (
+      !Array.isArray(groups) ||
+      !normalizedExpertIds.length ||
+      groups.some((group) => {
+        if (!Array.isArray(group) || group.length < 2) return true;
+        const ids = group.map(normalizeNonEmptyString);
+        if (
+          ids.some((id) => !id || !knownExpertIds.has(id)) ||
+          new Set(ids).size !== ids.length ||
+          ids.some((id) => groupedIds.has(id))
+        ) return true;
+        ids.forEach((id) => groupedIds.add(id));
+        return false;
+      })
+    ) {
+      throwInvalid(
+        "Sorting plotsGraphic.identical_evaluation_groups must contain disjoint groups of known expert IDs",
+        "result.plotsGraphic.identical_evaluation_groups",
+      );
+    }
+    normalized.identical_evaluation_groups = groups.map((group) =>
+      group.map((id) => normalizeNonEmptyString(id)),
+    );
+  }
+  if (Object.hasOwn(value, "collective_identical_expert_ids")) {
+    const ids = value.collective_identical_expert_ids;
+    const normalizedIds = Array.isArray(ids)
+      ? ids.map((id) => normalizeNonEmptyString(id))
+      : [];
+    if (
+      !Array.isArray(ids) ||
+      !normalizedExpertIds.length ||
+      normalizedIds.some((id) => !id || !knownExpertIds.has(id)) ||
+      new Set(normalizedIds).size !== normalizedIds.length
+    ) {
+      throwInvalid(
+        "Sorting plotsGraphic.collective_identical_expert_ids must contain unique known expert IDs",
+        "result.plotsGraphic.collective_identical_expert_ids",
+      );
+    }
+    normalized.collective_identical_expert_ids = normalizedIds;
+  }
   return normalized;
 };
 

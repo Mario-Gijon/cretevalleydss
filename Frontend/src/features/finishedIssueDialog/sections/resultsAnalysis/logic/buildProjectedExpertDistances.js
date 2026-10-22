@@ -1,4 +1,4 @@
-import { displayedProjectedDistance } from "../../../graphs/logic/buildExpertCollectiveConnectors.js";
+import { formatProjectedDistance } from "../../../graphs/logic/buildExpertCollectiveConnectors.js";
 
 const finite = (value) => typeof value === "number" && Number.isFinite(value);
 
@@ -23,12 +23,12 @@ export const buildProjectedExpertDistances = (projection) => {
     )
     .map((entry) => ({
       ...entry,
-      displayedDistance: displayedProjectedDistance(entry.distance),
+      formattedDistance: formatProjectedDistance(entry.distance),
     }));
-  const minimum = Math.min(...rows.map((entry) => entry.displayedDistance));
+  const minimum = Math.min(...rows.map((entry) => entry.distance));
   return rows.map((entry) => ({
     ...entry,
-    closest: entry.displayedDistance === minimum,
+    closest: entry.distance === minimum,
   }));
 };
 

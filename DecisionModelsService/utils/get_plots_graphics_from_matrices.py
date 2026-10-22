@@ -109,7 +109,10 @@ def get_plots_graphics_from_matrices(
     expert_points_np = transformed[:-1] - collective_point_np
 
     return {
-        "expert_points": np.round(expert_points_np, 4).tolist(),
-        "collective_point": np.round(collective_point_np, 4).tolist(),
+        # Keep the full floating-point projection. Rounding here can collapse
+        # distinct projected points and turn small positive distances into
+        # exact zeros before the UI has a chance to format them honestly.
+        "expert_points": expert_points_np.tolist(),
+        "collective_point": collective_point_np.tolist(),
         **({"projection_space": projection_space} if projection_space else {}),
     }

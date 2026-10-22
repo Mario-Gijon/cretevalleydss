@@ -127,8 +127,17 @@ def build_generic_round_context(analysis_context: dict, round_entry: dict) -> di
         raise ValueError(f"Generic Results Analysis does not support {result_structure['key']}@{result_structure['version']}")
     start = round_entry.get("start")
     projection = standard_result.get("plotsGraphic")
-    if result_structure == {"key": "sorting", "version": 1} and not projection:
-        projection = reconstruct_sorting_projection(execution)
+    if result_structure == {"key": "sorting", "version": 1}:
+        rebuilt_projection = reconstruct_sorting_projection(execution)
+        # TOPSIS-Sort stores frozen numeric input with the execution. Rebuild
+        # only optional display evidence so historical rounded projections can
+        # regain full coordinate precision and exact-matrix provenance without
+        # re-running classification. Keep a valid stored projection as fallback
+        # when the frozen input is absent or no longer usable.
+        if rebuilt_projection and not rebuilt_projection.get("reason"):
+            projection = rebuilt_projection
+        elif not projection:
+            projection = rebuilt_projection
 
     return deepcopy(
         {

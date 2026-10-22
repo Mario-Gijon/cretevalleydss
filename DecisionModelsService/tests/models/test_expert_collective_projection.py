@@ -71,3 +71,15 @@ def test_projection_rejects_values_outside_declared_domains_without_coordinates(
     )
 
     assert projection == {"reason": "values_outside_normalization_domain"}
+
+
+def test_projection_preserves_small_real_separations_instead_of_rounding_them_away():
+    matrices = [[[0.0]], [[1e-7]], [[10.0]]]
+    collective = np.mean(np.asarray(matrices, dtype=float), axis=0)
+
+    projection = get_plots_graphics_from_matrices(matrices, collective)
+    first, second = projection["expert_points"][:2]
+
+    assert first != second
+    assert np.hypot(first[0] - second[0], first[1] - second[1]) < 0.0001
+    assert np.round(first, 4).tolist() == np.round(second, 4).tolist()

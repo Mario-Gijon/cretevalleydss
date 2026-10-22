@@ -232,12 +232,14 @@ describe("sorting@1 result contract", () => {
 
   it("accepts and preserves optional validated expert projection evidence", () => {
     const plotsGraphic = {
-      expert_points: [[0, 0]],
+      expert_points: [[0, 0], [0, 0]],
       collective_point: [0, 0],
-      expert_ids: ["expert-1"],
-      expert_labels: ["Ada"],
-      expert_emails: ["ada@example.test"],
+      expert_ids: ["expert-1", "expert-2"],
+      expert_labels: ["Ada", "Grace"],
+      expert_emails: ["ada@example.test", "grace@example.test"],
       projection_space: "criterion_domain_minmax",
+      identical_evaluation_groups: [["expert-1", "expert-2"]],
+      collective_identical_expert_ids: ["expert-1", "expert-2"],
     };
     const normalized = normalize(validResult({ plotsGraphic }));
 
@@ -251,6 +253,22 @@ describe("sorting@1 result contract", () => {
       });
       expect(JSON.stringify(projection)).toContain("criterion_domain_minmax");
     }
+  });
+
+  it("rejects projection equality evidence that names unknown or repeated experts", () => {
+    const baseProjection = {
+      expert_points: [[0, 0], [0, 0]],
+      collective_point: [0, 0],
+      expert_ids: ["expert-1", "expert-2"],
+    };
+    expect(() => normalize(validResult({ plotsGraphic: {
+      ...baseProjection,
+      identical_evaluation_groups: [["expert-1", "unknown"]],
+    } }))).toThrow("known expert IDs");
+    expect(() => normalize(validResult({ plotsGraphic: {
+      ...baseProjection,
+      collective_identical_expert_ids: ["expert-1", "expert-1"],
+    } }))).toThrow("unique known expert IDs");
   });
 
   it("carries sorting data through execution, persistence, snapshots, active and Finished projections", () => {

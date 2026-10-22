@@ -13,6 +13,7 @@ import { buildAnalyticalScatterViewModel } from "../logic/buildAnalyticalScatter
 import { collectiveColorFor } from "../logic/analyticalScatterColors.js";
 import { buildExpertCollectiveConnectors } from "../logic/buildExpertCollectiveConnectors.js";
 import { expertCollectiveConnectorPlugin } from "../logic/expertCollectiveConnectorPlugin.js";
+import { Box, Stack, Typography } from "@mui/material";
 
 ChartJS.register(
   ScatterController,
@@ -35,20 +36,35 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color }) 
 
   if (!viewModel) return null;
 
-  const { expertPoints, collectivePoint, xRange, yRange } = viewModel;
+  const {
+    expertPoints,
+    expertMarkerGroups,
+    collectivePoint,
+    overlapGroups,
+    xRange,
+    yRange,
+  } = viewModel;
   const connectors = buildExpertCollectiveConnectors({ expertPoints, collectivePoint });
 
   const chartData = {
     datasets: [
       {
         label: "Experts",
-        data: expertPoints,
+        expertCollectiveRole: "experts",
+        data: expertMarkerGroups.map((group) => ({
+          ...group.experts[0],
+          x: group.x,
+          y: group.y,
+          experts: group.experts,
+          expertCount: group.experts.length,
+        })),
         backgroundColor: alpha(color, 0.85),
         pointRadius: compact ? 4 : 8,
         pointHoverRadius: compact ? 6 : 11,
       },
       {
         label: "Collective",
+        expertCollectiveRole: "collective",
         data: [collectivePoint],
         backgroundColor: alpha(collectiveColorFor(color), 0.98),
         borderColor: alpha(color, 0.95),
@@ -70,34 +86,28 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color }) 
         labels: { color: alpha("#fff", 0.85) },
       },
       tooltip: {
+        mode: "point",
         callbacks: {
           label: (ctx) => {
             const { datasetIndex, raw } = ctx;
             if (datasetIndex === 0) {
-              const name = raw.label || raw.email || raw.identity || "Expert";
-              const duplicateLabel = expertPoints.filter(
-                (point) => (point.label || point.email || point.identity || "Expert") === name,
-              ).length > 1;
-              const uniqueIdentity = (field, value) =>
-                value && value !== name && expertPoints.filter(
-                  (point) =>
-                    (point.label || point.email || point.identity || "Expert") === name &&
-                    point[field] === value,
-                ).length === 1;
-              const stableIdentity = uniqueIdentity("email", raw.email)
-                ? raw.email
-                : uniqueIdentity("identity", raw.identity)
-                  ? raw.identity
-                  : null;
-              const disambiguator = duplicateLabel && stableIdentity
-                ? ` (${stableIdentity})`
-                : "";
-              const x = Number.isFinite(raw.x) ? raw.x.toFixed(2) : "—";
-              const y = Number.isFinite(raw.y) ? raw.y.toFixed(2) : "—";
-              return `${name}${disambiguator} (${x}, ${y})`;
+              const representedExperts = raw.experts || [raw];
+              return representedExperts.map((expert) => {
+                const name = expert.label || expert.email || expert.identity || "Expert";
+                const duplicateLabel = expertPoints.filter(
+                  (point) => (point.label || point.email || point.identity || "Expert") === name,
+                ).length > 1;
+                const stableIdentity = expert.email || expert.identity;
+                const disambiguator = duplicateLabel && stableIdentity !== name
+                  ? ` (${stableIdentity})`
+                  : "";
+                const x = Number.isFinite(expert.x) ? String(expert.x) : "—";
+                const y = Number.isFinite(expert.y) ? String(expert.y) : "—";
+                return `${name}${disambiguator} (${x}, ${y})`;
+              });
             }
-            const x = Number.isFinite(raw.x) ? raw.x.toFixed(2) : "—";
-            const y = Number.isFinite(raw.y) ? raw.y.toFixed(2) : "—";
+            const x = Number.isFinite(raw.x) ? String(raw.x) : "—";
+            const y = Number.isFinite(raw.y) ? String(raw.y) : "—";
             return `Collective (${x}, ${y})`;
           },
         },
@@ -121,5 +131,20 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color }) 
     },
   };
 
-  return <Scatter data={chartData} options={chartOptions} />;
+  return (
+    <Box sx={{ width: "100%", height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <Box sx={{ flex: 1, minHeight: 0 }}>
+        <Scatter data={chartData} options={chartOptions} />
+      </Box>
+      {overlapGroups.length ? (
+        <Stack spacing={0.35} sx={{ pt: 0.5 }}>
+          {overlapGroups.map((group, index) => (
+            <Typography key={`${group.x}-${group.y}-${index}`} variant="caption" color="text.secondary" data-testid="expert-collective-overlap-note">
+              {group.message}
+            </Typography>
+          ))}
+        </Stack>
+      ) : null}
+    </Box>
+  );
 };
