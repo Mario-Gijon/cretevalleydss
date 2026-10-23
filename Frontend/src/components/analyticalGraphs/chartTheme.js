@@ -86,3 +86,36 @@ export const buildRadialChartOptions = () => ({
 });
 
 export const chartColor = (index) => ANALYTICAL_CHART_COLORS[index % ANALYTICAL_CHART_COLORS.length];
+
+const hashIdentity = (identity) => {
+  let hash = 2166136261;
+  for (const character of String(identity || "series")) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+const hslToHex = (hue, saturation, lightness) => {
+  const normalizedSaturation = saturation / 100;
+  const normalizedLightness = lightness / 100;
+  const chroma = (1 - Math.abs(2 * normalizedLightness - 1)) * normalizedSaturation;
+  const section = hue / 60;
+  const secondary = chroma * (1 - Math.abs((section % 2) - 1));
+  const [red, green, blue] = section < 1 ? [chroma, secondary, 0]
+    : section < 2 ? [secondary, chroma, 0]
+      : section < 3 ? [0, chroma, secondary]
+        : section < 4 ? [0, secondary, chroma]
+          : section < 5 ? [secondary, 0, chroma]
+            : [chroma, 0, secondary];
+  const offset = normalizedLightness - chroma / 2;
+  return [red, green, blue]
+    .map((value) => Math.round((value + offset) * 255).toString(16).padStart(2, "0"))
+    .join("");
+};
+
+/** Stable identity-based colors for series whose order can change in the UI. */
+export const stableChartColor = (identity) => {
+  const hash = hashIdentity(identity);
+  return `#${hslToHex(hash % 360, 68, 64)}`;
+};

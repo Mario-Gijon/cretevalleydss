@@ -163,6 +163,12 @@ def test_analysis_visualizations_include_two_graphs_and_dynamic_alternative_and_
     assert len(sensitivity["data"]["series"]) == 5
     assert all(item["values"] for item in sensitivity["data"]["series"])
     assert all(item["style"]["borderDash"] for item in sensitivity["data"]["series"][3:])
+    assert all(item["role"] == "alternative" for item in sensitivity["data"]["series"][:3])
+    assert all(item["role"] == "boundary" for item in sensitivity["data"]["series"][3:])
+    assert sensitivity["presentation"]["chartHeight"] == {"xs": 420, "sm": 500, "md": 580}
+    assert sensitivity["presentation"]["alternativeSelector"] == {"recommendedCount": 3}
+    assert "methodDetails" in sensitivity["presentation"]
+    assert "unavailableSamples" in sensitivity["data"]
 
 
 def test_boundary_profiles_are_presented_in_category_preference_order():

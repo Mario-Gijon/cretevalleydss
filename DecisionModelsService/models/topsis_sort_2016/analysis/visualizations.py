@@ -152,6 +152,8 @@ def _sensitivity_line(
             {
                 "key": alternative["alternativeId"],
                 "label": alternative["name"],
+                "role": "alternative",
+                "style": {"highlightConfiguredWeight": True},
                 "values": values,
             }
         )
@@ -182,8 +184,16 @@ def _sensitivity_line(
             {
                 "key": f"profile-{profile['profileId']}",
                 "label": profile["label"],
+                "role": "boundary",
                 "values": values,
-                "style": {"borderDash": [7, 5], "pointRadius": 0},
+                "style": {
+                    "borderDash": [7, 5],
+                    "borderWidth": 1.5,
+                    "opacity": 0.68,
+                    "pointRadius": 0,
+                    "pointHoverRadius": 3,
+                    "pointHitRadius": 7,
+                },
             }
         )
 
@@ -221,7 +231,29 @@ def _sensitivity_line(
             "xScaleType": "linear",
             "x": [point["variedWeight"] for point in points],
             "configuredWeight": item["configuredWeight"],
+            "unavailableSamples": [
+                {
+                    "weight": point["variedWeight"],
+                    "reason": point.get("reason"),
+                }
+                for point in points
+                if not point["available"]
+            ],
             "series": [*alternative_series, *profile_series],
+        },
+        "presentation": {
+            "chartHeight": {"xs": 420, "sm": 500, "md": 580},
+            "stableSeriesColors": True,
+            "compactLegend": True,
+            "originalWeightMarker": True,
+            "showUnavailableSamples": True,
+            "alternativeSelector": {"recommendedCount": 3},
+            "methodDetails": (
+                "Other criterion weights are redistributed proportionally. "
+                "TOPSIS-Sort is recomputed at each discrete sample; sampled "
+                "changes identify an interval, not an exact threshold. "
+                "Mathematically unavailable scenarios remain blank."
+            ),
         },
     }
 

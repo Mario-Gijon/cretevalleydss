@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
 const scatterState = vi.hoisted(() => ({ data: null, options: null }));
-const lineState = vi.hoisted(() => ({ data: null, options: null }));
+const lineState = vi.hoisted(() => ({ data: null, options: null, plugins: null }));
 
 vi.mock("chart.js", () => ({
   Chart: { register: vi.fn() },
@@ -11,10 +11,11 @@ vi.mock("chart.js", () => ({
 }));
 vi.mock("react-chartjs-2", () => ({
   Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-min={options.scales.x.min} data-x-max={options.scales.x.max} />,
-  Line: ({ data, options }) => {
+  Line: ({ data, options, plugins }) => {
     lineState.data = data;
     lineState.options = options;
-    return <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-scale={options.scales.x.type || "category"} data-y-scale={options.scales.y.type || "category"} />;
+    lineState.plugins = plugins;
+    return <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={typeof data.datasets[0].pointRadius === "function" ? "scriptable" : data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-scale={options.scales.x.type || "category"} data-y-scale={options.scales.y.type || "category"} />;
   },
   Scatter: ({ data, options }) => {
     scatterState.data = data;
@@ -28,6 +29,7 @@ vi.mock("react-chartjs-2", () => ({
 
 import { AnalyticalGraph, HeatmapAnalyticalGraph, analyticalGraphRegistry } from "../../../src/components/analyticalGraphs/index.js";
 import { preferenceDistributionMatrixPlugin } from "../../../src/components/analyticalGraphs/logic/preferenceDistributionMatrixPlugin.js";
+import { chartColor, stableChartColor } from "../../../src/components/analyticalGraphs/chartTheme.js";
 import { getVisualizationLayout } from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/modelVisualizationLayout.js";
 
 const descriptors = {
@@ -178,7 +180,7 @@ describe("AnalyticalGraph", () => {
     expect(lineState.data.datasets[0].data[2].y).toBeNull();
     expect(lineState.data.datasets[0].spanGaps).toBe(false);
     expect(lineState.data.datasets[1].borderDash).toEqual([7, 5]);
-    expect(lineState.options.plugins.legend.labels.usePointStyle).toBe(false);
+    expect(lineState.options.plugins.legend.display).toBe(false);
     expect(lineState.data.datasets[0].pointRadius({ raw: lineState.data.datasets[0].data[1] })).toBeGreaterThan(3);
     expect(lineState.options.scales.x.min).toBe(0);
     expect(lineState.options.scales.x.max).toBe(1);
@@ -188,6 +190,135 @@ describe("AnalyticalGraph", () => {
       raw: lineState.data.datasets[0].data[1],
       dataset: lineState.data.datasets[0],
     })).toContain("Category: High");
+  });
+
+  it("keeps sensitivity series colors stable, de-emphasizes boundaries, and explains original and unavailable weights", () => {
+    const visualization = {
+      key: "topsis-sort-criterion-weight-sensitivity-sustainability",
+      type: "line",
+      title: "Criterion weight sensitivity · Sustainability",
+      presentation: {
+        stableSeriesColors: true,
+        compactLegend: true,
+        originalWeightMarker: true,
+        showUnavailableSamples: true,
+        chartHeight: { xs: 420, sm: 500, md: 580 },
+        methodDetails: "Other criterion weights are redistributed proportionally and TOPSIS-Sort is recalculated at every sample.",
+      },
+      xAxis: { label: "Varied importance weight", min: 0, max: 1 },
+      yAxis: { label: "Relative closeness coefficient", min: 0, max: 1 },
+      data: {
+        xScaleType: "linear",
+        x: [0, 0.145678, 0.95, 1],
+        configuredWeight: 0.145678,
+        unavailableSamples: [{ weight: 1, reason: "alternative_equals_boundary" }],
+        series: [
+          { key: "alternative-a", label: "Premium option with a long local display name", role: "alternative", values: [
+            { x: 0, y: 0.8, details: { Weight: 0, Category: "High" } },
+            { x: 0.145678, y: 0.75, isConfiguredWeight: true, details: { Weight: 0.145678, Category: "High" } },
+            { x: 0.95, y: 0.5, details: { Weight: 0.95, Category: "Medium" } },
+            { x: 1, y: null, details: { Weight: 1, "Unavailable reason": "alternative_equals_boundary" } },
+          ] },
+          { key: "alternative-b", label: "Budget option", role: "alternative", values: [
+            { x: 0, y: 0.4 }, { x: 0.145678, y: 0.45, isConfiguredWeight: true }, { x: 0.95, y: 0.55 }, { x: 1, y: null },
+          ] },
+          { key: "profile-low-medium", label: "Low / Medium boundary", role: "boundary", style: { borderDash: [7, 5], borderWidth: 1.5, opacity: 0.68, pointRadius: 0, pointHoverRadius: 3 }, values: [
+            { x: 0, y: 0.5 }, { x: 0.145678, y: 0.51, isConfiguredWeight: true }, { x: 0.95, y: 0.52 }, { x: 1, y: null },
+          ] },
+        ],
+      },
+    };
+
+    render(<AnalyticalGraph visualization={visualization} />);
+
+    expect(lineState.data.datasets).toHaveLength(3);
+    expect(lineState.data.datasets[0].borderColor).toBe(stableChartColor("alternative-a"));
+    expect(lineState.data.datasets[0].pointRadius({ raw: lineState.data.datasets[0].data[1] })).toBeGreaterThan(3);
+    expect(lineState.data.datasets[0].data[3].y).toBeNull();
+    expect(lineState.data.datasets[0].spanGaps).toBe(false);
+    expect(lineState.data.datasets[2].borderDash).toEqual([7, 5]);
+    expect(lineState.data.datasets[2].borderWidth).toBe(1.5);
+    expect(lineState.data.datasets[2].pointRadius({ raw: lineState.data.datasets[2].data[1] })).toBe(0);
+    expect(lineState.options.plugins.legend.display).toBe(false);
+    expect(lineState.options.plugins.originalWeightMarker).toEqual({ enabled: true, value: 0.145678 });
+    expect(lineState.plugins[0].id).toBe("original-weight-marker");
+    const canvasContext = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      setLineDash: vi.fn(),
+    };
+    lineState.plugins[0].afterDatasetsDraw({
+      options: { plugins: { originalWeightMarker: { enabled: true, value: 0.145678 } } },
+      scales: { x: { getPixelForValue: () => 58 } },
+      chartArea: { top: 10, bottom: 210 },
+      ctx: canvasContext,
+    });
+    expect(canvasContext.moveTo).toHaveBeenCalledWith(58, 10);
+    expect(canvasContext.lineTo).toHaveBeenCalledWith(58, 210);
+    expect(lineState.options.scales.x.min).toBe(0);
+    expect(lineState.options.scales.x.max).toBe(1);
+    expect(screen.getByText("Original weight: 0.146")).toBeInTheDocument();
+    expect(screen.getByLabelText("Original collective effective weight 0.145678")).toBeInTheDocument();
+    expect(screen.getByText("Premium option with a long local display name")).toBeInTheDocument();
+    expect(screen.getByText("Low / Medium boundary")).toBeInTheDocument();
+    expect(screen.getByTestId("line-unavailable-samples")).toHaveTextContent("Weight 1.00 unavailable: an alternative falls exactly on a category boundary.");
+    expect(screen.getByRole("button", { name: "Sensitivity method details" })).toBeInTheDocument();
+  });
+
+  it("preserves the existing numeric line-chart colors and point sizing without sensitivity metadata", () => {
+    const visualization = {
+      key: "generic-numeric-line",
+      type: "line",
+      data: {
+        xScaleType: "linear",
+        x: [0, 0.5, 1],
+        series: [
+          { key: "series-a", label: "Series A", values: [
+            { x: 0, y: 0.2 }, { x: 0.5, y: 0.4, isConfiguredWeight: true }, { x: 1, y: 0.8 },
+          ] },
+          { key: "series-b", label: "Series A", values: [0.3, 0.5, 0.7] },
+        ],
+      },
+    };
+
+    render(<AnalyticalGraph visualization={visualization} />);
+
+    expect(lineState.data.datasets[0].borderColor).toBe(chartColor(0));
+    expect(lineState.data.datasets[0].backgroundColor).toBe(`${chartColor(0)}36`);
+    expect(lineState.data.datasets[1].borderColor).toBe(chartColor(1));
+    expect(lineState.data.datasets.map((dataset) => dataset.label)).toEqual(["Series A", "Series A"]);
+    expect(lineState.data.datasets[0].pointRadius({ raw: lineState.data.datasets[0].data[0] })).toBe(2.5);
+    expect(lineState.data.datasets[0].pointRadius({ raw: lineState.data.datasets[0].data[1] })).toBe(3.5);
+    expect(lineState.options.plugins.originalWeightMarker).toBeUndefined();
+  });
+
+  it("disambiguates duplicate alternative names with stable IDs in the legend and tooltips", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "topsis-sort-criterion-weight-sensitivity-price",
+      type: "line",
+      data: {
+        xScaleType: "linear",
+        x: [0, 1],
+        configuredWeight: 0.5,
+        series: [
+          { key: "alternative-a-123456", label: "Same name", role: "alternative", values: [{ x: 0, y: 0.4 }, { x: 1, y: 0.5 }] },
+          { key: "alternative-b-abcdef", label: "Same name", role: "alternative", values: [{ x: 0, y: 0.6 }, { x: 1, y: 0.7 }] },
+          { key: "profile-p1", label: "Boundary", role: "boundary", values: [{ x: 0, y: 0.3 }, { x: 1, y: 0.4 }] },
+        ],
+      },
+    }} />);
+
+    expect(lineState.data.datasets.slice(0, 2).map((dataset) => dataset.label)).toEqual([
+      "Same name · 123456",
+      "Same name · abcdef",
+    ]);
+    expect(lineState.data.datasets[0].data[0].label).toBe("Same name · 123456");
+    expect(screen.getByText("Same name · 123456")).toBeInTheDocument();
+    expect(screen.getByText("Same name · abcdef")).toBeInTheDocument();
   });
 
   it("passes scatter series with points and semantic axes", () => {
@@ -469,7 +600,7 @@ describe("AnalyticalGraph", () => {
     render(<div style={{ width: "320px" }}><AnalyticalGraph visualization={visualization} chartHeight={layout.chartHeight} chartMinWidth={layout.chartMinWidth} /></div>);
 
     const grid = screen.getByTestId("heatmap-analytical-graph");
-    const header = screen.getByTitle(criterionName);
+    expect(screen.getByTitle(criterionName)).toBeInTheDocument();
     const alternative = screen.getByText(alternativeName);
     const cell = screen.getByLabelText((label) => label.includes(`${criterionName}: 0.75`));
     const viewport = screen.getByTestId("analytical-graph-viewport");

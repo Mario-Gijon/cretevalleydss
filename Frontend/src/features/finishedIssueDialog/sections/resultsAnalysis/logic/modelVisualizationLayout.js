@@ -2,6 +2,7 @@ import {
   getPreferenceDistributionMetrics,
   isIndividualPreferenceDistribution,
 } from "../../../../../components/analyticalGraphs/logic/preferenceDistributionMatrix.js";
+import { resolveVisualizationPresentation } from "./resolveVisualizationPresentation.js";
 
 const collectionLength = (value) => Array.isArray(value) ? value.length : 0;
 const COMPACT_CHART_HEIGHT = Object.freeze({ xs: 300, sm: 320 });
@@ -58,6 +59,8 @@ const categoricalScatterWidth = (categories) => {
 
 export const getVisualizationLayout = (visualization) => {
   const data = visualization?.data || {};
+  const presentation = resolveVisualizationPresentation(visualization);
+  const preferredChartHeight = presentation.chartHeight;
   if (isIndividualPreferenceDistribution(visualization)) {
     return { span: 1, chartHeight: chartHeight(), chartMinWidth: getPreferenceDistributionMetrics(visualization).chartMinWidth };
   }
@@ -75,7 +78,11 @@ export const getVisualizationLayout = (visualization) => {
     }
     return { span: 1, chartHeight: chartHeight(), chartMinWidth: categoricalChartWidth(categoryCount, 72, 6) };
   }
-  if (visualization?.type === "line") return { span: 1, chartHeight: chartHeight(), chartMinWidth: categoricalChartWidth(collectionLength(data.x), 68, 8) };
+  if (visualization?.type === "line") {
+    const chartMinWidth = presentation.chartMinWidth
+      ?? (data.xScaleType === "linear" ? undefined : categoricalChartWidth(collectionLength(data.x), 68, 8));
+    return { span: 1, chartHeight: preferredChartHeight || chartHeight(), ...(chartMinWidth ? { chartMinWidth } : {}) };
+  }
   if (visualization?.type === "scatter" && Array.isArray(visualization.yAxis?.categories)) {
     return {
       span: 1,
@@ -107,7 +114,7 @@ export const getVisualizationLayout = (visualization) => {
           : categoricalChartWidth(columnCount, 84, 5),
     };
   }
-  return { span: 1, chartHeight: chartHeight() };
+  return { span: 1, chartHeight: preferredChartHeight || chartHeight() };
 };
 
 export const buildVisualizationLayout = (visualizations) => {

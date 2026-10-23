@@ -101,6 +101,25 @@ describe("getVisualizationLayout", () => {
     expect(getVisualizationLayout({ type: "line", data: { x: Array.from({ length: 10 }, (_, index) => index) } })).toEqual({ span: 1, chartHeight: { xs: 300, sm: 320 }, chartMinWidth: 680 });
   });
 
+  it("keeps continuous numeric sensitivity lines full-width and uses descriptor-specific responsive height", () => {
+    expect(getVisualizationLayout({
+      key: "topsis-sort-criterion-weight-sensitivity-sustainability",
+      type: "line",
+      data: { xScaleType: "linear", x: Array.from({ length: 21 }, (_, index) => index / 20) },
+    })).toEqual({ span: 1, chartHeight: { xs: 420, sm: 500, md: 580 } });
+    expect(getVisualizationLayout({
+      type: "line",
+      data: { xScaleType: "linear", x: Array.from({ length: 21 }, (_, index) => index / 20) },
+    })).toEqual({ span: 1, chartHeight: { xs: 300, sm: 320 } });
+  });
+
+  it("preserves dense categorical line spacing for existing models", () => {
+    expect(getVisualizationLayout({
+      type: "line",
+      data: { x: Array.from({ length: 10 }, (_, index) => `Round ${index + 1}`) },
+    })).toEqual({ span: 1, chartHeight: { xs: 300, sm: 320 }, chartMinWidth: 680 });
+  });
+
   it("reserves horizontal rank-cell width only for the individual preference distribution", () => {
     const descriptor = (expertCount) => ({
       key: "individual-preference-distribution",

@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalScatterChart", () => ({
@@ -15,7 +15,7 @@ vi.mock("@mui/x-charts/BarChart", () => ({
   BarChart: ({ height, xAxis, series }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} data-values={series[0].data.join("|")} />,
 }));
 vi.mock("../../../../../src/components/analyticalGraphs", () => ({
-  AnalyticalGraph: ({ visualization, titleVariant }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant}>{visualization?.key}</div>,
+  AnalyticalGraph: ({ visualization, titleVariant }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant} data-series-keys={JSON.stringify(visualization?.data?.series?.map((series) => series.key) || [])}>{visualization?.key}</div>,
   HeatmapAnalyticalGraph: ({ visualization }) => <div data-testid="alternative-relationships-heatmap" data-phase={visualization?.phase} data-values={JSON.stringify(visualization?.data?.values)} data-labels={JSON.stringify(visualization?.data?.rows?.map((row) => row.label))}>{visualization?.data?.rows?.map((row) => row.label).join("|")}</div>,
 }));
 
@@ -233,6 +233,133 @@ describe("VisualizationsPanel", () => {
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "criterion" }));
     fireEvent.click(screen.getByRole("option", { name: "Wind potential" }));
     expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "wind-sensitivity");
+  });
+
+  it("recommends up to three alternatives, supports selection actions, preserves boundaries, and hides Base for one run", async () => {
+    const weightSamples = [0, 0.15, 0.2, 0.8];
+    const alt = (key, label, categories) => ({
+      key,
+      label,
+      values: categories.map((category, index) => ({
+        x: weightSamples[index],
+        y: 0.8 - index * 0.1,
+        isConfiguredWeight: index === 1,
+        details: { Weight: weightSamples[index], Category: category },
+      })),
+    });
+    const descriptor = (criterionId, criterionLabel) => {
+      const sustainability = criterionId === "sustainability";
+      return {
+      key: `topsis-sort-criterion-weight-sensitivity-${criterionId}`,
+      type: "line",
+      scope: { dimension: "criterion", id: criterionId, label: criterionLabel },
+      data: {
+        xScaleType: "linear",
+        x: weightSamples,
+        configuredWeight: 0.15,
+        series: [
+          alt("alternative-premium", "Premium option", sustainability ? ["High", "High", "High", "High"] : ["High", "High", "Medium", "Medium"]),
+          alt("alternative-balanced", "Balanced option", sustainability ? ["Low", "Low", "Low", "Low"] : ["Low", "Medium", "Medium", "Medium"]),
+          alt("alternative-budget", "Budget option", sustainability ? ["Low", "Low", "Medium", "Medium"] : ["Low", "Low", "Low", "Low"]),
+          alt("alternative-far", "Far change", ["Low", "Low", "Low", "Medium"]),
+          alt("alternative-stable", "Stable option", ["Low", "Low", "Low", "Low"]),
+          { key: "profile-low-medium", label: "Low / Medium", role: "boundary", values: [] },
+          { key: "profile-medium-high", label: "Medium / High", role: "boundary", values: [] },
+        ],
+      },
+    };
+    };
+
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        alternativeEvaluationAnalysis: { analysis: { sections: [{
+          id: "topsis-sort-criterion-weight-sensitivity",
+          title: "Criterion weight sensitivity",
+          order: 0,
+          presentation: { layout: "stacked", scopeSelector: "criterion", comparisonKey: "same-input" },
+          visualizations: [descriptor("price", "Price"), descriptor("sustainability", "Sustainability")],
+        }] } },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const graph = screen.getByTestId("analytical-graph");
+    expect(screen.queryByText("Base")).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 5 selected");
+    expect(JSON.parse(graph.dataset.seriesKeys)).toEqual([
+      "alternative-premium",
+      "alternative-balanced",
+      "alternative-far",
+      "profile-low-medium",
+      "profile-medium-high",
+    ]);
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Alternatives" }));
+    fireEvent.click(screen.getByRole("option", { name: /Premium option/ }));
+    fireEvent.keyDown(screen.getByRole("listbox", { name: "Alternatives" }), { key: "Escape" });
+    expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("2 of 5 selected");
+    expect(JSON.parse(graph.dataset.seriesKeys)).not.toContain("alternative-premium");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show all" }));
+    expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("5 of 5 selected");
+    expect(JSON.parse(graph.dataset.seriesKeys)).toHaveLength(7);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 5 selected");
+    expect(JSON.parse(graph.dataset.seriesKeys)).not.toContain("alternative-stable");
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "criterion" }));
+    fireEvent.click(screen.getByRole("option", { name: "Sustainability" }));
+    expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "topsis-sort-criterion-weight-sensitivity-sustainability");
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 5 selected"));
+    expect(JSON.parse(screen.getByTestId("analytical-graph").dataset.seriesKeys)).toContain("alternative-budget");
+    expect(JSON.parse(screen.getByTestId("analytical-graph").dataset.seriesKeys)).not.toContain("alternative-stable");
+  });
+
+  it("does not base default selections on another execution and keeps comparison series keyed by alternative ID", () => {
+    const series = (key, label, categoryChange = false) => ({
+      key,
+      label,
+      values: [
+        { x: 0.1, y: 0.4, details: { Category: "Low" } },
+        { x: 0.2, y: 0.5, isConfiguredWeight: true, details: { Category: "Low" } },
+        { x: 0.3, y: 0.6, details: { Category: categoryChange ? "High" : "Low" } },
+      ],
+    });
+    const execution = (key, label, scenario) => ({
+      key,
+      displayLabel: label,
+      alternativeEvaluationAnalysis: { analysis: { sections: [{
+        id: "topsis-sort-criterion-weight-sensitivity",
+        title: "Criterion weight sensitivity",
+        order: 0,
+        presentation: { layout: "stacked", scopeSelector: "criterion", comparisonKey: "same-configuration" },
+        visualizations: [{
+          key: `topsis-sort-criterion-weight-sensitivity-price-${key}`,
+          type: "line",
+          scope: { dimension: "criterion", id: "price", label: "Price" },
+          data: { xScaleType: "linear", x: [0.1, 0.2, 0.3], configuredWeight: 0.2, series: scenario
+            ? [series("a-shared", "Shared A"), series("scenario-signal", "Scenario-only signal", true), { key: "profile-p1", label: "Boundary", role: "boundary", values: [] }]
+            : [series("a-shared", "Shared A"), series("b-base", "Base B"), series("c-base", "Base C"), series("z-base", "Base D"), { key: "profile-p1", label: "Boundary", role: "boundary", values: [] }]
+          },
+        }],
+      }] } },
+    });
+
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[execution("base", "Base", false), execution("scenario", "Scenario 1", true)]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const graphs = screen.getAllByTestId("analytical-graph");
+    expect(screen.getByText("Base")).toBeInTheDocument();
+    expect(screen.getByText("Scenario 1")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 5 selected");
+    expect(JSON.parse(graphs[0].dataset.seriesKeys)).toEqual(["a-shared", "b-base", "c-base", "profile-p1"]);
+    expect(JSON.parse(graphs[1].dataset.seriesKeys)).toEqual(["a-shared", "profile-p1"]);
+    expect(JSON.parse(graphs[1].dataset.seriesKeys)).not.toContain("scenario-signal");
   });
 
   it("shows incompatible TOPSIS-Sort configurations under separate execution labels", () => {

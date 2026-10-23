@@ -4,6 +4,7 @@ import { resolveAnalyticalGraphRenderer } from "./analyticalGraphRegistry.js";
 import { finishedIssueScrollbarSx } from "../../features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
 import { getVisualizationReadingGuide } from "../../features/finishedIssueDialog/sections/resultsAnalysis/logic/visualizationReadingGuides.js";
 import VisualizationReadingGuide from "../../features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationReadingGuide.jsx";
+import { resolveVisualizationPresentation } from "../../features/finishedIssueDialog/sections/resultsAnalysis/logic/resolveVisualizationPresentation.js";
 
 const graphFrameSx = (chartHeight) => ({ height: chartHeight || { xs: 300, sm: 360 }, minHeight: 0, width: "100%" });
 const HORIZONTAL_SCROLLBAR_GUTTER = 12;
@@ -36,7 +37,7 @@ const AnalyticalGraph = ({ visualization, chartHeight, chartMinWidth, titleVaria
   return <Box data-testid={`analytical-graph-${visualization.type}`}>
     <Typography component="h3" variant={titleVariant} sx={titleVariant === "subtitle1" ? { fontWeight: 800 } : undefined}>{title}</Typography>
     <VisualizationReadingGuide>{readingGuide.text}</VisualizationReadingGuide>
-    <Box sx={graphFrameSx(chartHeight)}>
+    <Box sx={graphFrameSx(chartHeight || resolveVisualizationPresentation(visualization).chartHeight)}>
       <Box data-testid="analytical-graph-viewport" sx={graphViewportSx}>
         <Box sx={graphContentSx(chartMinWidth)}><Renderer visualization={visualization} /></Box>
       </Box>

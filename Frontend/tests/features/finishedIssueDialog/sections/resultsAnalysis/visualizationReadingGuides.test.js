@@ -55,13 +55,15 @@ describe("visualization reading guides", () => {
   });
 
   it("covers dynamic sensitivity identifiers by their stable semantic prefixes", () => {
-    DYNAMIC_CHART_KEYS.forEach((key) => {
+    DYNAMIC_CHART_KEYS.slice(0, -1).forEach((key) => {
       const readingGuide = getVisualizationReadingGuide({ key, type: "line" });
       expect(readingGuide.text).toContain("Each line follows");
       expect(readingGuide.text).toContain("sampled");
     });
     expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS[0], type: "line" }).text).toContain("linguistic position (β)");
     expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS[2], type: "line" }).text).toContain("TOPSIS closeness");
+    expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS.at(-1), type: "line" }).text).toContain("Changing a criterion's weight");
+    expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS.at(-1), type: "line" }).text).toContain("Crossing a boundary can change the classification");
   });
 
   it("keeps fixed, dynamic, and generic guides concise", () => {

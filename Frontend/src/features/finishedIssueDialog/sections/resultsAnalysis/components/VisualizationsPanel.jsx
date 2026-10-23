@@ -1,8 +1,11 @@
 import {
   Box,
+  Button,
+  Checkbox,
   Chip,
   FormControl,
   InputLabel,
+  ListItemText,
   MenuItem,
   Select,
   Stack,
@@ -25,6 +28,7 @@ import { buildGenericRankingMovement } from "../logic/buildGenericRankingMovemen
 import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js";
 import { buildVisualizationLayout } from "../logic/modelVisualizationLayout.js";
 import { buildModelAnalysisSections, scopedEntities, visualizationsForScope } from "../logic/modelAnalysisSections.js";
+import { filterSensitivityVisualization, getSensitivityAlternativeOptions, recommendSensitivityAlternativeIds, resolveVisualizationPresentation } from "../logic/resolveVisualizationPresentation.js";
 import { getVisualizationReadingGuide } from "../logic/visualizationReadingGuides.js";
 import { buildGeneralVisualizationsLayout } from "../logic/buildGeneralVisualizationsLayout.js";
 import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
@@ -689,28 +693,83 @@ const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidt
   </Box> : <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ minWidth: 0, width: "100%" }}><VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex} compactTitle={compactTitles} /></Box>)}</Stack>;
 };
 
-const SemanticSection = ({ section }) => {
+const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const entities = scopedEntities(section);
   const selectable = entities.length > 3 || (
     section.presentation?.scopeSelector === "criterion" && entities.length > 1
   );
   const [selectedScopeKey, setSelectedScopeKey] = useState(selectable ? `${entities[0].dimension}:${entities[0].id}` : null);
   const selectedEntity = entities.find((entity) => `${entity.dimension}:${entity.id}` === selectedScopeKey) || null;
-  const visibleEntries = section.executions.map((entry) => ({ ...entry, visualizations: visualizationsForScope(entry.visualizations, selectedEntity) }));
+  const scopedEntries = section.executions.map((entry) => ({ ...entry, visualizations: visualizationsForScope(entry.visualizations, selectedEntity) }));
+  const scopedVisualizations = scopedEntries.flatMap((entry) => entry.visualizations);
+  const alternativeSelector = scopedVisualizations
+    .map((visualization) => resolveVisualizationPresentation(visualization).alternativeSelector)
+    .find((config) => config && typeof config === "object");
+  const alternativeOptions = alternativeSelector ? getSensitivityAlternativeOptions(scopedVisualizations) : [];
+  const firstScopedVisualization = scopedEntries.flatMap((entry) => entry.visualizations)[0] || null;
+  const recommendedAlternativeIds = recommendSensitivityAlternativeIds(firstScopedVisualization, alternativeSelector?.recommendedCount ?? 3);
+  const [selectedAlternativeIds, setSelectedAlternativeIds] = useState(null);
+  const [usesRecommendedSelection, setUsesRecommendedSelection] = useState(true);
+  const applicableSelectedAlternativeIds = Array.isArray(selectedAlternativeIds)
+    ? selectedAlternativeIds.filter((id) => alternativeOptions.some((option) => option.id === id))
+    : null;
+  const shouldUseScopeRecommendation = !usesRecommendedSelection
+    && Array.isArray(selectedAlternativeIds)
+    && selectedAlternativeIds.length > 0
+    && applicableSelectedAlternativeIds.length === 0
+    && alternativeOptions.length > 0;
+  const effectiveSelectedAlternativeIds = usesRecommendedSelection || shouldUseScopeRecommendation
+    ? recommendedAlternativeIds
+    : applicableSelectedAlternativeIds || [];
+  const visibleEntries = scopedEntries.map((entry) => ({
+    ...entry,
+    visualizations: alternativeSelector
+      ? entry.visualizations.map((visualization) => filterSensitivityVisualization(visualization, effectiveSelectedAlternativeIds))
+      : entry.visualizations,
+  }));
   const isSingleton = visibleEntries.length === 1 && visibleEntries[0].visualizations.length === 1;
   const stacked = section.presentation?.layout === "stacked";
   const leadFullWidth = section.presentation?.layout === "lead-full-width";
   const scenarioColumns = visibleEntries.map(() => "minmax(360px, 1fr)").join(" 1px ");
+  const updateAlternativeSelection = (event) => {
+    const value = event.target.value;
+    setUsesRecommendedSelection(false);
+    setSelectedAlternativeIds(Array.isArray(value) ? value : String(value).split(",").filter(Boolean));
+  };
   return <Box data-testid="model-analysis-semantic-section" sx={cardSx}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} sx={{ mb: isSingleton ? 0 : 1.4 }}>
       {!isSingleton ? <Box><Typography variant="h6" component="h3" sx={{ fontWeight: 900 }}>{section.title}</Typography></Box> : null}
-      {selectable ? <FormControl size="small" color="secondary" sx={{ minWidth: 190 }}><InputLabel id={`${section.id}-scope-label`}>{selectedEntity?.dimension || "Entity"}</InputLabel><Select labelId={`${section.id}-scope-label`} label={selectedEntity?.dimension || "Entity"} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>{entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}</Select></FormControl> : null}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap">
+        {selectable ? <FormControl size="small" color="secondary" sx={{ minWidth: 190 }}><InputLabel id={`${section.id}-scope-label`}>{selectedEntity?.dimension || "Entity"}</InputLabel><Select labelId={`${section.id}-scope-label`} label={selectedEntity?.dimension || "Entity"} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>{entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}</Select></FormControl> : null}
+        {alternativeSelector ? <Stack direction="row" spacing={0.4} alignItems="center" flexWrap="wrap">
+          <FormControl size="small" color="secondary" sx={{ minWidth: { xs: 230, sm: 270 }, maxWidth: { xs: "100%", sm: 320 } }}>
+            <InputLabel id={`${section.id}-alternatives-label`}>Alternatives</InputLabel>
+            <Select
+              multiple
+              labelId={`${section.id}-alternatives-label`}
+              label="Alternatives"
+              value={effectiveSelectedAlternativeIds}
+              onChange={updateAlternativeSelection}
+              renderValue={(selected) => `Alternatives · ${selected.length} of ${alternativeOptions.length} selected`}
+              MenuProps={{ PaperProps: { sx: { maxHeight: 360, maxWidth: 360 } } }}
+            >
+              {alternativeOptions.map((option) => <MenuItem key={option.id} value={option.id}>
+                <Checkbox checked={effectiveSelectedAlternativeIds.includes(option.id)} size="small" />
+                <ListItemText primary={option.label} secondary={option.label === option.id ? null : option.id} />
+              </MenuItem>)}
+            </Select>
+          </FormControl>
+          <Button size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
+          <Button size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
+        </Stack> : null}
+      </Stack>
     </Stack>
+    {alternativeSelector && effectiveSelectedAlternativeIds.length === 0 ? <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: 0.8 }}>No alternatives selected. The category boundaries remain visible.</Typography> : null}
     <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: visibleEntries.length > 1 ? scenarioColumns : "minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.4, minWidth: visibleEntries.length > 2 ? `${visibleEntries.length * 360}px` : 0 }}>
         {visibleEntries.flatMap((entry, index) => [
           <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>
-            {visibleEntries.length > 1 || section.presentation?.comparisonKey ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}
+            {visibleEntries.length > 1 || showExecutionLabels ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}
             {entry.visualizations.length
               ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} />
               : <VisualizationUnavailableState minHeight={150} />}
@@ -732,7 +791,7 @@ const MODEL_ANALYSIS_STAGES = [
 const StageVisualizations = ({ executions, stage }) => {
   const sections = buildModelAnalysisSections(executions, stage.key);
   if (!sections.length) return null;
-  return <Box><Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>{stage.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>{stage.description}</Typography><Stack spacing={1.4}>{sections.map((section) => <SemanticSection key={section.id} section={section} />)}</Stack></Box>;
+  return <Box><Typography variant="h5" component="h2" sx={{ mb: 0.4, fontWeight: 900 }}>{stage.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mb: 1.2 }}>{stage.description}</Typography><Stack spacing={1.4}>{sections.map((section) => <SemanticSection key={section.id} section={section} showExecutionLabels={executions.length > 1} />)}</Stack></Box>;
 };
 
 const VisualizationsPanel = ({ visualizations = {}, executions = [], categoricalComparisons = [] }) => {
