@@ -21,6 +21,7 @@ const MODEL_CHART_KEYS = [
   "topsis-ideal-distances",
   "topsis-collective-performance-profile",
   "topsis-numeric-ideal-distances",
+  "topsis-sort-closeness-category-boundaries",
   "topsis-positive-distance-contributions",
   "topsis-negative-distance-contributions",
   "criterion-weighted-discrimination",
@@ -39,6 +40,7 @@ const DYNAMIC_CHART_KEYS = [
   "two-tuple-expert-weight-sensitivity-expert-1",
   "criterion-weight-sensitivity-criterion-1",
   "evaluator-weight-sensitivity-expert-1",
+  "topsis-sort-criterion-weight-sensitivity-price",
 ];
 
 describe("visualization reading guides", () => {
@@ -93,6 +95,7 @@ describe("visualization reading guides", () => {
     expect(getVisualizationReadingGuide({ key: "collective-beta-heatmap" }).text).toContain("may not be more desirable for a cost criterion");
     expect(getVisualizationReadingGuide({ key: "topsis-ideal-distances" }).text).toContain("most desirable reference");
     expect(getVisualizationReadingGuide({ key: "topsis-numeric-ideal-distances" }).text).toContain("Smaller D+ means closer");
+    expect(getVisualizationReadingGuide({ key: "topsis-sort-closeness-category-boundaries" }).text).toContain("does not predict reclassification");
     expect(getVisualizationReadingGuide({ key: "topsis-positive-distance-contributions" }).text).toContain("not an additive effect on relative closeness");
     expect(getVisualizationReadingGuide({ key: "topsis-negative-distance-contributions" }).text).toContain("squared distance from the least desirable reference");
     expect(getVisualizationReadingGuide({ key: "loco-rank-impact" }).text).toContain("not real-world causal importance");

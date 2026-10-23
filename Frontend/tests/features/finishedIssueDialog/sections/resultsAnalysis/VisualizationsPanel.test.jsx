@@ -209,6 +209,58 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByTestId("analytical-graph")[2]).toHaveAttribute("data-title-variant", "h6");
   });
 
+  it("provides the criterion selector for two scoped TOPSIS-Sort sensitivity series and switches the chart", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        displayLabel: "Base",
+        alternativeEvaluationAnalysis: { analysis: { sections: [{
+          id: "topsis-sort-criterion-weight-sensitivity",
+          title: "Criterion weight sensitivity",
+          order: 0,
+          presentation: { layout: "stacked", scopeSelector: "criterion", comparisonKey: "same-input" },
+          visualizations: [
+            { key: "price-sensitivity", type: "line", scope: { dimension: "criterion", id: "price", label: "Price", order: 0 } },
+            { key: "wind-sensitivity", type: "line", scope: { dimension: "criterion", id: "wind", label: "Wind potential", order: 1 } },
+          ],
+        }] } },
+      }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByRole("combobox", { name: "criterion" })).toBeInTheDocument();
+    expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "price-sensitivity");
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "criterion" }));
+    fireEvent.click(screen.getByRole("option", { name: "Wind potential" }));
+    expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "wind-sensitivity");
+  });
+
+  it("shows incompatible TOPSIS-Sort configurations under separate execution labels", () => {
+    const analysis = (comparisonKey, key) => ({ sections: [{
+      id: "topsis-sort-criterion-weight-sensitivity",
+      title: "Criterion weight sensitivity",
+      order: 0,
+      presentation: { layout: "stacked", scopeSelector: "criterion", comparisonKey },
+      visualizations: [{ key, type: "line", scope: { dimension: "criterion", id: "price", label: "Price", order: 0 } }],
+    }] });
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[
+        { key: "base", displayLabel: "Base", alternativeEvaluationAnalysis: { analysis: analysis("base-config", "base-price") } },
+        { key: "scenario", displayLabel: "Scenario", alternativeEvaluationAnalysis: { analysis: analysis("scenario-config", "scenario-price") } },
+      ]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getAllByTestId("model-analysis-semantic-section")).toHaveLength(2);
+    expect(screen.getAllByTestId("semantic-section-scenario")).toHaveLength(2);
+    expect(screen.getByText("Base")).toBeInTheDocument();
+    expect(screen.getByText("Scenario")).toBeInTheDocument();
+    expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
+      "base-price",
+      "scenario-price",
+    ]);
+  });
+
   it("stacks every direct child when generic section presentation requests it", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{ key: "base", displayLabel: "Base", alternativeEvaluationAnalysis: { analysis: { sections: [{

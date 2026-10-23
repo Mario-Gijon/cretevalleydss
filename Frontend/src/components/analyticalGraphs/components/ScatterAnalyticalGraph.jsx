@@ -34,9 +34,15 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
     backgroundColor: `${chartColor(index)}d9`,
     borderColor: chartColor(index),
     pointStyle: isPreferenceDistribution ? "circle" : undefined,
-    pointRadius: isPreferenceDistribution ? 5.5 : 5,
-    pointHoverRadius: isPreferenceDistribution ? 6.5 : 7,
-    pointHitRadius: isPreferenceDistribution ? 2 : undefined,
+    pointRadius: isPreferenceDistribution ? 5.5 : (item.pointRadius ?? 5),
+    pointHoverRadius: isPreferenceDistribution ? 6.5 : (item.pointHoverRadius ?? 7),
+    pointHitRadius: isPreferenceDistribution ? 2 : item.pointHitRadius,
+    showLine: Boolean(item.showLine),
+    borderDash: item.borderDash,
+    borderWidth: isPreferenceDistribution
+      ? undefined
+      : (item.borderWidth ?? (item.showLine ? 2 : 0)),
+    order: item.order,
     pointBorderColor: isPreferenceDistribution ? "rgba(7,13,22,0.94)" : undefined,
     pointBorderWidth: isPreferenceDistribution ? 1.5 : undefined,
     ...(isPreferenceDistribution ? {
@@ -135,7 +141,53 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
           },
         },
       }
-    : baseOptions;
+    : {
+        ...baseOptions,
+        scales: {
+          ...baseOptions.scales,
+          x: {
+            ...baseOptions.scales.x,
+            type: visualization.xAxis?.scaleType || "linear",
+            min: visualization.xAxis?.min,
+            max: visualization.xAxis?.max,
+            grid: { display: true, color: "rgba(255,255,255,0.10)" },
+          },
+          y: {
+            ...baseOptions.scales.y,
+            type: visualization.yAxis?.scaleType || "linear",
+            min: visualization.yAxis?.min,
+            max: visualization.yAxis?.max,
+            afterBuildTicks: visualization.yAxis?.categories?.length
+              ? (scale) => {
+                  scale.ticks = visualization.yAxis.categories.map((category) => ({ value: category.value }));
+                }
+              : undefined,
+            ticks: {
+              ...baseOptions.scales.y.ticks,
+              stepSize: visualization.yAxis?.categories?.length ? 1 : undefined,
+              autoSkip: false,
+            },
+          },
+        },
+        plugins: {
+          ...baseOptions.plugins,
+          legend: {
+            ...baseOptions.plugins.legend,
+            labels: { ...baseOptions.plugins.legend.labels, usePointStyle: false },
+          },
+          tooltip: {
+            ...baseOptions.plugins.tooltip,
+            callbacks: {
+              title: (contexts) => contexts[0]?.raw?.label || "",
+              label: (context) => {
+                const point = context.raw;
+                const details = detailText(point?.details);
+                return `${context.dataset?.label || "Point"}: (${point?.x}, ${point?.y})${details ? ` — ${details}` : ""}`;
+              },
+            },
+          },
+        },
+      };
 
   return <Scatter data-testid="scatter-analytical-graph" data={{ datasets: normalized }} options={chartOptions} />;
 };

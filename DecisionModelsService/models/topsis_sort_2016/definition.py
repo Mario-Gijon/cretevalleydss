@@ -56,7 +56,7 @@ MODEL_DEFINITION = ModelDefinition(
         "limitations": [
             "Requires numerical evaluations and one boundary profile per category boundary.",
             "Equal alternative and profile closeness values have no assignment in the paper.",
-            "Consensus and model-specific mathematical analysis are not provided for this sorting result.",
+            "Consensus is not provided for this sorting result. Criterion weight sensitivity uses sampled scenarios and does not identify exact transition thresholds between samples.",
         ],
     },
     request_examples=TOPSIS_SORT_2016_REQUEST_EXAMPLES,

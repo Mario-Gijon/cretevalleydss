@@ -118,6 +118,20 @@ describe("getVisualizationLayout", () => {
     expect(getVisualizationLayout({ key: "another-scatter", type: "scatter" }).chartHeight).toEqual({ xs: 300, sm: 320 });
   });
 
+  it("keeps many alternative rows readable and reserves width for long alternative names", () => {
+    const categories = Array.from({ length: 50 }, (_, index) => ({
+      value: index,
+      label: `Alternative ${index}: a long environmental restoration proposal name`,
+    }));
+    const layout = getVisualizationLayout({
+      type: "scatter",
+      yAxis: { categories },
+    });
+
+    expect(layout.chartHeight).toEqual({ xs: 1532, sm: 1532 });
+    expect(layout.chartMinWidth).toBeGreaterThan(600);
+  });
+
   it("keeps even compact-card rows complete and preserves descriptor order", () => {
     const descriptors = [{ key: "pie", type: "pie" }, { key: "radar", type: "radar" }, { key: "scatter", type: "scatter" }, { key: "last", type: "pie" }];
     const layout = buildVisualizationLayout(descriptors);

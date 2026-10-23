@@ -56,4 +56,30 @@ describe("model analysis semantic sections", () => {
     expect(section.presentation).toEqual({ layout: "stacked" });
     expect(visualizationsForScope(section.executions[0].visualizations, scopedEntities(section)[1]).map((entry) => entry.key)).toEqual(["criterion-b"]);
   });
+
+  it("keeps model-analysis executions with different compatibility keys in separate sections", () => {
+    const sections = buildModelAnalysisSections([
+      execution("base", [{
+        id: "sensitivity",
+        title: "Criterion weight sensitivity",
+        order: 0,
+        presentation: { comparisonKey: "input-a", scopeSelector: "criterion" },
+        visualizations: [{ key: "base-price", scope: { dimension: "criterion", id: "price", label: "Price", order: 0 } }],
+      }]),
+      execution("scenario", [{
+        id: "sensitivity",
+        title: "Criterion weight sensitivity",
+        order: 0,
+        presentation: { comparisonKey: "input-b", scopeSelector: "criterion" },
+        visualizations: [{ key: "scenario-price", scope: { dimension: "criterion", id: "price", label: "Price", order: 0 } }],
+      }]),
+    ]);
+
+    expect(sections).toHaveLength(2);
+    expect(sections.map((section) => section.executions.map((entry) => entry.execution.key))).toEqual([
+      ["base"],
+      ["scenario"],
+    ]);
+    expect(new Set(sections.map((section) => section.id)).size).toBe(2);
+  });
 });

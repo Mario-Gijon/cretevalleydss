@@ -57,6 +57,10 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
     "Position relative to TOPSIS reference solutions",
     "Each point is an alternative's validated position relative to two reference profiles. Smaller D+ means closer to the most desirable profile; larger D− means farther from the least desirable one. Hover for precise values; coincident names share one point's tooltip, and nearby alternatives are listed without moving their coordinates.",
   ),
+  "topsis-sort-closeness-category-boundaries": guide(
+    "Closeness and category boundaries",
+    "Horizontal position is each alternative's relative closeness coefficient (0–1); each row names the alternative. Dashed profiles mark boundaries in configured order, from least to most preferred. Hover for the exact coefficient, assigned category, and nearest-boundary distance. A nearby boundary does not predict reclassification.",
+  ),
   "topsis-positive-distance-contributions": guide(
     "Criterion contributions to squared distance from the most desirable reference",
     "Each horizontal bar is an alternative; its colored criterion segments add to its squared distance from the most desirable reference. Larger segments show criteria where its profile is farther from that reference. This is a decomposition of squared distance, not an additive effect on relative closeness or ranking.",
@@ -149,6 +153,13 @@ const DYNAMIC_GUIDES = [
     guide(
       "Evaluator weight sensitivity",
       "Each line follows an alternative's TOPSIS closeness as the selected evaluator's importance is varied. The horizontal axis is the tested weight and the vertical axis is closeness; higher closeness means nearer the most desirable reference. Other weights are redistributed proportionally, and points are sampled rather than exact thresholds.",
+    ),
+  ],
+  [
+    "topsis-sort-criterion-weight-sensitivity-",
+    guide(
+      "Criterion weight sensitivity",
+      "Each line follows an alternative's TOPSIS-Sort relative closeness as the selected criterion's weight changes; solid lines show alternatives. Dashed boundary profiles are recalculated at every sample. A sampled category change occurs where its assigned category differs from the validated baseline; consecutive valid samples identify an interval, not an exact threshold. Gaps mark mathematically unavailable scenarios.",
     ),
   ],
 ];

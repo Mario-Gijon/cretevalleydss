@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
 const scatterState = vi.hoisted(() => ({ data: null, options: null }));
+const lineState = vi.hoisted(() => ({ data: null, options: null }));
 
 vi.mock("chart.js", () => ({
   Chart: { register: vi.fn() },
@@ -10,7 +11,11 @@ vi.mock("chart.js", () => ({
 }));
 vi.mock("react-chartjs-2", () => ({
   Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-min={options.scales.x.min} data-x-max={options.scales.x.max} />,
-  Line: ({ data, options }) => <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} />,
+  Line: ({ data, options }) => {
+    lineState.data = data;
+    lineState.options = options;
+    return <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-scale={options.scales.x.type || "category"} data-y-scale={options.scales.y.type || "category"} />;
+  },
   Scatter: ({ data, options }) => {
     scatterState.data = data;
     scatterState.options = options;
@@ -138,12 +143,102 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-point-hover-radius", "5");
   });
 
+  it("renders numerical TOPSIS-Sort weight axes, baseline points, dashed limits, and gaps", () => {
+    const visualization = {
+      key: "topsis-sort-criterion-weight-sensitivity-price",
+      type: "line",
+      xAxis: { label: "Varied importance weight", min: 0, max: 1, scaleType: "linear" },
+      yAxis: { label: "Relative closeness coefficient", min: 0, max: 1, scaleType: "linear" },
+      data: {
+        xScaleType: "linear",
+        x: [0, 0.107143, 0.15, 1],
+        series: [
+          { key: "alt-a", label: "Premium option", values: [
+            { x: 0, y: 0.7, label: "Premium option", details: { Weight: 0, Category: "High" } },
+            { x: 0.107143, y: 0.68, label: "Premium option", isConfiguredWeight: true, details: { Weight: 0.107143, Category: "High" } },
+            { x: 0.15, y: null, label: "Premium option", details: { Weight: 0.15, "Unavailable reason": "profile tie" } },
+            { x: 1, y: 0.4, label: "Premium option", details: { Weight: 1, Category: "Medium" } },
+          ] },
+          { key: "profile-low-mid", label: "Low / Medium boundary", style: { borderDash: [7, 5], pointRadius: 0 }, values: [
+            { x: 0, y: 0.5, label: "Low / Medium boundary", details: { Weight: 0, Boundary: "Low / Medium" } },
+            { x: 0.107143, y: 0.53, label: "Low / Medium boundary", isConfiguredWeight: true, details: { Weight: 0.107143, Boundary: "Low / Medium" } },
+            { x: 0.15, y: null, label: "Low / Medium boundary", details: { Weight: 0.15 } },
+            { x: 1, y: 0.3, label: "Low / Medium boundary", details: { Weight: 1 } },
+          ] },
+        ],
+      },
+    };
+
+    render(<AnalyticalGraph visualization={visualization} />);
+
+    expect(screen.getByTestId("line-chart")).toHaveAttribute("data-x-scale", "linear");
+    expect(screen.getByTestId("line-chart")).toHaveAttribute("data-y-scale", "linear");
+    expect(lineState.data.labels).toBeUndefined();
+    expect(lineState.data.datasets[0].data[1].x).toBe(0.107143);
+    expect(lineState.data.datasets[0].data[2].y).toBeNull();
+    expect(lineState.data.datasets[0].spanGaps).toBe(false);
+    expect(lineState.data.datasets[1].borderDash).toEqual([7, 5]);
+    expect(lineState.options.plugins.legend.labels.usePointStyle).toBe(false);
+    expect(lineState.data.datasets[0].pointRadius({ raw: lineState.data.datasets[0].data[1] })).toBeGreaterThan(3);
+    expect(lineState.options.scales.x.min).toBe(0);
+    expect(lineState.options.scales.x.max).toBe(1);
+    expect(lineState.options.scales.y.min).toBe(0);
+    expect(lineState.options.scales.y.max).toBe(1);
+    expect(lineState.options.plugins.tooltip.callbacks.label({
+      raw: lineState.data.datasets[0].data[1],
+      dataset: lineState.data.datasets[0],
+    })).toContain("Category: High");
+  });
+
   it("passes scatter series with points and semantic axes", () => {
     render(<AnalyticalGraph visualization={{ ...descriptors.scatter, xAxis: { label: "D+" }, yAxis: { label: "D-" } }} />);
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-series", "1");
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-point-radius", "5");
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-axis", "D+");
     expect(screen.getByText(/Rank: 2/)).toBeInTheDocument();
+  });
+
+  it("draws dashed profile reference lines and alternative rows on numerical closeness axes", () => {
+    const visualization = {
+      key: "topsis-sort-closeness-category-boundaries",
+      type: "scatter",
+      xAxis: { label: "Relative closeness coefficient", min: 0, max: 1, scaleType: "linear" },
+      yAxis: {
+        label: "Alternative",
+        min: -0.5,
+        max: 1.5,
+        scaleType: "linear",
+        categories: [{ value: 0, label: "Premium option" }, { value: 1, label: "Budget option" }],
+      },
+      data: { series: [
+        { key: "alternatives", label: "Alternatives", points: [{ id: "a", label: "Premium option", x: 0.82, y: 0, details: { Category: "High", Closeness: 0.82 } }] },
+        { key: "profile", label: "Medium / High boundary", showLine: true, borderDash: [6, 4], pointRadius: 0, pointHitRadius: 8, points: [
+          { id: "profile", label: "Medium / High boundary", x: 0.68, y: -0.5, details: { Boundary: "Medium / High", Closeness: 0.68 } },
+          { id: "profile", label: "Medium / High boundary", x: 0.68, y: 1.5, details: { Boundary: "Medium / High", Closeness: 0.68 } },
+        ] },
+      ] },
+    };
+
+    render(<AnalyticalGraph visualization={visualization} />);
+
+    expect(scatterState.options.scales.x.type).toBe("linear");
+    expect(scatterState.options.scales.x.min).toBe(0);
+    expect(scatterState.options.scales.x.max).toBe(1);
+    expect(scatterState.options.scales.y.type).toBe("linear");
+    expect(scatterState.options.scales.y.min).toBe(-0.5);
+    expect(scatterState.options.scales.y.max).toBe(1.5);
+    expect(scatterState.options.scales.y.ticks.callback(0)).toBe("Premium option");
+    expect(scatterState.data.datasets[1].showLine).toBe(true);
+    expect(scatterState.data.datasets[1].borderDash).toEqual([6, 4]);
+    expect(scatterState.data.datasets[1].pointRadius).toBe(0);
+    expect(scatterState.data.datasets[1].pointHitRadius).toBe(8);
+    expect(scatterState.data.datasets[0].borderWidth).toBe(0);
+    expect(scatterState.data.datasets[1].borderWidth).toBe(2);
+    expect(scatterState.options.plugins.legend.labels.usePointStyle).toBe(false);
+    expect(scatterState.options.plugins.tooltip.callbacks.label({
+      dataset: scatterState.data.datasets[0],
+      raw: scatterState.data.datasets[0].data[0],
+    })).toContain("Category: High");
   });
 
   it("maps valid scatter category metadata to semantic numeric-axis ticks and ignores malformed entries", () => {

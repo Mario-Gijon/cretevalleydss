@@ -7,6 +7,7 @@ const collectionLength = (value) => Array.isArray(value) ? value.length : 0;
 const COMPACT_CHART_HEIGHT = Object.freeze({ xs: 300, sm: 320 });
 const DYNAMIC_CHART_MIN_HEIGHT = 320;
 const DYNAMIC_CHART_MAX_HEIGHT = 800;
+const CATEGORICAL_SCATTER_MAX_HEIGHT = 1600;
 const HORIZONTAL_BAR_CATEGORY_HEIGHT = 32;
 const HORIZONTAL_BAR_CHROME_HEIGHT = 104;
 const HEATMAP_ROW_HEIGHT = 34;
@@ -34,6 +35,26 @@ const dynamicChartHeight = (itemCount, pixelsPerItem, chromeHeight) => {
 
   return { xs: height, sm: height };
 };
+const categoricalScatterHeight = (itemCount) => {
+  const height = Math.min(
+    CATEGORICAL_SCATTER_MAX_HEIGHT,
+    Math.max(DYNAMIC_CHART_MIN_HEIGHT, itemCount * 28 + 132)
+  );
+
+  return { xs: height, sm: height };
+};
+const categoricalScatterWidth = (categories) => {
+  const longestLabelLength = categories.reduce(
+    (longest, category) => Math.max(
+      longest,
+      typeof category?.label === "string" ? category.label.length : 0,
+    ),
+    0,
+  );
+  return longestLabelLength > 38
+    ? Math.min(1200, longestLabelLength * 7 + 220)
+    : undefined;
+};
 
 export const getVisualizationLayout = (visualization) => {
   const data = visualization?.data || {};
@@ -55,6 +76,13 @@ export const getVisualizationLayout = (visualization) => {
     return { span: 1, chartHeight: chartHeight(), chartMinWidth: categoricalChartWidth(categoryCount, 72, 6) };
   }
   if (visualization?.type === "line") return { span: 1, chartHeight: chartHeight(), chartMinWidth: categoricalChartWidth(collectionLength(data.x), 68, 8) };
+  if (visualization?.type === "scatter" && Array.isArray(visualization.yAxis?.categories)) {
+    return {
+      span: 1,
+      chartHeight: categoricalScatterHeight(visualization.yAxis.categories.length),
+      chartMinWidth: categoricalScatterWidth(visualization.yAxis.categories),
+    };
+  }
   if (visualization?.type === "heatmap") {
     const columnCount = collectionLength(data.columns);
     const mccAdjustmentMap = visualization.key === "mcc-adjustment-map";

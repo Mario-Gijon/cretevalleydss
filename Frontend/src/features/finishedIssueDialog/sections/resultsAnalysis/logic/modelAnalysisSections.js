@@ -17,15 +17,24 @@ export const buildModelAnalysisSections = (executions, stage = "alternativeEvalu
   const sections = new Map();
   asArray(executions).forEach((execution, executionOrder) => {
     sectionsForExecution(execution, stage).forEach((section) => {
-      const existing = sections.get(section.id) || { ...section, executionOrder, executions: [] };
+      const comparisonKey = text(section.presentation?.comparisonKey);
+      const groupKey = comparisonKey ? `${section.id}:${comparisonKey}` : section.id;
+      const existing = sections.get(groupKey) || {
+        ...section,
+        id: comparisonKey ? `${section.id}-${comparisonKey.slice(0, 12)}` : section.id,
+        executionOrder,
+        executions: [],
+      };
       existing.executions.push({ execution, visualizations: section.visualizations });
-      sections.set(section.id, existing);
+      sections.set(groupKey, existing);
     });
   });
   return [...sections.values()]
     .map((section) => ({
       ...section,
-      executions: asArray(executions).map((execution) => section.executions.find((entry) => entry.execution.key === execution.key) || { execution, visualizations: [] }),
+      executions: section.presentation?.comparisonKey
+        ? section.executions
+        : asArray(executions).map((execution) => section.executions.find((entry) => entry.execution.key === execution.key) || { execution, visualizations: [] }),
     }))
     .sort((left, right) => left.order - right.order || left.executionOrder - right.executionOrder || left.id.localeCompare(right.id));
 };
