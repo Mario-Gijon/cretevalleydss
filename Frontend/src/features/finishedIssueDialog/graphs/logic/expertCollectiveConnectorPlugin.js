@@ -45,34 +45,6 @@ export const expertCollectiveConnectorPlugin = {
       });
     });
 
-    const pixelGroups = new Map();
-    chart.data.datasets.forEach((dataset, datasetIndex) => {
-      if (!dataset.expertCollectiveRole || !chart.isDatasetVisible(datasetIndex)) return;
-      chart.getDatasetMeta(datasetIndex).data.forEach((element, dataIndex) => {
-        if (element.skip || !Number.isFinite(element.x) || !Number.isFinite(element.y)) return;
-        const key = `${Math.round(element.x)}\u0000${Math.round(element.y)}`;
-        const group = pixelGroups.get(key) || { x: element.x, y: element.y, count: 0 };
-        const rawPoint = dataset.data[dataIndex];
-        group.count += dataset.expertCollectiveRole === "experts"
-          ? Math.max(1, rawPoint?.expertCount || 1)
-          : 1;
-        pixelGroups.set(key, group);
-      });
-    });
-    pixelGroups.forEach((group) => {
-      if (group.count < 2) return;
-      const label = `×${group.count}`;
-      ctx.save();
-      ctx.font = "600 10px sans-serif";
-      const width = ctx.measureText(label).width + 8;
-      const x = Math.min(chart.chartArea.right - width, group.x + 9);
-      const y = Math.max(chart.chartArea.top + 12, group.y - 10);
-      ctx.fillStyle = "rgba(4,12,20,0.9)";
-      ctx.fillRect(x, y - 9, width, 14);
-      ctx.fillStyle = "rgba(255,255,255,0.96)";
-      ctx.fillText(label, x + 4, y + 1);
-      ctx.restore();
-    });
     ctx.restore();
   },
   afterDraw(chart) {

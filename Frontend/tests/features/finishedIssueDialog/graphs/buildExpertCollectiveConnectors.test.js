@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { buildExpertCollectiveConnectors, findHoveredConnector, pointToSegmentDistance } from "../../../../src/features/finishedIssueDialog/graphs/logic/buildExpertCollectiveConnectors.js";
 import { expertCollectiveConnectorPlugin } from "../../../../src/features/finishedIssueDialog/graphs/logic/expertCollectiveConnectorPlugin.js";
@@ -38,15 +38,15 @@ describe("buildExpertCollectiveConnectors", () => {
     expect(findHoveredConnector({ point: { x: 5, y: 4 }, connectors: [connector], tolerance: 5 })).toBe(connector);
   });
 
-  it("draws a discreet overlap count at the shared pixel without moving the marker", () => {
+  it("keeps the grouped marker at its shared pixel without drawing an overlap count", () => {
     const drawCalls = [];
-    const textLabels = [];
+    const fillRect = vi.fn();
+    const fillText = vi.fn();
     const ctx = {
       save() {},
       restore() {},
-      measureText: (text) => ({ width: text.length * 6 }),
-      fillRect() {},
-      fillText: (text, x, y) => textLabels.push({ text, x, y }),
+      fillRect,
+      fillText,
     };
     const expertElement = {
       x: 25.2,
@@ -70,7 +70,8 @@ describe("buildExpertCollectiveConnectors", () => {
     expertCollectiveConnectorPlugin.afterDatasetsDraw(chart);
 
     expect(drawCalls).toEqual([[25.2, 40.3]]);
-    expect(textLabels).toEqual([expect.objectContaining({ text: "×3" })]);
+    expect(fillRect).not.toHaveBeenCalled();
+    expect(fillText).not.toHaveBeenCalled();
     expect(expertElement.x).toBe(25.2);
     expect(expertElement.y).toBe(40.3);
   });
