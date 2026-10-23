@@ -19,7 +19,7 @@ const graphViewportSx = {
 };
 const graphContentSx = (chartMinWidth) => ({ height: "100%", minWidth: chartMinWidth || 0, width: "100%" });
 
-const AnalyticalGraph = ({ visualization, chartHeight, chartMinWidth, titleVariant = "h6" }) => {
+const AnalyticalGraph = ({ visualization, chartHeight, chartMinWidth, titleVariant = "h6", controls = null }) => {
   if (!visualization || typeof visualization !== "object") {
     return <Alert severity="info">This visualization is unavailable.</Alert>;
   }
@@ -37,6 +37,7 @@ const AnalyticalGraph = ({ visualization, chartHeight, chartMinWidth, titleVaria
   return <Box data-testid={`analytical-graph-${visualization.type}`}>
     <Typography component="h3" variant={titleVariant} sx={titleVariant === "subtitle1" ? { fontWeight: 800 } : undefined}>{title}</Typography>
     <VisualizationReadingGuide>{readingGuide.text}</VisualizationReadingGuide>
+    {controls ? <Box data-testid="analytical-graph-controls" sx={{ width: "100%", minWidth: 0, mb: 1.2 }}>{controls}</Box> : null}
     <Box sx={graphFrameSx(chartHeight || resolveVisualizationPresentation(visualization).chartHeight)}>
       <Box data-testid="analytical-graph-viewport" sx={graphViewportSx}>
         <Box sx={graphContentSx(chartMinWidth)}><Renderer visualization={visualization} /></Box>

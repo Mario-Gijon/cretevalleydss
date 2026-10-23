@@ -15,7 +15,7 @@ vi.mock("@mui/x-charts/BarChart", () => ({
   BarChart: ({ height, xAxis, series }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} data-values={series[0].data.join("|")} />,
 }));
 vi.mock("../../../../../src/components/analyticalGraphs", () => ({
-  AnalyticalGraph: ({ visualization, titleVariant }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant} data-series-keys={JSON.stringify(visualization?.data?.series?.map((series) => series.key) || [])}>{visualization?.key}</div>,
+  AnalyticalGraph: ({ visualization, titleVariant, controls }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant} data-series-keys={JSON.stringify(visualization?.data?.series?.map((series) => series.key) || [])}>{controls ? <><h3>{visualization?.title || visualization?.key || "Visualization"}</h3><p data-testid="mock-visualization-description">{visualization?.description || "Visualization description"}</p><div data-testid="analytical-graph-controls">{controls}</div><div data-testid="mock-visualization-legend">Legend</div><div data-testid="mock-visualization-chart">Chart</div></> : null}{visualization?.key}</div>,
   HeatmapAnalyticalGraph: ({ visualization }) => <div data-testid="alternative-relationships-heatmap" data-phase={visualization?.phase} data-values={JSON.stringify(visualization?.data?.values)} data-labels={JSON.stringify(visualization?.data?.rows?.map((row) => row.label))}>{visualization?.data?.rows?.map((row) => row.label).join("|")}</div>,
 }));
 
@@ -174,6 +174,7 @@ describe("VisualizationsPanel", () => {
       "topsis-positive-distance-contributions",
       "topsis-negative-distance-contributions",
     ]);
+    expect(screen.queryByTestId("analytical-graph-controls")).not.toBeInTheDocument();
     expect(screen.getByText("Alternative evaluation visualizations")).toBeInTheDocument();
   });
 
@@ -228,11 +229,48 @@ describe("VisualizationsPanel", () => {
       visualizations={{ mode: "single", consensus: { enabled: false } }}
     /></ThemeProvider>);
 
-    expect(screen.getByRole("combobox", { name: "criterion" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Criterion" })).toBeInTheDocument();
     expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "price-sensitivity");
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "criterion" }));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Criterion" }));
     fireEvent.click(screen.getByRole("option", { name: "Wind potential" }));
     expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "wind-sensitivity");
+  });
+
+  it("places an automatically available 2-tuple criterion selector inside the titled visualization", () => {
+    const visualizations = ["quality", "cost", "reliability", "delivery"].map((criterion, order) => ({
+      key: `two-tuple-criterion-weight-sensitivity-${criterion}`,
+      type: "line",
+      title: `Criterion weight sensitivity · ${criterion}`,
+      description: `Sampled β values while varying ${criterion}.`,
+      scope: { dimension: "criterion", id: criterion, label: criterion, order },
+      data: { series: [] },
+    }));
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", alternativeEvaluationAnalysis: { analysis: { sections: [{
+        id: "two-tuple-criterion-sensitivity",
+        title: "Criterion weight sensitivity",
+        order: 0,
+        presentation: { layout: "stacked" },
+        visualizations,
+      }] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const graph = screen.getByTestId("analytical-graph");
+    const title = within(graph).getByRole("heading", { name: "Criterion weight sensitivity · quality" });
+    const description = within(graph).getByTestId("mock-visualization-description");
+    const controls = within(graph).getByTestId("analytical-graph-controls");
+    const selector = within(controls).getByRole("combobox", { name: "Criterion" });
+    expect(title.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(description.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(selector.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-sizeSmall");
+    expect(within(controls).queryByRole("combobox", { name: "Alternatives" })).not.toBeInTheDocument();
+    expect(within(controls).queryByRole("button", { name: "Show all" })).not.toBeInTheDocument();
+    expect(within(controls).queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
+
+    fireEvent.mouseDown(selector);
+    fireEvent.click(screen.getByRole("option", { name: "cost" }));
+    expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "two-tuple-criterion-weight-sensitivity-cost");
   });
 
   it("uses theme secondary controls and human-readable alternative names in sensitivity selection", () => {
@@ -248,6 +286,8 @@ describe("VisualizationsPanel", () => {
     const visualization = {
       key: "topsis-sort-criterion-weight-sensitivity-price",
       type: "line",
+      title: "Criterion weight sensitivity · Product quality",
+      description: "Sensitivity of assigned categories to the weight of product quality.",
       scope: { dimension: "criterion", id: "price", label: "Price" },
       data: {
         xScaleType: "linear",
@@ -276,17 +316,32 @@ describe("VisualizationsPanel", () => {
       visualizations={{ mode: "single", consensus: { enabled: false } }}
     /></ThemeProvider>);
 
-    const criterionSelect = screen.getByRole("combobox", { name: "criterion" });
+    const criterionSelect = screen.getByRole("combobox", { name: "Criterion" });
     const criterionLabel = document.getElementById(criterionSelect.getAttribute("aria-labelledby"));
     expect(criterionLabel).toHaveClass("MuiFormLabel-colorSecondary");
+    expect(criterionLabel).toHaveClass("MuiInputLabel-shrink");
     expect(criterionSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+    expect(criterionSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-sizeSmall");
 
     const alternativesSelect = screen.getByRole("combobox", { name: "Alternatives" });
     const alternativesLabel = document.getElementById(alternativesSelect.getAttribute("aria-labelledby"));
     expect(alternativesLabel).toHaveClass("MuiFormLabel-colorSecondary");
+    expect(alternativesLabel).toHaveClass("MuiInputLabel-shrink");
     expect(alternativesSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+    expect(alternativesSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-sizeSmall");
     expect(screen.getByRole("button", { name: "Show all" })).toHaveClass("MuiButton-colorSecondary");
     expect(screen.getByRole("button", { name: "Reset" })).toHaveClass("MuiButton-colorSecondary");
+
+    const graph = screen.getByTestId("analytical-graph");
+    const title = within(graph).getByRole("heading", { name: "Criterion weight sensitivity · Product quality" });
+    const description = within(graph).getByTestId("mock-visualization-description");
+    const controls = within(graph).getByTestId("analytical-graph-controls");
+    const legend = within(graph).getByTestId("mock-visualization-legend");
+    const chart = within(graph).getByTestId("mock-visualization-chart");
+    expect(title.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(description.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(controls.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(legend.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     fireEvent.mouseDown(alternativesSelect);
     const listbox = screen.getByRole("listbox", { name: "Alternatives" });
@@ -374,7 +429,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 5 selected");
     expect(JSON.parse(graph.dataset.seriesKeys)).not.toContain("alternative-stable");
 
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "criterion" }));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Criterion" }));
     fireEvent.click(screen.getByRole("option", { name: "Sustainability" }));
     expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "topsis-sort-criterion-weight-sensitivity-sustainability");
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 5 selected"));
@@ -421,6 +476,9 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByText("Base")).toBeInTheDocument();
     expect(screen.getByText("Scenario 1")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 5 selected");
+    expect(screen.getAllByTestId("analytical-graph-controls")).toHaveLength(1);
+    expect(within(graphs[0]).getByTestId("analytical-graph-controls")).toBeInTheDocument();
+    expect(within(graphs[1]).queryByTestId("analytical-graph-controls")).not.toBeInTheDocument();
     expect(JSON.parse(graphs[0].dataset.seriesKeys)).toEqual(["a-shared", "b-base", "c-base", "profile-p1"]);
     expect(JSON.parse(graphs[1].dataset.seriesKeys)).toEqual(["a-shared", "profile-p1"]);
     expect(JSON.parse(graphs[1].dataset.seriesKeys)).not.toContain("scenario-signal");
@@ -730,7 +788,10 @@ describe("VisualizationsPanel", () => {
     expect(expert.compareDocumentPosition(consensus) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(consensus.compareDocumentPosition(relationshipRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getAllByTestId("alternative-relationships-section")).toHaveLength(1);
-    expect(screen.getByRole("combobox", { name: "Phase" })).toBeInTheDocument();
+    const phaseSelect = screen.getByRole("combobox", { name: "Phase" });
+    expect(phaseSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-sizeSmall");
+    const phaseLabel = document.getElementById(phaseSelect.getAttribute("aria-labelledby"));
+    expect(phaseLabel).toHaveClass("MuiInputLabel-shrink");
     expect(within(relationships).getByTestId("visualization-reading-guide")).toHaveTextContent(/relative to the observed score range/);
   });
 

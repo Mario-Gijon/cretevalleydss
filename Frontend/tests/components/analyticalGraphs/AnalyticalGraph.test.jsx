@@ -105,6 +105,19 @@ describe("AnalyticalGraph", () => {
     });
   });
 
+  it("renders optional visualization controls after the title and reading guide, before the chart", () => {
+    render(<AnalyticalGraph visualization={descriptors.scatter} controls={<button type="button">Criterion</button>} />);
+
+    const graph = screen.getByTestId("analytical-graph-scatter");
+    const title = within(graph).getByRole("heading", { name: "Scatter" });
+    const guide = within(graph).getByTestId("visualization-reading-guide");
+    const controls = within(graph).getByTestId("analytical-graph-controls");
+    const chart = within(graph).getByTestId("scatter-chart");
+    expect(title.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(guide.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(controls.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("renders the title before its semantic reading guide and the graph, without showing insight", () => {
     render(<AnalyticalGraph visualization={{
       ...descriptors.heatmap,

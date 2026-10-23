@@ -85,6 +85,7 @@ const ExecutionRelationships = ({ execution }) => {
         <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: 220 } }}>
           <InputLabel id={phaseInputId}>Phase</InputLabel>
           <Select
+            size="small"
             labelId={phaseInputId}
             label="Phase"
             value={selectedPhase ?? ""}

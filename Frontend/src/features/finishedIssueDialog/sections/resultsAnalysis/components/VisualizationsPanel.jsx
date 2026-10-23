@@ -665,14 +665,14 @@ const ExpertCollectiveRelationship = ({ visualizations }) => {
   );
 };
 
-const VisualizationPane = ({ descriptor, execution, index, compactTitle }) => {
+const VisualizationPane = ({ descriptor, execution, index, compactTitle, controls = null }) => {
   const { chartHeight, chartMinWidth } = buildVisualizationLayout([descriptor])[0];
   return <Box key={typeof descriptor?.key === "string" && descriptor.key ? descriptor.key : `${execution.key}-visualization-${index}`} data-testid="alternative-evaluation-visualization-pane" sx={{ minWidth: 0, width: "100%" }}>
-    <AnalyticalGraph visualization={descriptor} chartHeight={chartHeight} chartMinWidth={chartMinWidth} titleVariant={compactTitle ? "subtitle1" : "h6"} />
+    <AnalyticalGraph visualization={descriptor} chartHeight={chartHeight} chartMinWidth={chartMinWidth} titleVariant={compactTitle ? "subtitle1" : "h6"} controls={controls} />
   </Box>;
 };
 
-const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidth = false, compactTitles = false, forceFullWidth = false }) => {
+const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidth = false, compactTitles = false, forceFullWidth = false, controls = null }) => {
   const layouts = buildVisualizationLayout(visualizations);
   const rows = [];
   for (let index = 0; index < layouts.length; index += 1) {
@@ -688,10 +688,10 @@ const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidt
     } else rows.push([current]);
   }
   return <Stack spacing={1.4}>{rows.map((row, rowIndex) => row.length === 2 ? <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.2, minWidth: 0 }}>
-    <VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex * 2} compactTitle={compactTitles} />
+    <VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex * 2} compactTitle={compactTitles} controls={rowIndex === 0 ? controls : null} />
     <Box data-testid="semantic-section-pane-divider" aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
     <VisualizationPane descriptor={row[1].visualization} execution={execution} index={rowIndex * 2 + 1} compactTitle={compactTitles} />
-  </Box> : <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ minWidth: 0, width: "100%" }}><VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex} compactTitle={compactTitles} /></Box>)}</Stack>;
+  </Box> : <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ minWidth: 0, width: "100%" }}><VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex} compactTitle={compactTitles} controls={rowIndex === 0 ? controls : null} /></Box>)}</Stack>;
 };
 
 const SemanticSection = ({ section, showExecutionLabels = false }) => {
@@ -737,15 +737,39 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
     setUsesRecommendedSelection(false);
     setSelectedAlternativeIds(Array.isArray(value) ? value : String(value).split(",").filter(Boolean));
   };
-  return <Box data-testid="model-analysis-semantic-section" sx={cardSx}>
-    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} sx={{ mb: isSingleton ? 0 : 1.4 }}>
-      {!isSingleton ? <Box><Typography variant="h6" component="h3" sx={{ fontWeight: 900 }}>{section.title}</Typography></Box> : null}
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap">
-        {selectable ? <FormControl size="small" color="secondary" sx={{ minWidth: 190 }}><InputLabel color="secondary" id={`${section.id}-scope-label`}>{selectedEntity?.dimension || "Entity"}</InputLabel><Select color="secondary" labelId={`${section.id}-scope-label`} label={selectedEntity?.dimension || "Entity"} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>{entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}</Select></FormControl> : null}
-        {alternativeSelector ? <Stack direction="row" spacing={0.4} alignItems="center" flexWrap="wrap">
-          <FormControl size="small" color="secondary" sx={{ minWidth: { xs: 230, sm: 270 }, maxWidth: { xs: "100%", sm: 320 } }}>
+  const scopeLabel = selectedEntity?.dimension
+    ? `${selectedEntity.dimension[0].toUpperCase()}${selectedEntity.dimension.slice(1)}`
+    : "Entity";
+  const visualizationControls = selectable || alternativeSelector ? (
+    <Stack
+      direction={{ xs: "column", sm: "row" }}
+      spacing={1}
+      useFlexGap
+      flexWrap="wrap"
+      alignItems={{ xs: "stretch", sm: "center" }}
+      sx={{ width: "100%", minWidth: 0 }}
+    >
+      {selectable ? (
+        <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 190 } }}>
+          <InputLabel color="secondary" id={`${section.id}-scope-label`}>{scopeLabel}</InputLabel>
+          <Select size="small" color="secondary" labelId={`${section.id}-scope-label`} label={scopeLabel} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>
+            {entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}
+          </Select>
+        </FormControl>
+      ) : null}
+      {alternativeSelector ? (
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={0.8}
+          useFlexGap
+          flexWrap="wrap"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          sx={{ minWidth: 0 }}
+        >
+          <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: 270 }, maxWidth: { xs: "100%", sm: 320 } }}>
             <InputLabel color="secondary" id={`${section.id}-alternatives-label`}>Alternatives</InputLabel>
             <Select
+              size="small"
               multiple
               color="secondary"
               labelId={`${section.id}-alternatives-label`}
@@ -761,11 +785,17 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
               </MenuItem>)}
             </Select>
           </FormControl>
-          <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
-          <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
-        </Stack> : null}
-      </Stack>
+          <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" alignItems="center">
+            <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
+            <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
+          </Stack>
+        </Stack>
+      ) : null}
     </Stack>
+  ) : null;
+  const controlTargetIndex = visibleEntries.findIndex((entry) => entry.visualizations.length > 0);
+  return <Box data-testid="model-analysis-semantic-section" sx={cardSx}>
+    {!isSingleton ? <Typography variant="h6" component="h3" sx={{ fontWeight: 900, mb: 1.4 }}>{section.title}</Typography> : null}
     {alternativeSelector && effectiveSelectedAlternativeIds.length === 0 ? <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: 0.8 }}>No alternatives selected. The category boundaries remain visible.</Typography> : null}
     <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: visibleEntries.length > 1 ? scenarioColumns : "minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.4, minWidth: visibleEntries.length > 2 ? `${visibleEntries.length * 360}px` : 0 }}>
@@ -773,7 +803,7 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
           <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>
             {visibleEntries.length > 1 || showExecutionLabels ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}
             {entry.visualizations.length
-              ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} />
+              ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} controls={index === controlTargetIndex ? visualizationControls : null} />
               : <VisualizationUnavailableState minHeight={150} />}
           </Box>,
           ...(index < visibleEntries.length - 1 ? [
