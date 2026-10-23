@@ -786,8 +786,8 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
             </Select>
           </FormControl>
           <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" alignItems="center">
-            <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
-            <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
+            <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
+            <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
           </Stack>
         </Stack>
       ) : null}

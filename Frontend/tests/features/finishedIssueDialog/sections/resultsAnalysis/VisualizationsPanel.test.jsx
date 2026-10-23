@@ -329,8 +329,13 @@ describe("VisualizationsPanel", () => {
     expect(alternativesLabel).toHaveClass("MuiInputLabel-shrink");
     expect(alternativesSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
     expect(alternativesSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-sizeSmall");
-    expect(screen.getByRole("button", { name: "Show all" })).toHaveClass("MuiButton-colorSecondary");
-    expect(screen.getByRole("button", { name: "Reset" })).toHaveClass("MuiButton-colorSecondary");
+    const showAllButton = screen.getByRole("button", { name: "Show all" });
+    const resetButton = screen.getByRole("button", { name: "Reset" });
+    [showAllButton, resetButton].forEach((button) => {
+      expect(button).toHaveClass("MuiButton-outlined");
+      expect(button).toHaveClass("MuiButton-colorSecondary");
+      expect(button).toHaveClass("MuiButton-sizeSmall");
+    });
 
     const graph = screen.getByTestId("analytical-graph");
     const title = within(graph).getByRole("heading", { name: "Criterion weight sensitivity · Product quality" });
