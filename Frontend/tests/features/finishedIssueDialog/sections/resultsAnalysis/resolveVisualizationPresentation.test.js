@@ -60,6 +60,23 @@ describe("criterion weight sensitivity presentation", () => {
     expect(visualization.data.series).toHaveLength(4);
   });
 
+  it("uses short stable disambiguators for duplicate names without exposing internal IDs", () => {
+    const options = getSensitivityAlternativeOptions([{
+      data: { series: [
+        item("6adb3911d0553d472971bda0", "Same option", ["High", "High", "High", "High"]),
+        item("6adb3911d0553d472971bd99", "Same option", ["Low", "Low", "Low", "Low"]),
+        item("other-id", "Named option", ["Low", "Low", "Low", "Low"]),
+      ] },
+    }]);
+
+    expect(options).toEqual([
+      { id: "other-id", label: "Named option", displayLabel: "Named option" },
+      { id: "6adb3911d0553d472971bd99", label: "Same option", displayLabel: "Same option (1)" },
+      { id: "6adb3911d0553d472971bda0", label: "Same option", displayLabel: "Same option (2)" },
+    ]);
+    expect(options.map(({ displayLabel }) => displayLabel).join(" ")).not.toContain("6adb3911d0553d472971");
+  });
+
   it("applies generic presentation metadata and keeps old TOPSIS-Sort descriptors usable", () => {
     expect(resolveVisualizationPresentation({
       key: "topsis-sort-criterion-weight-sensitivity-price",

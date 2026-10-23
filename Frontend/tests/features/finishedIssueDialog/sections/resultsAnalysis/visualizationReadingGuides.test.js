@@ -62,8 +62,11 @@ describe("visualization reading guides", () => {
     });
     expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS[0], type: "line" }).text).toContain("linguistic position (β)");
     expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS[2], type: "line" }).text).toContain("TOPSIS closeness");
-    expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS.at(-1), type: "line" }).text).toContain("Changing a criterion's weight");
-    expect(getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS.at(-1), type: "line" }).text).toContain("Crossing a boundary can change the classification");
+    const sensitivityGuide = getVisualizationReadingGuide({ key: DYNAMIC_CHART_KEYS.at(-1), type: "line" }).text;
+    expect(sensitivityGuide).toContain("redistributes the others proportionally");
+    expect(sensitivityGuide).toContain("recalculates TOPSIS-Sort at each sampled weight");
+    expect(sensitivityGuide).toContain("not an exact threshold");
+    expect(sensitivityGuide).toContain("Mathematically invalid samples remain blank");
   });
 
   it("keeps fixed, dynamic, and generic guides concise", () => {

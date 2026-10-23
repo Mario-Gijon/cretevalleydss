@@ -246,14 +246,7 @@ def _sensitivity_line(
             "stableSeriesColors": True,
             "compactLegend": True,
             "originalWeightMarker": True,
-            "showUnavailableSamples": True,
             "alternativeSelector": {"recommendedCount": 3},
-            "methodDetails": (
-                "Other criterion weights are redistributed proportionally. "
-                "TOPSIS-Sort is recomputed at each discrete sample; sampled "
-                "changes identify an interval, not an exact threshold. "
-                "Mathematically unavailable scenarios remain blank."
-            ),
         },
     }
 

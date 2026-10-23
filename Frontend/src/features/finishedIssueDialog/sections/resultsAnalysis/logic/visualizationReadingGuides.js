@@ -159,7 +159,7 @@ const DYNAMIC_GUIDES = [
     "topsis-sort-criterion-weight-sensitivity-",
     guide(
       "Criterion weight sensitivity",
-      "Changing a criterion's weight shows how alternatives move relative to category boundaries. Solid lines represent alternatives; dashed lines show the boundaries. Crossing a boundary can change the classification.",
+      "Changing this criterion's weight redistributes the others proportionally and recalculates TOPSIS-Sort at each sampled weight. Solid lines show alternatives and dashed lines show category boundaries; changes between samples indicate an interval, not an exact threshold. Mathematically invalid samples remain blank.",
     ),
   ],
 ];

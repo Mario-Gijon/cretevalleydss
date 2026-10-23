@@ -9,6 +9,7 @@ import {
   MenuItem,
   Select,
   Stack,
+  Tooltip,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -740,12 +741,13 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} sx={{ mb: isSingleton ? 0 : 1.4 }}>
       {!isSingleton ? <Box><Typography variant="h6" component="h3" sx={{ fontWeight: 900 }}>{section.title}</Typography></Box> : null}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap">
-        {selectable ? <FormControl size="small" color="secondary" sx={{ minWidth: 190 }}><InputLabel id={`${section.id}-scope-label`}>{selectedEntity?.dimension || "Entity"}</InputLabel><Select labelId={`${section.id}-scope-label`} label={selectedEntity?.dimension || "Entity"} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>{entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}</Select></FormControl> : null}
+        {selectable ? <FormControl size="small" color="secondary" sx={{ minWidth: 190 }}><InputLabel color="secondary" id={`${section.id}-scope-label`}>{selectedEntity?.dimension || "Entity"}</InputLabel><Select color="secondary" labelId={`${section.id}-scope-label`} label={selectedEntity?.dimension || "Entity"} value={selectedScopeKey || ""} onChange={(event) => setSelectedScopeKey(event.target.value)}>{entities.map((entity) => <MenuItem key={`${entity.dimension}:${entity.id}`} value={`${entity.dimension}:${entity.id}`}>{entity.label}</MenuItem>)}</Select></FormControl> : null}
         {alternativeSelector ? <Stack direction="row" spacing={0.4} alignItems="center" flexWrap="wrap">
           <FormControl size="small" color="secondary" sx={{ minWidth: { xs: 230, sm: 270 }, maxWidth: { xs: "100%", sm: 320 } }}>
-            <InputLabel id={`${section.id}-alternatives-label`}>Alternatives</InputLabel>
+            <InputLabel color="secondary" id={`${section.id}-alternatives-label`}>Alternatives</InputLabel>
             <Select
               multiple
+              color="secondary"
               labelId={`${section.id}-alternatives-label`}
               label="Alternatives"
               value={effectiveSelectedAlternativeIds}
@@ -753,14 +755,14 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
               renderValue={(selected) => `Alternatives · ${selected.length} of ${alternativeOptions.length} selected`}
               MenuProps={{ PaperProps: { sx: { maxHeight: 360, maxWidth: 360 } } }}
             >
-              {alternativeOptions.map((option) => <MenuItem key={option.id} value={option.id}>
-                <Checkbox checked={effectiveSelectedAlternativeIds.includes(option.id)} size="small" />
-                <ListItemText primary={option.label} secondary={option.label === option.id ? null : option.id} />
+              {alternativeOptions.map((option) => <MenuItem key={option.id} value={option.id} title={option.label} aria-label={option.displayLabel}>
+                <Checkbox color="secondary" checked={effectiveSelectedAlternativeIds.includes(option.id)} size="small" />
+                <ListItemText primary={<Tooltip title={option.label} placement="right"><Typography component="span" variant="body2" sx={{ overflowWrap: "anywhere" }}>{option.displayLabel}</Typography></Tooltip>} />
               </MenuItem>)}
             </Select>
           </FormControl>
-          <Button size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
-          <Button size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
+          <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
+          <Button color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
         </Stack> : null}
       </Stack>
     </Stack>

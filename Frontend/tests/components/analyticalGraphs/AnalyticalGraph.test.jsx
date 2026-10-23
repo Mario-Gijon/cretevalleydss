@@ -145,7 +145,7 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-point-hover-radius", "5");
   });
 
-  it("renders numerical TOPSIS-Sort weight axes, baseline points, dashed limits, and gaps", () => {
+  it("renders numerical TOPSIS-Sort weight axes, hidden sample markers, dashed limits, and gaps", () => {
     const visualization = {
       key: "topsis-sort-criterion-weight-sensitivity-price",
       type: "line",
@@ -181,7 +181,9 @@ describe("AnalyticalGraph", () => {
     expect(lineState.data.datasets[0].spanGaps).toBe(false);
     expect(lineState.data.datasets[1].borderDash).toEqual([7, 5]);
     expect(lineState.options.plugins.legend.display).toBe(false);
-    expect(lineState.data.datasets[0].pointRadius({ raw: lineState.data.datasets[0].data[1] })).toBeGreaterThan(3);
+    expect(lineState.data.datasets[0].pointRadius).toBe(0);
+    expect(lineState.data.datasets[0].pointHoverRadius).toBe(4);
+    expect(lineState.data.datasets[0].pointHitRadius).toBe(12);
     expect(lineState.options.scales.x.min).toBe(0);
     expect(lineState.options.scales.x.max).toBe(1);
     expect(lineState.options.scales.y.min).toBe(0);
@@ -192,7 +194,7 @@ describe("AnalyticalGraph", () => {
     })).toContain("Category: High");
   });
 
-  it("keeps sensitivity series colors stable, de-emphasizes boundaries, and explains original and unavailable weights", () => {
+  it("keeps sensitivity colors, boundaries, MCC marker, null samples, tooltips, and two separate legend rows", () => {
     const visualization = {
       key: "topsis-sort-criterion-weight-sensitivity-sustainability",
       type: "line",
@@ -201,9 +203,7 @@ describe("AnalyticalGraph", () => {
         stableSeriesColors: true,
         compactLegend: true,
         originalWeightMarker: true,
-        showUnavailableSamples: true,
         chartHeight: { xs: 420, sm: 500, md: 580 },
-        methodDetails: "Other criterion weights are redistributed proportionally and TOPSIS-Sort is recalculated at every sample.",
       },
       xAxis: { label: "Varied importance weight", min: 0, max: 1 },
       yAxis: { label: "Relative closeness coefficient", min: 0, max: 1 },
@@ -233,12 +233,16 @@ describe("AnalyticalGraph", () => {
 
     expect(lineState.data.datasets).toHaveLength(3);
     expect(lineState.data.datasets[0].borderColor).toBe(stableChartColor("alternative-a"));
-    expect(lineState.data.datasets[0].pointRadius({ raw: lineState.data.datasets[0].data[1] })).toBeGreaterThan(3);
+    expect(lineState.data.datasets[0].pointRadius).toBe(0);
+    expect(lineState.data.datasets[0].pointHoverRadius).toBe(4);
+    expect(lineState.data.datasets[0].pointHitRadius).toBe(12);
     expect(lineState.data.datasets[0].data[3].y).toBeNull();
     expect(lineState.data.datasets[0].spanGaps).toBe(false);
     expect(lineState.data.datasets[2].borderDash).toEqual([7, 5]);
     expect(lineState.data.datasets[2].borderWidth).toBe(1.5);
-    expect(lineState.data.datasets[2].pointRadius({ raw: lineState.data.datasets[2].data[1] })).toBe(0);
+    expect(lineState.data.datasets[2].pointRadius).toBe(0);
+    expect(lineState.data.datasets[2].pointHoverRadius).toBe(3);
+    expect(lineState.data.datasets[2].pointHitRadius).toBe(8);
     expect(lineState.options.plugins.legend.display).toBe(false);
     expect(lineState.options.plugins.originalWeightMarker).toEqual({ enabled: true, value: 0.145678 });
     expect(lineState.plugins[0].id).toBe("original-weight-marker");
@@ -265,8 +269,16 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByLabelText("Original collective effective weight 0.145678")).toBeInTheDocument();
     expect(screen.getByText("Premium option with a long local display name")).toBeInTheDocument();
     expect(screen.getByText("Low / Medium boundary")).toBeInTheDocument();
-    expect(screen.getByTestId("line-unavailable-samples")).toHaveTextContent("Weight 1.00 unavailable: an alternative falls exactly on a category boundary.");
-    expect(screen.getByRole("button", { name: "Sensitivity method details" })).toBeInTheDocument();
+    expect(screen.queryByTestId("line-unavailable-samples")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sensitivity method details" })).not.toBeInTheDocument();
+    expect(visualization.data.unavailableSamples).toEqual([{ weight: 1, reason: "alternative_equals_boundary" }]);
+    expect(lineState.options.plugins.tooltip.callbacks.label({
+      raw: lineState.data.datasets[0].data[1],
+      dataset: lineState.data.datasets[0],
+    })).toContain("Category: High");
+    expect(screen.getByRole("region", { name: "Alternatives legend" })).toContainElement(screen.getByText("Premium option with a long local display name"));
+    expect(screen.getByRole("region", { name: "Category boundaries legend" })).toContainElement(screen.getByText("Low / Medium boundary"));
+    expect(screen.getByText("ALTERNATIVES").compareDocumentPosition(screen.getByText("CATEGORY BOUNDARIES")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("preserves the existing numeric line-chart colors and point sizing without sensitivity metadata", () => {
@@ -296,7 +308,7 @@ describe("AnalyticalGraph", () => {
     expect(lineState.options.plugins.originalWeightMarker).toBeUndefined();
   });
 
-  it("disambiguates duplicate alternative names with stable IDs in the legend and tooltips", () => {
+  it("disambiguates duplicate alternative names without exposing technical IDs", () => {
     render(<AnalyticalGraph visualization={{
       key: "topsis-sort-criterion-weight-sensitivity-price",
       type: "line",
@@ -313,12 +325,13 @@ describe("AnalyticalGraph", () => {
     }} />);
 
     expect(lineState.data.datasets.slice(0, 2).map((dataset) => dataset.label)).toEqual([
-      "Same name · 123456",
-      "Same name · abcdef",
+      "Same name (1)",
+      "Same name (2)",
     ]);
-    expect(lineState.data.datasets[0].data[0].label).toBe("Same name · 123456");
-    expect(screen.getByText("Same name · 123456")).toBeInTheDocument();
-    expect(screen.getByText("Same name · abcdef")).toBeInTheDocument();
+    expect(lineState.data.datasets[0].data[0].label).toBe("Same name (1)");
+    expect(screen.getByText("Same name (1)")).toBeInTheDocument();
+    expect(screen.getByText("Same name (2)")).toBeInTheDocument();
+    expect(screen.queryByText(/123456|abcdef/)).not.toBeInTheDocument();
   });
 
   it("passes scatter series with points and semantic axes", () => {

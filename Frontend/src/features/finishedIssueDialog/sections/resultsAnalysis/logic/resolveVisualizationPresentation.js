@@ -5,9 +5,7 @@ const LEGACY_TOPSIS_SORT_SENSITIVITY_PRESENTATION = Object.freeze({
   stableSeriesColors: true,
   compactLegend: true,
   originalWeightMarker: true,
-  showUnavailableSamples: true,
   alternativeSelector: Object.freeze({ recommendedCount: 3 }),
-  methodDetails: "Other criterion weights are redistributed proportionally. TOPSIS-Sort is recomputed at each discrete sample; sampled changes identify an interval, not an exact threshold. Mathematically unavailable scenarios remain blank.",
 });
 
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -44,12 +42,21 @@ export const getSensitivityAlternativeOptions = (visualizations) => {
     (Array.isArray(visualization?.data?.series) ? visualization.data.series : []).forEach((series) => {
       const id = seriesId(series);
       if (!id || !isAlternativeSensitivitySeries(series) || optionsById.has(id)) return;
-      const label = typeof series.label === "string" && series.label.trim() ? series.label.trim() : id;
+      const label = typeof series.label === "string" && series.label.trim() ? series.label.trim() : "Unnamed alternative";
       optionsById.set(id, { id, label });
     });
   });
-  return [...optionsById.values()].sort((left, right) =>
+  const sorted = [...optionsById.values()].sort((left, right) =>
     left.label.localeCompare(right.label, "en") || left.id.localeCompare(right.id, "en"));
+  const labelCounts = new Map();
+  sorted.forEach(({ label }) => labelCounts.set(label, (labelCounts.get(label) || 0) + 1));
+  const labelPositions = new Map();
+  return sorted.map((option) => {
+    if (labelCounts.get(option.label) < 2) return { ...option, displayLabel: option.label };
+    const position = (labelPositions.get(option.label) || 0) + 1;
+    labelPositions.set(option.label, position);
+    return { ...option, displayLabel: `${option.label} (${position})` };
+  });
 };
 
 const categoryAt = (point) => {

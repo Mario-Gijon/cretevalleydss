@@ -235,6 +235,70 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-key", "wind-sensitivity");
   });
 
+  it("uses theme secondary controls and human-readable alternative names in sensitivity selection", () => {
+    const alternative = (key, label) => ({
+      key,
+      label,
+      role: "alternative",
+      values: [
+        { x: 0.2, y: 0.4, details: { Category: "Low" } },
+        { x: 0.5, y: 0.6, isConfiguredWeight: true, details: { Category: "High" } },
+      ],
+    });
+    const visualization = {
+      key: "topsis-sort-criterion-weight-sensitivity-price",
+      type: "line",
+      scope: { dimension: "criterion", id: "price", label: "Price" },
+      data: {
+        xScaleType: "linear",
+        x: [0.2, 0.5],
+        configuredWeight: 0.5,
+        series: [
+          alternative("6adb3911d0553d472971bda0", "Premium option"),
+          alternative("6adb3911d0553d472971bd99", "Same option"),
+          alternative("6adb3911d0553d472971bd98", "Same option"),
+          { key: "profile-p1", label: "Low / High boundary", role: "boundary", values: [] },
+        ],
+      },
+    };
+
+    render(<ThemeProvider theme={createTheme({ palette: { secondary: { main: "#00897b" } } })}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", alternativeEvaluationAnalysis: { analysis: { sections: [{
+        id: "topsis-sort-criterion-weight-sensitivity",
+        title: "Criterion weight sensitivity",
+        order: 0,
+        presentation: { layout: "stacked", scopeSelector: "criterion" },
+        visualizations: [
+          visualization,
+          { ...visualization, key: "topsis-sort-criterion-weight-sensitivity-wind", scope: { dimension: "criterion", id: "wind", label: "Wind" } },
+        ],
+      }] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const criterionSelect = screen.getByRole("combobox", { name: "criterion" });
+    const criterionLabel = document.getElementById(criterionSelect.getAttribute("aria-labelledby"));
+    expect(criterionLabel).toHaveClass("MuiFormLabel-colorSecondary");
+    expect(criterionSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+
+    const alternativesSelect = screen.getByRole("combobox", { name: "Alternatives" });
+    const alternativesLabel = document.getElementById(alternativesSelect.getAttribute("aria-labelledby"));
+    expect(alternativesLabel).toHaveClass("MuiFormLabel-colorSecondary");
+    expect(alternativesSelect.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+    expect(screen.getByRole("button", { name: "Show all" })).toHaveClass("MuiButton-colorSecondary");
+    expect(screen.getByRole("button", { name: "Reset" })).toHaveClass("MuiButton-colorSecondary");
+
+    fireEvent.mouseDown(alternativesSelect);
+    const listbox = screen.getByRole("listbox", { name: "Alternatives" });
+    expect(within(listbox).getByRole("option", { name: "Premium option" })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: "Same option (1)" })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: "Same option (2)" })).toBeInTheDocument();
+    expect(within(listbox).queryByText("6adb3911d0553d472971bda0")).not.toBeInTheDocument();
+    within(listbox).getAllByRole("checkbox").forEach((checkbox) => {
+      expect(checkbox.closest(".MuiCheckbox-root")).toHaveClass("MuiCheckbox-colorSecondary");
+    });
+  });
+
   it("recommends up to three alternatives, supports selection actions, preserves boundaries, and hides Base for one run", async () => {
     const weightSamples = [0, 0.15, 0.2, 0.8];
     const alt = (key, label, categories) => ({

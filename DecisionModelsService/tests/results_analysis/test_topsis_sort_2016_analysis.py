@@ -167,7 +167,7 @@ def test_analysis_visualizations_include_two_graphs_and_dynamic_alternative_and_
     assert all(item["role"] == "boundary" for item in sensitivity["data"]["series"][3:])
     assert sensitivity["presentation"]["chartHeight"] == {"xs": 420, "sm": 500, "md": 580}
     assert sensitivity["presentation"]["alternativeSelector"] == {"recommendedCount": 3}
-    assert "methodDetails" in sensitivity["presentation"]
+    assert "methodDetails" not in sensitivity["presentation"]
     assert "unavailableSamples" in sensitivity["data"]
 
 
@@ -205,6 +205,7 @@ def test_weight_sensitivity_gaps_invalid_samples_when_profile_limits_coincide():
         item for item in analysis["visualizations"]
         if item["key"].endswith("-quality")
     )
+    assert {"weight": 1.0, "reason": "profile_closeness_order_not_strict"} in descriptor["data"]["unavailableSamples"]
     for series in descriptor["data"]["series"]:
         assert series["values"][-1]["x"] == 1.0
         assert series["values"][-1]["y"] is None
