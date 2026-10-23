@@ -63,4 +63,25 @@ describe("InterpretationPanel", () => {
     expect(screen.getByText("Base general")).toBeInTheDocument();
     expect(screen.queryByText("Alternative evaluation")).not.toBeInTheDocument();
   });
+
+  it("renders TOPSIS-Sort Model Analysis sections as Markdown", () => {
+    render(<InterpretationPanel executions={[{
+      key: "base",
+      displayLabel: "Base",
+      modelName: "TOPSIS-SORT",
+      genericAnalysis: { interpretation: "General result" },
+      stageAnalyses: {
+        alternativeEvaluation: {
+          analysis: {
+            interpretation: "### Result interpretation\n\nTwo alternatives share a category.\n\n### Criterion weight sensitivity\n\nA tested weight change moved one alternative from Medium to Low.",
+          },
+        },
+      },
+    }]} />);
+
+    expect(screen.getByRole("heading", { name: "Result interpretation" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Criterion weight sensitivity" })).toBeInTheDocument();
+    expect(screen.getByText("Two alternatives share a category.")).toBeInTheDocument();
+    expect(screen.getByText("A tested weight change moved one alternative from Medium to Low.")).toBeInTheDocument();
+  });
 });

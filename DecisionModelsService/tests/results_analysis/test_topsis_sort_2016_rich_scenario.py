@@ -14,7 +14,10 @@ SPEC.loader.exec_module(MATH_VALIDATOR)
 
 
 def test_rich_scenario_reproduces_mcc_sorting_analysis_sensitivity_and_projection():
-    summary = MATH_VALIDATOR.validate_fixture(FIXTURE_PATH)
+    summary = MATH_VALIDATOR.validate_fixture(
+        FIXTURE_PATH,
+        include_interpretation=True,
+    )
 
     assert summary["mccWeightsByCriterion"] == {
         "quality": 0.25,
@@ -30,6 +33,16 @@ def test_rich_scenario_reproduces_mcc_sorting_analysis_sensitivity_and_projectio
         "topsis-sort-closeness-category-boundaries",
         "topsis-sort-criterion-weight-sensitivity",
     ]
+    interpretation = summary["interpretation"]
+    assert "### Result interpretation" in interpretation
+    assert "### Criterion weight sensitivity" in interpretation
+    assert "Purchase cost" in interpretation and "from 20% to 25%" in interpretation
+    assert "Delivery time" in interpretation and "from 12.5% to 20%" in interpretation
+    assert "Sustainability" in interpretation and "from 14.5% to 10%" in interpretation
+    assert "Evergreen Circular Supply** changed category in three" in interpretation
+    assert "After-sales support" not in interpretation
+    assert "the exact switching points were not calculated" in interpretation
+    assert len(interpretation.split()) <= 160
     projection = summary["projection"]
     assert len(projection["expert_points"]) == 4
     assert len(set(map(tuple, projection["expert_points"]))) == 4

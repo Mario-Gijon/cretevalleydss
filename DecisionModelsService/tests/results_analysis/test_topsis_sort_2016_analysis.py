@@ -6,6 +6,7 @@ import pytest
 from models.topsis_sort_2016.analysis import analyze_issue
 from models.topsis_sort_2016.examples import TOPSIS_SORT_2016_REQUEST_EXAMPLES
 from models.topsis_sort_2016.executor import execute_topsis_sort_2016
+from models.topsis_sort_2016.analysis.interpretation import build_interpretation
 from schemas.model_requests import GenericModelExecutionRequest
 from services.results_analysis.contexts import build_model_issue_context
 from services.results_analysis.model_analysis import load_model_analysis_handlers
@@ -42,6 +43,93 @@ def _sensitivity_by_criterion(analysis):
     return {
         item["criterionId"]: item
         for item in analysis["facts"]["sensitivity"]["items"]
+    }
+
+
+def _sample_change(alternative_id, from_category="Medium", to_category="Low"):
+    return {
+        "alternativeId": alternative_id,
+        "alternativeName": alternative_id.title(),
+        "fromCategoryId": from_category.casefold(),
+        "fromCategory": from_category,
+        "toCategoryId": to_category.casefold(),
+        "toCategory": to_category,
+    }
+
+
+def _sensitivity_item(
+    criterion_id,
+    criterion_name,
+    configured_weight,
+    observations=None,
+    *,
+    available=True,
+    unavailable_sample_count=0,
+    valid_sample_count=21,
+):
+    observations = observations or []
+    nearest = min(
+        observations,
+        key=lambda item: abs(item["variedWeight"] - configured_weight),
+        default=None,
+    )
+    return {
+        "criterionId": criterion_id,
+        "criterionIndex": len(criterion_id),
+        "criterionName": criterion_name,
+        "configuredWeight": configured_weight,
+        "available": available,
+        "reason": None if available else "insufficient_valid_weight_samples",
+        "summary": {
+            "validSampleCount": valid_sample_count,
+            "unavailableSampleCount": unavailable_sample_count,
+            "observedChanges": observations,
+            "nearestObservedChange": nearest,
+            "noChangesAcrossValidSamples": not observations,
+        },
+    }
+
+
+def _weight_observation(varied_weight, *changes):
+    return {
+        "variedWeight": varied_weight,
+        "weightDifferenceFromConfigured": None,
+        "changedAssignments": list(changes),
+    }
+
+
+def _interpretation_facts(items=None, *, alternatives=None, availability=None):
+    return {
+        "status": "available",
+        "categories": [
+            {"categoryId": "low", "label": "Low", "order": 0},
+            {"categoryId": "medium", "label": "Medium", "order": 1},
+            {"categoryId": "high", "label": "High", "order": 2},
+        ],
+        "alternatives": alternatives or [
+            {
+                "alternativeId": "alpha",
+                "name": "Alpha",
+                "categoryId": "medium",
+                "closeness": 0.48,
+            },
+            {
+                "alternativeId": "beta",
+                "name": "Beta",
+                "categoryId": "medium",
+                "closeness": 0.76,
+            },
+            {
+                "alternativeId": "gamma",
+                "name": "Gamma",
+                "categoryId": "low",
+                "closeness": 0.25,
+            },
+        ],
+        "sensitivity": {
+            "availability": availability or {"available": True, "reason": None},
+            "items": items or [],
+        },
     }
 
 
@@ -136,7 +224,9 @@ def test_weight_sensitivity_preserves_ratios_includes_exact_baseline_and_recompu
         original_point["closenessByProfileId"]["profile-high"]
     )
     assert changed_point["changedAssignments"]
-    assert "Supplier A from High to Middle" in analysis["interpretation"]
+    assert "Supplier A" in analysis["interpretation"]
+    assert "**High** to **Middle**" in analysis["interpretation"]
+    assert "the tested scenario" in analysis["interpretation"]
 
 
 def test_analysis_visualizations_include_two_graphs_and_dynamic_alternative_and_profile_series():
@@ -286,8 +376,7 @@ def test_single_criterion_and_zero_complement_are_controlled_sensitivity_cases()
     assert quality["available"] is False
     assert quality["reason"] == "insufficient_valid_weight_samples"
     assert quality["summary"]["unavailableSampleCount"] == 20
-    assert "zero total weight" in analysis["interpretation"]
-    assert "These gaps are not evidence of stability or change" in analysis["interpretation"]
+    assert "Some criteria could not be assessed across enough valid scenarios." in analysis["interpretation"]
 
 
 def test_no_observed_category_changes_are_limited_to_the_valid_sample_grid():
@@ -302,4 +391,301 @@ def test_no_observed_category_changes_are_limited_to_the_valid_sample_grid():
     for item in sensitivity.values():
         assert item["summary"]["noChangesAcrossValidSamples"] is True
         assert item["summary"]["observedAdjacentTransitions"] == []
-    assert "does not establish that categories remain unchanged between samples" in analysis["interpretation"]
+    assert "valid weight variations examined" in analysis["interpretation"]
+    assert "only to the tested scenarios" in analysis["interpretation"]
+
+
+def test_interpretation_selects_relevant_nearby_changes_and_limits_many_criteria():
+    purchase_changes = [
+        _sample_change("alpha"),
+        _sample_change("beta"),
+        _sample_change("gamma"),
+    ]
+    far_changes = purchase_changes + [
+        _sample_change("delta"),
+        _sample_change("epsilon"),
+        _sample_change("zeta"),
+    ]
+    items = [
+        _sensitivity_item(
+            "purchase-cost",
+            "Purchase cost",
+            0.2,
+            [
+                _weight_observation(0.25, *purchase_changes),
+                _weight_observation(0.45, *far_changes),
+            ],
+        ),
+        _sensitivity_item(
+            "sustainability",
+            "Sustainability",
+            0.145,
+            [_weight_observation(0.1, _sample_change("alpha"))],
+        ),
+        _sensitivity_item(
+            "delivery-time",
+            "Delivery time",
+            0.125,
+            [_weight_observation(0.2, *purchase_changes)],
+        ),
+        _sensitivity_item(
+            "quality",
+            "Product quality",
+            0.25,
+            [_weight_observation(0.3, _sample_change("alpha"))],
+        ),
+        _sensitivity_item(
+            "reliability",
+            "Delivery reliability",
+            0.175,
+            [_weight_observation(0.25, _sample_change("alpha"))],
+        ),
+        _sensitivity_item(
+            "support",
+            "After-sales support",
+            0.105,
+            [_weight_observation(0.2, _sample_change("alpha"))],
+        ),
+    ]
+    facts = _interpretation_facts(items)
+
+    interpretation = build_interpretation(facts)
+
+    sensitivity_text = interpretation.split("### Criterion weight sensitivity\n\n", 1)[1]
+    assert "Purchase cost" in sensitivity_text
+    assert "Delivery time" in sensitivity_text
+    assert "Sustainability" in sensitivity_text
+    assert "Product quality" not in sensitivity_text
+    assert "Delivery reliability" not in sensitivity_text
+    assert "After-sales support" not in sensitivity_text
+    assert "from 20% to 25%" in sensitivity_text
+    assert "from 20% to 45%" not in sensitivity_text
+    assert len(interpretation.split()) <= 160
+
+
+def test_interpretation_groups_many_assignments_and_keeps_single_changes_clear():
+    many = _interpretation_facts(
+        [
+            _sensitivity_item(
+                "purchase-cost",
+                "Purchase cost",
+                0.2,
+                [
+                    _weight_observation(
+                        0.25,
+                        _sample_change("alpha"),
+                        _sample_change("beta"),
+                        _sample_change("gamma"),
+                    )
+                ],
+            )
+        ]
+    )
+
+    grouped = build_interpretation(many)
+
+    assert "three alternatives move from **Medium** to **Low**" in grouped
+    assert "including **Alpha** and **Beta**" in grouped
+    assert "Alpha; Beta; Gamma" not in grouped
+
+    one = _interpretation_facts(
+        [
+            _sensitivity_item(
+                "purchase-cost",
+                "Purchase cost",
+                0.2,
+                [_weight_observation(0.25, _sample_change("alpha"))],
+            )
+        ]
+    )
+    single = build_interpretation(one)
+    assert "**Alpha** moves from **Medium** to **Low**" in single
+
+
+def test_interpretation_keeps_distinct_category_transitions_in_the_same_scenario():
+    facts = _interpretation_facts(
+        [
+            _sensitivity_item(
+                "quality",
+                "Product quality",
+                0.25,
+                [
+                    _weight_observation(
+                        0.3,
+                        _sample_change("alpha", "Medium", "Low"),
+                        _sample_change("beta", "High", "Medium"),
+                    )
+                ],
+            )
+        ]
+    )
+
+    interpretation = build_interpretation(facts)
+
+    assert "**Alpha** moves from **Medium** to **Low**" in interpretation
+    assert "while **Beta** moves from **High** to **Medium**" in interpretation
+
+
+def test_no_observed_changes_are_summarized_once_and_partial_invalid_samples_are_quiet():
+    complete = _interpretation_facts(
+        [
+            _sensitivity_item("cost", "Purchase cost", 0.2),
+            _sensitivity_item("quality", "Product quality", 0.8),
+        ]
+    )
+    complete_text = build_interpretation(complete)
+    assert complete_text.count("Assignments stayed the same") == 1
+    assert "valid weight variations examined" in complete_text
+    assert "Purchase cost" not in complete_text
+
+    partial = _interpretation_facts(
+        [
+            _sensitivity_item(
+                "cost",
+                "Purchase cost",
+                0.2,
+                unavailable_sample_count=4,
+            ),
+            _sensitivity_item(
+                "quality",
+                "Product quality",
+                0.8,
+                unavailable_sample_count=7,
+            ),
+        ]
+    )
+    partial_text = build_interpretation(partial)
+    assert "Assignments stayed the same" in partial_text
+    assert "sampled weight(s)" not in partial_text
+    assert "not evidence of stability" not in partial_text
+
+
+def test_unavailable_and_partially_unavailable_sensitivity_use_short_explanations():
+    unavailable = _interpretation_facts(
+        availability={"available": False, "reason": "single_criterion"}
+    )
+    unavailable["sensitivity"]["items"] = [
+        _sensitivity_item(
+            "cost", "Purchase cost", 1.0, available=False, valid_sample_count=0
+        )
+    ]
+    unavailable_text = build_interpretation(unavailable)
+    assert "only one criterion" in unavailable_text
+    assert "Purchase cost" not in unavailable_text
+    assert "independently" in unavailable_text
+
+    partial = _interpretation_facts(
+        [
+            _sensitivity_item(
+                "cost",
+                "Purchase cost",
+                0.2,
+                [_weight_observation(0.25, _sample_change("alpha"))],
+            ),
+            _sensitivity_item(
+                "support",
+                "After-sales support",
+                0.8,
+                available=False,
+                valid_sample_count=1,
+            ),
+        ]
+    )
+    partial_text = build_interpretation(partial)
+    assert "After-sales support" not in partial_text
+    assert "Some criteria could not be assessed across enough valid scenarios." in partial_text
+
+
+def test_interpretation_breaks_ties_deterministically_and_has_no_ranking_claims():
+    items = [
+        _sensitivity_item(
+            criterion_id,
+            criterion_name,
+            0.2,
+            [_weight_observation(0.25, _sample_change("alpha"))],
+        )
+        for criterion_id, criterion_name in [
+            ("criterion-a", "Criterion A"),
+            ("criterion-b", "Criterion B"),
+            ("criterion-c", "Criterion C"),
+            ("criterion-d", "Criterion D"),
+        ]
+    ]
+    facts = _interpretation_facts(items)
+    first = build_interpretation(facts)
+
+    assert build_interpretation(deepcopy(facts)) == first
+    sensitivity_text = first.split("### Criterion weight sensitivity\n\n", 1)[1]
+    assert "Criterion A" in sensitivity_text
+    assert "Criterion B" in sensitivity_text
+    assert "Criterion C" in sensitivity_text
+    assert "Criterion D" not in sensitivity_text
+    assert "ranking" not in first.lower()
+    assert "winner" not in first.lower()
+    assert "probability" not in first.lower()
+    assert "closest alternative" not in first.lower()
+    assert "boundary" not in first.lower()
+    assert "exact switching points were not calculated" in first
+
+
+def test_dynamic_labels_escape_markdown_and_disambiguate_duplicate_alternatives():
+    duplicate_name = "A* [Supply] | Group"
+    alternatives = [
+        {
+            "alternativeId": "alternative-one-id",
+            "name": duplicate_name,
+            "categoryId": "medium",
+            "closeness": 0.48,
+        },
+        {
+            "alternativeId": "alternative-two-id",
+            "name": duplicate_name,
+            "categoryId": "medium",
+            "closeness": 0.76,
+        },
+        {
+            "alternativeId": "alternative-three-id",
+            "name": "Gamma",
+            "categoryId": "low",
+            "closeness": 0.25,
+        },
+    ]
+    first = _sample_change("alternative-one-id")
+    second = _sample_change("alternative-two-id")
+    first["alternativeName"] = duplicate_name
+    second["alternativeName"] = duplicate_name
+    facts = _interpretation_facts(
+        [
+            _sensitivity_item(
+                "purchase-cost",
+                "Purchase_cost [urgent]",
+                0.2,
+                [_weight_observation(0.25, first, second)],
+            )
+        ],
+        alternatives=alternatives,
+    )
+
+    interpretation = build_interpretation(facts)
+
+    assert "alternative 1" in interpretation and "alternative 2" in interpretation
+    assert r"A\* \[Supply\] \| Group" in interpretation
+    assert "alternative-one-id" not in interpretation
+    assert "alternative-two-id" not in interpretation
+    assert r"Purchase\_cost \[urgent\]" in interpretation
+
+
+def test_building_interpretation_does_not_change_complete_math_evidence():
+    analysis = analyze_issue(_analysis_context())
+    original_facts = deepcopy(analysis["facts"])
+
+    interpretation = build_interpretation(analysis["facts"])
+
+    assert analysis["facts"] == original_facts
+    assert len(analysis["facts"]["sensitivity"]["items"]) == 2
+    assert all(
+        len(item["points"]) == 21
+        for item in analysis["facts"]["sensitivity"]["items"]
+    )
+    assert "### Result interpretation" in interpretation
+    assert "### Criterion weight sensitivity" in interpretation

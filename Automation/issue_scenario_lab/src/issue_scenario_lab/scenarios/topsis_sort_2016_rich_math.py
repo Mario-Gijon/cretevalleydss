@@ -26,7 +26,11 @@ def _close_maps(actual: dict[str, Any], expected: dict[str, Any], *, tolerance: 
     )
 
 
-def validate_fixture(fixture_path: Path) -> dict[str, Any]:
+def validate_fixture(
+    fixture_path: Path,
+    *,
+    include_interpretation: bool = False,
+) -> dict[str, Any]:
     project_root = _project_root()
     service_root = project_root / "DecisionModelsService"
     sys.path.insert(0, str(service_root))
@@ -192,7 +196,7 @@ def validate_fixture(fixture_path: Path) -> dict[str, Any]:
         ):
             raise ValueError("sensitivity baseline point does not reproduce the configured MCC assignments")
 
-    return {
+    summary = {
         "mccWeightsByCriterion": collective_weights,
         "assignmentsByAlternativeKey": assignments,
         "categoryCounts": dict(Counter(assignments.values())),
@@ -201,6 +205,9 @@ def validate_fixture(fixture_path: Path) -> dict[str, Any]:
         "analysisStatus": facts["status"],
         "analysisSectionIds": [section.get("id") for section in analysis.get("sections", [])],
     }
+    if include_interpretation:
+        summary["interpretation"] = analysis["interpretation"]
+    return summary
 
 
 def main() -> None:
