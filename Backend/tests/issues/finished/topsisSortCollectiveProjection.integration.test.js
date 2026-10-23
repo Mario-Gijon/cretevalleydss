@@ -19,7 +19,7 @@ import { setupMongoDbTestHooks } from "../../setup/database.js";
 setupMongoDbTestHooks();
 
 describe("TOPSIS-Sort Finished collective projection", () => {
-  it("loads the applied execution and projects its frozen 10 by 6 collective matrix", async () => {
+  it("re-reads analysis persisted after finalization and projects its applied 10 by 6 matrix", async () => {
     const owner = await createConfirmedUser({ email: "sorting-owner@example.test" });
     const experts = await Promise.all(
       Array.from({ length: 4 }, (_, index) =>
@@ -204,6 +204,16 @@ describe("TOPSIS-Sort Finished collective projection", () => {
           total + expertPayload[String(alternative._id)][String(criterion._id)], 0) / experts.length,
       ])),
     }));
+
+    const payloadBeforeAnalysisPersistence = await getFinishedIssueInfoPayload({
+      issueId: issue._id,
+      userId: owner._id,
+    });
+    const collectiveBeforeAnalysisPersistence = payloadBeforeAnalysisPersistence.evaluations.collective.find(
+      (entry) => entry.stage === "alternativeEvaluation" && entry.phase === 0
+    );
+    expect(collectiveBeforeAnalysisPersistence.rawPayload).toBeNull();
+
     await IssueResultsAnalysis.create({
       issue: issue._id,
       executionKey: "base",
