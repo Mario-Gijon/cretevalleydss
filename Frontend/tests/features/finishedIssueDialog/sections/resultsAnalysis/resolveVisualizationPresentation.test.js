@@ -93,6 +93,9 @@ describe("criterion weight sensitivity presentation", () => {
     expect(resolveVisualizationPresentation({ key: "other-line" }).alternativeSelector).toBeUndefined();
     expect(resolveVisualizationPresentation({
       key: "topsis-sort-closeness-category-boundaries",
-    }).tooltip).toEqual({ variant: "closeness-boundaries", precision: 4 });
+    })).toMatchObject({
+      tooltip: { variant: "closeness-boundaries", precision: 4 },
+      referenceLines: { interactive: false },
+    });
   });
 });

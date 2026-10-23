@@ -384,10 +384,15 @@ describe("AnalyticalGraph", () => {
     expect(scatterState.data.datasets[1].showLine).toBe(true);
     expect(scatterState.data.datasets[1].borderDash).toEqual([6, 4]);
     expect(scatterState.data.datasets[1].pointRadius).toBe(0);
-    expect(scatterState.data.datasets[1].pointHitRadius).toBe(8);
+    expect(scatterState.data.datasets[1].pointHoverRadius).toBe(0);
+    expect(scatterState.data.datasets[1].pointHitRadius).toBe(0);
+    expect(scatterState.data.datasets[1].isNonInteractiveReference).toBe(true);
     expect(scatterState.data.datasets[0].borderWidth).toBe(0);
+    expect(scatterState.data.datasets[0].pointRadius).toBe(5);
+    expect(scatterState.data.datasets[0].pointHoverRadius).toBe(7);
     expect(scatterState.data.datasets[1].borderWidth).toBe(2);
     expect(scatterState.options.plugins.legend.labels.usePointStyle).toBe(false);
+    expect(scatterState.options.interaction).toMatchObject({ mode: "nearest", intersect: true });
     const tooltip = scatterState.options.plugins.tooltip.callbacks;
     const alternativePoint = scatterState.data.datasets[0].data[0];
     const profilePoint = scatterState.data.datasets[1].data[0];
@@ -403,6 +408,9 @@ describe("AnalyticalGraph", () => {
     })).toEqual(["Closeness: 0.4230"]);
     const displayedTooltip = `${tooltip.title([{ raw: alternativePoint }])} ${tooltip.label({ raw: alternativePoint }).join(" ")} ${tooltip.title([{ raw: profilePoint }])} ${tooltip.label({ raw: profilePoint }).join(" ")}`;
     expect(displayedTooltip).not.toMatch(/\(0\.|0\.37912345|0\.42304567|alternative-technical-id|profile-technical-id|Nearest boundary|Distance from nearest boundary/);
+    const tooltipFilter = scatterState.options.plugins.tooltip.filter;
+    expect(tooltipFilter({ dataset: scatterState.data.datasets[0] })).toBe(true);
+    expect(tooltipFilter({ dataset: scatterState.data.datasets[1] })).toBe(false);
     expect(scatterState.data.datasets[0].data[0].x).toBe(0.37912345);
     expect(scatterState.data.datasets[0].data[0].y).toBe(0);
     expect(scatterState.data.datasets[1].data[0].x).toBe(0.42304567);

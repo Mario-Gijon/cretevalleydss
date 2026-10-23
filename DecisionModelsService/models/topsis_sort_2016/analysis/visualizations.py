@@ -44,7 +44,8 @@ def _closeness_boundaries(facts: dict[str, Any]) -> dict[str, Any] | None:
                 "label": boundary["label"],
                 "showLine": True,
                 "pointRadius": 0,
-                "pointHitRadius": 8,
+                "pointHoverRadius": 0,
+                "pointHitRadius": 0,
                 "borderDash": [6, 4],
                 "points": [
                     {
@@ -78,6 +79,7 @@ def _closeness_boundaries(facts: dict[str, Any]) -> dict[str, Any] | None:
         ),
         "presentation": {
             "tooltip": {"variant": "closeness-boundaries", "precision": 4},
+            "referenceLines": {"interactive": False},
         },
         "xAxis": {
             "label": "Relative closeness coefficient",

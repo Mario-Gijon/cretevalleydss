@@ -10,6 +10,7 @@ const LEGACY_TOPSIS_SORT_SENSITIVITY_PRESENTATION = Object.freeze({
 });
 const LEGACY_TOPSIS_SORT_CLOSENESS_PRESENTATION = Object.freeze({
   tooltip: Object.freeze({ variant: "closeness-boundaries", precision: 4 }),
+  referenceLines: Object.freeze({ interactive: false }),
 });
 
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);

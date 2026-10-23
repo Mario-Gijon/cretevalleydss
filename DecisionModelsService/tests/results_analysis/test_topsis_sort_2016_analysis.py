@@ -155,6 +155,7 @@ def test_analysis_visualizations_include_two_graphs_and_dynamic_alternative_and_
         "variant": "closeness-boundaries",
         "precision": 4,
     }
+    assert closeness["presentation"]["referenceLines"] == {"interactive": False}
     assert len(closeness["data"]["series"][0]["points"]) == 3
     alternative = analysis["facts"]["alternatives"][0]
     alternative_point = closeness["data"]["series"][0]["points"][0]
@@ -168,6 +169,10 @@ def test_analysis_visualizations_include_two_graphs_and_dynamic_alternative_and_
     }
     assert all(series["showLine"] is True for series in closeness["data"]["series"][1:])
     assert all(series["borderDash"] for series in closeness["data"]["series"][1:])
+    assert len(closeness["data"]["series"][1:]) == len(analysis["facts"]["profiles"])
+    assert all(series["pointRadius"] == 0 for series in closeness["data"]["series"][1:])
+    assert all(series["pointHoverRadius"] == 0 for series in closeness["data"]["series"][1:])
+    assert all(series["pointHitRadius"] == 0 for series in closeness["data"]["series"][1:])
 
     assert sensitivity["title"] == "Criterion weight sensitivity · Quality"
     assert sensitivity["xAxis"]["label"] == "Varied importance weight"
