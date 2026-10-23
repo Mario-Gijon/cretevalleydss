@@ -44,4 +44,23 @@ describe("buildEvaluationsPreview", () => {
 
     expect(preview.evaluationsCount).toBe(2);
   });
+
+  it("does not expose an empty alternative matrix as a usable collective", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const collective = payload.evaluations.collective.find(
+      (entry) => entry.stage === "alternativeEvaluation"
+    );
+    collective.rawPayload = {};
+    collective.displayPayload = {};
+
+    const preview = buildEvaluationsPreview(buildEvaluationsData({
+      payload,
+      selectedStage: "alternativeEvaluation",
+      selectedPhase: 5,
+      showCollective: true,
+    }));
+
+    expect(preview.hasCollective).toBe(true);
+    expect(preview.renderer.collectiveEvaluation).toBeNull();
+  });
 });

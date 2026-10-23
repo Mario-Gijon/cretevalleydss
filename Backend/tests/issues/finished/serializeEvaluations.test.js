@@ -100,6 +100,148 @@ const serialize = ({ issue = baseIssue(), evaluations = [evaluation()], phaseRes
     expressionDomains,
   });
 
+const buildAdvancedSortingFixture = () => {
+  const sortingAlternatives = Array.from({ length: 10 }, (_, index) => ({
+    id: `alternative-${index + 1}`,
+    name: `Alternative ${index + 1}`,
+  }));
+  const sortingCriteria = {
+    nodes: Array.from({ length: 6 }, (_, index) => ({
+      id: `criterion-${index + 1}`,
+      name: `Criterion ${index + 1}`,
+      type: index % 2 === 0 ? "benefit" : "cost",
+      isLeaf: true,
+      parentId: null,
+      position: index,
+      childIds: [],
+      expressionDomainId: "numeric-domain",
+    })),
+    rootIds: Array.from({ length: 6 }, (_, index) => `criterion-${index + 1}`),
+  };
+  const sortingDomains = [{
+    id: "numeric-domain",
+    typeKey: "numericContinuous",
+    definition: { min: 0, max: 100 },
+  }];
+  const expertEvaluations = Array.from({ length: 4 }, (_, expertIndex) => ({
+    _id: `evaluation-${expertIndex + 1}`,
+    expert: { _id: `expert-${expertIndex + 1}` },
+    stage: "alternativeEvaluation",
+    consensusPhase: 5,
+    payload: Object.fromEntries(sortingAlternatives.map((alternative, alternativeIndex) => [
+      alternative.id,
+      Object.fromEntries(sortingCriteria.nodes.map((criterion, criterionIndex) => [
+        criterion.id,
+        10 + alternativeIndex + criterionIndex + expertIndex * 10,
+      ])),
+    ])),
+    completed: true,
+    submittedAt: new Date("2026-01-01T00:00:00.000Z"),
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  }));
+  const requestEvaluations = expertEvaluations.map((entry, index) => ({
+    expert: { id: `expert-${index + 1}`, name: `Expert ${index + 1}` },
+    payload: entry.payload,
+  }));
+  const result = {
+    _id: "stage-result-5",
+    issue: "issue-1",
+    stage: "alternativeEvaluation",
+    consensusPhase: 5,
+    executionAttempt: "attempt-5",
+    inputSnapshot: { expertWeights: [] },
+    result: { standardResult: { categories: [], assignments: [] }, modelExecution: {}, rawOutput: {} },
+  };
+  const attempt = {
+    _id: "attempt-5",
+    issue: "issue-1",
+    scope: "issueStage",
+    evaluationStage: "alternativeEvaluation",
+    consensusPhase: 5,
+    status: "succeeded",
+    modelContext: {
+      modelId: "decision-model",
+      apiModelKey: "topsis_sort_2016",
+      evaluationStructureKey: "alternativeStructure",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+    },
+    request: {
+      body: {
+        evaluations: requestEvaluations,
+        context: {
+          issue: { id: "issue-1" },
+          consensusPhase: 5,
+          structure: { key: "alternativeStructure", stage: "alternativeEvaluation" },
+          alternatives: sortingAlternatives,
+          criteria: sortingCriteria.nodes.map((criterion) => ({
+            id: criterion.id,
+            name: criterion.name,
+            type: criterion.type,
+            expressionDomain: {
+              typeKey: "numericContinuous",
+              definition: { min: 0, max: 100 },
+            },
+          })),
+        },
+      },
+    },
+    application: {
+      status: "applied",
+      entityType: "stageResult",
+      entityId: "stage-result-5",
+      resultSnapshot: {
+        _id: "stage-result-5",
+        issue: "issue-1",
+        stage: "alternativeEvaluation",
+        consensusPhase: 5,
+        executionAttempt: "attempt-5",
+      },
+    },
+  };
+  const collectiveEvaluations = sortingAlternatives.map((alternative, alternativeIndex) => ({
+    alternativeId: alternative.id,
+    valuesByCriterionId: Object.fromEntries(sortingCriteria.nodes.map((criterion, criterionIndex) => [
+      criterion.id,
+      25 + alternativeIndex + criterionIndex,
+    ])),
+  }));
+  const analysis = {
+    executionKey: "base",
+    executionType: "base",
+    stageAnalyses: {
+      alternativeEvaluation: {
+        apiModelKey: "topsis_sort_2016",
+        analysis: {
+          facts: {
+            status: "available",
+            sourcePhase: 5,
+            executionId: "attempt-5",
+            comparisonKey: "frozen-input-hash",
+            collectiveEvaluations,
+          },
+        },
+      },
+    },
+  };
+  return {
+    issue: {
+      ...baseIssue(),
+      apiModelKey: "topsis_sort_2016",
+      evaluationStructureKey: "alternativeStructure",
+    },
+    alternatives: sortingAlternatives,
+    criteria: sortingCriteria,
+    expressionDomains: sortingDomains,
+    evaluations: expertEvaluations,
+    result,
+    attempt,
+    analysis,
+    collective: Object.fromEntries(collectiveEvaluations.map((row) => [row.alternativeId, row.valuesByCriterionId])),
+  };
+};
+
 describe("finished evaluation serialization", () => {
   it("preserves successful display transformations and uses the nearest previous sparse phase", async () => {
     registryState.get.mockImplementation((key) => ({
@@ -153,6 +295,132 @@ describe("finished evaluation serialization", () => {
       model: { id: "weight-model" },
       consensus: { previousCollectiveEvaluations: { phase: 1 } },
       criteriaWeightingCriteria: [{ id: "criterion-1", name: "Criterion", type: "benefit" }],
+    });
+  });
+
+  it("projects the 10 by 6 TOPSIS-Sort collective from analysis tied to the applied execution", async () => {
+    registryState.get.mockImplementation((key) => ({
+      key,
+      stage: key === "alternativeStructure" ? "alternativeEvaluation" : "criteriaWeighting",
+      get: vi.fn(async ({ payload }) => payload),
+    }));
+    const fixture = buildAdvancedSortingFixture();
+    const result = await serializeEvaluations({
+      issue: fixture.issue,
+      evaluations: fixture.evaluations,
+      phaseResults: [serializedResult("alternativeEvaluation", 5, "stage-result-5")],
+      rawPhaseResults: [fixture.result],
+      executionAttempts: [fixture.attempt],
+      resultsAnalyses: [fixture.analysis],
+      alternatives: fixture.alternatives,
+      criteria: fixture.criteria,
+      expressionDomains: fixture.expressionDomains,
+    });
+
+    const collective = result.collective[0].rawPayload;
+    expect(collective).toEqual(fixture.collective);
+    expect(Object.keys(collective)).toHaveLength(10);
+    expect(Object.keys(collective["alternative-1"])).toHaveLength(6);
+    expect(result.individual).toHaveLength(4);
+    expect(result.contexts[0].decisionContext.consensus.currentCollectiveEvaluations).toEqual(fixture.collective);
+  });
+
+  it("does not reuse analysis evidence from a different phase", async () => {
+    registryState.get.mockImplementation((key) => ({
+      key,
+      stage: "alternativeEvaluation",
+      get: vi.fn(async ({ payload }) => payload),
+    }));
+    const fixture = buildAdvancedSortingFixture();
+    const previousResult = {
+      ...fixture.result,
+      _id: "stage-result-4",
+      consensusPhase: 4,
+      executionAttempt: "attempt-4",
+    };
+    const previousAttempt = {
+      ...fixture.attempt,
+      _id: "attempt-4",
+      consensusPhase: 4,
+      application: {
+        ...fixture.attempt.application,
+        entityId: "stage-result-4",
+        resultSnapshot: {
+          ...fixture.attempt.application.resultSnapshot,
+          _id: "stage-result-4",
+          consensusPhase: 4,
+          executionAttempt: "attempt-4",
+        },
+      },
+      request: { body: { ...fixture.attempt.request.body, context: { ...fixture.attempt.request.body.context, consensusPhase: 4 } } },
+    };
+    const previousEvaluations = fixture.evaluations.map((entry) => ({
+      ...entry,
+      consensusPhase: 4,
+    }));
+    const result = await serializeEvaluations({
+      issue: fixture.issue,
+      evaluations: previousEvaluations,
+      phaseResults: [serializedResult("alternativeEvaluation", 4, "stage-result-4")],
+      rawPhaseResults: [previousResult],
+      executionAttempts: [previousAttempt],
+      resultsAnalyses: [fixture.analysis],
+      alternatives: fixture.alternatives,
+      criteria: fixture.criteria,
+      expressionDomains: fixture.expressionDomains,
+    });
+
+    expect(result.collective[0].rawPayload).toBeNull();
+    expect(result.contexts[0].decisionContext.consensus.currentCollectiveEvaluations).toBeNull();
+  });
+
+  it("leaves a historical TOPSIS-Sort collective unavailable when its frozen analysis is absent", async () => {
+    registryState.get.mockImplementation((key) => ({
+      key,
+      stage: "alternativeEvaluation",
+      get: vi.fn(async ({ payload }) => payload),
+    }));
+    const fixture = buildAdvancedSortingFixture();
+    const result = await serializeEvaluations({
+      issue: fixture.issue,
+      evaluations: fixture.evaluations,
+      phaseResults: [serializedResult("alternativeEvaluation", 5, "stage-result-5")],
+      rawPhaseResults: [fixture.result],
+      executionAttempts: [fixture.attempt],
+      resultsAnalyses: [],
+      alternatives: fixture.alternatives,
+      criteria: fixture.criteria,
+      expressionDomains: fixture.expressionDomains,
+    });
+
+    expect(result.collective[0].rawPayload).toBeNull();
+  });
+
+  it.each([
+    ["another execution", (fixture) => { fixture.analysis.stageAnalyses.alternativeEvaluation.analysis.facts.executionId = "different-attempt"; }],
+    ["an incomplete matrix", (fixture) => { fixture.analysis.stageAnalyses.alternativeEvaluation.analysis.facts.collectiveEvaluations.pop(); }],
+  ])("rejects available Analysis evidence with %s", async (_, corruptEvidence) => {
+    registryState.get.mockImplementation((key) => ({
+      key,
+      stage: "alternativeEvaluation",
+      get: vi.fn(async ({ payload }) => payload),
+    }));
+    const fixture = buildAdvancedSortingFixture();
+    corruptEvidence(fixture);
+
+    await expect(serializeEvaluations({
+      issue: fixture.issue,
+      evaluations: fixture.evaluations,
+      phaseResults: [serializedResult("alternativeEvaluation", 5, "stage-result-5")],
+      rawPhaseResults: [fixture.result],
+      executionAttempts: [fixture.attempt],
+      resultsAnalyses: [fixture.analysis],
+      alternatives: fixture.alternatives,
+      criteria: fixture.criteria,
+      expressionDomains: fixture.expressionDomains,
+    })).rejects.toMatchObject({
+      message: expect.stringContaining("TOPSIS-Sort"),
+      field: "evaluations.collective",
     });
   });
 

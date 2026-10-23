@@ -2,6 +2,7 @@ import { getExpressionDomainDisplayMeta } from "../../../../../utils/expressionD
 import { isPlainObject } from "../../../../../utils/common/objects";
 import { formatParticipationLabel } from "./formatParticipationLabel";
 import { resolveFinishedExpertIdentity } from "./resolveFinishedExpertIdentity";
+import { isUsableCollectiveEvaluation } from "./isUsableCollectiveEvaluation";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -119,8 +120,12 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
   const individualPayload = payloadFor(individual);
   const collectivePayload = payloadFor(collective);
   const hasUsableIndividualEvaluation = isPlainObject(individualPayload);
-  const hasUsableCollectiveEvaluation = isPlainObject(collectivePayload);
   const context = contextFor({ payload, stage, phase, individual, collective });
+  const hasUsableCollectiveEvaluation = isUsableCollectiveEvaluation({
+    structureKey: context?.structureKey,
+    decisionContext: context?.decisionContext,
+    collectiveEvaluation: collectivePayload,
+  });
 
   return {
     stage,

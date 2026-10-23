@@ -305,6 +305,88 @@ def test_analysis_is_loader_discovered_and_reproduces_the_executed_sorting_resul
     ]
 
 
+def test_model_analysis_collective_matrix_preserves_ids_and_four_expert_mean():
+    alternative_ids = [f"alternative-{index + 1}" for index in range(10)]
+    criterion_ids = [f"criterion-{index + 1}" for index in range(6)]
+    request = {
+        "modelParameters": {
+            "weights": {criterion_id: 1 / len(criterion_ids) for criterion_id in criterion_ids},
+            "orderedCategories": [
+                {"categoryId": "low", "label": "Low", "order": 0},
+                {"categoryId": "high", "label": "High", "order": 1},
+            ],
+            "boundaryProfiles": {
+                "profiles": [{
+                    "profileId": "profile-high",
+                    "categoryId": "high",
+                    "valuesByCriterionId": {criterion_id: 50 for criterion_id in criterion_ids},
+                }]
+            },
+        },
+        "evaluations": [],
+        "context": {
+            "issue": {"id": "advanced-sorting-issue", "name": "Advanced sorting fixture"},
+            "alternatives": [
+                {"id": alternative_id, "name": f"Alternative {index + 1}"}
+                for index, alternative_id in enumerate(alternative_ids)
+            ],
+            "criteria": [
+                {
+                    "id": criterion_id,
+                    "name": f"Criterion {index + 1}",
+                    "type": "benefit" if index % 2 == 0 else "cost",
+                    "expressionDomain": {
+                        "typeKey": "numericContinuous",
+                        "definition": {"min": 0, "max": 100},
+                    },
+                }
+                for index, criterion_id in enumerate(criterion_ids)
+            ],
+            "consensusPhase": 5,
+            "previousStageResult": None,
+            "structure": {"key": "alternativeCriteriaMatrix", "stage": "alternativeEvaluation"},
+        },
+    }
+    for expert_index in range(4):
+        request["evaluations"].append({
+            "expert": {"id": f"expert-{expert_index + 1}", "name": f"Expert {expert_index + 1}"},
+            "payload": {
+                alternative_id: {
+                    criterion_id: 10 + alternative_index + criterion_index + expert_index * 10
+                    for criterion_index, criterion_id in enumerate(criterion_ids)
+                }
+                for alternative_index, alternative_id in enumerate(alternative_ids)
+            },
+        })
+
+    parsed_request = GenericModelExecutionRequest.model_validate(request)
+    execution = execute_topsis_sort_2016(parsed_request)
+    assert execution["success"] is True
+    analysis = analyze_issue({
+        "rounds": [{
+            "phase": 5,
+            "execution": {
+                "attemptId": "attempt-advanced-sorting",
+                "modelContext": {"apiModelKey": "topsis_sort_2016"},
+                "input": request,
+                "result": {"standardResult": execution["data"]},
+            },
+        }]
+    })
+
+    collective = analysis["facts"]["collectiveEvaluations"]
+    assert analysis["facts"]["executionId"] == "attempt-advanced-sorting"
+    assert analysis["facts"]["sourcePhase"] == 5
+    assert len(collective) == 10
+    assert [entry["alternativeId"] for entry in collective] == alternative_ids
+    for alternative_index, row in enumerate(collective):
+        assert set(row["valuesByCriterionId"]) == set(criterion_ids)
+        assert row["valuesByCriterionId"] == {
+            criterion_id: 25 + alternative_index + criterion_index
+            for criterion_index, criterion_id in enumerate(criterion_ids)
+        }
+
+
 def test_issue_analysis_uses_the_latest_frozen_execution_for_scenarios_and_history():
     context = _analysis_context(phase=1)
     scenario_request = _request()

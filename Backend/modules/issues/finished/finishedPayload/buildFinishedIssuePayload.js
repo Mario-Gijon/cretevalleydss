@@ -61,6 +61,8 @@ export const buildFinishedIssuePayload = async ({ issue }) => {
     evaluations: loaded.evaluations,
     phaseResults,
     rawPhaseResults: loaded.phaseResults,
+    executionAttempts: loaded.executionAttempts,
+    resultsAnalyses: loaded.resultsAnalyses,
     alternatives,
     criteria,
     expressionDomains,

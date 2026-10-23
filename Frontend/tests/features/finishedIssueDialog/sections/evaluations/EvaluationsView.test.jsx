@@ -263,11 +263,50 @@ describe("EvaluationsView", () => {
       canShowCollective: true,
     });
     expect(within(criteriaPanel).getByRole("heading", { name: "No collective criteria weighting available" })).toBeInTheDocument();
-    expect(within(criteriaPanel).getByText("No collective criteria-weighting evaluation is available for this round.")).toBeInTheDocument();
+    expect(within(criteriaPanel).getByText("No collective criteria weighting is available for this round.")).toBeInTheDocument();
     expect(within(criteriaPanel).queryByText(/Expert One/)).not.toBeInTheDocument();
     expect(within(criteriaPanel).queryByTestId("evaluation-renderer-criteriaWeighting")).not.toBeInTheDocument();
     expect(within(criteriaPanel).queryByText("Evaluation payload is unavailable.")).not.toBeInTheDocument();
     expect(rendererSpy).not.toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting" }));
+  });
+
+  it.each([
+    ["empty", {}],
+    ["incomplete", { a: { cost: 4.5, quality: 7.5 }, b: { cost: 5.5 } }],
+  ])("shows a natural unavailable state for an %s alternative collective matrix", (_, matrix) => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const collective = payload.evaluations.collective.find(
+      (entry) => entry.stage === "alternativeEvaluation"
+    );
+    collective.rawPayload = matrix;
+    collective.displayPayload = matrix;
+    const state = { ...selection, showCollective: true };
+    const data = buildEvaluationsWorkspaceData({ payload, selection: state });
+    renderView(data, state);
+
+    const panel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    expect(data.alternativeEvaluation).toMatchObject({
+      hasUsableCollectiveEvaluation: false,
+      canShowCollective: true,
+    });
+    expect(within(panel).getByRole("heading", { name: "No collective alternative evaluation available" })).toBeInTheDocument();
+    expect(within(panel).getByText("No collective alternative evaluation is available for this round.")).toBeInTheDocument();
+    expect(within(panel).queryByText(/missing an alternative row|missing a criterion cell/i)).not.toBeInTheDocument();
+    expect(within(panel).queryByTestId("evaluation-renderer-alternativeEvaluation")).not.toBeInTheDocument();
+  });
+
+  it("does not silently downgrade an invalid collective cell to unavailable", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const collective = payload.evaluations.collective.find(
+      (entry) => entry.stage === "alternativeEvaluation"
+    );
+    collective.rawPayload.a.cost = Number.NaN;
+    collective.displayPayload.a.cost = Number.NaN;
+
+    expect(() => buildEvaluationsWorkspaceData({
+      payload,
+      selection: { ...selection, showCollective: true },
+    })).toThrow("must be a finite number or a non-empty array of finite numbers");
   });
 
   it("keeps collective payloads stage-specific and only supplies them when selected", () => {

@@ -2,6 +2,7 @@ import { createInternalError } from "../../../../../utils/common/errors.js";
 import { getEvaluationStructureOrThrow } from "../../../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
 import { getOrderedParentCriteriaFromDocsOrThrow } from "../../../shared/ordering.js";
 import { serializeCriterionTreeForContext } from "./serializeCriteria.js";
+import { resolveTopsisSortCollectiveEvaluations } from "./resolveTopsisSortCollectiveEvaluations.js";
 import {
   cloneSerializable,
   toIsoOrNull,
@@ -99,6 +100,7 @@ const serializeContext = ({
   criteria,
   expressionDomainsById,
   rawPhaseResults,
+  collectiveEvaluationsByStagePhase,
   evaluations,
   participants,
 }) => {
@@ -106,6 +108,16 @@ const serializeContext = ({
     (result) => result.stage === stage && result.consensusPhase === phase
   );
   const previousResult = findPreviousStageResult({ stage, phase, rawPhaseResults });
+  const currentKey = `${stage}:${phase}`;
+  const previousKey = previousResult
+    ? `${previousResult.stage}:${previousResult.consensusPhase}`
+    : null;
+  const currentCollectiveEvaluations = collectiveEvaluationsByStagePhase.has(currentKey)
+    ? collectiveEvaluationsByStagePhase.get(currentKey)
+    : cloneSerializable(currentResult?.result?.standardResult?.collectiveEvaluations, {});
+  const previousCollectiveEvaluations = previousKey && collectiveEvaluationsByStagePhase.has(previousKey)
+    ? collectiveEvaluationsByStagePhase.get(previousKey)
+    : cloneSerializable(previousResult?.result?.standardResult?.collectiveEvaluations, {});
   const leafCriteria = serializeLeafCriteria({ criteria, expressionDomainsById });
   const criteriaWeightingCriteria = serializeCriteriaWeightingCriteria({
     issue,
@@ -197,14 +209,8 @@ const serializeContext = ({
         phase,
         maxPhases: issue.consensusMaxPhases ?? null,
         threshold: issue.consensusThreshold ?? null,
-        currentCollectiveEvaluations: cloneSerializable(
-          currentResult?.result?.standardResult?.collectiveEvaluations,
-          {}
-        ),
-        previousCollectiveEvaluations: cloneSerializable(
-          previousResult?.result?.standardResult?.collectiveEvaluations,
-          {}
-        ),
+        currentCollectiveEvaluations: cloneSerializable(currentCollectiveEvaluations, null),
+        previousCollectiveEvaluations: cloneSerializable(previousCollectiveEvaluations, null),
       },
     },
   };
@@ -215,15 +221,35 @@ export const serializeEvaluations = async ({
   evaluations,
   phaseResults,
   rawPhaseResults,
+  executionAttempts = [],
+  resultsAnalyses = [],
   alternatives,
   criteria,
   expressionDomains,
   participants = [],
 }) => {
   const expressionDomainsById = new Map(expressionDomains.map((domain) => [domain.id, domain]));
-  const rawPhaseResultByStagePhase = new Map(
-    rawPhaseResults.map((result) => [`${result.stage}:${result.consensusPhase}`, result])
-  );
+  const collectiveEvaluationsByStagePhase = new Map();
+  for (const result of rawPhaseResults) {
+    const key = `${result.stage}:${result.consensusPhase}`;
+    const rawCollective = result.result?.standardResult?.collectiveEvaluations;
+    const topsisSortCollective = resolveTopsisSortCollectiveEvaluations({
+      issue,
+      rawPhaseResult: result,
+      executionAttempts,
+      resultsAnalyses,
+      alternatives,
+      criteria,
+      expressionDomains,
+      evaluations,
+    });
+    collectiveEvaluationsByStagePhase.set(
+      key,
+      topsisSortCollective === undefined
+        ? cloneSerializable(rawCollective, {})
+        : cloneSerializable(topsisSortCollective, null)
+    );
+  }
   const contextSources = new Map();
 
   for (const evaluation of evaluations) {
@@ -260,6 +286,7 @@ export const serializeEvaluations = async ({
       criteria,
       expressionDomainsById,
       rawPhaseResults,
+      collectiveEvaluationsByStagePhase,
       evaluations,
       participants,
     });
@@ -325,7 +352,7 @@ export const serializeEvaluations = async ({
     stage: result.stage,
     phase: result.phase,
     rawPayload: cloneSerializable(
-      rawPhaseResultByStagePhase.get(`${result.stage}:${result.phase}`)?.result?.standardResult?.collectiveEvaluations,
+      collectiveEvaluationsByStagePhase.get(`${result.stage}:${result.phase}`),
       {}
     ),
     displayPayload: null,

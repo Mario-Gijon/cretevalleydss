@@ -41,11 +41,10 @@ const resolveEmptyStateContent = ({
     stage === "criteriaWeighting"
       ? "criteria-weighting"
       : "alternative-evaluation";
-
   if (showCollective) {
     return {
       title: `No collective ${titleStageName} available`,
-      description: `No collective ${bodyStageName} evaluation is available for this ${consensusEnabled ? "round" : "stage"}.`,
+      description: `No collective ${titleStageName} is available for this ${consensusEnabled ? "round" : "stage"}.`,
       Icon: GroupsOutlinedIcon,
     };
   }

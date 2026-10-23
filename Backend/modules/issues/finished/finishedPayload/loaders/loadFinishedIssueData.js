@@ -10,6 +10,7 @@ import { IssueStageResult } from "../../../../../models/IssueStageResults.js";
 import { Participation } from "../../../../../models/Participations.js";
 import { ExitUserIssue } from "../../../../../models/ExitUserIssue.js";
 import { IssueEvent } from "../../../../../models/IssueEvents.js";
+import { IssueExecutionAttempt } from "../../../../../models/IssueExecutionAttempts.js";
 
 const USER_SELECT = "_id name email university";
 
@@ -66,6 +67,20 @@ export const loadFinishedIssueData = async ({ issue }) => {
       .lean(),
   ]);
 
+  const executionAttemptIds = [
+    ...new Set(
+      phaseResults
+        .map((result) => String(result.executionAttempt || ""))
+        .filter(Boolean)
+    ),
+  ];
+  const executionAttempts = executionAttemptIds.length
+    ? await IssueExecutionAttempt.find({
+        _id: { $in: executionAttemptIds },
+        issue: issueId,
+      }).lean()
+    : [];
+
   return {
     alternatives,
     criteria,
@@ -74,6 +89,7 @@ export const loadFinishedIssueData = async ({ issue }) => {
     evaluations,
     evaluationRevisions,
     phaseResults,
+    executionAttempts,
     compatibleModels,
     scenarios,
     resultsAnalyses,

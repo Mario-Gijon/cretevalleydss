@@ -1,4 +1,5 @@
 import { resolveFinishedExpertIdentity } from "./resolveFinishedExpertIdentity";
+import { isUsableCollectiveEvaluation } from "./isUsableCollectiveEvaluation";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -103,6 +104,12 @@ export const buildEvaluationsData = ({
     asArray(payload?.phaseResults).find(
       (entry) => entry?.stage === stage && entry?.phase === phase
     ) || null;
+  const collectivePayload = payloadFor(collective);
+  const hasUsableCollectiveEvaluation = isUsableCollectiveEvaluation({
+    structureKey: context?.structureKey,
+    decisionContext: context?.decisionContext,
+    collectiveEvaluation: collectivePayload,
+  });
   const totalIndividualSubmissions = asArray(payload?.evaluations?.individual)
     .filter((entry) => entry?.completed === true)
     .length;
@@ -134,7 +141,7 @@ export const buildEvaluationsData = ({
     showCollective: showCollective === true,
     canShowCollective: Boolean(collective),
     renderer:
-      context && (individual || collective)
+      context && (individual || hasUsableCollectiveEvaluation)
         ? {
             stage,
             structureKey: context.structureKey,
@@ -142,8 +149,8 @@ export const buildEvaluationsData = ({
             evaluation: individual
               ? payloadFor(individual)
               : null,
-            collectiveEvaluation: collective
-              ? payloadFor(collective)
+            collectiveEvaluation: hasUsableCollectiveEvaluation
+              ? collectivePayload
               : null,
             readOnly: true,
           }
