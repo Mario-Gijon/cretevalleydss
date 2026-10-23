@@ -155,6 +155,53 @@ authorization, canonical IDs, remapped profiles, final weights, expert
 evaluations, sorting result, diagnostics, and Finished Issue. The generator
 never constructs or persists a sorting result itself.
 
+`topsis-sort-2016-rich` keeps that small regression scenario intact and adds a
+synthetic supplier study with ten alternatives, six leaf criteria, five ordered
+categories, four original-scale profiles, and four distinct expert matrices.
+The common 1–10 scale matches the configured development numeric domain. It is
+an invented rating scale, not money or physical time.
+Each expert first submits a separate six-criterion vector through the existing
+`manual_criteria_weights` `expertManual` stage. The Backend computes the
+collective weights with its existing MCC solver; only those persisted MCC
+weights are used for the alternative-evaluation stage and `sorting@1` result.
+Consensus rounds remain disabled. Before sending a create request, the scenario
+uses the DecisionModelsService Python environment to replay MCC, TOPSIS-Sort,
+its two existing Model Analysis views, and the existing expert projection from
+the checked-in fixture.
+
+Configure the ignored `users.local.yaml` with distinct `owner`, `expert_a`,
+`expert_b`, `expert_c`, and `expert_d` accounts, then run from
+`Automation/issue_scenario_lab` while the development API and services are
+available:
+
+```bash
+SCENARIO_LAB_API_BASE_URL=http://localhost:5000/api \
+DECISION_MODELS_PYTHON=../../DecisionModelsService/.venv/bin/python \
+  .venv/bin/python -m issue_scenario_lab generate topsis-sort-2016-rich
+```
+
+Aliases can be changed with `--owner-alias`, `--expert-a-alias`,
+`--expert-b-alias`, `--expert-c-alias`, and `--expert-d-alias`. The generator
+authenticates all five accounts and checks model authorization, the weighting
+model, Backend user catalogue, and numeric domain before creating the Issue.
+It then submits both real stages, checks the persisted Finished Issue and
+MCC weights, and records the generated Issue in the local manifest. It never
+deletes older Issues.
+
+`manual_criteria_weights` currently has no model-specific `analysis/` handler.
+The four individual weight vectors, the MCC collective output, effective
+weights, and the completed weighting-stage history remain available in the
+Finished Issue audit and Evaluations views; this scenario does not add a new
+weight-analysis visualization.
+
+The sorting result's collective 10×6 alternative matrix is retained in the
+persisted TOPSIS-Sort Model Analysis facts and is the matrix used for its
+diagnostics and assignments. The generic Evaluations audit currently leaves
+the `alternativeEvaluation` collective `rawPayload` empty, so its collective
+matrix renderer can report that an alternative row is missing. The individual
+expert matrices remain available there; this scenario does not alter the
+`sorting@1` result contract to add a second copy of its input matrix.
+
 ## TOPSIS-Sort 2016
 
 TOPSIS-Sort 2016 is a normal ready Decision Plugin. Its manifest authorizes

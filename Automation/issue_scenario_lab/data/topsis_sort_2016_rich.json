@@ -1,0 +1,570 @@
+{
+  "scenarioId": "topsis-sort-2016-rich",
+  "title": "TOPSIS-Sort — Supplier Selection Study",
+  "description": "Estudio sintético y reproducible de selección de proveedores. Todas las puntuaciones, preferencias y perfiles son datos didácticos inventados; no representan observaciones reales, precios en moneda ni tiempos físicos.",
+  "scale": {
+    "minimum": 1,
+    "maximum": 10,
+    "meaning": "Puntuación sintética común: 1 es la valoración menos favorable y 10 la más favorable para criterios benefit; en criterios cost, 1 representa menor carga y 10 mayor carga. No son importes ni unidades físicas."
+  },
+  "participants": {
+    "creator": "owner",
+    "experts": [
+      "expert_a",
+      "expert_b",
+      "expert_c",
+      "expert_d"
+    ]
+  },
+  "models": {
+    "decision": "topsis_sort_2016",
+    "criteriaWeighting": "manual_criteria_weights"
+  },
+  "criteria": [
+    {
+      "key": "quality",
+      "name": "Product quality",
+      "type": "benefit"
+    },
+    {
+      "key": "purchase_cost",
+      "name": "Purchase cost",
+      "type": "cost"
+    },
+    {
+      "key": "delivery_reliability",
+      "name": "Delivery reliability",
+      "type": "benefit"
+    },
+    {
+      "key": "delivery_time",
+      "name": "Delivery time",
+      "type": "cost"
+    },
+    {
+      "key": "sustainability",
+      "name": "Sustainability",
+      "type": "benefit"
+    },
+    {
+      "key": "after_sales_support",
+      "name": "After-sales support",
+      "type": "benefit"
+    }
+  ],
+  "weightsByExpert": {
+    "expert_a": {
+      "quality": 0.3,
+      "purchase_cost": 0.18,
+      "delivery_reliability": 0.22,
+      "delivery_time": 0.1,
+      "sustainability": 0.1,
+      "after_sales_support": 0.1
+    },
+    "expert_b": {
+      "quality": 0.2,
+      "purchase_cost": 0.32,
+      "delivery_reliability": 0.15,
+      "delivery_time": 0.18,
+      "sustainability": 0.08,
+      "after_sales_support": 0.07
+    },
+    "expert_c": {
+      "quality": 0.23,
+      "purchase_cost": 0.17,
+      "delivery_reliability": 0.16,
+      "delivery_time": 0.1,
+      "sustainability": 0.25,
+      "after_sales_support": 0.09
+    },
+    "expert_d": {
+      "quality": 0.22,
+      "purchase_cost": 0.2,
+      "delivery_reliability": 0.17,
+      "delivery_time": 0.12,
+      "sustainability": 0.13,
+      "after_sales_support": 0.16
+    }
+  },
+  "expectedCriteriaWeights": {
+    "quality": 0.25,
+    "purchase_cost": 0.2,
+    "delivery_reliability": 0.175,
+    "delivery_time": 0.125,
+    "sustainability": 0.145,
+    "after_sales_support": 0.105
+  },
+  "alternatives": [
+    {
+      "key": "asterion_precision",
+      "name": "Asterion Precision",
+      "description": "Premium components with excellent quality and support; higher synthetic cost burden."
+    },
+    {
+      "key": "blue_harbor_logistics",
+      "name": "Blue Harbor Logistics",
+      "description": "Reliable and sustainable at a competitive cost, with longer delivery and leaner support."
+    },
+    {
+      "key": "cedar_ridge_components",
+      "name": "Cedar Ridge Components",
+      "description": "Strong quality and after-sales support with moderate cost and fast delivery."
+    },
+    {
+      "key": "dune_source_cooperative",
+      "name": "Dune Source Cooperative",
+      "description": "Small low-cost supplier with limited quality, reliability, and support capacity."
+    },
+    {
+      "key": "evergreen_circular_supply",
+      "name": "Evergreen Circular Supply",
+      "description": "Leading sustainability and reliable delivery, balanced by weaker support and higher cost."
+    },
+    {
+      "key": "falcon_express_parts",
+      "name": "Falcon Express Parts",
+      "description": "Highly reliable and fast, with premium cost and modest sustainability."
+    },
+    {
+      "key": "granite_systems",
+      "name": "Granite Systems",
+      "description": "Consistent mid-range supplier with balanced but rarely leading performance."
+    },
+    {
+      "key": "helios_advanced_materials",
+      "name": "Helios Advanced Materials",
+      "description": "Exceptional quality with a high cost burden and solid, not leading, logistics."
+    },
+    {
+      "key": "indigo_materials",
+      "name": "Indigo Materials",
+      "description": "Cost-competitive and sustainable with moderate quality, logistics, and support."
+    },
+    {
+      "key": "juniper_integrated_manufacturing",
+      "name": "Juniper Integrated Manufacturing",
+      "description": "Balanced quality, affordability, reliability, sustainability, and support."
+    }
+  ],
+  "evaluationMatricesByExpert": {
+    "expert_a": {
+      "asterion_precision": {
+        "quality": 9,
+        "purchase_cost": 8,
+        "delivery_reliability": 8,
+        "delivery_time": 7,
+        "sustainability": 5,
+        "after_sales_support": 9
+      },
+      "blue_harbor_logistics": {
+        "quality": 6,
+        "purchase_cost": 4,
+        "delivery_reliability": 9,
+        "delivery_time": 8,
+        "sustainability": 9,
+        "after_sales_support": 4
+      },
+      "cedar_ridge_components": {
+        "quality": 8,
+        "purchase_cost": 6,
+        "delivery_reliability": 6,
+        "delivery_time": 4,
+        "sustainability": 5,
+        "after_sales_support": 8
+      },
+      "dune_source_cooperative": {
+        "quality": 4,
+        "purchase_cost": 2,
+        "delivery_reliability": 4,
+        "delivery_time": 5,
+        "sustainability": 3,
+        "after_sales_support": 4
+      },
+      "evergreen_circular_supply": {
+        "quality": 6,
+        "purchase_cost": 6,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 10,
+        "after_sales_support": 3
+      },
+      "falcon_express_parts": {
+        "quality": 7,
+        "purchase_cost": 7,
+        "delivery_reliability": 9,
+        "delivery_time": 2,
+        "sustainability": 4,
+        "after_sales_support": 6
+      },
+      "granite_systems": {
+        "quality": 5,
+        "purchase_cost": 5,
+        "delivery_reliability": 5,
+        "delivery_time": 5,
+        "sustainability": 6,
+        "after_sales_support": 6
+      },
+      "helios_advanced_materials": {
+        "quality": 10,
+        "purchase_cost": 9,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 7,
+        "after_sales_support": 7
+      },
+      "indigo_materials": {
+        "quality": 5,
+        "purchase_cost": 3,
+        "delivery_reliability": 6,
+        "delivery_time": 4,
+        "sustainability": 7,
+        "after_sales_support": 5
+      },
+      "juniper_integrated_manufacturing": {
+        "quality": 7,
+        "purchase_cost": 4,
+        "delivery_reliability": 7,
+        "delivery_time": 5,
+        "sustainability": 8,
+        "after_sales_support": 7
+      }
+    },
+    "expert_b": {
+      "asterion_precision": {
+        "quality": 8,
+        "purchase_cost": 7,
+        "delivery_reliability": 8,
+        "delivery_time": 7,
+        "sustainability": 6,
+        "after_sales_support": 9
+      },
+      "blue_harbor_logistics": {
+        "quality": 6,
+        "purchase_cost": 4,
+        "delivery_reliability": 8,
+        "delivery_time": 7,
+        "sustainability": 8,
+        "after_sales_support": 4
+      },
+      "cedar_ridge_components": {
+        "quality": 7,
+        "purchase_cost": 6,
+        "delivery_reliability": 6,
+        "delivery_time": 4,
+        "sustainability": 6,
+        "after_sales_support": 8
+      },
+      "dune_source_cooperative": {
+        "quality": 4,
+        "purchase_cost": 2,
+        "delivery_reliability": 4,
+        "delivery_time": 5,
+        "sustainability": 3,
+        "after_sales_support": 4
+      },
+      "evergreen_circular_supply": {
+        "quality": 6,
+        "purchase_cost": 6,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 9,
+        "after_sales_support": 4
+      },
+      "falcon_express_parts": {
+        "quality": 7,
+        "purchase_cost": 7,
+        "delivery_reliability": 9,
+        "delivery_time": 2,
+        "sustainability": 4,
+        "after_sales_support": 6
+      },
+      "granite_systems": {
+        "quality": 5,
+        "purchase_cost": 5,
+        "delivery_reliability": 5,
+        "delivery_time": 5,
+        "sustainability": 6,
+        "after_sales_support": 6
+      },
+      "helios_advanced_materials": {
+        "quality": 9,
+        "purchase_cost": 8,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 7,
+        "after_sales_support": 7
+      },
+      "indigo_materials": {
+        "quality": 5,
+        "purchase_cost": 3,
+        "delivery_reliability": 6,
+        "delivery_time": 4,
+        "sustainability": 7,
+        "after_sales_support": 5
+      },
+      "juniper_integrated_manufacturing": {
+        "quality": 7,
+        "purchase_cost": 4,
+        "delivery_reliability": 8,
+        "delivery_time": 5,
+        "sustainability": 8,
+        "after_sales_support": 6
+      }
+    },
+    "expert_c": {
+      "asterion_precision": {
+        "quality": 9,
+        "purchase_cost": 8,
+        "delivery_reliability": 8,
+        "delivery_time": 7,
+        "sustainability": 5,
+        "after_sales_support": 8
+      },
+      "blue_harbor_logistics": {
+        "quality": 6,
+        "purchase_cost": 4,
+        "delivery_reliability": 8,
+        "delivery_time": 8,
+        "sustainability": 8,
+        "after_sales_support": 4
+      },
+      "cedar_ridge_components": {
+        "quality": 9,
+        "purchase_cost": 6,
+        "delivery_reliability": 6,
+        "delivery_time": 3,
+        "sustainability": 5,
+        "after_sales_support": 8
+      },
+      "dune_source_cooperative": {
+        "quality": 4,
+        "purchase_cost": 3,
+        "delivery_reliability": 4,
+        "delivery_time": 5,
+        "sustainability": 4,
+        "after_sales_support": 4
+      },
+      "evergreen_circular_supply": {
+        "quality": 6,
+        "purchase_cost": 6,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 9,
+        "after_sales_support": 3
+      },
+      "falcon_express_parts": {
+        "quality": 7,
+        "purchase_cost": 7,
+        "delivery_reliability": 8,
+        "delivery_time": 3,
+        "sustainability": 4,
+        "after_sales_support": 6
+      },
+      "granite_systems": {
+        "quality": 5,
+        "purchase_cost": 5,
+        "delivery_reliability": 5,
+        "delivery_time": 5,
+        "sustainability": 6,
+        "after_sales_support": 7
+      },
+      "helios_advanced_materials": {
+        "quality": 9,
+        "purchase_cost": 9,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 8,
+        "after_sales_support": 7
+      },
+      "indigo_materials": {
+        "quality": 5,
+        "purchase_cost": 2,
+        "delivery_reliability": 6,
+        "delivery_time": 4,
+        "sustainability": 8,
+        "after_sales_support": 5
+      },
+      "juniper_integrated_manufacturing": {
+        "quality": 8,
+        "purchase_cost": 4,
+        "delivery_reliability": 7,
+        "delivery_time": 5,
+        "sustainability": 8,
+        "after_sales_support": 6
+      }
+    },
+    "expert_d": {
+      "asterion_precision": {
+        "quality": 8,
+        "purchase_cost": 8,
+        "delivery_reliability": 8,
+        "delivery_time": 7,
+        "sustainability": 5,
+        "after_sales_support": 8
+      },
+      "blue_harbor_logistics": {
+        "quality": 6,
+        "purchase_cost": 5,
+        "delivery_reliability": 9,
+        "delivery_time": 7,
+        "sustainability": 9,
+        "after_sales_support": 4
+      },
+      "cedar_ridge_components": {
+        "quality": 8,
+        "purchase_cost": 6,
+        "delivery_reliability": 7,
+        "delivery_time": 4,
+        "sustainability": 5,
+        "after_sales_support": 7
+      },
+      "dune_source_cooperative": {
+        "quality": 5,
+        "purchase_cost": 1,
+        "delivery_reliability": 4,
+        "delivery_time": 5,
+        "sustainability": 3,
+        "after_sales_support": 4
+      },
+      "evergreen_circular_supply": {
+        "quality": 5,
+        "purchase_cost": 6,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 10,
+        "after_sales_support": 4
+      },
+      "falcon_express_parts": {
+        "quality": 7,
+        "purchase_cost": 7,
+        "delivery_reliability": 10,
+        "delivery_time": 2,
+        "sustainability": 5,
+        "after_sales_support": 6
+      },
+      "granite_systems": {
+        "quality": 5,
+        "purchase_cost": 6,
+        "delivery_reliability": 5,
+        "delivery_time": 5,
+        "sustainability": 6,
+        "after_sales_support": 6
+      },
+      "helios_advanced_materials": {
+        "quality": 10,
+        "purchase_cost": 9,
+        "delivery_reliability": 7,
+        "delivery_time": 6,
+        "sustainability": 7,
+        "after_sales_support": 6
+      },
+      "indigo_materials": {
+        "quality": 5,
+        "purchase_cost": 3,
+        "delivery_reliability": 6,
+        "delivery_time": 4,
+        "sustainability": 6,
+        "after_sales_support": 5
+      },
+      "juniper_integrated_manufacturing": {
+        "quality": 7,
+        "purchase_cost": 5,
+        "delivery_reliability": 6,
+        "delivery_time": 5,
+        "sustainability": 8,
+        "after_sales_support": 7
+      }
+    }
+  },
+  "orderedCategories": [
+    {
+      "categoryId": "very_low",
+      "label": "Very Low",
+      "order": 0
+    },
+    {
+      "categoryId": "low",
+      "label": "Low",
+      "order": 1
+    },
+    {
+      "categoryId": "medium",
+      "label": "Medium",
+      "order": 2
+    },
+    {
+      "categoryId": "high",
+      "label": "High",
+      "order": 3
+    },
+    {
+      "categoryId": "very_high",
+      "label": "Very High",
+      "order": 4
+    }
+  ],
+  "boundaryProfiles": {
+    "profiles": [
+      {
+        "profileId": "very-low-low-boundary",
+        "categoryId": "low",
+        "valuesByCriterionId": {
+          "quality": 5,
+          "purchase_cost": 6,
+          "delivery_reliability": 5,
+          "delivery_time": 6,
+          "sustainability": 4,
+          "after_sales_support": 4
+        }
+      },
+      {
+        "profileId": "low-medium-boundary",
+        "categoryId": "medium",
+        "valuesByCriterionId": {
+          "quality": 6,
+          "purchase_cost": 5,
+          "delivery_reliability": 6,
+          "delivery_time": 5,
+          "sustainability": 5,
+          "after_sales_support": 5
+        }
+      },
+      {
+        "profileId": "medium-high-boundary",
+        "categoryId": "high",
+        "valuesByCriterionId": {
+          "quality": 7,
+          "purchase_cost": 4,
+          "delivery_reliability": 7,
+          "delivery_time": 4,
+          "sustainability": 6,
+          "after_sales_support": 6
+        }
+      },
+      {
+        "profileId": "high-very-high-boundary",
+        "categoryId": "very_high",
+        "valuesByCriterionId": {
+          "quality": 9,
+          "purchase_cost": 2,
+          "delivery_reliability": 9,
+          "delivery_time": 2,
+          "sustainability": 8,
+          "after_sales_support": 8
+        }
+      }
+    ]
+  },
+  "expectedAssignments": {
+    "asterion_precision": "medium",
+    "blue_harbor_logistics": "medium",
+    "cedar_ridge_components": "medium",
+    "dune_source_cooperative": "medium",
+    "evergreen_circular_supply": "medium",
+    "falcon_express_parts": "medium",
+    "granite_systems": "low",
+    "helios_advanced_materials": "medium",
+    "indigo_materials": "medium",
+    "juniper_integrated_manufacturing": "high"
+  }
+}

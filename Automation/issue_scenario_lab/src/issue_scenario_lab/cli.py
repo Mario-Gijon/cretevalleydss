@@ -30,6 +30,8 @@ from issue_scenario_lab.scenarios.topsis_2tuple_greece import SCENARIO_ID as TOP
 from issue_scenario_lab.scenarios.topsis_2tuple_greece import generate as generate_topsis_2tuple_greece
 from issue_scenario_lab.scenarios.topsis_sort_2016 import SCENARIO_ID as TOPSIS_SORT_2016_SCENARIO_ID
 from issue_scenario_lab.scenarios.topsis_sort_2016 import generate as generate_topsis_sort_2016
+from issue_scenario_lab.scenarios.topsis_sort_2016_rich import SCENARIO_ID as TOPSIS_SORT_2016_RICH_SCENARIO_ID
+from issue_scenario_lab.scenarios.topsis_sort_2016_rich import generate as generate_topsis_sort_2016_rich
 from issue_scenario_lab.scenarios.two_tuple_greece import SCENARIO_ID as TWO_TUPLE_GREECE_SCENARIO_ID
 from issue_scenario_lab.scenarios.two_tuple_greece import generate as generate_two_tuple_greece
 from issue_scenario_lab.scenarios.two_tuple_greece_video import SCENARIO_ID as TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID
@@ -259,6 +261,8 @@ def generate(
     owner_alias: str = "owner",
     expert_a_alias: str = "expert_a",
     expert_b_alias: str = "expert_b",
+    expert_c_alias: str = "expert_c",
+    expert_d_alias: str = "expert_d",
 ) -> None:
     """Generate one supported local issue scenario through the real HTTP API."""
 
@@ -304,6 +308,18 @@ def generate(
                 "consensus": False,
             },
         ),
+        TOPSIS_SORT_2016_RICH_SCENARIO_ID: (
+            generate_topsis_sort_2016_rich,
+            {
+                "model": "TOPSIS-Sort 2016",
+                "criteriaWeightingModel": "manual_criteria_weights (MCC)",
+                "alternatives": 10,
+                "criteria": 6,
+                "categories": 5,
+                "profiles": 4,
+                "consensus": False,
+            },
+        ),
         TWO_TUPLE_GREECE_SCENARIO_ID: (
             generate_two_tuple_greece,
             {
@@ -329,7 +345,17 @@ def generate(
             kwargs = (
                 {"owner_alias": "owner"}
                 if scenario_id in {TOPSIS_2TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID}
-                else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+                else (
+                    {
+                        "owner_alias": owner_alias,
+                        "expert_a_alias": expert_a_alias,
+                        "expert_b_alias": expert_b_alias,
+                        "expert_c_alias": expert_c_alias,
+                        "expert_d_alias": expert_d_alias,
+                    }
+                    if scenario_id == TOPSIS_SORT_2016_RICH_SCENARIO_ID
+                    else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+                )
             )
             result = selected[0](sessions, ManifestStore(settings.manifest_file), **kwargs)
     except ScenarioLabError as error:
@@ -344,6 +370,12 @@ def generate(
             "experts": result.expert_aliases,
             "finalStage": "finished",
             "manifest": result.manifest_path,
-            **({"assignments": result.assignments_by_alternative_name} if scenario_id == TOPSIS_SORT_2016_SCENARIO_ID else {}),
+            **(
+                {"assignments": result.assignments_by_alternative_name}
+                if scenario_id in {TOPSIS_SORT_2016_SCENARIO_ID, TOPSIS_SORT_2016_RICH_SCENARIO_ID}
+                else {}
+            ),
+            **({"collectiveCriteriaWeights": result.collective_weights_by_criterion_name} if scenario_id == TOPSIS_SORT_2016_RICH_SCENARIO_ID else {}),
+            **({"offlineValidation": result.offline_validation} if scenario_id == TOPSIS_SORT_2016_RICH_SCENARIO_ID else {}),
         }
     )
