@@ -100,7 +100,11 @@ describe("visualization reading guides", () => {
     expect(getVisualizationReadingGuide({ key: "collective-beta-heatmap" }).text).toContain("may not be more desirable for a cost criterion");
     expect(getVisualizationReadingGuide({ key: "topsis-ideal-distances" }).text).toContain("most desirable reference");
     expect(getVisualizationReadingGuide({ key: "topsis-numeric-ideal-distances" }).text).toContain("Smaller D+ means closer");
-    expect(getVisualizationReadingGuide({ key: "topsis-sort-closeness-category-boundaries" }).text).toContain("does not predict reclassification");
+    const closenessGuide = getVisualizationReadingGuide({ key: "topsis-sort-closeness-category-boundaries" }).text;
+    expect(closenessGuide).toContain("four decimal places");
+    expect(closenessGuide).toContain("hover a profile for its coefficient");
+    expect(closenessGuide).not.toContain("nearest-boundary distance");
+    expect(closenessGuide).toContain("do not predict reclassification");
     expect(getVisualizationReadingGuide({ key: "topsis-positive-distance-contributions" }).text).toContain("not an additive effect on relative closeness");
     expect(getVisualizationReadingGuide({ key: "topsis-negative-distance-contributions" }).text).toContain("squared distance from the least desirable reference");
     expect(getVisualizationReadingGuide({ key: "loco-rank-impact" }).text).toContain("not real-world causal importance");

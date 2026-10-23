@@ -151,7 +151,21 @@ def test_analysis_visualizations_include_two_graphs_and_dynamic_alternative_and_
         "max": 1,
         "scaleType": "linear",
     }
+    assert closeness["presentation"]["tooltip"] == {
+        "variant": "closeness-boundaries",
+        "precision": 4,
+    }
     assert len(closeness["data"]["series"][0]["points"]) == 3
+    alternative = analysis["facts"]["alternatives"][0]
+    alternative_point = closeness["data"]["series"][0]["points"][0]
+    assert alternative_point["id"] == alternative["alternativeId"]
+    assert alternative_point["x"] == alternative["closeness"]
+    assert alternative_point["details"] == {
+        "Category": alternative["categoryLabel"],
+        "Relative closeness coefficient": alternative["closeness"],
+        "Nearest boundary": alternative["nearestBoundary"]["label"],
+        "Distance from nearest boundary": alternative["nearestBoundary"]["distance"],
+    }
     assert all(series["showLine"] is True for series in closeness["data"]["series"][1:])
     assert all(series["borderDash"] for series in closeness["data"]["series"][1:])
 

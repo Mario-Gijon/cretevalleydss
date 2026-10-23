@@ -1,4 +1,5 @@
 const TOPSIS_SORT_SENSITIVITY_PREFIX = "topsis-sort-criterion-weight-sensitivity-";
+const TOPSIS_SORT_CLOSENESS_BOUNDARIES_KEY = "topsis-sort-closeness-category-boundaries";
 
 const LEGACY_TOPSIS_SORT_SENSITIVITY_PRESENTATION = Object.freeze({
   chartHeight: Object.freeze({ xs: 420, sm: 500, md: 580 }),
@@ -7,19 +8,24 @@ const LEGACY_TOPSIS_SORT_SENSITIVITY_PRESENTATION = Object.freeze({
   originalWeightMarker: true,
   alternativeSelector: Object.freeze({ recommendedCount: 3 }),
 });
+const LEGACY_TOPSIS_SORT_CLOSENESS_PRESENTATION = Object.freeze({
+  tooltip: Object.freeze({ variant: "closeness-boundaries", precision: 4 }),
+});
 
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
 /**
  * Presentation metadata is optional so older persisted descriptors remain renderable.
- * The legacy key fallback upgrades historical TOPSIS-Sort sensitivity descriptors
- * without changing their stored analytical evidence.
+ * Key-based defaults upgrade historical TOPSIS-Sort descriptors without changing
+ * their stored analytical evidence.
  */
 export const resolveVisualizationPresentation = (visualization) => {
   const key = typeof visualization?.key === "string" ? visualization.key : "";
-  const legacy = key.startsWith(TOPSIS_SORT_SENSITIVITY_PREFIX)
-    ? LEGACY_TOPSIS_SORT_SENSITIVITY_PRESENTATION
-    : {};
+  const legacy = key === TOPSIS_SORT_CLOSENESS_BOUNDARIES_KEY
+    ? LEGACY_TOPSIS_SORT_CLOSENESS_PRESENTATION
+    : key.startsWith(TOPSIS_SORT_SENSITIVITY_PREFIX)
+      ? LEGACY_TOPSIS_SORT_SENSITIVITY_PRESENTATION
+      : {};
   return {
     ...legacy,
     ...(isRecord(visualization?.presentation) ? visualization.presentation : {}),

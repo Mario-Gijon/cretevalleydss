@@ -3,6 +3,7 @@ import { Chart as ChartJS, Legend, LinearScale, PointElement, ScatterController,
 
 import GraphUnavailable from "./GraphUnavailable.jsx";
 import { buildCartesianChartOptions, chartColor } from "../chartTheme.js";
+import { resolveVisualizationPresentation } from "../../../features/finishedIssueDialog/sections/resultsAnalysis/logic/resolveVisualizationPresentation.js";
 import {
   buildPreferenceDistributionDatasets,
   getPreferenceDistributionMetrics,
@@ -14,6 +15,11 @@ import { preferenceDistributionMatrixPlugin } from "../logic/preferenceDistribut
 ChartJS.register(ScatterController, LinearScale, PointElement, Legend, Tooltip, preferenceDistributionMatrixPlugin);
 
 const detailText = (details) => Object.entries(details || {}).filter(([, value]) => ["string", "number", "boolean"].includes(typeof value)).map(([key, value]) => `${key}: ${value}`).join(", ");
+const formatCloseness = (value, precision) => {
+  if (value === null || value === undefined || value === "") return "—";
+  const numericValue = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue.toFixed(precision) : "—";
+};
 
 const makeIntegerTicks = (min, max) => (scale) => {
   scale.ticks = Array.from({ length: Math.max(0, Math.floor(max - min + 1)) }, (_, index) => ({ value: min + index }));
@@ -23,6 +29,11 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
   const series = visualization?.data?.series;
   if (!Array.isArray(series) || !series.length) return <GraphUnavailable />;
   const isPreferenceDistribution = isIndividualPreferenceDistribution(visualization);
+  const tooltipPresentation = resolveVisualizationPresentation(visualization).tooltip;
+  const usesClosenessBoundaryTooltip = tooltipPresentation?.variant === "closeness-boundaries";
+  const closenessPrecision = Number.isInteger(tooltipPresentation?.precision)
+    ? Math.min(20, Math.max(0, tooltipPresentation.precision))
+    : 4;
   const preferenceMetrics = isPreferenceDistribution ? getPreferenceDistributionMetrics(visualization) : null;
   const minRank = Number.isFinite(visualization.xAxis?.min) ? visualization.xAxis.min : 1;
   const maxRank = Number.isFinite(visualization.xAxis?.max) ? visualization.xAxis.max : minRank;
@@ -179,11 +190,23 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
             ...baseOptions.plugins.tooltip,
             callbacks: {
               title: (contexts) => contexts[0]?.raw?.label || "",
-              label: (context) => {
-                const point = context.raw;
-                const details = detailText(point?.details);
-                return `${context.dataset?.label || "Point"}: (${point?.x}, ${point?.y})${details ? ` — ${details}` : ""}`;
-              },
+              label: usesClosenessBoundaryTooltip
+                ? (context) => {
+                    const point = context.raw || {};
+                    const details = point.details || {};
+                    const closeness = details["Relative closeness coefficient"] ?? details.Closeness ?? point.x;
+                    const closenessLine = `Closeness: ${formatCloseness(closeness, closenessPrecision)}`;
+                    const isBoundary = details["Profile ID"] !== undefined || details.Boundary !== undefined;
+                    return isBoundary ? [closenessLine] : [
+                      `Category: ${details.Category ?? "—"}`,
+                      closenessLine,
+                    ];
+                  }
+                : (context) => {
+                    const point = context.raw;
+                    const details = detailText(point?.details);
+                    return `${context.dataset?.label || "Point"}: (${point?.x}, ${point?.y})${details ? ` — ${details}` : ""}`;
+                  },
             },
           },
         },

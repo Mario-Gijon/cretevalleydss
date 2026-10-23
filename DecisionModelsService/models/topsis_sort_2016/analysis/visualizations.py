@@ -73,9 +73,12 @@ def _closeness_boundaries(facts: dict[str, Any]) -> dict[str, Any] | None:
         ),
         "insight": (
             "Dashed vertical lines are the executed profile coefficients. Each "
-            "alternative is shown on its configured category row; hover for its "
-            "coefficient, category, and boundary distance."
+            "alternative appears on its assigned category row; hover an alternative "
+            "for its category and four-decimal closeness, or a profile for its coefficient."
         ),
+        "presentation": {
+            "tooltip": {"variant": "closeness-boundaries", "precision": 4},
+        },
         "xAxis": {
             "label": "Relative closeness coefficient",
             "min": 0,

@@ -340,9 +340,13 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-point-radius", "5");
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-axis", "D+");
     expect(screen.getByText(/Rank: 2/)).toBeInTheDocument();
+    expect(scatterState.options.plugins.tooltip.callbacks.label({
+      dataset: scatterState.data.datasets[0],
+      raw: scatterState.data.datasets[0].data[0],
+    })).toBe("Alternatives: (0.9, 0.575) — Rank: 2");
   });
 
-  it("draws dashed profile reference lines and alternative rows on numerical closeness axes", () => {
+  it("uses compact semantic tooltips for historical closeness and boundary descriptors", () => {
     const visualization = {
       key: "topsis-sort-closeness-category-boundaries",
       type: "scatter",
@@ -355,10 +359,15 @@ describe("AnalyticalGraph", () => {
         categories: [{ value: 0, label: "Premium option" }, { value: 1, label: "Budget option" }],
       },
       data: { series: [
-        { key: "alternatives", label: "Alternatives", points: [{ id: "a", label: "Premium option", x: 0.82, y: 0, details: { Category: "High", Closeness: 0.82 } }] },
-        { key: "profile", label: "Medium / High boundary", showLine: true, borderDash: [6, 4], pointRadius: 0, pointHitRadius: 8, points: [
-          { id: "profile", label: "Medium / High boundary", x: 0.68, y: -0.5, details: { Boundary: "Medium / High", Closeness: 0.68 } },
-          { id: "profile", label: "Medium / High boundary", x: 0.68, y: 1.5, details: { Boundary: "Medium / High", Closeness: 0.68 } },
+        { key: "alternatives", label: "Alternatives", points: [{ id: "alternative-technical-id", label: "Granite Systems", x: 0.37912345, y: 0, details: {
+          Category: "Low",
+          "Relative closeness coefficient": 0.37912345,
+          "Nearest boundary": "Low / Medium boundary",
+          "Distance from nearest boundary": 0.04387655,
+        } }] },
+        { key: "profile-5079587", label: "Low / Medium boundary", showLine: true, borderDash: [6, 4], pointRadius: 0, pointHitRadius: 8, points: [
+          { id: "profile-technical-id", label: "Low / Medium boundary", x: 0.42304567, y: -0.5, details: { "Profile ID": "profile-technical-id", Boundary: "Low / Medium boundary", "Relative closeness coefficient": 0.42304567 } },
+          { id: "profile-technical-id", label: "Low / Medium boundary", x: 0.42304567, y: 1.5, details: { "Profile ID": "profile-technical-id", Boundary: "Low / Medium boundary", "Relative closeness coefficient": 0.42304567 } },
         ] },
       ] },
     };
@@ -379,10 +388,24 @@ describe("AnalyticalGraph", () => {
     expect(scatterState.data.datasets[0].borderWidth).toBe(0);
     expect(scatterState.data.datasets[1].borderWidth).toBe(2);
     expect(scatterState.options.plugins.legend.labels.usePointStyle).toBe(false);
-    expect(scatterState.options.plugins.tooltip.callbacks.label({
+    const tooltip = scatterState.options.plugins.tooltip.callbacks;
+    const alternativePoint = scatterState.data.datasets[0].data[0];
+    const profilePoint = scatterState.data.datasets[1].data[0];
+    expect(tooltip.title([{ raw: alternativePoint }])).toBe("Granite Systems");
+    expect(tooltip.label({
       dataset: scatterState.data.datasets[0],
-      raw: scatterState.data.datasets[0].data[0],
-    })).toContain("Category: High");
+      raw: alternativePoint,
+    })).toEqual(["Category: Low", "Closeness: 0.3791"]);
+    expect(tooltip.title([{ raw: profilePoint }])).toBe("Low / Medium boundary");
+    expect(tooltip.label({
+      dataset: scatterState.data.datasets[1],
+      raw: profilePoint,
+    })).toEqual(["Closeness: 0.4230"]);
+    const displayedTooltip = `${tooltip.title([{ raw: alternativePoint }])} ${tooltip.label({ raw: alternativePoint }).join(" ")} ${tooltip.title([{ raw: profilePoint }])} ${tooltip.label({ raw: profilePoint }).join(" ")}`;
+    expect(displayedTooltip).not.toMatch(/\(0\.|0\.37912345|0\.42304567|alternative-technical-id|profile-technical-id|Nearest boundary|Distance from nearest boundary/);
+    expect(scatterState.data.datasets[0].data[0].x).toBe(0.37912345);
+    expect(scatterState.data.datasets[0].data[0].y).toBe(0);
+    expect(scatterState.data.datasets[1].data[0].x).toBe(0.42304567);
   });
 
   it("maps valid scatter category metadata to semantic numeric-axis ticks and ignores malformed entries", () => {

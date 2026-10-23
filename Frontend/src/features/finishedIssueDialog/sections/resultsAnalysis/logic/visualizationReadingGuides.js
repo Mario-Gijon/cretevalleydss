@@ -59,7 +59,7 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
   ),
   "topsis-sort-closeness-category-boundaries": guide(
     "Closeness and category boundaries",
-    "Horizontal position is each alternative's relative closeness coefficient (0–1); each row names the alternative. Dashed profiles mark boundaries in configured order, from least to most preferred. Hover for the exact coefficient, assigned category, and nearest-boundary distance. A nearby boundary does not predict reclassification.",
+    "Horizontal position is closeness (0–1), and each row names an alternative. Dashed profiles mark category boundaries in preference order. Hover an alternative for its category and closeness to four decimal places; hover a profile for its coefficient. Nearby boundaries do not predict reclassification.",
   ),
   "topsis-positive-distance-contributions": guide(
     "Criterion contributions to squared distance from the most desirable reference",
