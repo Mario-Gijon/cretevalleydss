@@ -1,6 +1,7 @@
 export {
   EVALUATION_STAGES,
   EVALUATION_STRUCTURE_REGISTRY,
+  isCollectiveEvaluationUsable,
   getDefaultEvaluationStructureEntryForStage,
   getEvaluationStructureEntry,
   getEvaluationStructureDisplayLabel,

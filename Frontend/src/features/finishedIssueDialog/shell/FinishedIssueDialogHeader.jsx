@@ -23,6 +23,7 @@ import FinishedIssueNavigation from "./FinishedIssueNavigation";
 import {
   finishedIssueContentFrameSx,
   finishedIssueHeaderControlsSx,
+  finishedIssueHeaderRowSx,
   finishedIssueHeaderSx,
   finishedIssueHeaderTabsSx,
 } from "./finishedIssueShell.styles";
@@ -48,7 +49,7 @@ const FinishedIssueDialogHeader = () => {
             direction="row"
             alignItems="center"
             spacing={0.75}
-            sx={{ minWidth: 0 }}
+            sx={finishedIssueHeaderRowSx}
           >
             <FinishedIssueNavigation navigation={navigation} />
 

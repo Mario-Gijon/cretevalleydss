@@ -40,6 +40,15 @@ const validateOptionalCapabilities = ({ structure, modulePath }) => {
       `${modulePath} buildInitialEvaluation must be a function when provided`
     );
   }
+
+  if (
+    Object.hasOwn(structure, "isCollectiveEvaluationUsable") &&
+    typeof structure.isCollectiveEvaluationUsable !== "function"
+  ) {
+    throw new Error(
+      `${modulePath} isCollectiveEvaluationUsable must be a function when provided`
+    );
+  }
 };
 
 const validateOptionalMetadata = ({ structure, modulePath }) => {

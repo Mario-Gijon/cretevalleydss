@@ -6,6 +6,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
+import { finishedIssueNavigationSx } from "./finishedIssueShell.styles";
 
 const TAB_LABELS = {
   dashboard: "Summary",
@@ -70,13 +71,7 @@ const FinishedIssueNavigation = ({ navigation }) => (
     allowScrollButtonsMobile
     textColor="secondary"
     indicatorColor="secondary"
-    sx={{
-      flex: "1 1 auto",
-      minWidth: 0,
-      maxWidth: "100%",
-      "& .MuiTabs-scroller": { minWidth: 0 },
-      "& .MuiTab-root": { minWidth: "max-content", whiteSpace: "nowrap", px: { xs: 1, sm: 1.25 }, textTransform: "none" },
-    }}
+    sx={finishedIssueNavigationSx}
   >
     {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} icon={TAB_ICONS[tab]} iconPosition="start" label={TAB_LABELS[tab]} />)}
   </Tabs>

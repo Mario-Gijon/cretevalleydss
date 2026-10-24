@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   EVALUATION_STAGES,
   EVALUATION_STRUCTURE_REGISTRY,
+  isCollectiveEvaluationUsable,
   getDefaultEvaluationStructureEntryForStage,
   getEvaluationStructureEntry,
   getEvaluationStructureDisplayLabel,
@@ -60,6 +61,60 @@ describe("evaluation Decision Plugin public registry", () => {
     expect(
       EVALUATION_STRUCTURE_REGISTRY.alternativePairwiseByCriterion
     ).not.toHaveProperty("buildInitialEvaluation");
+  });
+
+  it("dispatches collective validation through the owning evaluation structure", () => {
+    const decisionContext = {
+      alternatives: [{ id: "alternative-1" }, { id: "alternative-2" }],
+      leafCriteria: [{ id: "criterion-1" }, { id: "criterion-2" }],
+    };
+    const collectiveEvaluation = {
+      "alternative-1": { "criterion-1": 1, "criterion-2": 2 },
+      "alternative-2": { "criterion-1": 3, "criterion-2": 4 },
+    };
+    const validate = (value, context = decisionContext) =>
+      isCollectiveEvaluationUsable({
+        structureKey: "alternativeCriteriaMatrix",
+        decisionContext: context,
+        collectiveEvaluation: value,
+      });
+
+    expect(validate(collectiveEvaluation)).toBe(true);
+    expect(validate({ "alternative-1": collectiveEvaluation["alternative-1"] })).toBe(false);
+    expect(validate({
+      ...collectiveEvaluation,
+      "alternative-2": { "criterion-1": 3 },
+    })).toBe(false);
+    expect(validate({
+      ...collectiveEvaluation,
+      "alternative-2": { ...collectiveEvaluation["alternative-2"], "unknown-criterion": 5 },
+    })).toBe(false);
+    expect(() => validate({
+      ...collectiveEvaluation,
+      "alternative-2": null,
+    })).toThrow("Collective alternative row must be an object.");
+    expect(() => validate({
+      ...collectiveEvaluation,
+      "alternative-2": { ...collectiveEvaluation["alternative-2"], "criterion-2": Number.NaN },
+    })).toThrow("must be a finite number or a non-empty array of finite numbers");
+    expect(validate(collectiveEvaluation, { alternatives: [], leafCriteria: [] })).toBe(false);
+    expect(validate(collectiveEvaluation, {
+      alternatives: [{ id: "alternative-1" }, { id: "alternative-1" }],
+      leafCriteria: decisionContext.leafCriteria,
+    })).toBe(false);
+  });
+
+  it("keeps generic collective object handling for structures without a specialized validator", () => {
+    expect(isCollectiveEvaluationUsable({
+      structureKey: "manualCriteriaWeights",
+      decisionContext: {},
+      collectiveEvaluation: { weightsByCriterion: { "criterion-1": 1 } },
+    })).toBe(true);
+    expect(isCollectiveEvaluationUsable({
+      structureKey: "manualCriteriaWeights",
+      decisionContext: {},
+      collectiveEvaluation: [],
+    })).toBe(false);
   });
 
   it("resolves registered display labels and the default criteria-weighting structure", () => {

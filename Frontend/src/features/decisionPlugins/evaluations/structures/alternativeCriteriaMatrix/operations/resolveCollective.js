@@ -34,14 +34,16 @@ const validateCollectiveCell = ({ value, criterion, cellId }) => {
   }
 };
 
-export const resolveCollective = ({
+const validateCollectivePayload = ({
   alternatives,
   criteria,
   collectiveEvaluation,
+  incompleteShape = "throw",
 }) => {
-  if (collectiveEvaluation === null) {
-    return null;
-  }
+  const rejectIncompleteShape = (message) => {
+    if (incompleteShape === "returnFalse") return false;
+    throw new Error(message);
+  };
 
   if (!isPlainObject(collectiveEvaluation)) {
     throw new Error("Collective payload must be an object.");
@@ -54,12 +56,12 @@ export const resolveCollective = ({
   );
 
   if (unknownAlternativeIds.length > 0) {
-    throw new Error("Collective payload contains unknown alternative rows.");
+    return rejectIncompleteShape("Collective payload contains unknown alternative rows.");
   }
 
   for (const alternative of alternatives) {
     if (!Object.hasOwn(collectiveEvaluation, alternative.id)) {
-      throw new Error("Collective payload is missing an alternative row.");
+      return rejectIncompleteShape("Collective payload is missing an alternative row.");
     }
 
     const row = collectiveEvaluation[alternative.id];
@@ -73,12 +75,15 @@ export const resolveCollective = ({
     );
 
     if (unknownCriterionIds.length > 0) {
-      throw new Error("Collective alternative row contains unknown criterion cells.");
+      return rejectIncompleteShape("Collective alternative row contains unknown criterion cells.");
     }
+  }
 
+  for (const alternative of alternatives) {
+    const row = collectiveEvaluation[alternative.id];
     for (const criterion of criteria) {
       if (!Object.hasOwn(row, criterion.id)) {
-        throw new Error("Collective alternative row is missing a criterion cell.");
+        return rejectIncompleteShape("Collective alternative row is missing a criterion cell.");
       }
 
       validateCollectiveCell({
@@ -88,6 +93,35 @@ export const resolveCollective = ({
       });
     }
   }
+
+  return true;
+};
+
+export const isCollectiveEvaluationUsable = ({
+  alternatives,
+  criteria,
+  collectiveEvaluation,
+}) => {
+  if (collectiveEvaluation === null || !isPlainObject(collectiveEvaluation)) {
+    return false;
+  }
+
+  return validateCollectivePayload({
+    alternatives,
+    criteria,
+    collectiveEvaluation,
+    incompleteShape: "returnFalse",
+  });
+};
+
+export const resolveCollective = ({
+  alternatives,
+  criteria,
+  collectiveEvaluation,
+}) => {
+  if (collectiveEvaluation === null) return null;
+
+  validateCollectivePayload({ alternatives, criteria, collectiveEvaluation });
 
   return collectiveEvaluation;
 };

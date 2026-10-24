@@ -52,6 +52,34 @@ const assertAdvancedFinishedPayload = (payload) => {
   expect(collective).toBeTruthy();
   expect(hasMatrixShape(collective.rawPayload, 10, 6)).toBe(true);
 
+  const alternativeIds = Object.keys(individualAlternativeEvaluations[0].rawPayload).sort();
+  const criterionIds = Object.keys(
+    individualAlternativeEvaluations[0].rawPayload[alternativeIds[0]],
+  ).sort();
+  expect(alternativeIds).toHaveLength(10);
+  expect(criterionIds).toHaveLength(6);
+  for (const expertEvaluation of individualAlternativeEvaluations) {
+    expect(Object.keys(expertEvaluation.rawPayload).sort()).toEqual(alternativeIds);
+    for (const alternativeId of alternativeIds) {
+      expect(Object.keys(expertEvaluation.rawPayload[alternativeId]).sort()).toEqual(criterionIds);
+    }
+  }
+
+  for (const alternativeId of alternativeIds) {
+    for (const criterionId of criterionIds) {
+      const expertValues = individualAlternativeEvaluations.map(
+        (entry) => entry.rawPayload[alternativeId][criterionId],
+      );
+      expect(expertValues.every((value) => typeof value === "number" && Number.isFinite(value))).toBe(true);
+      const expectedMean = expertValues.reduce((sum, value) => sum + value, 0) / expertValues.length;
+      const collectiveValue = collective.rawPayload[alternativeId][criterionId];
+      expect(
+        Math.abs(collectiveValue - expectedMean),
+        `Collective value for ${alternativeId}/${criterionId} must equal the four-expert mean`,
+      ).toBeLessThanOrEqual(1e-9);
+    }
+  }
+
   const result = payload.phaseResults.find((entry) => entry.stage === "alternativeEvaluation");
   expect(result).toBeTruthy();
   const categories = result.standardizedOutput.categories;
@@ -137,6 +165,35 @@ for (const viewport of viewports) {
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("tablist", { name: "Finished issue sections" })).toBeVisible();
+    const sectionTabs = dialog.getByRole("tablist", { name: "Finished issue sections" });
+    const headerLayout = await sectionTabs.evaluate((tablist) => {
+      const navigation = tablist.closest(".MuiTabs-root");
+      const row = navigation.parentElement;
+      const closeButton = row?.querySelector('[aria-label="Close Finished Issue"]');
+      const controls = closeButton?.parentElement;
+      return {
+        navigationFlexGrow: getComputedStyle(navigation).flexGrow,
+        navigationMinWidth: getComputedStyle(navigation).minWidth,
+        rowMinWidth: row ? getComputedStyle(row).minWidth : null,
+        controlsFlexShrink: controls ? getComputedStyle(controls).flexShrink : null,
+      };
+    });
+    expect(headerLayout).toEqual({
+      navigationFlexGrow: "1",
+      navigationMinWidth: "0px",
+      rowMinWidth: "0px",
+      controlsFlexShrink: "0",
+    });
+    if (viewport.name === "mobile") {
+      await expect(dialog.getByRole("button", { name: "Open issue actions" })).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "Remove issue" })).toHaveCount(0);
+      await dialog.getByRole("button", { name: "Open issue actions" }).click();
+      await expect(page.getByRole("menuitem", { name: "Remove issue" })).toBeVisible();
+      await page.keyboard.press("Escape");
+    } else {
+      await expect(dialog.getByRole("button", { name: "Remove issue" })).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "Open issue actions" })).toHaveCount(0);
+    }
     await expect(dialog.getByRole("region", { name: "Issue summary" })).toContainText("E2E TOPSIS-Sort 2016");
     await expect(dialog.getByText("Unable to load this Finished Issue.", { exact: true })).toHaveCount(0);
 

@@ -26,6 +26,23 @@ export const finishedIssueHeaderControlsSx = {
   flexShrink: 0,
 };
 
+export const finishedIssueHeaderRowSx = {
+  minWidth: 0,
+};
+
+export const finishedIssueNavigationSx = {
+  flex: "1 1 auto",
+  minWidth: 0,
+  maxWidth: "100%",
+  "& .MuiTabs-scroller": { minWidth: 0 },
+  "& .MuiTab-root": {
+    minWidth: "max-content",
+    whiteSpace: "nowrap",
+    px: { xs: 1, sm: 1.25 },
+    textTransform: "none",
+  },
+};
+
 export const finishedIssueTabsAccentSx = {
   "& .MuiTabs-indicator": {
     height: 3,
