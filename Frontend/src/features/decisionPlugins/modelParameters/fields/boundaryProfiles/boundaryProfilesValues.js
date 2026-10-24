@@ -82,6 +82,27 @@ const categoryDisplayName = (category, categories) => {
   return `${label} (category ${index + 1})`;
 };
 
+export const getBoundaryCriterionSetupIssue = (criterion, domain, restrictions = {}) => {
+  const criterionName = criterion?.name?.trim() || "This criterion";
+  if (!domain) return `Choose a numeric expression domain for ${criterionName}.`;
+  if (domain.typeKey !== "numericContinuous" && domain.typeKey !== "numericDiscrete") {
+    return `Use a continuous or discrete numeric domain for ${criterionName}.`;
+  }
+  const { min, max } = domain.definition || {};
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+    return `Set a valid numeric range for ${criterionName}.`;
+  }
+  const allowedMin = Number.isFinite(restrictions.min) ? Math.max(min, restrictions.min) : min;
+  const allowedMax = Number.isFinite(restrictions.max) ? Math.min(max, restrictions.max) : max;
+  if (allowedMin > allowedMax) {
+    return `Adjust the numeric limits for ${criterionName} to fit its expression domain.`;
+  }
+  if (criterion?.type !== "benefit" && criterion?.type !== "cost") {
+    return `Set ${criterionName} to Benefit or Cost.`;
+  }
+  return null;
+};
+
 export const getBoundaryProfilesValidationIssues = (parameter, value, parameterContext) => {
   const issues = [];
   const addIssue = (message, details = {}) => issues.push({ message, ...details });
@@ -177,20 +198,13 @@ export const getBoundaryProfilesValidationIssues = (parameter, value, parameterC
         continue;
       }
       const domain = parameterContext?.criterionDomainsById?.[criterion.id];
-      if (!domain) {
-        addIssue(`Choose a numeric expression domain for ${criterionName} before setting boundary values.`, fieldDetails);
-        continue;
-      }
-      if (domain.typeKey !== "numericContinuous" && domain.typeKey !== "numericDiscrete") {
-        addIssue(`The ${criterionName} boundary needs a numeric expression domain.`, fieldDetails);
+      const setupIssue = getBoundaryCriterionSetupIssue(criterion, domain, restrictions);
+      if (setupIssue) {
+        addIssue(setupIssue, fieldDetails);
         continue;
       }
       const min = domain.definition?.min;
       const max = domain.definition?.max;
-      if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
-        addIssue(`The numeric range for ${criterionName} needs valid minimum and maximum values.`, fieldDetails);
-        continue;
-      }
       if (number < min || number > max) {
         addIssue(`${criterionName} must be between ${min} and ${max}.`, fieldDetails);
         continue;
@@ -203,9 +217,6 @@ export const getBoundaryProfilesValidationIssues = (parameter, value, parameterC
         const allowedMax = Number.isFinite(restrictions.max) ? restrictions.max : max;
         addIssue(`${criterionName} must be between ${allowedMin} and ${allowedMax}.`, fieldDetails);
         continue;
-      }
-      if (criterion.type !== "benefit" && criterion.type !== "cost") {
-        addIssue(`Choose whether ${criterionName} is a Benefit or Cost criterion.`, fieldDetails);
       }
     }
   }

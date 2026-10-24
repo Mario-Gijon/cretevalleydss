@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { describe, expect, it } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   PARAMETER_FIELD_REGISTRY,
@@ -55,26 +55,35 @@ const value = {
 };
 const parameter = modelParameters[1];
 
-const BoundaryFieldHarness = ({ showValidation = false }) => {
-  const [values, setValues] = useState({ categories: [categories[0], categories[2]], boundaries: { profiles: [] } });
+const BoundaryFieldHarness = ({ showValidation = false, multipleBoundaries = false, criteriaCount = 1 }) => {
+  const activeCategories = multipleBoundaries ? categories : [categories[0], categories[2]];
+  const leafCriteria = Array.from({ length: criteriaCount }, (_, index) => ({
+    id: index === 0 ? "benefit-id" : `criterion-${index + 1}-id`,
+    name: index === 0 ? "Renewables" : `Criterion ${index + 1}`,
+    type: "benefit",
+  }));
+  const [values, setValues] = useState({ categories: activeCategories, boundaries: { profiles: [] } });
   const context = useMemo(() => buildParameterContext({
     parameterDefinitions: modelParameters,
     parameterValues: values,
-    leafCriteria: [{ id: "benefit-id", name: "Renewables", type: "benefit" }],
+    leafCriteria,
     expressionDomains: [
       { id: "domain-benefit", name: "Renewables scale", typeKey: "numericContinuous", definition: { min: 0, max: 10 } },
     ],
     expressionDomainConfig: { mode: "global", globalDomainId: "domain-benefit" },
-  }), [values]);
+  }), [leafCriteria, values]);
   const Field = PARAMETER_FIELD_REGISTRY.boundaryProfiles.FieldComponent;
   return (
-    <Field
-      parameter={parameter}
-      value={values.boundaries}
-      parameterContext={context}
-      showValidation={showValidation}
-      onChange={(boundaries) => setValues((previous) => ({ ...previous, boundaries }))}
-    />
+    <>
+      <Field
+        parameter={parameter}
+        value={values.boundaries}
+        parameterContext={context}
+        showValidation={showValidation}
+        onChange={(boundaries) => setValues((previous) => ({ ...previous, boundaries }))}
+      />
+      <output hidden data-testid="boundary-values">{JSON.stringify(values.boundaries)}</output>
+    </>
   );
 };
 
@@ -99,28 +108,87 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(validateBoundaryProfilesValue(parameter, value, parameterContext)).toBeNull();
   });
 
+  it("explains unsupported domains without converting saved profile values", () => {
+    const unsupportedContext = {
+      ...parameterContext,
+      criterionDomainsById: {
+        ...parameterContext.criterionDomainsById,
+        "benefit-id": { typeKey: "boolean", definition: { min: 0, max: 1 } },
+      },
+    };
+    expect(validateBoundaryProfilesValue(parameter, value, unsupportedContext))
+      .toMatch(/Use a continuous or discrete numeric domain for Renewables/);
+    expect(value.profiles[0].valuesByCriterionId["benefit-id"]).toBe(4);
+  });
+
+  it("rejects a configured range that does not overlap its expression domain", () => {
+    const conflictingLimits = { ...parameter, restrictions: { min: 11, max: 12 } };
+    expect(validateBoundaryProfilesValue(conflictingLimits, value, parameterContext))
+      .toMatch(/Adjust the numeric limits for Renewables to fit its expression domain/);
+  });
+
   it("creates a profile for each configured boundary and stores values by criterion ID", async () => {
     const user = userEvent.setup();
     render(<BoundaryFieldHarness />);
 
-    expect(screen.getByText("Category boundaries")).toBeInTheDocument();
-    expect(screen.getByText("Benefit: higher values are preferred. Cost: lower values are preferred. Discrete-domain profiles may use values between steps.")).toBeInTheDocument();
-    const input = await screen.findByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" });
+    expect(screen.getByText("Classification references")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "About classification references" })).toBeInTheDocument();
+    expect(screen.getByText("Benefit · 0–10")).toBeInTheDocument();
+    expect(screen.getByRole("table").textContent).not.toMatch(/profileId|categoryId|criterionId|[0-9a-f]{8}-[0-9a-f-]{27}/i);
+    const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
     await user.type(input, "4.25");
-    await waitFor(() => expect(screen.getByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" })).toHaveValue(4.25));
+    await waitFor(() => expect(screen.getByRole("spinbutton", { name: "Renewables reference in Low → High" })).toHaveValue(4.25));
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId)
+      .toEqual({ "benefit-id": "4.25" });
     expect(screen.queryByText(/Enter a finite number/)).not.toBeInTheDocument();
+  });
+
+  it("shows every reference as a separate desktop table column", async () => {
+    render(<BoundaryFieldHarness multipleBoundaries />);
+    expect(await screen.findByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
+  });
+
+  it("keeps six criteria in a scrollable classification matrix", async () => {
+    render(<BoundaryFieldHarness multipleBoundaries criteriaCount={6} />);
+    const table = await screen.findByRole("table", { name: "Classification reference values" });
+    expect(within(table).getAllByRole("row")).toHaveLength(7);
+    expect(within(table).getByText("Criterion 6")).toBeInTheDocument();
+    expect(within(table).getByText("Low → Medium")).toBeInTheDocument();
+    expect(within(table).getByText("Medium → High")).toBeInTheDocument();
+  });
+
+  it("shows one shared reference at a time on mobile", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    const user = userEvent.setup();
+    render(<BoundaryFieldHarness multipleBoundaries />);
+    const select = await screen.findByRole("combobox", { name: "Classification reference" });
+    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).toBeInTheDocument();
+    await user.click(select);
+    await user.click(await screen.findByRole("option", { name: "Medium → High" }));
+    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
+    expect(screen.queryByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).not.toBeInTheDocument();
   });
 
   it("does not show red validation alerts before a user edits an incomplete profile", async () => {
     render(<BoundaryFieldHarness />);
-    await screen.findByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" });
+    await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(screen.getByText("Needs values")).toBeInTheDocument();
+    expect(screen.getByText("1 value to enter")).toBeInTheDocument();
   });
 
   it("shows a field-level message after validation is explicitly requested", async () => {
     render(<BoundaryFieldHarness showValidation />);
-    const input = await screen.findByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" });
+    const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
     expect(input).toBeInvalid();
     expect(screen.getByText("Enter a value for Renewables in the Low → High boundary.")).toBeInTheDocument();
   });

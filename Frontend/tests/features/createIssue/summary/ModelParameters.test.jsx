@@ -65,7 +65,7 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     const user = userEvent.setup();
     render(<Harness />);
 
-    expect(screen.getAllByText("Ordered categories")[0].compareDocumentPosition(screen.getByText("Category boundaries")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Categories").compareDocumentPosition(screen.getByText("Classification references")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Move category 4 up" }));
     expect(screen.getByRole("dialog", { name: "Review this category change" })).toBeInTheDocument();
     expect(screen.getByText(/Existing values for C → D will be reset/)).toBeInTheDocument();
@@ -78,9 +78,9 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     await user.click(screen.getByRole("button", { name: "Apply change" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("spinbutton", { name: "Quality (Benefit) in A → B" })).toHaveValue(2);
-      expect(screen.getByRole("spinbutton", { name: "Quality (Benefit) in B → D" })).toHaveValue(null);
-      expect(screen.getByRole("spinbutton", { name: "Quality (Benefit) in D → C" })).toHaveValue(null);
+      expect(screen.getByRole("spinbutton", { name: "Quality reference in A → B" })).toHaveValue(2);
+      expect(screen.getByRole("spinbutton", { name: "Quality reference in B → D" })).toHaveValue(null);
+      expect(screen.getByRole("spinbutton", { name: "Quality reference in D → C" })).toHaveValue(null);
     });
 
     const values = JSON.parse(screen.getByTestId("parameter-values").textContent);
@@ -114,8 +114,8 @@ describe("Create Issue model parameter dependency reconciliation", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: "Default" })).toBeDisabled();
-    expect(screen.getByText("No valid defaults are available. Complete the required settings below.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Default" })).not.toBeInTheDocument();
+    expect(screen.getByText("Complete the required settings before creating this Issue.")).toBeInTheDocument();
   });
 
   it("keeps the default selection available for models with valid existing defaults", () => {

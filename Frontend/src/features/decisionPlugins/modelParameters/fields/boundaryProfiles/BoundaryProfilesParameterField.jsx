@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Alert,
-  Box,
   Button,
-  Chip,
+  FormControl,
+  IconButton,
+  MenuItem,
+  Select,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
+  Tooltip,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { getParameterValueByStructureKey } from "../../../../modelParameters/context";
 import {
+  getBoundaryCriterionSetupIssue,
   getBoundaryProfilesValidationIssues,
   normalizeBoundaryProfilesValue,
   reconcileBoundaryProfiles,
@@ -26,17 +32,7 @@ const getCategories = (parameterContext) => {
   const categories = getParameterValueByStructureKey(parameterContext, "orderedCategories");
   return Array.isArray(categories) ? categories : [];
 };
-
-const categoryName = (category, categories) => {
-  const label = typeof category?.label === "string" ? category.label.trim() : "";
-  if (!label) return "Unnamed category";
-  if (categories.filter((item) => item?.label?.trim() === label).length < 2) return label;
-  return `${label} (category ${categories.findIndex((item) => item?.categoryId === category?.categoryId) + 1})`;
-};
-
-const boundaryName = (lowerCategory, upperCategory, categories) =>
-  `${categoryName(lowerCategory, categories)} → ${categoryName(upperCategory, categories)}`;
-
+const boundaryName = (lower, upper) => `${lower?.label?.trim() || "Category"} → ${upper?.label?.trim() || "Category"}`;
 const valueFor = (profile, criterionId) => {
   const value = profile?.valuesByCriterionId?.[criterionId];
   return value === null || value === undefined ? "" : String(value);
@@ -63,77 +59,78 @@ const removeProfileValue = (profiles, profileId, criterionId) => ({
   }),
 });
 
-const isProfileComplete = (profile, criteria) => criteria.length > 0 && criteria.every((criterion) => {
-  const raw = profile?.valuesByCriterionId?.[criterion.id];
-  if (raw === "" || raw === null || raw === undefined) return false;
-  const number = typeof raw === "number" ? raw : Number(raw);
-  return Number.isFinite(number);
-});
+const getRange = (parameter, criterion, parameterContext) => {
+  const restrictions = parameter?.restrictions || {};
+  const domain = parameterContext?.criterionDomainsById?.[criterion.id];
+  const domainMin = domain?.definition?.min;
+  const domainMax = domain?.definition?.max;
+  const min = Number.isFinite(domainMin)
+    ? Math.max(domainMin, Number.isFinite(restrictions.min) ? restrictions.min : domainMin)
+    : restrictions.min;
+  const max = Number.isFinite(domainMax)
+    ? Math.min(domainMax, Number.isFinite(restrictions.max) ? restrictions.max : domainMax)
+    : restrictions.max;
+  return {
+    domain,
+    min: Number.isFinite(min) ? min : undefined,
+    max: Number.isFinite(max) ? max : undefined,
+    setupIssue: getBoundaryCriterionSetupIssue(criterion, domain, restrictions),
+  };
+};
 
-const displayValue = (value) => value === null || value === undefined || value === "" ? "—" : String(value);
-
-const BoundaryCriterionField = ({
+const BoundaryValueField = ({
   profile,
   criterion,
   criterionIndex,
+  boundary,
   parameter,
   parameterContext,
-  boundary,
-  disabled,
   touched,
-  error,
+  issue,
+  disabled,
   onValueChange,
   onTouch,
 }) => {
-  const restrictions = parameter?.restrictions || {};
-  const domain = parameterContext?.criterionDomainsById?.[criterion.id];
-  const min = Number.isFinite(restrictions.min) ? restrictions.min : domain?.definition?.min;
-  const max = Number.isFinite(restrictions.max) ? restrictions.max : domain?.definition?.max;
+  const { min, max, setupIssue } = getRange(parameter, criterion, parameterContext);
   const criterionName = criterion.name?.trim() || `Criterion ${criterionIndex + 1}`;
-  const preference = criterion.type === "benefit" ? "Benefit" : criterion.type === "cost" ? "Cost" : "Preference not set";
-  const range = Number.isFinite(min) && Number.isFinite(max) ? `Range: ${min} to ${max}` : "Numeric reference value";
+  const hasSetupIssue = Boolean(setupIssue);
+  const showFieldIssue = touched && Boolean(issue) && !hasSetupIssue;
 
   return (
-    <Box sx={{ minWidth: 0, p: 0.8, border: 1, borderColor: "divider", borderRadius: 1 }}>
-      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.35, minWidth: 0 }}>
-        <Typography variant="body2" sx={{ fontWeight: 750, minWidth: 0, overflowWrap: "anywhere" }}>
-          {criterionName}
-        </Typography>
-        <Chip size="small" variant="outlined" color="secondary" label={preference} />
-      </Stack>
-      <TextField
-        type="number"
-        label="Reference value"
-        size="small"
-        color="secondary"
-        fullWidth
-        value={valueFor(profile, criterion.id)}
-        onChange={(event) => {
-          onTouch();
-          onValueChange(criterion.id, event.target.value);
-        }}
-        onBlur={onTouch}
-        disabled={disabled}
-        error={Boolean(touched && error)}
-        helperText={touched && error ? error : range}
-        inputProps={{
-          "aria-label": `${criterionName} (${preference}) in ${boundary}`,
-          ...(Number.isFinite(min) ? { min } : {}),
-          ...(Number.isFinite(max) ? { max } : {}),
-          step: "any",
-        }}
-        sx={{ "& .MuiFormHelperText-root": { mx: 0 } }}
-      />
-    </Box>
+    <TextField
+      type="number"
+      size="small"
+      color="secondary"
+      fullWidth
+      value={valueFor(profile, criterion.id)}
+      onChange={(event) => {
+        onTouch();
+        onValueChange(criterion.id, event.target.value);
+      }}
+      onBlur={onTouch}
+      disabled={disabled || hasSetupIssue}
+      error={showFieldIssue}
+      helperText={showFieldIssue ? issue.message : undefined}
+      inputProps={{
+        "aria-label": `${criterionName} reference in ${boundary}`,
+        ...(Number.isFinite(min) ? { min } : {}),
+        ...(Number.isFinite(max) ? { max } : {}),
+        step: "any",
+      }}
+      sx={{
+        minWidth: { xs: 112, md: 105 },
+        "& .MuiInputBase-input": { py: 0.8 },
+        "& .MuiFormHelperText-root": { mx: 0, minWidth: 160 },
+      }}
+    />
   );
 };
 
-const BoundaryProfileCard = ({
-  profile,
-  lowerCategory,
-  upperCategory,
-  categories,
+const BoundaryTable = ({
   criteria,
+  boundaries,
+  selectedBoundary,
+  isMobileViewport,
   parameter,
   parameterContext,
   disabled,
@@ -142,115 +139,147 @@ const BoundaryProfileCard = ({
   issues,
   onValueChange,
   onTouch,
-  expandedByDefault,
 }) => {
-  const title = boundaryName(lowerCategory, upperCategory, categories);
-  const currentCriterionIds = new Set(criteria.map((criterion) => criterion.id));
-  const staleCriterionIds = Object.keys(profile.valuesByCriterionId || {})
-    .filter((criterionId) => !currentCriterionIds.has(criterionId));
-  const criterionById = new Map(criteria.map((criterion) => [criterion.id, criterion]));
-  const profileIssues = issues.filter((issue) => issue.profileId === profile.profileId);
-  const hasTouchedCell = showValidation || criteria.some((criterion) => touchedCells.has(`${profile.profileId}:${criterion.id}`));
-  const visibleProfileIssue = profileIssues.find((issue) => showValidation || issue.kind !== "field" ||
-    touchedCells.has(`${profile.profileId}:${issue.criterionId}`));
 
-  return (
-    <Accordion
-      disableGutters
-      elevation={0}
-      defaultExpanded={expandedByDefault}
-      sx={{ border: 1, borderColor: "divider", borderRadius: "12px !important", "&:before": { display: "none" } }}
-    >
-      <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />} aria-label={`${title} category boundary`}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0.25, sm: 1 }} alignItems={{ sm: "center" }} sx={{ minWidth: 0, width: "100%" }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 850, minWidth: 0, overflowWrap: "anywhere" }}>{title}</Typography>
-          <Chip
-            size="small"
-            variant="outlined"
-            color={isProfileComplete(profile, criteria) && staleCriterionIds.length === 0 && profileIssues.length === 0 ? "success" : "warning"}
-            label={isProfileComplete(profile, criteria) && staleCriterionIds.length === 0 && profileIssues.length === 0 ? "Ready" : "Needs values"}
-            sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
-          />
-        </Stack>
-      </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0 }}>
-        <Stack spacing={1}>
-          <Typography variant="caption" color="text.secondary">
-            Set one reference value for each criterion.
+  const renderRows = (activeBoundaries) => criteria.map((criterion, criterionIndex) => {
+    const { setupIssue } = getRange(parameter, criterion, parameterContext);
+    const preference = criterion.type === "benefit" ? "Benefit" : criterion.type === "cost" ? "Cost" : "Direction not set";
+    const range = getRange(parameter, criterion, parameterContext);
+    const rangeText = Number.isFinite(range.min) && Number.isFinite(range.max)
+      ? `${range.min}–${range.max}`
+      : "Range not set";
+
+    return (
+      <TableRow key={criterion.id}>
+        <TableCell
+          component="th"
+          scope="row"
+          sx={{
+            position: "sticky",
+            left: 0,
+            zIndex: 1,
+            bgcolor: "background.paper",
+            minWidth: { xs: 155, md: 190 },
+            maxWidth: { xs: 190, md: 250 },
+            py: 0.8,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
+            {criterion.name?.trim() || `Criterion ${criterionIndex + 1}`}
           </Typography>
-          {criteria.length ? (
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 0.8 }}>
-              {criteria.map((criterion, criterionIndex) => {
-                const issue = issues.find((item) =>
-                  item.profileId === profile.profileId && item.criterionId === criterion.id
-                );
-                return (
-                  <BoundaryCriterionField
-                    key={criterion.id}
-                    profile={profile}
-                    criterion={criterion}
-                    criterionIndex={criterionIndex}
-                    parameter={parameter}
-                    parameterContext={parameterContext}
-                    boundary={title}
-                    disabled={disabled}
-                    touched={showValidation || touchedCells.has(`${profile.profileId}:${criterion.id}`)}
-                    error={issue?.message || ""}
-                    onValueChange={onValueChange}
-                    onTouch={() => onTouch(profile.profileId, criterion.id)}
-                  />
-                );
-              })}
-            </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary">Add leaf criteria before setting category boundaries.</Typography>
-          )}
-          {staleCriterionIds.length ? (
-            <Alert severity="warning" icon={false} sx={{ py: 0.25 }}>
-              <Stack spacing={0.5}>
-                <Typography variant="caption">
-                  {staleCriterionIds.length} saved value{staleCriterionIds.length === 1 ? "" : "s"} belong to a criterion no longer in this Issue. Review and remove each one to continue.
+          <Typography variant="caption" color="text.secondary">
+            {preference} · {rangeText}
+          </Typography>
+          {setupIssue ? (
+            <Typography variant="caption" color="error" display="block" role="note">
+              {setupIssue}
+            </Typography>
+          ) : null}
+        </TableCell>
+        {activeBoundaries.map((boundary) => {
+          const { profile } = boundary;
+          const issue = profile && issues.find((item) =>
+            item.profileId === profile.profileId && item.criterionId === criterion.id
+          );
+          const touched = showValidation || touchedCells.has(`${profile?.profileId}:${criterion.id}`);
+          return (
+            <TableCell key={boundary.upperCategory.categoryId} sx={{ minWidth: { xs: 145, md: 165 }, py: 0.6 }}>
+              {profile ? (
+                <BoundaryValueField
+                  profile={profile}
+                  criterion={criterion}
+                  criterionIndex={criterionIndex}
+                  boundary={boundaryName(boundary.lowerCategory, boundary.upperCategory)}
+                  parameter={parameter}
+                  parameterContext={parameterContext}
+                  touched={touched}
+                  issue={issue}
+                  disabled={disabled}
+                  onValueChange={(criterionId, nextValue) => onValueChange(profile.profileId, criterionId, nextValue)}
+                  onTouch={() => onTouch(profile.profileId, criterion.id)}
+                />
+              ) : (
+                <Typography variant="caption" color="text.secondary">Preparing…</Typography>
+              )}
+            </TableCell>
+          );
+        })}
+      </TableRow>
+    );
+  });
+
+  const renderHeader = (activeBoundaries) => (
+    <TableHead>
+      <TableRow>
+        <TableCell
+          sx={{
+            position: "sticky",
+            top: 0,
+            left: 0,
+            zIndex: 3,
+            bgcolor: "background.paper",
+            minWidth: { xs: 155, md: 190 },
+            py: 0.75,
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>Criterion</Typography>
+        </TableCell>
+        {activeBoundaries.map((boundary) => (
+          <TableCell
+            key={boundary.upperCategory.categoryId}
+            sx={{ position: "sticky", top: 0, zIndex: 2, bgcolor: "background.paper", minWidth: 145, py: 0.75 }}
+          >
+            <Typography variant="caption" sx={{ fontWeight: 750, whiteSpace: "nowrap" }}>
+            {isMobileViewport ? "Reference value" : boundaryName(boundary.lowerCategory, boundary.upperCategory)}
+            </Typography>
+            {showValidation && boundary.profile ? issues
+              .filter((issue) => issue.profileId === boundary.profile.profileId && issue.kind !== "field" && !issue.criterionId)
+              .slice(0, 1)
+              .map((issue) => (
+                <Typography key={issue.message} variant="caption" color="error" display="block" role="alert">
+                  {issue.message}
                 </Typography>
-                {staleCriterionIds.map((criterionId, index) => (
-                  <Stack key={criterionId} direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Typography variant="caption" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
-                      {criterionById.get(criterionId)?.name || `Saved value ${index + 1}`} · {displayValue(profile.valuesByCriterionId[criterionId])}
-                    </Typography>
-                    {!disabled ? (
-                      <Button size="small" color="secondary" onClick={() => onValueChange(criterionId, undefined)}>
-                        Remove saved value
-                      </Button>
-                    ) : null}
-                  </Stack>
-                ))}
-              </Stack>
-            </Alert>
-          ) : null}
-          {hasTouchedCell && visibleProfileIssue?.kind !== "field" ? (
-            <Typography variant="caption" color="error" role="alert">{visibleProfileIssue?.message}</Typography>
-          ) : null}
-        </Stack>
-      </AccordionDetails>
-    </Accordion>
+              )) : null}
+          </TableCell>
+        ))}
+      </TableRow>
+    </TableHead>
   );
+
+  const renderTable = (activeBoundaries) => (
+    <TableContainer
+      sx={{
+        maxHeight: { xs: 440, md: 520 },
+        overflow: "auto",
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 1,
+      }}
+    >
+      <Table size="small" stickyHeader aria-label="Classification reference values">
+        {renderHeader(activeBoundaries)}
+        <TableBody>{renderRows(activeBoundaries)}</TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  return renderTable(isMobileViewport && selectedBoundary ? [selectedBoundary] : boundaries);
 };
 
 export const BoundaryProfilesParameterField = ({ parameter, value, onChange, error = "", disabled = false, parameterContext, showValidation = false }) => {
   const categories = getCategories(parameterContext);
   const leafCriteria = Array.isArray(parameterContext?.leafCriteria) ? parameterContext.leafCriteria : [];
   const normalized = useMemo(() => normalizeBoundaryProfilesValue(parameter, value), [parameter, value]);
-  const [reviewNotice, setReviewNotice] = useState("");
   const [touchedCells, setTouchedCells] = useState(() => new Set());
+  const [selectedBoundaryCategoryId, setSelectedBoundaryCategoryId] = useState("");
+  const isMobileViewport = useMediaQuery("(max-width:899.95px)");
   const categoryIdsKey = categories.map((category) => category?.categoryId || "").join("\u001f");
   const criterionIdsKey = leafCriteria.map((criterion) => criterion?.id || "").join("\u001f");
 
   useEffect(() => {
     const result = reconcileBoundaryProfiles({ value, categories, leafCriteria });
     if (result.changed) onChange(result.value);
-    setReviewNotice(result.staleCount > 0
-      ? "A saved boundary no longer matches the current categories. Review it below before continuing."
-      : "");
-    // The normalized value is included so newly entered values also receive current criteria.
+    // Reconcile by stable category and criterion IDs, never by table position.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryIdsKey, criterionIdsKey, normalized, onChange]);
 
@@ -267,6 +296,19 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
     profilesByCategory.set(profile.categoryId, profile);
   });
 
+  const boundaries = categories.slice(1).map((upperCategory, index) => ({
+    lowerCategory: categories[index],
+    upperCategory,
+    profile: profilesByCategory.get(upperCategory?.categoryId),
+  }));
+  const selectedBoundary = boundaries.find((boundary) =>
+    boundary.upperCategory?.categoryId === selectedBoundaryCategoryId
+  ) || boundaries[0] || null;
+
+  const missingValues = boundaries.reduce((count, boundary) => count + leafCriteria.filter((criterion) => {
+    const raw = boundary.profile?.valuesByCriterionId?.[criterion.id];
+    return raw === "" || raw === null || raw === undefined;
+  }).length, 0);
   const touchCell = (profileId, criterionId) => setTouchedCells((previous) => {
     const next = new Set(previous);
     next.add(`${profileId}:${criterionId}`);
@@ -282,99 +324,127 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
   const removeProfile = (profileId) => onChange({
     profiles: normalized.profiles.filter((profile) => profile.profileId !== profileId),
   });
+  const removeStaleCriterionValue = (profileId, criterionId) =>
+    onChange(removeProfileValue(normalized.profiles, profileId, criterionId));
+  const profileOrderIssue = showValidation
+    ? issues.find((issue) => issue.kind === "profile-order" || (issue.kind !== "field" && issue.kind !== "stale-profile" && issue.kind !== "stale-criterion" && !issue.criterionId))
+    : null;
 
   return (
-    <Stack spacing={1} sx={{ minWidth: 0 }}>
-      <Box>
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>Category boundaries</Typography>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0 }}>
-          Set a reference profile between each pair of categories.
-        </Typography>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0 }}>
-          Benefit: higher values are preferred. Cost: lower values are preferred. Discrete-domain profiles may use values between steps.
-        </Typography>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0 }}>
-          Each boundary is used as one reference profile across all criteria.
-        </Typography>
-      </Box>
+    <Stack spacing={0.8} sx={{ minWidth: 0 }}>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Typography variant="body2" sx={{ fontWeight: 800 }}>Classification references</Typography>
+        <Tooltip title="Each column is one complete reference between adjacent categories. Discrete criteria can use values between domain steps.">
+          <IconButton size="small" aria-label="About classification references">
+            <InfoOutlinedIcon fontSize="inherit" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
 
       {categories.length < 2 ? (
-        <Typography variant="body2" color="text.secondary">Add at least two categories to define a boundary.</Typography>
+        <Typography variant="caption" color="text.secondary">Add at least two categories to set their references.</Typography>
+      ) : null}
+      {!leafCriteria.length ? (
+        <Typography variant="caption" color="text.secondary">Add criteria to set classification references.</Typography>
       ) : null}
 
-      {categories.slice(1).map((category, index) => {
-        const lowerCategory = categories[index];
-        const profile = profilesByCategory.get(category?.categoryId);
-        if (!profile) {
-          return (
-            <Box key={category?.categoryId || `category-${index}`}>
-              <Alert severity="warning" icon={false} sx={{ py: 0.25 }}>
-                The {boundaryName(lowerCategory, category, categories)} reference profile is being prepared.
-              </Alert>
-            </Box>
-          );
-        }
-        return (
-          <BoundaryProfileCard
-            key={category?.categoryId || `category-${index}`}
-            profile={profile}
-            lowerCategory={lowerCategory}
-            upperCategory={category}
-            categories={categories}
-            criteria={leafCriteria}
-            parameter={parameter}
-            parameterContext={parameterContext}
-            disabled={disabled}
-            showValidation={showValidation}
-            touchedCells={touchedCells}
-            issues={issues}
-            onValueChange={(criterionId, nextValue) => updateValue(profile.profileId, criterionId, nextValue)}
-            onTouch={touchCell}
-            expandedByDefault={categories.length <= 4}
-          />
-        );
-      })}
+      {boundaries.length > 1 ? (
+        <FormControl size="small" sx={{ display: { xs: "block", md: "none" }, maxWidth: "100%" }}>
+          <Select
+            value={selectedBoundary?.upperCategory?.categoryId || ""}
+            onChange={(event) => setSelectedBoundaryCategoryId(event.target.value)}
+            color="secondary"
+            inputProps={{ "aria-label": "Classification reference" }}
+          >
+            {boundaries.map((boundary) => (
+              <MenuItem key={boundary.upperCategory.categoryId} value={boundary.upperCategory.categoryId}>
+                {boundaryName(boundary.lowerCategory, boundary.upperCategory)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      ) : boundaries.length === 1 ? (
+        <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "block", md: "none" } }}>
+          {boundaryName(boundaries[0].lowerCategory, boundaries[0].upperCategory)}
+        </Typography>
+      ) : null}
+
+      {boundaries.length && leafCriteria.length ? (
+        <BoundaryTable
+          criteria={leafCriteria}
+          boundaries={boundaries}
+          selectedBoundary={selectedBoundary}
+          isMobileViewport={isMobileViewport}
+          parameter={parameter}
+          parameterContext={parameterContext}
+          disabled={disabled}
+          showValidation={showValidation}
+          touchedCells={touchedCells}
+          issues={issues}
+          onValueChange={updateValue}
+          onTouch={touchCell}
+        />
+      ) : null}
+
+      {missingValues ? (
+        <Typography variant="caption" color="text.secondary" aria-live="polite">
+          {missingValues} value{missingValues === 1 ? "" : "s"} to enter
+        </Typography>
+      ) : null}
+
+      {profileOrderIssue ? (
+        <Typography variant="caption" color="error" role="alert">{profileOrderIssue.message}</Typography>
+      ) : null}
 
       {staleProfiles.length ? (
-        <Stack spacing={0.75}>
-          <Alert severity="warning" icon={false}>
-            {reviewNotice || "A saved boundary no longer matches the current categories. Review it before continuing."}
-          </Alert>
+        <Stack spacing={0.25}>
+          <Typography variant="caption" color="warning.main">
+            {staleProfiles.length} saved reference{staleProfiles.length === 1 ? " needs" : "s need"} review
+          </Typography>
           {staleProfiles.map((profile, index) => (
-            <Stack
-              key={profile.profileId || `stale-${index}`}
-              direction={{ xs: "column", sm: "row" }}
-              spacing={0.75}
-              alignItems={{ sm: "center" }}
-              justifyContent="space-between"
-              sx={{ p: 1, border: 1, borderColor: "warning.light", borderRadius: 1.5 }}
-            >
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="body2" sx={{ fontWeight: 800 }}>Saved boundary needs review</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {Object.entries(profile.valuesByCriterionId || {}).map(([criterionId, profileValue], valueIndex) => {
-                    const criterion = leafCriteria.find((item) => item.id === criterionId);
-                    return `${criterion?.name || `Saved value ${valueIndex + 1}`}: ${displayValue(profileValue)}`;
-                  }).join(" · ") || "No reference values"}
-                </Typography>
-              </Box>
+            <Stack key={profile.profileId || `stale-${index}`} direction="row" alignItems="center" spacing={0.5}>
+              <Typography variant="caption" color="text.secondary" sx={{ flex: 1, minWidth: 0 }}>
+                Saved values for {Object.entries(profile.valuesByCriterionId || {}).map(([criterionId, savedValue]) => {
+                  const criterion = leafCriteria.find((item) => item.id === criterionId);
+                  return `${criterion?.name || "removed criterion"}: ${savedValue === "" ? "blank" : savedValue}`;
+                }).join(" · ") || "an unmatched category"}
+              </Typography>
               {!disabled ? (
-                <Button
-                  size="small"
-                  color="secondary"
-                  variant="outlined"
-                  startIcon={<DeleteOutlineRoundedIcon />}
-                  onClick={() => removeProfile(profile.profileId)}
-                >
-                  Remove saved boundary
+                <Button size="small" color="secondary" onClick={() => removeProfile(profile.profileId)}>
+                  Remove
                 </Button>
               ) : null}
             </Stack>
           ))}
         </Stack>
       ) : null}
-      {(touchedCells.size > 0 || showValidation) && error && validationError ? (
-        <Typography variant="caption" color="error" role="alert">{validationError}</Typography>
+
+      {normalized.profiles.map((profile) => {
+        const staleIds = Object.keys(profile.valuesByCriterionId || {}).filter((criterionId) =>
+          !leafCriteria.some((criterion) => criterion.id === criterionId)
+        );
+        if (!staleIds.length) return null;
+        return (
+          <Stack key={`stale-values-${profile.profileId}`} direction="row" alignItems="center" spacing={0.5}>
+            <Typography variant="caption" color="warning.main" sx={{ flex: 1 }}>
+              {staleIds.length} saved value{staleIds.length === 1 ? "" : "s"} for removed criteria
+            </Typography>
+            {!disabled ? staleIds.map((criterionId) => (
+              <Button
+                key={criterionId}
+                size="small"
+                color="secondary"
+                onClick={() => removeStaleCriterionValue(profile.profileId, criterionId)}
+              >
+                Remove saved value
+              </Button>
+            )) : null}
+          </Stack>
+        );
+      })}
+
+      {showValidation && !missingValues && !staleProfiles.length && !profileOrderIssue && (error || validationError) ? (
+        <Typography variant="caption" color="error" role="alert">{error || validationError}</Typography>
       ) : null}
     </Stack>
   );

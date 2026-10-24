@@ -18,7 +18,6 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -38,7 +37,7 @@ import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRound
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { createOrderedCategory, normalizeOrderedCategoriesValue } from "./orderedCategoriesValues.js";
 
-const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, onRemove, isFirst, isLast, showError }) => {
+const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, onRemove, showError }) => {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: category.categoryId,
     disabled,
@@ -51,10 +50,10 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
       spacing={0.75}
       alignItems={{ sm: "center" }}
       sx={{
-        p: 1,
-        border: 1,
+        px: 0.25,
+        py: 0.35,
+        borderBottom: 1,
         borderColor: "divider",
-        borderRadius: 1.5,
         bgcolor: isDragging ? "action.hover" : "background.paper",
         transform: CSS.Transform.toString(transform),
         transition,
@@ -102,8 +101,6 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
           inputProps={{ "aria-label": `Category ${index + 1}` }}
         />
       </Stack>
-      {isFirst ? <Chip size="small" color="secondary" variant="outlined" label="Least preferred" /> : null}
-      {isLast ? <Chip size="small" color="secondary" variant="outlined" label="Most preferred" /> : null}
       {!disabled ? (
         <Stack direction="row" spacing={0.25} justifyContent="flex-end">
           <Tooltip title="Move category up">
@@ -146,7 +143,7 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
 };
 
 export const OrderedCategoriesParameterField = ({ parameter, value, onChange, error = "", disabled = false, inspectDependencyChange, showValidation = false }) => {
-  const label = "Ordered categories";
+  const label = "Categories";
   const [hasInteracted, setHasInteracted] = useState(false);
   const [pendingChange, setPendingChange] = useState(null);
   const categories = useMemo(
@@ -190,22 +187,18 @@ export const OrderedCategoriesParameterField = ({ parameter, value, onChange, er
     <Stack spacing={1}>
       <Box>
         <Typography variant="body2" sx={{ fontWeight: 800 }}>{label}</Typography>
-        <Typography variant="caption" color="text.secondary">
-          Define the categories from least to most preferred.
-        </Typography>
+        <Typography variant="caption" color="text.secondary">Less preferred → More preferred</Typography>
       </Box>
       {categories.length ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={categories.map((category) => category.categoryId)} strategy={verticalListSortingStrategy}>
-            <Stack role="list" aria-label={`${label} ordered from least to most preferred`} spacing={0.75}>
+            <Stack role="list" aria-label={`${label} from less to more preferred`} spacing={0.25}>
               {categories.map((category, index) => (
                 <CategoryRow
                   key={category.categoryId}
                   category={category}
                   index={index}
                   total={categories.length}
-                  isFirst={index === 0}
-                  isLast={index === categories.length - 1}
                   showError={displayErrors}
                   disabled={disabled}
                   onLabelChange={(categoryId, nextLabel) => {
@@ -222,7 +215,7 @@ export const OrderedCategoriesParameterField = ({ parameter, value, onChange, er
           </SortableContext>
         </DndContext>
       ) : (
-        <Typography variant="body2" color="text.secondary">Add at least two categories, from least to most preferred.</Typography>
+        <Typography variant="caption" color="text.secondary">Add at least two categories.</Typography>
       )}
       {!disabled ? (
         <Button

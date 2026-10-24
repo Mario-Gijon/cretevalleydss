@@ -22,7 +22,7 @@ const Harness = () => {
   const Field = PARAMETER_FIELD_REGISTRY.orderedCategories.FieldComponent;
   return <>
     <Field parameter={parameter} value={value} onChange={setValue} />
-    <output data-testid="category-values">{JSON.stringify(value)}</output>
+    <output hidden data-testid="category-values">{JSON.stringify(value)}</output>
   </>;
 };
 
@@ -67,18 +67,19 @@ describe("orderedCategories model-parameter plugin", () => {
     expect(screen.getByLabelText("Category 1")).toHaveValue("Shared label");
   });
 
-  it("uses preference wording and friendly one-based category indexes", async () => {
+  it("keeps the preference direction compact and uses friendly one-based indexes", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    expect(screen.getByText("Define the categories from least to most preferred.")).toBeInTheDocument();
+    expect(screen.getByText("Less preferred → More preferred")).toBeInTheDocument();
     expect(screen.queryByText(/Order starts at 0/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add category" }));
     await user.click(screen.getByRole("button", { name: "Add category" }));
-    expect(screen.getByText("Least preferred")).toBeInTheDocument();
-    expect(screen.getByText("Most preferred")).toBeInTheDocument();
+    expect(screen.queryByText("Least preferred")).not.toBeInTheDocument();
+    expect(screen.queryByText("Most preferred")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Preference order 1")).toHaveTextContent("1");
     expect(screen.queryByText(/category-[a-z0-9-]+/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("list").textContent).not.toMatch(/profileId|categoryId|[0-9a-f]{8}-[0-9a-f-]{27}/i);
   });
 
   it("keeps stored categories readable without exposing IDs or zero-based order", () => {

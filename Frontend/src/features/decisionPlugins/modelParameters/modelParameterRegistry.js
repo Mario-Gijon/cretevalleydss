@@ -117,6 +117,26 @@ const validateSemanticCapabilities = ({ entry, modulePath }) => {
   }
 };
 
+const validateParameterGroup = ({ entry, modulePath }) => {
+  if (!Object.hasOwn(entry, "parameterGroup")) return;
+  const group = entry.parameterGroup;
+  if (
+    !group ||
+    typeof group !== "object" ||
+    !isNonEmptyString(group.key) ||
+    !Array.isArray(group.memberStructureKeys) ||
+    group.memberStructureKeys.length < 2 ||
+    group.memberStructureKeys.some((key) => !isNonEmptyString(key)) ||
+    new Set(group.memberStructureKeys).size !== group.memberStructureKeys.length ||
+    !group.memberStructureKeys.includes(entry.key) ||
+    !isReactComponentCandidate(group.FieldComponent)
+  ) {
+    throw new Error(
+      `[modelParameters] ${modulePath} parameterGroup must declare a unique key, at least two memberStructureKeys including the field key, and a FieldComponent.`
+    );
+  }
+};
+
 const validateSemanticCapabilityOwnership = (registry) => {
   const keysByCapability = new Map();
 
@@ -185,6 +205,7 @@ export const buildParameterFieldRegistry = (
     validateValidateValue({ entry, modulePath });
     validateDependencyReconciliation({ entry, modulePath });
     validateSemanticCapabilities({ entry, modulePath });
+    validateParameterGroup({ entry, modulePath });
 
     if (entry.key !== folderName) {
       throw new Error(

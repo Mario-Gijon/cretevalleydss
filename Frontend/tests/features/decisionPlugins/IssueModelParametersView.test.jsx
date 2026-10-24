@@ -81,6 +81,7 @@ describe("IssueModelParametersView dependent structures", () => {
     expect(screen.getByText("Low")).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("Low → High")).toBeInTheDocument();
-    expect(screen.getByText("Criterion oldCriterion")).toBeInTheDocument();
+    expect(screen.getByText("Saved value for removed criterion")).toBeInTheDocument();
+    expect(screen.queryByText("oldCriterion")).not.toBeInTheDocument();
   });
 });

@@ -79,6 +79,14 @@ describe("model-parameter Decision Plugin public registry", () => {
     expect(entry.ReadOnlyComponent).toBeTruthy();
   });
 
+  it("exposes visual parameter groups through the plugin field registry", () => {
+    expect(PARAMETER_FIELD_REGISTRY.orderedCategories.parameterGroup).toMatchObject({
+      key: "ordered-classification",
+      memberStructureKeys: ["orderedCategories", "boundaryProfiles"],
+    });
+    expect(PARAMETER_FIELD_REGISTRY.orderedCategories.parameterGroup.FieldComponent).toBeTypeOf("function");
+  });
+
   it("resolves a parameter structure through an exclusive semantic capability", () => {
     expect(PARAMETER_FIELD_REGISTRY.numberCriterion.semanticCapabilities).toContain(
       "numericCriteriaValues"
