@@ -99,6 +99,35 @@ describe("Finished Issue canonical contract", () => {
     expect(result.current.runs.selectedExecutionKey).toBe("base");
   });
 
+  it("refreshes a pending TOPSIS-Sort collective when the user navigates between Finished Issue sections", async () => {
+    const pending = buildFinishedIssuePayloadFixture();
+    pending.lifecycle.finishedAt = new Date().toISOString();
+    pending.models.base.technical = { apiModelKey: "topsis_sort_2016" };
+    pending.resultsAnalysis = { executions: [] };
+    const collective = pending.evaluations.collective.find((entry) => entry.stage === "alternativeEvaluation");
+    collective.rawPayload = null;
+    collective.displayPayload = null;
+
+    const available = structuredClone(pending);
+    const availableCollective = available.evaluations.collective.find((entry) => entry.stage === "alternativeEvaluation");
+    availableCollective.rawPayload = { a: { cost: 4.5, quality: 7.5 }, b: { cost: 5.5, quality: 7 } };
+    availableCollective.displayPayload = structuredClone(availableCollective.rawPayload);
+    getFinishedIssueInfo.mockResolvedValueOnce({ data: pending });
+    getFinishedIssueInfo.mockResolvedValueOnce({ data: available });
+
+    const { result } = renderHook(() => useFinishedIssueDialogView({ selectedIssue: { id: "issue-1" }, openFinishedIssueDialog: true }));
+    await waitFor(() => expect(result.current.dialog.collectiveResolutionStatus).toBe("pending"));
+    expect(getFinishedIssueInfo).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.navigation.selectTab("evaluations"));
+    await waitFor(() => expect(result.current.dialog.collectiveResolutionStatus).toBe("available"));
+    expect(getFinishedIssueInfo).toHaveBeenCalledTimes(2);
+    expect(result.current.dialog.payload.evaluations.collective.find((entry) => entry.stage === "alternativeEvaluation").rawPayload)
+      .toEqual(availableCollective.rawPayload);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 1700)); });
+    expect(getFinishedIssueInfo).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps Results Analysis selection independent and stable across analysis subviews", async () => {
     getFinishedIssueInfo.mockResolvedValue({ data: buildFinishedIssuePayloadFixture() });
     const { result } = renderHook(() => useFinishedIssueDialogView({ selectedIssue: { id: "issue-1" }, openFinishedIssueDialog: true }));

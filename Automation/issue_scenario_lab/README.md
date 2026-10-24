@@ -206,9 +206,10 @@ expert matrices remain available there; this scenario does not alter the
 
 TOPSIS-Sort 2016 is a normal ready Decision Plugin. Its manifest authorizes
 issue execution for this model, and `sorting@1` supports issue execution. Model
-visibility remains the existing per-model Admin setting. Consensus and results
-analysis remain disabled for sorting results. The isolated E2E stack uses the
-same contracts and no longer applies a model-specific execution bypass.
+visibility remains the existing per-model Admin setting. Consensus remains
+disabled, while Results Analysis is enabled for `sorting@1`. The isolated E2E
+stack uses the same contracts and no longer applies a model-specific execution
+bypass.
 
 With the usual development stack running and the manifest synchronized, inspect
 TOPSIS-Sort in Admin → Models. Its issue-creation visibility can be enabled or

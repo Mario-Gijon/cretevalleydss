@@ -13,7 +13,7 @@ import EvaluationsEvidenceFooter from "./EvaluationsEvidenceFooter";
 import EvaluationsHeader from "./EvaluationsHeader";
 import ExpressionDomainsPanel from "./ExpressionDomainsPanel";
 
-const EvaluationsView = ({ data, state, actions }) => {
+const EvaluationsView = ({ data, state, actions, collectiveResolutionStatus }) => {
   if (data.empty) {
     return (
       <Alert severity="info">
@@ -65,6 +65,7 @@ const EvaluationsView = ({ data, state, actions }) => {
             showCollective={state.showCollective}
             expertName={data.selectedExpertName}
             consensusEnabled={data.consensus.enabled}
+            collectiveResolutionStatus={collectiveResolutionStatus}
           />
         </Box>
       </Box>

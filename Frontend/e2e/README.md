@@ -37,36 +37,47 @@ The authentication smoke test uses `auth.smoke@example.test`. The create-issue s
 
 Coverage: authentication verifies login and logout; issue creation verifies a logged-in owner can select the seeded model and domain, add alternatives, a criterion, and an expert, then create an active issue.
 
-## Run the TOPSIS-Sort Finished Issue visual test
+## Run the TOPSIS-Sort rich Finished Issue visual test
 
-The Scenario Lab scenario creates and records the finished Issue. The Playwright
-test only reads the latest `topsis-sort-2016` entry from its local manifest; it
-does not create or delete Issues and does not depend on a MongoDB ID. First start
-the isolated E2E stack and seed its existing users, model catalog, and numeric
-domain using the commands above. Keep the existing ignored Scenario Lab user
-configuration at `Automation/issue_scenario_lab/.issue-scenario-lab/users.e2e.local.yaml`.
+The Scenario Lab scenario creates and records the finished Issue in a separate
+E2E manifest. Playwright reads the latest `topsis-sort-2016-rich` entry, checks
+its stored matrices, MCC weights and assignments, then validates the Finished
+Issue at desktop and mobile viewports. It does not depend on a fixed MongoDB ID
+or delete generations. Start the isolated stack and seed its fixtures:
 
-Generate a current finished Issue from the repository root:
+```bash
+docker compose -f docker-compose.e2e.yml up --build -d
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:auth
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:create-issue
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:topsis-sort-rich
+```
+
+Keep Scenario Lab credentials in the ignored
+`Automation/issue_scenario_lab/.issue-scenario-lab/users.e2e.rich.local.yaml`.
+It can copy the existing `users.e2e.local.yaml` entries and add `expert_c` and
+`expert_d` with the E2E-only accounts seeded by `seed:e2e:topsis-sort-rich`.
+Generate a fresh Issue into a dedicated E2E manifest:
 
 ```bash
 cd Automation/issue_scenario_lab
 SCENARIO_LAB_API_BASE_URL=http://localhost:5001/api \
-SCENARIO_LAB_USERS_FILE=.issue-scenario-lab/users.e2e.local.yaml \
-python -m issue_scenario_lab generate topsis-sort-2016
+SCENARIO_LAB_USERS_FILE=.issue-scenario-lab/users.e2e.rich.local.yaml \
+SCENARIO_LAB_MANIFEST_FILE="$PWD/.issue-scenario-lab/manifest.e2e.json" \
+DECISION_MODELS_PYTHON=../../DecisionModelsService/.venv/bin/python \
+.venv/bin/python -m issue_scenario_lab generate topsis-sort-2016-rich
 ```
 
-Then run the desktop and mobile Chromium checks from `Frontend`:
+Run desktop and mobile Chromium checks from `Frontend`. Set the E2E manifest path
+for Playwright too. The standard E2E port is 5174; if another local service owns
+it, serve `frontend-e2e` on an available port such as 5175 and set
+`E2E_BASE_URL` accordingly.
 
 ```bash
 cd ../../Frontend
+SCENARIO_LAB_MANIFEST_FILE="$PWD/../Automation/issue_scenario_lab/.issue-scenario-lab/manifest.e2e.json" \
+E2E_BASE_URL=http://localhost:5174 \
 bun run test:e2e -- e2e/topsisSortFinishedIssue.spec.js
 ```
-
-The test logs in with the existing E2E authentication helper, opens Finished
-Issues, finds the newest Scenario Lab generation, and checks the sorting card,
-category assignments, dialog sections, unavailable ranking analysis, console
-errors, failed requests and HTTP responses, and mobile overflow. It does not
-modify the manifest or clean up existing generations.
 
 ## Teardown
 

@@ -32,6 +32,7 @@ const resolveEmptyStateContent = ({
   expertName,
   consensusEnabled,
   showCollective,
+  collectiveResolutionStatus,
 }) => {
   const titleStageName =
     stage === "criteriaWeighting"
@@ -42,6 +43,20 @@ const resolveEmptyStateContent = ({
       ? "criteria-weighting"
       : "alternative-evaluation";
   if (showCollective) {
+    if (stage === "alternativeEvaluation" && collectiveResolutionStatus === "pending") {
+      return {
+        title: "Collective alternative evaluation is being prepared",
+        description: "The finished result is saved. The collective matrix will appear when its analysis evidence has been persisted.",
+        Icon: GroupsOutlinedIcon,
+      };
+    }
+    if (stage === "alternativeEvaluation" && collectiveResolutionStatus === "unavailable") {
+      return {
+        title: `No collective ${titleStageName} available`,
+        description: "No persisted collective matrix is available for this finished issue.",
+        Icon: GroupsOutlinedIcon,
+      };
+    }
     return {
       title: `No collective ${titleStageName} available`,
       description: `No collective ${titleStageName} is available for this ${consensusEnabled ? "round" : "stage"}.`,

@@ -18,6 +18,7 @@ const EvaluationsSection = () => {
       data={data}
       state={evaluationsSelection}
       actions={evaluationsSelection}
+      collectiveResolutionStatus={dialog.collectiveResolutionStatus}
     />
   );
 };

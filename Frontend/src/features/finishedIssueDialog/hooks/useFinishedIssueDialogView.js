@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useFinishedIssueData } from "./useFinishedIssueData.js";
@@ -12,6 +12,7 @@ import { buildResultsAnalysisSelectableOptions } from "../sections/resultsAnalys
 export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDialog }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const data = useFinishedIssueData({ selectedIssue, open: openFinishedIssueDialog });
+  const { issueId, refreshPayload, collectiveResolutionStatus } = data;
   const runs = useFinishedIssueRuns({
     issueId: data.issueId,
     payload: data.payload,
@@ -22,6 +23,22 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
     payload: data.payload,
     open: openFinishedIssueDialog,
   });
+  const previousNavigationRef = useRef({ issueId: data.issueId, activeView: navigation.activeView });
+  useEffect(() => {
+    const previous = previousNavigationRef.current;
+    const changedSection =
+      previous.issueId === issueId && previous.activeView !== navigation.activeView;
+    previousNavigationRef.current = { issueId, activeView: navigation.activeView };
+    if (openFinishedIssueDialog && changedSection && collectiveResolutionStatus === "pending") {
+      void refreshPayload();
+    }
+  }, [
+    collectiveResolutionStatus,
+    issueId,
+    refreshPayload,
+    navigation.activeView,
+    openFinishedIssueDialog,
+  ]);
   const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload, selectedPhase: navigation.selectedPhase });
   const resultsExecutionOptions = useMemo(
     () => buildResultsAnalysisSelectableOptions(data.payload, navigation.selectedPhase),
@@ -35,7 +52,12 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
 
   return {
     selectedIssue,
-    dialog: { payload: data.payload, loading: data.loading, error: data.error },
+    dialog: {
+      payload: data.payload,
+      loading: data.loading,
+      error: data.error,
+      collectiveResolutionStatus: data.collectiveResolutionStatus,
+    },
     header: {
       showRounds: navigation.basePhases.length > 1,
       selectedPhase: navigation.selectedPhase,
