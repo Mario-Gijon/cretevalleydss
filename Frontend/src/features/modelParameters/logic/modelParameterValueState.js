@@ -1,5 +1,6 @@
 import { normalizeParameterValue } from "../../decisionPlugins/modelParameters";
 import { isPlainObject } from "../../../utils/common/objects";
+import { orderModelParametersByDependencies } from "./orderModelParametersByDependencies.js";
 
 const hasOwnKey = (value, key) =>
   value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key);
@@ -13,7 +14,9 @@ export const normalizeModelParameterValue = (parameter, value) =>
   normalizeParameterValue(parameter, value);
 
 export const getCreateIssueModelParameters = (selectedModel) =>
-  readModelParameters(selectedModel).filter((parameter) => parameter?.key && !isCriteriaWeightLikeParameter(parameter));
+  orderModelParametersByDependencies(
+    readModelParameters(selectedModel).filter((parameter) => parameter?.key && !isCriteriaWeightLikeParameter(parameter))
+  );
 
 export const buildCreateIssueParameterDefaults = ({ selectedModel }) =>
   getCreateIssueModelParameters(selectedModel).reduce((result, parameter) => {

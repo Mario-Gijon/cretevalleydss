@@ -36,14 +36,14 @@ export const validateOrderedCategoriesValue = (_parameter, value) => {
   const ids = new Set();
   for (const [index, category] of value.entries()) {
     const id = typeof category?.categoryId === "string" ? category.categoryId.trim() : "";
-    if (!id) return `Category ${index + 1} is missing its ID.`;
-    if (ids.has(id)) return `Category ID '${id}' is repeated.`;
+    if (!id) return "The category list contains an invalid entry. Review the category list.";
+    if (ids.has(id)) return "A category appears more than once. Review the category list.";
     ids.add(id);
     if (typeof category?.label !== "string" || !category.label.trim()) {
       return `Enter a label for category ${index + 1}.`;
     }
     if (category.order !== index) {
-      return "Category order must be consecutive, starting at zero.";
+      return "Categories must remain in the displayed preference order.";
     }
   }
   return null;

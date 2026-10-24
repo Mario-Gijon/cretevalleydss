@@ -215,7 +215,8 @@ describe("createIssuePayload", () => {
     });
     expect(invalid).toMatchObject({
       ok: false,
-      errorMessage: expect.stringContaining("Boundary profiles: Add a boundary profile for 'High'."),
+      errorType: "modelParameter",
+      errorMessage: expect.stringContaining("Boundary profiles: Complete the Low → High reference profile."),
     });
 
     const stale = buildCreateIssueRequestPayload({
@@ -232,7 +233,8 @@ describe("createIssuePayload", () => {
     });
     expect(stale).toMatchObject({
       ok: false,
-      errorMessage: expect.stringContaining("no longer separates two categories"),
+      errorType: "modelParameter",
+      errorMessage: expect.stringContaining("saved boundary no longer matches the current category order"),
     });
   });
 

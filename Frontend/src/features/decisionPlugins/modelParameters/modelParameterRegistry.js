@@ -92,6 +92,15 @@ const validateDependencyReconciliation = ({ entry, modulePath }) => {
       `[modelParameters] ${modulePath} reconcileDependencyChange must be a function when dependency reconciliation is provided.`
     );
   }
+
+  if (
+    Object.hasOwn(entry, "describeDependencyChange") &&
+    typeof entry.describeDependencyChange !== "function"
+  ) {
+    throw new Error(
+      `[modelParameters] ${modulePath} describeDependencyChange must be a function when provided.`
+    );
+  }
 };
 
 const validateSemanticCapabilities = ({ entry, modulePath }) => {

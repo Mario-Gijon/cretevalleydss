@@ -7,6 +7,7 @@ import { ParameterFieldHost } from "../../../modelParameters/rendering";
 import { validateModelParameterValues } from "../../../modelParameters/validation";
 import { reconcileModelParameterDependencyChange } from "../../../modelParameters/logic/reconcileModelParameterDependencyChange.js";
 import { getRenderableNormalModelParameters } from "../logic/getRenderableNormalModelParameters";
+import { buildCreateIssueParameterDefaults } from "../../../modelParameters/draft";
 
 export const ModelParameters = ({
   selectedModel,
@@ -15,6 +16,7 @@ export const ModelParameters = ({
   setParamValues,
   defaultModelParams,
   setDefaultModelParams,
+  validationAttempted = false,
   handleDefaultChange,
   globalDomains = [],
   expressionDomains = [],
@@ -59,23 +61,66 @@ export const ModelParameters = ({
     }),
     [parameterContext, paramValues, renderableNormalParameters]
   );
+  const defaultValues = useMemo(
+    () => buildCreateIssueParameterDefaults({ selectedModel }),
+    [selectedModel]
+  );
+  const defaultParameterContext = useMemo(
+    () => buildParameterContext({
+      model: parameterContext.model,
+      alternatives: parameterContext.alternatives,
+      criteriaTree: parameterContext.criteriaTree,
+      leafCriteria,
+      parameterDefinitions: renderableNormalParameters,
+      parameterValues: defaultValues,
+      criterionDomainsById: parameterContext.criterionDomainsById,
+    }),
+    [defaultValues, leafCriteria, parameterContext, renderableNormalParameters]
+  );
+  const defaultParameterErrors = useMemo(
+    () => validateModelParameterValues({
+      parameters: renderableNormalParameters,
+      values: defaultValues,
+      parameterContext: defaultParameterContext,
+    }),
+    [defaultParameterContext, defaultValues, renderableNormalParameters]
+  );
+  const hasRequiredDefaults = renderableNormalParameters.every((parameter) =>
+    parameter.required !== true || Object.hasOwn(parameter, "default")
+  );
+  const defaultsAvailable = hasRequiredDefaults && Object.keys(defaultParameterErrors).length === 0;
+  const hasParameterErrors = Object.keys(parameterErrors).length > 0;
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }} alignItems="center">
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0.75, sm: 2 }} sx={{ mb: 1 }} alignItems={{ sm: "center" }}>
         <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-          Model parameters:
+          Model parameters
         </Typography>
 
         <ToggleButton
           value="default"
-          selected={defaultModelParams}
+          selected={defaultModelParams && defaultsAvailable}
           onChange={handleDefaultChange}
           color="secondary"
           size="small"
+          disabled={!defaultsAvailable}
         >
           Default
         </ToggleButton>
+        <Typography variant="caption" color={hasParameterErrors ? "text.secondary" : "success.main"}>
+          {defaultModelParams && defaultsAvailable
+            ? "Using valid default values."
+            : hasParameterErrors
+              ? validationAttempted
+                ? "Review the highlighted model settings."
+                : defaultsAvailable
+                  ? "Complete the required settings before creating this Issue."
+                  : "No valid defaults are available. Complete the required settings below."
+              : defaultsAvailable
+                ? "Custom settings are ready."
+                : "Custom settings are ready. No valid defaults are available."}
+        </Typography>
       </Stack>
 
       <Stack spacing={2} sx={{ width: "100%" }}>
@@ -115,6 +160,7 @@ export const ModelParameters = ({
                   }
                 }}
                 disabled={false}
+                showValidation={validationAttempted}
                 parameterContext={parameterContext}
                 error={parameterErrors[parameterKey] || ""}
               />

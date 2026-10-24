@@ -3,7 +3,7 @@ import { getParameterValueByStructureKey } from "../../../../modelParameters/con
 
 const categoryLabel = (category) => {
   const label = typeof category?.label === "string" ? category.label.trim() : "";
-  return label || category?.categoryId || "Unknown category";
+  return label || "Saved category";
 };
 
 const displayValue = (value) => value === null || value === undefined || value === "" ? "—" : String(value);
@@ -49,12 +49,12 @@ export const BoundaryProfilesParameterReadOnly = ({ value, parameterContext }) =
             <Typography variant="caption" color="text.secondary">
               {lowerCategory
                 ? `${categoryLabel(lowerCategory)} → ${categoryLabel(upperCategory)}`
-                : `Boundary profile for category ${profile?.categoryId || "(missing category ID)"}`}
+                : "Saved boundary needs review"}
             </Typography>
             <Stack spacing={0.45} sx={{ mt: 0.6 }}>
               {Object.entries(values).map(([criterionId, criterionValue]) => {
                 const criterion = criteriaById.get(criterionId);
-                const name = criterion?.name || `Criterion ${criterionId}`;
+                const name = criterion?.name || "Saved value for removed criterion";
                 return (
                   <Stack key={criterionId} direction="row" spacing={0.75} justifyContent="space-between">
                     <Typography variant="body2" color="text.secondary">{name}</Typography>

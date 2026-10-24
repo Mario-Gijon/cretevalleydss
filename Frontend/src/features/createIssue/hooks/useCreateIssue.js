@@ -131,6 +131,7 @@ export const useCreateIssue = () => {
   );
   const [paramValues, setParamValues] = useState(storedData.paramValues || {});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
+  const [parameterValidationAttempted, setParameterValidationAttempted] = useState(false);
   const [expressionDomainConfig, setExpressionDomainConfig] = useState(
     resolveInitialExpressionDomainConfig(storedData)
   );
@@ -222,6 +223,7 @@ export const useCreateIssue = () => {
     }
 
     previousSelectedModelIdentityRef.current = selectedModelIdentity;
+    setParameterValidationAttempted(false);
 
     if (selectedModel) {
       const leafCriteria = getLeafCriteria(criteria);
@@ -462,6 +464,9 @@ export const useCreateIssue = () => {
     });
 
     if (!requestPayload.ok) {
+      if (requestPayload.errorType === "modelParameter") {
+        setParameterValidationAttempted(true);
+      }
       showSnackbarAlert(requestPayload.errorMessage, "error");
       return;
     }
@@ -550,6 +555,7 @@ export const useCreateIssue = () => {
     simulateConsensus,
     paramValues,
     defaultModelParams,
+    parameterValidationAttempted,
     expressionDomainConfig,
     criteriaWeightingConfig,
     expertWeightsCustomized,
@@ -571,6 +577,7 @@ export const useCreateIssue = () => {
     setSimulateConsensus,
     setParamValues,
     setDefaultModelParams,
+    setParameterValidationAttempted,
     setExpressionDomainConfig,
     setCriteriaWeightingConfig,
     handleValidateIssueName,

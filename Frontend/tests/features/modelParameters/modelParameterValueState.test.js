@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCreateIssueParameterDefaults,
+  getCreateIssueModelParameters,
   normalizeModelParameterValue,
   pruneCreateIssueParameterValues,
   updateCreateIssueParameterValues,
@@ -11,6 +12,19 @@ describe("model parameter value state", () => {
   it("handles defensive model definitions without fabricating values", () => {
     expect(buildCreateIssueParameterDefaults({ selectedModel: { parameters: null } })).toEqual({});
     expect(updateCreateIssueParameterValues({ previous: null, selectedModel: null })).toEqual({});
+  });
+
+  it("orders fields before their declared parameter dependencies", () => {
+    const model = { parameters: [
+      { key: "boundaries", parameterStructureKey: "boundaryProfiles" },
+      { key: "categories", parameterStructureKey: "orderedCategories" },
+      { key: "unrelated", parameterStructureKey: "numberGlobal" },
+    ] };
+    expect(getCreateIssueModelParameters(model).map((parameter) => parameter.key)).toEqual([
+      "categories",
+      "boundaries",
+      "unrelated",
+    ]);
   });
 
   it("clones raw declared defaults without interpreting their shapes", () => {

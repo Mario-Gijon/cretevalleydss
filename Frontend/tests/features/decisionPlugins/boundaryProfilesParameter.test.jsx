@@ -55,7 +55,7 @@ const value = {
 };
 const parameter = modelParameters[1];
 
-const BoundaryFieldHarness = () => {
+const BoundaryFieldHarness = ({ showValidation = false }) => {
   const [values, setValues] = useState({ categories: [categories[0], categories[2]], boundaries: { profiles: [] } });
   const context = useMemo(() => buildParameterContext({
     parameterDefinitions: modelParameters,
@@ -72,6 +72,7 @@ const BoundaryFieldHarness = () => {
       parameter={parameter}
       value={values.boundaries}
       parameterContext={context}
+      showValidation={showValidation}
       onChange={(boundaries) => setValues((previous) => ({ ...previous, boundaries }))}
     />
   );
@@ -102,32 +103,61 @@ describe("boundaryProfiles model-parameter plugin", () => {
     const user = userEvent.setup();
     render(<BoundaryFieldHarness />);
 
-    const input = await screen.findByRole("spinbutton", { name: "High boundary for Renewables" });
+    expect(screen.getByText("Category boundaries")).toBeInTheDocument();
+    expect(screen.getByText("Benefit: higher values are preferred. Cost: lower values are preferred. Discrete-domain profiles may use values between steps.")).toBeInTheDocument();
+    const input = await screen.findByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" });
     await user.type(input, "4.25");
-    await waitFor(() => expect(screen.getByRole("spinbutton", { name: "High boundary for Renewables" })).toHaveValue(4.25));
+    await waitFor(() => expect(screen.getByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" })).toHaveValue(4.25));
     expect(screen.queryByText(/Enter a finite number/)).not.toBeInTheDocument();
   });
 
+  it("does not show red validation alerts before a user edits an incomplete profile", async () => {
+    render(<BoundaryFieldHarness />);
+    await screen.findByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" });
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(screen.getByText("Needs values")).toBeInTheDocument();
+  });
+
+  it("shows a field-level message after validation is explicitly requested", async () => {
+    render(<BoundaryFieldHarness showValidation />);
+    const input = await screen.findByRole("spinbutton", { name: "Renewables (Benefit) in Low → High" });
+    expect(input).toBeInvalid();
+    expect(screen.getByText("Enter a value for Renewables in the Low → High boundary.")).toBeInTheDocument();
+  });
+
   it("validates missing profiles, missing values, nonnumeric values and domain ranges", () => {
-    expect(validateBoundaryProfilesValue(parameter, { profiles: [value.profiles[0]] }, parameterContext)).toMatch(/profile for 'High'/);
+    expect(validateBoundaryProfilesValue(parameter, { profiles: [value.profiles[0]] }, parameterContext)).toMatch(/Medium → High reference profile/);
     expect(validateBoundaryProfilesValue(parameter, {
       profiles: [
         { ...value.profiles[0], valuesByCriterionId: { "benefit-id": 4 } },
         value.profiles[1],
       ],
-    }, parameterContext)).toMatch(/Enter a value for 'Cost'/);
+    }, parameterContext)).toMatch(/Enter a value for Cost in the Low → Medium boundary/);
     expect(validateBoundaryProfilesValue(parameter, {
       profiles: [
         { ...value.profiles[0], valuesByCriterionId: { ...value.profiles[0].valuesByCriterionId, "benefit-id": "not a number" } },
         value.profiles[1],
       ],
-    }, parameterContext)).toMatch(/finite number/);
+    }, parameterContext)).toMatch(/numeric value/);
     expect(validateBoundaryProfilesValue(parameter, {
       profiles: [
         { ...value.profiles[0], valuesByCriterionId: { ...value.profiles[0].valuesByCriterionId, "benefit-id": 12 } },
         value.profiles[1],
       ],
-    }, parameterContext)).toMatch(/between 0 and 10/);
+    }, parameterContext)).toMatch(/Renewables must be between 0 and 10/);
+  });
+
+  it("uses category names with friendly indexes when labels are duplicated", () => {
+    const duplicateCategories = categories.map((category) => ({ ...category, label: "Shared" }));
+    const duplicateContext = buildParameterContext({
+      parameterDefinitions: modelParameters,
+      parameterValues: { categories: duplicateCategories },
+      leafCriteria: parameterContext.leafCriteria,
+      criterionDomainsById: parameterContext.criterionDomainsById,
+    });
+    const error = validateBoundaryProfilesValue(parameter, { profiles: [] }, duplicateContext);
+    expect(error).toMatch(/Shared \(category 1\) → Shared \(category 2\)/);
+    expect(error).not.toMatch(/categoryId|profileId|criterionId|[0-9a-f]{8}-[0-9a-f-]{27}/i);
   });
 
   it("checks benefit and cost dominance between consecutive profiles", () => {
@@ -136,19 +166,19 @@ describe("boundaryProfiles model-parameter plugin", () => {
         value.profiles[0],
         { ...value.profiles[1], valuesByCriterionId: { "benefit-id": 3, "cost-id": 4 } },
       ],
-    }, parameterContext)).toMatch(/benefit order/);
+    }, parameterContext)).toMatch(/must be at least as favorable/);
     expect(validateBoundaryProfilesValue(parameter, {
       profiles: [
         value.profiles[0],
         { ...value.profiles[1], valuesByCriterionId: { "benefit-id": 7, "cost-id": 9 } },
       ],
-    }, parameterContext)).toMatch(/cost order/);
+    }, parameterContext)).toMatch(/must be at least as favorable/);
     expect(validateBoundaryProfilesValue(parameter, {
       profiles: [
         value.profiles[0],
         { ...value.profiles[1], valuesByCriterionId: { "benefit-id": 4, "cost-id": 8 } },
       ],
-    }, parameterContext)).toMatch(/differ strictly/);
+    }, parameterContext)).toMatch(/more favorable than the previous boundary/);
   });
 
   it("keeps IDs and values for boundaries that remain, creates blank profiles, and retains unmatched profiles for explicit review", () => {
@@ -177,7 +207,36 @@ describe("boundaryProfiles model-parameter plugin", () => {
       parameterValues: { categories: [categories[0], categories[2]] },
       leafCriteria: parameterContext.leafCriteria,
       criterionDomainsById: parameterContext.criterionDomainsById,
-    }))).toMatch(/refers to a category that was removed/);
+    }))).toMatch(/saved boundary no longer matches the current category order/);
+  });
+
+  it("preserves saved values for removed criteria until the user explicitly reviews them", () => {
+    const profileWithOldCriterion = {
+      profiles: [{
+        profileId: "profile-high",
+        categoryId: "high",
+        valuesByCriterionId: { "benefit-id": 6, "removed-criterion-id": 8 },
+      }],
+    };
+    const result = reconcileBoundaryProfiles({
+      value: profileWithOldCriterion,
+      categories: [categories[0], categories[2]],
+      leafCriteria: [{ id: "new-id", name: "New criterion", type: "benefit" }],
+    });
+    expect(result.value.profiles[0].valuesByCriterionId).toEqual({
+      "benefit-id": 6,
+      "removed-criterion-id": 8,
+      "new-id": "",
+    });
+
+    const context = buildParameterContext({
+      parameterDefinitions: modelParameters,
+      parameterValues: { categories: [categories[0], categories[2]] },
+      leafCriteria: [{ id: "new-id", name: "New criterion", type: "benefit" }],
+    });
+    const error = validateBoundaryProfilesValue(parameter, result.value, context);
+    expect(error).toMatch(/saved value for a criterion that is no longer in the Issue/i);
+    expect(error).not.toContain("removed-criterion-id");
   });
 
   it("resets only profiles whose adjacent category pair changes", () => {
@@ -214,12 +273,12 @@ describe("boundaryProfiles model-parameter plugin", () => {
       categoryId: "top",
       valuesByCriterionId: { "benefit-id": "", "cost-id": "" },
     });
-    expect(result.profiles[1].profileId).not.toBe("profile-top");
+    expect(result.profiles[1].profileId).toBe("profile-top");
     expect(result.profiles[2]).toMatchObject({
       categoryId: "high",
       valuesByCriterionId: { "benefit-id": "", "cost-id": "" },
     });
-    expect(result.profiles[2].profileId).not.toBe("profile-high");
+    expect(result.profiles[2].profileId).toBe("profile-high");
   });
 
   it("renders category and criterion names in the read-only component, with ID fallbacks", () => {
@@ -235,7 +294,8 @@ describe("boundaryProfiles model-parameter plugin", () => {
     ] }} parameterContext={readOnlyContext} />);
     expect(screen.getByText("Low → Medium")).toBeInTheDocument();
     expect(screen.getByText("Renewables")).toBeInTheDocument();
-    expect(screen.getAllByText("Criterion historical-id")).toHaveLength(2);
-    expect(screen.getByText("Boundary profile for category deleted")).toBeInTheDocument();
+    expect(screen.getAllByText("Saved value for removed criterion")).toHaveLength(2);
+    expect(screen.getByText("Saved boundary needs review")).toBeInTheDocument();
+    expect(screen.queryByText(/historical-id|deleted/)).not.toBeInTheDocument();
   });
 });

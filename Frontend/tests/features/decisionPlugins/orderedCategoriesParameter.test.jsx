@@ -20,7 +20,10 @@ const parameter = {
 const Harness = () => {
   const [value, setValue] = useState([]);
   const Field = PARAMETER_FIELD_REGISTRY.orderedCategories.FieldComponent;
-  return <Field parameter={parameter} value={value} onChange={setValue} />;
+  return <>
+    <Field parameter={parameter} value={value} onChange={setValue} />
+    <output data-testid="category-values">{JSON.stringify(value)}</output>
+  </>;
 };
 
 describe("orderedCategories model-parameter plugin", () => {
@@ -39,27 +42,57 @@ describe("orderedCategories model-parameter plugin", () => {
     await user.click(screen.getByRole("button", { name: "Add category" }));
     await user.click(screen.getByRole("button", { name: "Add category" }));
 
-    const first = screen.getByLabelText("Category 1 label");
-    const second = screen.getByLabelText("Category 2 label");
+    const first = screen.getByLabelText("Category 1");
+    const second = screen.getByLabelText("Category 2");
     await user.clear(second);
     await user.type(second, "Shared label");
     await user.clear(first);
     await user.type(first, "Shared label");
 
-    const initialRows = screen.getAllByRole("listitem");
-    const firstId = initialRows[0].getAttribute("data-testid").replace("ordered-category-", "");
-    const secondId = initialRows[1].getAttribute("data-testid").replace("ordered-category-", "");
+    const initialCategories = JSON.parse(screen.getByTestId("category-values").textContent);
+    const firstId = initialCategories[0].categoryId;
+    const secondId = initialCategories[1].categoryId;
 
     await user.click(screen.getByRole("button", { name: "Move category 2 up" }));
     const reorderedRows = screen.getAllByRole("listitem");
-    expect(reorderedRows[0]).toHaveAttribute("data-testid", `ordered-category-${secondId}`);
-    expect(reorderedRows[1]).toHaveAttribute("data-testid", `ordered-category-${firstId}`);
-    expect(within(reorderedRows[0]).getByLabelText("Category 1 label")).toHaveValue("Shared label");
-    expect(within(reorderedRows[1]).getByLabelText("Category 2 label")).toHaveValue("Shared label");
+    expect(reorderedRows[0]).toHaveAttribute("data-testid", "ordered-category-1");
+    expect(reorderedRows[1]).toHaveAttribute("data-testid", "ordered-category-2");
+    expect(within(reorderedRows[0]).getByLabelText("Category 1")).toHaveValue("Shared label");
+    expect(within(reorderedRows[1]).getByLabelText("Category 2")).toHaveValue("Shared label");
+    expect(JSON.parse(screen.getByTestId("category-values").textContent).map((category) => category.categoryId))
+      .toEqual([secondId, firstId]);
 
     await user.click(screen.getByRole("button", { name: "Remove category 1" }));
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByLabelText("Category 1 label")).toHaveValue("Shared label");
+    expect(screen.getByLabelText("Category 1")).toHaveValue("Shared label");
+  });
+
+  it("uses preference wording and friendly one-based category indexes", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    expect(screen.getByText("Define the categories from least to most preferred.")).toBeInTheDocument();
+    expect(screen.queryByText(/Order starts at 0/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+    expect(screen.getByText("Least preferred")).toBeInTheDocument();
+    expect(screen.getByText("Most preferred")).toBeInTheDocument();
+    expect(screen.getByLabelText("Preference order 1")).toHaveTextContent("1");
+    expect(screen.queryByText(/category-[a-z0-9-]+/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps stored categories readable without exposing IDs or zero-based order", () => {
+    const ReadOnly = PARAMETER_FIELD_REGISTRY.orderedCategories.ReadOnlyComponent;
+    render(<ReadOnly value={[
+      { categoryId: "internal-category-uuid", label: "", order: 0 },
+      { categoryId: "next-category-uuid", label: "Preferred", order: 1 },
+    ]} />);
+
+    expect(screen.getByText("Saved category")).toBeInTheDocument();
+    expect(screen.getByText("Preferred")).toBeInTheDocument();
+    expect(screen.getAllByText("1")).toHaveLength(1);
+    expect(screen.getAllByText("2")).toHaveLength(1);
+    expect(screen.queryByText(/internal-category-uuid|next-category-uuid|Order 0|Order 1/)).not.toBeInTheDocument();
   });
 
   it("allows zero or one category and validates labels and IDs without requiring a global minimum", () => {
@@ -73,7 +106,7 @@ describe("orderedCategories model-parameter plugin", () => {
     expect(validateOrderedCategoriesValue(parameter, [
       { categoryId: "same", label: "A", order: 0 },
       { categoryId: "same", label: "B", order: 1 },
-    ])).toMatch(/repeated/);
+    ])).toMatch(/appears more than once/);
   });
 
   it("normalizes order indexes while retaining stable category IDs and allowing duplicate labels", () => {

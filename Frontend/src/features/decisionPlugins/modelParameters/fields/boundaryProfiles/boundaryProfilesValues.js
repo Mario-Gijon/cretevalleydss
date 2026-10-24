@@ -65,21 +65,32 @@ const getCriterionRows = (parameterContext) => {
   const ids = new Set();
   for (const criterion of criteria) {
     const id = typeof criterion?.id === "string" ? criterion.id.trim() : "";
-    if (!id) return { error: "Leaf criteria must have IDs before profiles can be configured." };
-    if (ids.has(id)) return { error: `Criterion ID '${id}' is repeated.` };
+    if (!id) return { error: "Each criterion needs to be identified before a boundary can be configured." };
+    if (ids.has(id)) return { error: "A criterion is listed more than once." };
     ids.add(id);
   }
-  if (!criteria.length) return { error: "Add at least one leaf criterion before configuring profiles." };
+  if (!criteria.length) return { error: "Add at least one criterion before configuring category boundaries." };
   return { rows: criteria.map((criterion) => ({ ...criterion, id: criterion.id.trim() })) };
 };
 
-export const validateBoundaryProfilesValue = (parameter, value, parameterContext) => {
+const categoryDisplayName = (category, categories) => {
+  const label = typeof category?.label === "string" ? category.label.trim() : "";
+  if (!label) return "Unnamed category";
+  const duplicateCount = categories.filter((row) => row?.label?.trim() === label).length;
+  if (duplicateCount < 2) return label;
+  const index = categories.findIndex((row) => row?.categoryId === category?.categoryId);
+  return `${label} (category ${index + 1})`;
+};
+
+export const getBoundaryProfilesValidationIssues = (parameter, value, parameterContext) => {
+  const issues = [];
+  const addIssue = (message, details = {}) => issues.push({ message, ...details });
   if (!isObject(value) || !Array.isArray(value.profiles)) {
-    return "Boundary profiles must be a list.";
+    return [{ message: "Set a reference profile between each pair of categories." }];
   }
   const categories = getCategories(parameterContext);
   if (!categories || categories.length < 2) {
-    return "Add at least two ordered categories before configuring boundary profiles.";
+    return [{ message: "Add at least two ordered categories before configuring category boundaries." }];
   }
 
   const expectedCategoryIds = categories.slice(1).map((category) => category?.categoryId);
@@ -88,35 +99,40 @@ export const validateBoundaryProfilesValue = (parameter, value, parameterContext
   for (const profile of value.profiles) {
     const profileId = typeof profile?.profileId === "string" ? profile.profileId.trim() : "";
     const categoryId = typeof profile?.categoryId === "string" ? profile.categoryId.trim() : "";
-    if (!profileId) return "Every boundary profile needs an ID.";
-    if (profileIds.has(profileId)) return `Profile ID '${profileId}' is repeated.`;
+    if (!profileId) addIssue("A saved boundary could not be matched to the categories. Review the boundary list.");
+    if (profileId && profileIds.has(profileId)) addIssue("A saved boundary is duplicated. Review the model configuration.");
     profileIds.add(profileId);
-    if (!categoryId) return `Profile '${profileId}' needs a category ID.`;
-    if (categoryIds.has(categoryId)) return `Category '${categoryId}' has more than one profile.`;
+    if (!categoryId) addIssue("A saved boundary no longer matches the current categories. Review and remove it before continuing.");
+    if (categoryId && categoryIds.has(categoryId)) addIssue("Each category boundary can have one reference profile.");
     categoryIds.add(categoryId);
   }
 
-  const profilesByCategory = new Map(value.profiles.map((profile) => [profile.categoryId, profile]));
+  const profilesByCategory = new Map(value.profiles.map((profile) => [profile?.categoryId, profile]));
   for (const categoryId of expectedCategoryIds) {
     if (!profilesByCategory.has(categoryId)) {
       const category = categories.find((item) => item?.categoryId === categoryId);
-      return `Add a boundary profile for '${category?.label || categoryId}'.`;
+      const upperIndex = categories.findIndex((item) => item?.categoryId === categoryId);
+      const lower = upperIndex > 0 ? categories[upperIndex - 1] : null;
+      const boundary = lower
+        ? `${categoryDisplayName(lower, categories)} → ${categoryDisplayName(category, categories)}`
+        : "this category pair";
+      addIssue(`Complete the ${boundary} reference profile.`);
     }
   }
   const expectedIds = new Set(expectedCategoryIds);
   const staleProfile = value.profiles.find((profile) => !expectedIds.has(profile.categoryId));
   if (staleProfile) {
-    const category = categories.find((item) => item?.categoryId === staleProfile.categoryId);
-    return category
-      ? `The profile for '${category.label || category.categoryId}' no longer separates two categories. Remove it or restore the category order.`
-      : `Profile '${staleProfile.profileId}' refers to a category that was removed. Remove this profile before continuing.`;
+    addIssue("A saved boundary no longer matches the current category order. Review and remove it before continuing.", {
+      profileId: staleProfile.profileId,
+      kind: "stale-profile",
+    });
   }
   if (value.profiles.length !== expectedCategoryIds.length) {
-    return `Configure exactly ${expectedCategoryIds.length} boundary profile(s).`;
+    addIssue("Review the saved category boundaries so there is one reference profile between each category pair.");
   }
 
   const criterionResult = getCriterionRows(parameterContext);
-  if (criterionResult.error) return criterionResult.error;
+  if (criterionResult.error) return [{ message: criterionResult.error }];
   const { rows } = criterionResult;
   const expectedCriterionIds = new Set(rows.map((criterion) => criterion.id));
   const restrictions = parameter?.restrictions && typeof parameter.restrictions === "object"
@@ -124,45 +140,72 @@ export const validateBoundaryProfilesValue = (parameter, value, parameterContext
     : {};
   const profiles = expectedCategoryIds.map((categoryId) => profilesByCategory.get(categoryId));
 
-  for (const profile of profiles) {
+  for (let profileIndex = 0; profileIndex < profiles.length; profileIndex += 1) {
+    const profile = profiles[profileIndex];
+    if (!profile) continue;
+    const categoryIndex = categories.findIndex((category) => category?.categoryId === profile.categoryId);
+    const lowerCategory = categoryIndex > 0 ? categories[categoryIndex - 1] : null;
+    const upperCategory = categories[categoryIndex];
+    const boundaryName = lowerCategory && upperCategory
+      ? `${categoryDisplayName(lowerCategory, categories)} → ${categoryDisplayName(upperCategory, categories)}`
+      : "this category boundary";
     if (!isObject(profile.valuesByCriterionId)) {
-      return `Profile '${profile.profileId}' needs values for every leaf criterion.`;
+      addIssue(`Enter a value for every criterion in the ${boundaryName} boundary.`, {
+        profileId: profile.profileId,
+        kind: "profile",
+      });
+      continue;
     }
     const staleCriterionId = Object.keys(profile.valuesByCriterionId).find((id) => !expectedCriterionIds.has(id));
     if (staleCriterionId) {
-      return `Profile '${profile.profileId}' refers to removed criterion '${staleCriterionId}'.`;
+      addIssue("This boundary has a saved value for a criterion that is no longer in the Issue. Review and remove that value.", {
+        profileId: profile.profileId,
+        kind: "stale-criterion",
+      });
     }
     for (const criterion of rows) {
-      if (!Object.hasOwn(profile.valuesByCriterionId, criterion.id)) {
-        return `Enter a value for '${criterion.name || criterion.id}' in the profile for '${categories.find((item) => item.categoryId === profile.categoryId)?.label || profile.categoryId}'.`;
+      const criterionName = criterion.name?.trim() || `Criterion ${rows.indexOf(criterion) + 1}`;
+      const fieldDetails = { profileId: profile.profileId, criterionId: criterion.id, kind: "field" };
+      const rawValue = profile.valuesByCriterionId[criterion.id];
+      if (!Object.hasOwn(profile.valuesByCriterionId, criterion.id) || rawValue === "" || rawValue === null || rawValue === undefined) {
+        addIssue(`Enter a value for ${criterionName} in the ${boundaryName} boundary.`, fieldDetails);
+        continue;
       }
-      const number = normalizeFiniteNumber(profile.valuesByCriterionId[criterion.id]);
+      const number = normalizeFiniteNumber(rawValue);
       if (number === null) {
-        return `Enter a finite number for '${criterion.name || criterion.id}' in the profile for '${profile.categoryId}'.`;
+        addIssue(`Enter a numeric value for ${criterionName} in the ${boundaryName} boundary.`, fieldDetails);
+        continue;
       }
       const domain = parameterContext?.criterionDomainsById?.[criterion.id];
       if (!domain) {
-        return `Select a numeric expression domain for '${criterion.name || criterion.id}'.`;
+        addIssue(`Choose a numeric expression domain for ${criterionName} before setting boundary values.`, fieldDetails);
+        continue;
       }
       if (domain.typeKey !== "numericContinuous" && domain.typeKey !== "numericDiscrete") {
-        return `Boundary profiles require a numeric domain for '${criterion.name || criterion.id}'.`;
+        addIssue(`The ${criterionName} boundary needs a numeric expression domain.`, fieldDetails);
+        continue;
       }
       const min = domain.definition?.min;
       const max = domain.definition?.max;
       if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
-        return `The numeric domain for '${criterion.name || criterion.id}' needs valid minimum and maximum values.`;
+        addIssue(`The numeric range for ${criterionName} needs valid minimum and maximum values.`, fieldDetails);
+        continue;
       }
       if (number < min || number > max) {
-        return `Value for '${criterion.name || criterion.id}' must be between ${min} and ${max}.`;
+        addIssue(`${criterionName} must be between ${min} and ${max}.`, fieldDetails);
+        continue;
       }
       if (
         (Number.isFinite(restrictions.min) && number < restrictions.min) ||
         (Number.isFinite(restrictions.max) && number > restrictions.max)
       ) {
-        return `Value for '${criterion.name || criterion.id}' is outside the allowed parameter range.`;
+        const allowedMin = Number.isFinite(restrictions.min) ? restrictions.min : min;
+        const allowedMax = Number.isFinite(restrictions.max) ? restrictions.max : max;
+        addIssue(`${criterionName} must be between ${allowedMin} and ${allowedMax}.`, fieldDetails);
+        continue;
       }
       if (criterion.type !== "benefit" && criterion.type !== "cost") {
-        return `Criterion '${criterion.name || criterion.id}' must be marked as benefit or cost.`;
+        addIssue(`Choose whether ${criterionName} is a Benefit or Cost criterion.`, fieldDetails);
       }
     }
   }
@@ -170,23 +213,47 @@ export const validateBoundaryProfilesValue = (parameter, value, parameterContext
   for (let index = 1; index < profiles.length; index += 1) {
     const lessPreferred = profiles[index - 1];
     const morePreferred = profiles[index];
+    if (!lessPreferred || !morePreferred) continue;
+    const hasUnusableCell = rows.some((criterion) =>
+      normalizeFiniteNumber(lessPreferred.valuesByCriterionId?.[criterion.id]) === null ||
+      normalizeFiniteNumber(morePreferred.valuesByCriterionId?.[criterion.id]) === null
+    );
+    if (hasUnusableCell) continue;
     let strictPreferenceFound = false;
     for (const criterion of rows) {
       const previous = normalizeFiniteNumber(lessPreferred.valuesByCriterionId[criterion.id]);
       const next = normalizeFiniteNumber(morePreferred.valuesByCriterionId[criterion.id]);
       const isBenefit = criterion.type === "benefit";
       if ((isBenefit && next < previous) || (!isBenefit && next > previous)) {
-        return `Profiles for consecutive categories violate the ${criterion.type} order on '${criterion.name || criterion.id}'.`;
+        const previousIndex = categories.findIndex((category) => category?.categoryId === lessPreferred.categoryId);
+        const currentIndex = categories.findIndex((category) => category?.categoryId === morePreferred.categoryId);
+        const previousBoundary = previousIndex > 0
+          ? `${categoryDisplayName(categories[previousIndex - 1], categories)} → ${categoryDisplayName(categories[previousIndex], categories)}`
+          : "the previous boundary";
+        const currentBoundary = currentIndex > 0
+          ? `${categoryDisplayName(categories[currentIndex - 1], categories)} → ${categoryDisplayName(categories[currentIndex], categories)}`
+          : "this boundary";
+        addIssue(`${currentBoundary} must be at least as favorable as ${previousBoundary} for ${criterion.name?.trim() || `Criterion ${rows.indexOf(criterion) + 1}`}.`, {
+          profileId: morePreferred.profileId,
+          criterionId: criterion.id,
+          kind: "order",
+        });
       }
       if (isBenefit ? next > previous : next < previous) strictPreferenceFound = true;
     }
     if (!strictPreferenceFound) {
-      return "Consecutive boundary profiles must differ strictly on at least one criterion.";
+      addIssue("This boundary must be more favorable than the previous boundary on at least one criterion.", {
+        profileId: morePreferred.profileId,
+        kind: "profile-order",
+      });
     }
   }
 
-  return null;
+  return issues;
 };
+
+export const validateBoundaryProfilesValue = (parameter, value, parameterContext) =>
+  getBoundaryProfilesValidationIssues(parameter, value, parameterContext)[0]?.message || null;
 
 const profilesEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
@@ -202,9 +269,6 @@ export const reconcileBoundaryProfiles = ({ value, categories, leafCriteria }) =
     if (!existingByCategory.has(profile.categoryId)) existingByCategory.set(profile.categoryId, []);
     existingByCategory.get(profile.categoryId).push({ profile, index });
   });
-  const knownCriterionIds = new Set(criterionRows
-    .map((criterion) => criterion?.id)
-    .filter((id) => typeof id === "string" && id.trim()));
   const consumedIndexes = new Set();
   const activeProfiles = expectedCategoryIds.map((categoryId) => {
     const entry = existingByCategory.get(categoryId)?.shift();
@@ -215,7 +279,7 @@ export const reconcileBoundaryProfiles = ({ value, categories, leafCriteria }) =
       ...existing,
       categoryId,
       valuesByCriterionId: Object.fromEntries([
-        ...Object.entries(existing.valuesByCriterionId).filter(([id]) => knownCriterionIds.has(id)),
+        ...Object.entries(existing.valuesByCriterionId),
         ...criterionRows
           .filter((criterion) => typeof criterion?.id === "string" && !Object.hasOwn(existing.valuesByCriterionId, criterion.id))
           .map((criterion) => [criterion.id, ""]),
@@ -246,11 +310,6 @@ export const reconcileBoundaryProfilesAfterCategoryChange = ({
       previousRows[index]?.categoryId,
     ])
   );
-  const knownCriterionIds = new Set(
-    (Array.isArray(leafCriteria) ? leafCriteria : [])
-      .map((criterion) => criterion?.id)
-      .filter((id) => typeof id === "string" && id.trim())
-  );
   const existingByCategory = new Map();
   current.profiles.forEach((profile, index) => {
     if (!existingByCategory.has(profile.categoryId)) existingByCategory.set(profile.categoryId, []);
@@ -268,13 +327,16 @@ export const reconcileBoundaryProfilesAfterCategoryChange = ({
       const nextLowerCategoryId = nextRows[index]?.categoryId;
       const previousLowerCategoryId = previousLowerCategoryByUpperId.get(categoryId);
       if (previousLowerCategoryId !== nextLowerCategoryId) {
-        return createBoundaryProfile({ categoryId, leafCriteria });
+        return {
+          ...createBoundaryProfile({ categoryId, leafCriteria }),
+          profileId: entry.profile.profileId,
+        };
       }
 
       return {
         ...entry.profile,
         valuesByCriterionId: Object.fromEntries([
-          ...Object.entries(entry.profile.valuesByCriterionId).filter(([id]) => knownCriterionIds.has(id)),
+          ...Object.entries(entry.profile.valuesByCriterionId),
           ...(Array.isArray(leafCriteria) ? leafCriteria : [])
             .filter((criterion) =>
               typeof criterion?.id === "string" &&

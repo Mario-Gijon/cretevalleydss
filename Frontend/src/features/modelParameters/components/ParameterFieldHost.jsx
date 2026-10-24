@@ -1,4 +1,5 @@
 import { resolveParameterFieldEntry } from "../../decisionPlugins/modelParameters";
+import { inspectModelParameterDependencyChange } from "../logic/inspectModelParameterDependencyChange.js";
 
 export const ParameterFieldHost = ({
   parameter,
@@ -6,6 +7,7 @@ export const ParameterFieldHost = ({
   onChange,
   error,
   disabled,
+  showValidation = false,
   parameterContext,
 }) => {
   const entry = resolveParameterFieldEntry(parameter);
@@ -18,7 +20,13 @@ export const ParameterFieldHost = ({
       onChange={onChange}
       error={error}
       disabled={disabled}
+      showValidation={showValidation}
       parameterContext={parameterContext}
+      inspectDependencyChange={(nextValue) => inspectModelParameterDependencyChange({
+        changedParameter: parameter,
+        nextValue,
+        parameterContext,
+      })}
     />
   );
 };

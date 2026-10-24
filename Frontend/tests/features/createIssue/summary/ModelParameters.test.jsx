@@ -6,8 +6,8 @@ import ModelParameters from "../../../../src/features/createIssue/summary/compon
 
 const selectedModel = {
   parameters: [
-    { key: "categories", label: "Categories", parameterStructureKey: "orderedCategories" },
     { key: "boundaryProfiles", label: "Boundary profiles", parameterStructureKey: "boundaryProfiles" },
+    { key: "categories", label: "Categories", parameterStructureKey: "orderedCategories" },
   ],
 };
 
@@ -65,19 +65,76 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     const user = userEvent.setup();
     render(<Harness />);
 
+    expect(screen.getAllByText("Ordered categories")[0].compareDocumentPosition(screen.getByText("Category boundaries")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Move category 4 up" }));
+    expect(screen.getByRole("dialog", { name: "Review this category change" })).toBeInTheDocument();
+    expect(screen.getByText(/Existing values for C → D will be reset/)).toBeInTheDocument();
+    expect(JSON.parse(screen.getByTestId("parameter-values").textContent)).toEqual(initialValues);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(JSON.parse(screen.getByTestId("parameter-values").textContent)).toEqual(initialValues);
+
+    await user.click(screen.getByRole("button", { name: "Move category 4 up" }));
+    await user.click(screen.getByRole("button", { name: "Apply change" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("spinbutton", { name: "B boundary for Quality" })).toHaveValue(2);
-      expect(screen.getByRole("spinbutton", { name: "D boundary for Quality" })).toHaveValue(null);
-      expect(screen.getByRole("spinbutton", { name: "C boundary for Quality" })).toHaveValue(null);
+      expect(screen.getByRole("spinbutton", { name: "Quality (Benefit) in A → B" })).toHaveValue(2);
+      expect(screen.getByRole("spinbutton", { name: "Quality (Benefit) in B → D" })).toHaveValue(null);
+      expect(screen.getByRole("spinbutton", { name: "Quality (Benefit) in D → C" })).toHaveValue(null);
     });
 
     const values = JSON.parse(screen.getByTestId("parameter-values").textContent);
     expect(values.boundaryProfiles.profiles).toEqual([
       { profileId: "profile-b", categoryId: "b", valuesByCriterionId: { "quality-id": 2 } },
-      { categoryId: "d", profileId: expect.not.stringMatching(/^profile-d$/), valuesByCriterionId: { "quality-id": "" } },
-      { categoryId: "c", profileId: expect.not.stringMatching(/^profile-c$/), valuesByCriterionId: { "quality-id": "" } },
+      { categoryId: "d", profileId: "profile-d", valuesByCriterionId: { "quality-id": "" } },
+      { categoryId: "c", profileId: "profile-c", valuesByCriterionId: { "quality-id": "" } },
     ]);
+  });
+
+  it("does not present required blank boundary settings as valid defaults", () => {
+    render(
+      <ModelParameters
+        selectedModel={{ parameters: [
+          { key: "boundaryProfiles", label: "Category boundaries", parameterStructureKey: "boundaryProfiles", required: true },
+          { key: "categories", label: "Ordered categories", parameterStructureKey: "orderedCategories", required: true },
+        ] }}
+        allData={{ criteria, alternatives: [] }}
+        paramValues={{}}
+        setParamValues={() => {}}
+        defaultModelParams
+        setDefaultModelParams={() => {}}
+        handleDefaultChange={() => {}}
+        expressionDomainConfig={{ mode: "global", globalDomainId: "quality-domain" }}
+        globalDomains={[{
+          id: "quality-domain",
+          name: "Quality scale",
+          typeKey: "numericContinuous",
+          definition: { min: 0, max: 10 },
+        }]}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Default" })).toBeDisabled();
+    expect(screen.getByText("No valid defaults are available. Complete the required settings below.")).toBeInTheDocument();
+  });
+
+  it("keeps the default selection available for models with valid existing defaults", () => {
+    render(
+      <ModelParameters
+        selectedModel={{ parameters: [
+          { key: "alpha", label: "Alpha", parameterStructureKey: "numberGlobal", default: 0, restrictions: { min: 0, max: 1 } },
+        ] }}
+        allData={{ criteria, alternatives: [] }}
+        paramValues={{}}
+        setParamValues={() => {}}
+        defaultModelParams
+        setDefaultModelParams={() => {}}
+        handleDefaultChange={() => {}}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Default" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Default" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Using valid default values.")).toBeInTheDocument();
   });
 });

@@ -119,6 +119,7 @@ export const SummaryStep = () => {
     setParamValues,
     defaultModelParams,
     setDefaultModelParams,
+    parameterValidationAttempted,
     setCriteriaWeightingConfig,
     expertWeights,
   } = useCreateIssueContext();
@@ -388,6 +389,7 @@ export const SummaryStep = () => {
                   setParamValues={setParamValues}
                   defaultModelParams={defaultModelParams}
                   setDefaultModelParams={setDefaultModelParams}
+                  validationAttempted={parameterValidationAttempted}
                   handleDefaultChange={handleDefaultChange}
                   globalDomains={globalDomains}
                   expressionDomains={expressionDomains}

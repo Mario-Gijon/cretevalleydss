@@ -159,7 +159,8 @@ export const buildCreateIssueRequestPayload = ({
     );
     return {
       ok: false,
-      errorMessage: `${parameterDefinition?.label || invalidParameter[0]}: ${invalidParameter[1]}`,
+      errorType: "modelParameter",
+      errorMessage: `${parameterDefinition?.label || "Model settings"}: ${invalidParameter[1]}`,
     };
   }
 
