@@ -118,11 +118,10 @@ const BoundaryValueField = ({
   boundary,
   parameter,
   parameterContext,
-  touched,
+  showValidation,
   issue,
   disabled,
   onValueChange,
-  onTouch,
 }) => {
   const { setupIssue } = getRange(parameter, criterion, parameterContext);
   const criterionName = criterion.name?.trim() || `Criterion ${criterionIndex + 1}`;
@@ -133,9 +132,7 @@ const BoundaryValueField = ({
   const [hasInvalidDraft, setHasInvalidDraft] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const descriptionId = useId();
-  const showFieldIssue = !hasSetupIssue && (
-    Boolean(draftError) || (!isEditing && touched && Boolean(issue))
-  );
+  const showFieldIssue = showValidation && !hasSetupIssue && (Boolean(draftError) || Boolean(issue));
   const fieldDescription = draftError || issue?.message || "";
   const shortIssue = draftError
     ? draftError === "Use numbers only."
@@ -150,7 +147,6 @@ const BoundaryValueField = ({
   }, [currentValue, hasInvalidDraft, isEditing]);
 
   const handleBlur = () => {
-    onTouch();
     setIsEditing(false);
     const validation = getBoundaryProfileCellValidation(
       parameter,
@@ -159,7 +155,9 @@ const BoundaryValueField = ({
       parameterContext
     );
     if (validation.kind === null) {
-      onValueChange(criterion.id, validation.value);
+      if (currentValue === "" || Number(currentValue) !== validation.value) {
+        onValueChange(criterion.id, validation.value);
+      }
       setDraftText(String(validation.value));
       setDraftError("");
       setHasInvalidDraft(false);
@@ -169,7 +167,7 @@ const BoundaryValueField = ({
         : validation.kind === "numeric"
           ? `Enter a numeric value for ${criterionName} in the ${boundary} boundary.`
           : validation.message;
-      onValueChange(criterion.id, "");
+      if (currentValue !== "") onValueChange(criterion.id, "");
       setDraftError(message);
       setHasInvalidDraft(true);
       if (validation.kind === "required") {
@@ -251,10 +249,8 @@ const BoundaryTable = ({
   parameterContext,
   disabled,
   showValidation,
-  touchedCells,
   issues,
   onValueChange,
-  onTouch,
 }) => {
   const criterionColumnWidth = isMobileViewport ? 130 : 190;
   const boundaryColumnWidth = isMobileViewport ? 160 : 190;
@@ -303,7 +299,6 @@ const BoundaryTable = ({
           const issue = profile && issues.find((item) =>
             item.profileId === profile.profileId && item.criterionId === criterion.id
           );
-          const touched = showValidation || touchedCells.has(`${profile?.profileId}:${criterion.id}`);
           return (
             <TableCell
               key={boundary.upperCategory.categoryId}
@@ -326,11 +321,10 @@ const BoundaryTable = ({
                   boundary={boundaryName(boundary.lowerCategory, boundary.upperCategory, categories)}
                   parameter={parameter}
                   parameterContext={parameterContext}
-                  touched={touched}
+                  showValidation={showValidation}
                   issue={issue}
                   disabled={disabled}
                   onValueChange={(criterionId, nextValue) => onValueChange(profile.profileId, criterionId, nextValue)}
-                  onTouch={() => onTouch(profile.profileId, criterion.id)}
                 />
               ) : (
                 <Typography variant="caption" color="text.secondary">Preparing…</Typography>
@@ -454,7 +448,6 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
   const categories = getCategories(parameterContext);
   const leafCriteria = Array.isArray(parameterContext?.leafCriteria) ? parameterContext.leafCriteria : [];
   const normalized = useMemo(() => normalizeBoundaryProfilesValue(parameter, value), [parameter, value]);
-  const [touchedCells, setTouchedCells] = useState(() => new Set());
   const [selectedBoundaryCategoryId, setSelectedBoundaryCategoryId] = useState("");
   const isMobileViewport = useMediaQuery("(max-width:899.95px)");
   const categoryIdsKey = categories.map((category) => category?.categoryId || "").join("\u001f");
@@ -487,11 +480,6 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
     boundary.upperCategory?.categoryId === selectedBoundaryCategoryId
   ) || boundaries[0] || null;
 
-  const touchCell = (profileId, criterionId) => setTouchedCells((previous) => {
-    const next = new Set(previous);
-    next.add(`${profileId}:${criterionId}`);
-    return next;
-  });
   const updateValue = (profileId, criterionId, nextValue) => {
     if (nextValue === undefined) {
       onChange(removeProfileValue(normalized.profiles, profileId, criterionId));
@@ -577,10 +565,8 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
           parameterContext={parameterContext}
           disabled={disabled}
           showValidation={showValidation}
-          touchedCells={touchedCells}
           issues={issues}
           onValueChange={updateValue}
-          onTouch={touchCell}
         />
       ) : null}
 

@@ -234,7 +234,7 @@ describe("createIssuePayload", () => {
     expect(stale).toMatchObject({
       ok: false,
       errorType: "modelParameter",
-      errorMessage: expect.stringContaining("saved boundary no longer matches the current category order"),
+      errorMessage: expect.stringContaining("saved boundary does not match the current category order"),
     });
   });
 

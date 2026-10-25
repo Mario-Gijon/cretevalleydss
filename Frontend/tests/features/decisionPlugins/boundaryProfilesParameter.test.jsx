@@ -60,6 +60,7 @@ const value = {
   ],
 };
 const parameter = modelParameters[1];
+const createBoundaryLeafCriteria = [{ id: "benefit-id", name: "Renewables", type: "benefit" }];
 
 beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
@@ -117,6 +118,47 @@ const BoundaryFieldHarness = ({
         onChange={(boundaries) => setValues((previous) => ({ ...previous, boundaries }))}
       />
       <output hidden data-testid="boundary-values">{JSON.stringify(values.boundaries)}</output>
+    </>
+  );
+};
+
+const BoundaryCreateHarness = ({ initialBoundaries = { profiles: [] } }) => {
+  const [values, setValues] = useState({ categories, boundaries: initialBoundaries });
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [created, setCreated] = useState(false);
+  const context = useMemo(() => buildParameterContext({
+    parameterDefinitions: modelParameters,
+    parameterValues: values,
+    leafCriteria: createBoundaryLeafCriteria,
+    expressionDomains: [{
+      id: "domain-benefit",
+      typeKey: "numericContinuous",
+      definition: { min: 0, max: 10 },
+    }],
+    expressionDomainConfig: { mode: "global", globalDomainId: "domain-benefit" },
+  }), [values]);
+  const Field = PARAMETER_FIELD_REGISTRY.boundaryProfiles.FieldComponent;
+
+  const handleCreate = () => {
+    if (validateBoundaryProfilesValue(parameter, values.boundaries, context)) {
+      setValidationAttempted(true);
+      return;
+    }
+    setCreated(true);
+  };
+
+  return (
+    <>
+      <Field
+        parameter={parameter}
+        value={values.boundaries}
+        parameterContext={context}
+        showValidation={validationAttempted}
+        onChange={(boundaries) => setValues((previous) => ({ ...previous, boundaries }))}
+      />
+      <button type="button" onClick={handleCreate}>Create Issue</button>
+      <output hidden data-testid="create-boundary-values">{JSON.stringify(values.boundaries)}</output>
+      <output hidden data-testid="created-issue">{String(created)}</output>
     </>
   );
 };
@@ -191,7 +233,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
       .toBe(4));
   });
 
-  it("keeps incomplete numeric drafts editable and commits a finite number on blur", async () => {
+  it("keeps incomplete numeric drafts editable without showing an error before Create", async () => {
     const user = userEvent.setup();
     render(<BoundaryFieldHarness />);
     const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
@@ -212,7 +254,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(input).toHaveValue("-");
     expect(input).not.toHaveAttribute("aria-invalid", "true");
     await user.tab();
-    await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
     expect(getBoundaryProfileCellValidation(parameter, parameterContext.leafCriteria[0], "-", parameterContext).kind)
       .toBe("numeric");
     expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
@@ -229,9 +271,8 @@ describe("boundaryProfiles model-parameter plugin", () => {
     await user.paste("2x invalid");
 
     expect(input).toHaveValue("");
-    expect(input).toHaveAttribute("aria-invalid", "true");
-    const description = document.getElementById(input.getAttribute("aria-describedby"));
-    expect(description).toHaveTextContent("Use numbers only.");
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(input).not.toHaveAttribute("aria-describedby");
     expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
       .toBe("");
   });
@@ -321,9 +362,8 @@ describe("boundaryProfiles model-parameter plugin", () => {
 
     await user.tab();
     expect(input).toHaveValue("11");
-    expect(input).toBeInvalid();
-    const description = document.getElementById(input.getAttribute("aria-describedby"));
-    expect(description).toHaveTextContent("Renewables must be between 0 and 10.");
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(input).not.toHaveAttribute("aria-describedby");
     expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
       .toBe("");
     expect(getBoundaryProfileCellValidation(
@@ -332,6 +372,104 @@ describe("boundaryProfiles model-parameter plugin", () => {
       JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"],
       parameterContext
     ).kind).toBe("required");
+  });
+
+  it("shows required reference errors only after Create is attempted", async () => {
+    const user = userEvent.setup();
+    render(<BoundaryCreateHarness />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → Medium" });
+
+    await user.click(input);
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    await user.tab();
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+    expect(screen.getByTestId("created-issue")).toHaveTextContent("false");
+    expect(input).toBeInvalid();
+    expect(screen.getByRole("status")).toHaveTextContent("highlighted reference cells");
+  });
+
+  it("shows reference errors after Create on the mobile boundary view", async () => {
+    const user = userEvent.setup();
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    render(<BoundaryCreateHarness />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → Medium" });
+
+    expect(screen.getByRole("combobox", { name: "Classification reference" })).toBeInTheDocument();
+    await user.click(input);
+    await user.tab();
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+    expect(input).toBeInvalid();
+    expect(screen.getByRole("status")).toHaveTextContent("highlighted reference cells");
+  });
+
+  it("blocks Create for an out-of-range focused draft instead of using the previous committed value", async () => {
+    const user = userEvent.setup();
+    const initialBoundaries = {
+      profiles: [{ profileId: "saved-profile", categoryId: "medium", valuesByCriterionId: { "benefit-id": 5 } }],
+    };
+    render(<BoundaryCreateHarness initialBoundaries={initialBoundaries} />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → Medium" });
+
+    await user.clear(input);
+    await user.type(input, "11");
+    expect(input).toHaveValue("11");
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(JSON.parse(screen.getByTestId("create-boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe(5);
+
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+    expect(screen.getByTestId("created-issue")).toHaveTextContent("false");
+    expect(JSON.parse(screen.getByTestId("create-boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe("");
+    expect(input).toHaveValue("11");
+    expect(input).toBeInvalid();
+    expect(document.getElementById(input.getAttribute("aria-describedby")))
+      .toHaveTextContent("Renewables must be between 0 and 10.");
+  });
+
+  it("highlights an out-of-order profile after Create and removes its error when corrected", async () => {
+    const user = userEvent.setup();
+    const initialBoundaries = {
+      profiles: [
+        { profileId: "medium-profile", categoryId: "medium", valuesByCriterionId: { "benefit-id": 6 } },
+        { profileId: "high-profile", categoryId: "high", valuesByCriterionId: { "benefit-id": 4 } },
+      ],
+    };
+    render(<BoundaryCreateHarness initialBoundaries={initialBoundaries} />);
+    const firstBoundary = await screen.findByRole("textbox", { name: "Renewables reference in Low → Medium" });
+    const outOfOrderBoundary = screen.getByRole("textbox", { name: "Renewables reference in Medium → High" });
+
+    expect(firstBoundary).not.toHaveAttribute("aria-invalid", "true");
+    expect(outOfOrderBoundary).not.toHaveAttribute("aria-invalid", "true");
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+    expect(screen.getByTestId("created-issue")).toHaveTextContent("false");
+    expect(firstBoundary).not.toHaveAttribute("aria-invalid", "true");
+    expect(outOfOrderBoundary).toBeInvalid();
+    expect(screen.getByRole("alert")).toHaveTextContent("must be more favorable");
+
+    await user.clear(outOfOrderBoundary);
+    await user.type(outOfOrderBoundary, "7");
+    await user.tab();
+    await waitFor(() => expect(outOfOrderBoundary).not.toHaveAttribute("aria-invalid", "true"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+    expect(screen.getByTestId("created-issue")).toHaveTextContent("true");
   });
 
   it("shows every reference as a separate desktop table column", async () => {

@@ -36,8 +36,8 @@ const initialValues = {
   },
 };
 
-const Harness = () => {
-  const [paramValues, setParamValues] = useState(initialValues);
+const Harness = ({ validationAttempted = false, initialParamValues = initialValues }) => {
+  const [paramValues, setParamValues] = useState(initialParamValues);
   const [defaultModelParams, setDefaultModelParams] = useState(true);
   return (
     <>
@@ -48,6 +48,7 @@ const Harness = () => {
         setParamValues={setParamValues}
         defaultModelParams={defaultModelParams}
         setDefaultModelParams={setDefaultModelParams}
+        validationAttempted={validationAttempted}
         handleDefaultChange={() => setDefaultModelParams(false)}
         globalDomains={[{
           id: "quality-domain",
@@ -63,6 +64,25 @@ const Harness = () => {
 };
 
 describe("Create Issue model parameter dependency reconciliation", () => {
+  it("shows required classification-reference errors only after Create validation is attempted", async () => {
+    const user = userEvent.setup();
+    const incompleteValues = {
+      ...initialValues,
+      boundaryProfiles: { profiles: [] },
+    };
+    const { rerender } = render(<Harness initialParamValues={incompleteValues} />);
+    const input = await screen.findByRole("textbox", { name: "Quality reference in A → B" });
+
+    await user.click(input);
+    await user.tab();
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText(/Review the \d+ highlighted reference cells?/)).not.toBeInTheDocument();
+
+    rerender(<Harness initialParamValues={incompleteValues} validationAttempted />);
+    expect(input).toBeInvalid();
+    expect(screen.getByText(/Review the \d+ highlighted reference cells?/)).toBeInTheDocument();
+  });
+
   it("does not replace dependent profiles when category labels change without changing boundaries", () => {
     const categoriesParameter = selectedModel.parameters.find((item) => item.parameterStructureKey === "orderedCategories");
     const previousContext = buildParameterContext({
