@@ -93,6 +93,27 @@ describe("orderedCategories model-parameter plugin", () => {
     expect(handle).toHaveAttribute("tabindex", "0");
     expect(handle).toHaveAttribute("aria-roledescription", "sortable");
     expect(screen.getByRole("button", { name: "Move category 2 up" })).toBeEnabled();
+
+    const secondRow = screen.getByTestId("ordered-category-2");
+    expect(secondRow.firstElementChild).toBe(handle);
+    expect(secondRow.children[1]).toHaveAttribute("aria-label", "Preference order 2");
+  });
+
+  it("presents Add category as a full-width dashed card and keeps it actionable", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const addCard = screen.getByTestId("ordered-categories-add");
+    expect(addCard).toHaveAccessibleName("Add category");
+    expect(addCard).toHaveStyle({
+      width: "100%",
+      minHeight: "58px",
+      borderStyle: "dashed",
+      flexDirection: "column",
+    });
+
+    await user.click(addCard);
+    expect(screen.getByLabelText("Category 1")).toBeInTheDocument();
   });
 
   it("keeps stored categories readable without exposing IDs or zero-based order", () => {

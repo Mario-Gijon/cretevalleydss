@@ -65,6 +65,26 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
       role="listitem"
       data-testid={`ordered-category-${index + 1}`}
     >
+      <Tooltip title={`Drag ${category.label || `category ${index + 1}`} to reorder`}>
+        <IconButton
+          ref={setActivatorNodeRef}
+          size="small"
+          aria-label={`Drag category ${index + 1} to reorder`}
+          {...attributes}
+          {...listeners}
+          sx={{
+            width: 26,
+            height: 28,
+            p: 0.35,
+            flexShrink: 0,
+            color: "text.secondary",
+            cursor: isDragging ? "grabbing" : "grab",
+            touchAction: "none",
+          }}
+        >
+          <DragIndicatorRoundedIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
       <Typography
         aria-label={`Preference order ${index + 1}`}
         variant="caption"
@@ -113,31 +133,21 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title={`Drag ${category.label || `category ${index + 1}`} to reorder`}>
-            <IconButton
-              ref={setActivatorNodeRef}
-              size="small"
-              aria-label={`Drag category ${index + 1} to reorder`}
-              {...attributes}
-              {...listeners}
-              sx={{
-                width: 26,
-                height: 28,
-                p: 0.35,
-                color: "text.secondary",
-                cursor: isDragging ? "grabbing" : "grab",
-                touchAction: "none",
-              }}
-            >
-              <DragIndicatorRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
           <Tooltip title={`Remove category ${index + 1}`}>
             <IconButton
               size="small"
               aria-label={`Remove category ${index + 1}`}
               onClick={() => onRemove(category.categoryId)}
-              sx={{ width: 26, height: 28, p: 0.35, color: "text.secondary" }}
+              sx={(theme) => ({
+                width: 26,
+                height: 28,
+                p: 0.35,
+                color: theme.palette.error.main,
+                "&:hover": {
+                  color: theme.palette.error.light,
+                  bgcolor: alpha(theme.palette.error.main, 0.12),
+                },
+              })}
             >
               <DeleteOutlineRoundedIcon fontSize="small" />
             </IconButton>
@@ -225,14 +235,48 @@ export const OrderedCategoriesParameterField = ({ parameter, value, onChange, er
       )}
       {!disabled ? (
         <Button
-          startIcon={<AddRoundedIcon />}
+          type="button"
           variant="outlined"
           color="secondary"
           size="small"
-          sx={{ alignSelf: "flex-start" }}
+          aria-label="Add category"
+          data-testid="ordered-categories-add"
+          sx={(theme) => ({
+            alignSelf: "stretch",
+            width: "100%",
+            minHeight: 58,
+            px: 1.5,
+            py: 0.75,
+            mt: 0.25,
+            borderWidth: 1,
+            borderStyle: "dashed",
+            borderColor: alpha(theme.palette.secondary.main, 0.42),
+            borderRadius: 1.5,
+            bgcolor: alpha(theme.palette.background.paper, 0.38),
+            color: "text.secondary",
+            display: "flex",
+            flexDirection: "column",
+            gap: 0.15,
+            textTransform: "none",
+            "&:hover": {
+              borderWidth: 1,
+              borderStyle: "dashed",
+              borderColor: "secondary.main",
+              bgcolor: alpha(theme.palette.secondary.main, 0.08),
+              color: "secondary.light",
+            },
+            "&:focus-visible": {
+              outline: "2px solid",
+              outlineColor: "secondary.main",
+              outlineOffset: 3,
+            },
+          })}
           onClick={() => requestCommit([...categories, createOrderedCategory({ label: `Category ${categories.length + 1}`, order: categories.length })])}
         >
-          Add category
+          <AddRoundedIcon aria-hidden="true" sx={{ fontSize: 20 }} />
+          <Typography component="span" variant="caption" sx={{ lineHeight: 1.2 }}>
+            Add category
+          </Typography>
         </Button>
       ) : null}
       {displayErrors && error ? <Typography variant="caption" color="error" role="alert">{error}</Typography> : null}
