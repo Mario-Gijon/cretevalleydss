@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
+  Box,
   FormControl,
   IconButton,
   MenuItem,
@@ -22,6 +23,7 @@ import { getParameterValueByStructureKey } from "../../../../modelParameters/con
 import { decisionMatrixSurface } from "../../../shared/styles/decisionMatrixSurface.styles.js";
 import {
   getBoundaryCriterionSetupIssue,
+  getBoundaryProfileCellValidation,
   getBoundaryProfilesValidationIssues,
   normalizeBoundaryProfilesValue,
   reconcileBoundaryProfiles,
@@ -45,6 +47,28 @@ const boundaryName = (lower, upper, categories) =>
 const valueFor = (profile, criterionId) => {
   const value = profile?.valuesByCriterionId?.[criterionId];
   return value === null || value === undefined ? "" : String(value);
+};
+
+const NUMERIC_DRAFT_PATTERN = /^-?(?:\d+(?:\.\d*)?|\.\d*)?$/;
+const visuallyHiddenSx = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  p: 0,
+  m: "-1px",
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+const conciseFieldIssue = (issue) => {
+  if (!issue) return "";
+  if (issue.kind === "order") return "Check the category order.";
+  if (/^Enter a value for/.test(issue.message)) return "Required.";
+  if (/^Enter a numeric value for/.test(issue.message)) return "Enter a valid number.";
+  if (/must be between/.test(issue.message)) return "Outside the allowed range.";
+  return "Review this value.";
 };
 
 const updateProfileValue = (profiles, profileId, criterionId, nextValue) => ({
@@ -100,51 +124,120 @@ const BoundaryValueField = ({
   onValueChange,
   onTouch,
 }) => {
-  const { min, max, setupIssue } = getRange(parameter, criterion, parameterContext);
+  const { setupIssue } = getRange(parameter, criterion, parameterContext);
   const criterionName = criterion.name?.trim() || `Criterion ${criterionIndex + 1}`;
   const hasSetupIssue = Boolean(setupIssue);
-  const showFieldIssue = touched && Boolean(issue) && !hasSetupIssue;
+  const currentValue = valueFor(profile, criterion.id);
+  const [draftText, setDraftText] = useState(currentValue);
+  const [draftError, setDraftError] = useState("");
+  const [hasInvalidDraft, setHasInvalidDraft] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const descriptionId = useId();
+  const showFieldIssue = !hasSetupIssue && (
+    Boolean(draftError) || (!isEditing && touched && Boolean(issue))
+  );
+  const fieldDescription = draftError || issue?.message || "";
+  const shortIssue = draftError
+    ? draftError === "Use numbers only."
+      ? draftError
+      : conciseFieldIssue({ kind: "field", message: draftError })
+    : conciseFieldIssue(issue);
+
+  useEffect(() => {
+    if (isEditing || hasInvalidDraft) return;
+    setDraftText(currentValue);
+    setDraftError("");
+  }, [currentValue, hasInvalidDraft, isEditing]);
+
+  const handleBlur = () => {
+    onTouch();
+    setIsEditing(false);
+    const validation = getBoundaryProfileCellValidation(
+      parameter,
+      criterion,
+      draftText,
+      parameterContext
+    );
+    if (validation.kind === null) {
+      onValueChange(criterion.id, validation.value);
+      setDraftText(String(validation.value));
+      setDraftError("");
+      setHasInvalidDraft(false);
+    } else {
+      const message = validation.kind === "required"
+        ? `Enter a value for ${criterionName} in the ${boundary} boundary.`
+        : validation.kind === "numeric"
+          ? `Enter a numeric value for ${criterionName} in the ${boundary} boundary.`
+          : validation.message;
+      onValueChange(criterion.id, "");
+      setDraftError(message);
+      setHasInvalidDraft(true);
+      if (validation.kind === "required") {
+        setDraftText("");
+      }
+    }
+  };
+
+  const handleChange = (nextValue) => {
+    if (!NUMERIC_DRAFT_PATTERN.test(nextValue)) {
+      setDraftError("Use numbers only.");
+      return;
+    }
+    setDraftText(nextValue);
+    setDraftError("");
+  };
+
+  const handleFocus = () => {
+    setIsEditing(true);
+    setDraftError("");
+  };
 
   return (
-    <TextField
-      type="number"
-      size="small"
-      color="secondary"
-      fullWidth
-      value={valueFor(profile, criterion.id)}
-      onChange={(event) => {
-        onTouch();
-        onValueChange(criterion.id, event.target.value);
-      }}
-      onBlur={onTouch}
-      disabled={disabled || hasSetupIssue}
-      error={showFieldIssue}
-      helperText={showFieldIssue ? issue.message : undefined}
-      inputProps={{
-        "aria-label": `${criterionName} reference in ${boundary}`,
-        ...(Number.isFinite(min) ? { min } : {}),
-        ...(Number.isFinite(max) ? { max } : {}),
-        step: "any",
-      }}
-      sx={{
-        minWidth: { xs: 96, md: 105 },
-        "& .MuiInputBase-input": { py: 0.65 },
-        "& .MuiFormHelperText-root": { mx: 0, maxWidth: "100%", overflowWrap: "anywhere", lineHeight: 1.25 },
-        "& .MuiOutlinedInput-root": {
-          minHeight: 36,
-          bgcolor: decisionMatrixSurface.inputBackground,
-          "& .MuiOutlinedInput-notchedOutline": { border: decisionMatrixSurface.inputBorder },
-          "&:hover .MuiOutlinedInput-notchedOutline": { border: decisionMatrixSurface.inputHoverBorder },
-          "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "secondary.main", borderWidth: 1 },
-          "&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderColor: "error.main",
-            borderWidth: 1,
-          },
-          "&.Mui-disabled": { bgcolor: "rgba(255,255,255,0.01)" },
-          "&.Mui-disabled .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.08)" },
-        },
-      }}
-    />
+    <Box sx={{ position: "relative", minWidth: 0 }}>
+      <Tooltip title={showFieldIssue ? shortIssue : ""} describeChild placement="top" enterDelay={300}>
+        <TextField
+          type="text"
+          size="small"
+          color="secondary"
+          fullWidth
+          value={draftText}
+          onFocus={handleFocus}
+          onChange={(event) => handleChange(event.target.value)}
+          onBlur={handleBlur}
+          disabled={disabled || hasSetupIssue}
+          error={showFieldIssue}
+          inputProps={{
+            "aria-label": `${criterionName} reference in ${boundary}`,
+            "aria-invalid": showFieldIssue || undefined,
+            "aria-describedby": showFieldIssue ? descriptionId : undefined,
+            inputMode: "decimal",
+            autoComplete: "off",
+          }}
+          sx={{
+            minWidth: { xs: 96, md: 105 },
+            "& .MuiInputBase-input": { py: 0.65 },
+            "& .MuiOutlinedInput-root": {
+              minHeight: 36,
+              bgcolor: decisionMatrixSurface.inputBackground,
+              "& .MuiOutlinedInput-notchedOutline": { border: decisionMatrixSurface.inputBorder },
+              "&:hover .MuiOutlinedInput-notchedOutline": { border: decisionMatrixSurface.inputHoverBorder },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "secondary.main", borderWidth: 1 },
+              "&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "error.main",
+                borderWidth: 1,
+              },
+              "&.Mui-disabled": { bgcolor: "rgba(255,255,255,0.01)" },
+              "&.Mui-disabled .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.08)" },
+            },
+          }}
+        />
+      </Tooltip>
+      {showFieldIssue && fieldDescription ? (
+        <Box id={descriptionId} component="span" sx={visuallyHiddenSx}>
+          {fieldDescription}
+        </Box>
+      ) : null}
+    </Box>
   );
 };
 
@@ -226,6 +319,7 @@ const BoundaryTable = ({
             >
               {profile ? (
                 <BoundaryValueField
+                  key={`${profile.profileId}:${criterion.id}:${boundary.lowerCategory.categoryId}:${boundary.upperCategory.categoryId}`}
                   profile={profile}
                   criterion={criterion}
                   criterionIndex={criterionIndex}
@@ -309,14 +403,6 @@ const BoundaryTable = ({
                   </Typography>
                 </Tooltip>
               )}
-              {showValidation && boundary.profile ? issues
-                .filter((issue) => issue.profileId === boundary.profile.profileId && issue.kind !== "field" && !issue.criterionId)
-                .slice(0, 1)
-                .map((issue) => (
-                  <Typography key={issue.message} variant="caption" color="error" display="block" role="alert">
-                    {issue.message}
-                  </Typography>
-                )) : null}
             </TableCell>
           );
         })}
@@ -416,7 +502,12 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
   const profileOrderIssue = showValidation
     ? issues.find((issue) => issue.kind === "profile-order" || (issue.kind !== "field" && issue.kind !== "stale-profile" && issue.kind !== "stale-criterion" && !issue.criterionId))
     : null;
-  const hasFieldIssues = issues.some((issue) => issue.kind === "field");
+  const hasCellIssues = issues.some((issue) => issue.kind === "field" || issue.kind === "order");
+  const actionableCellIssueCount = issues.filter((issue) => issue.kind === "field" || issue.kind === "order")
+    .filter((issue) => {
+      const criterion = leafCriteria.find((item) => item?.id === issue.criterionId);
+      return criterion && !getRange(parameter, criterion, parameterContext).setupIssue;
+    }).length;
 
   return (
     <Stack spacing={0.65} sx={{ minWidth: 0 }}>
@@ -493,11 +584,17 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
         />
       ) : null}
 
+      {showValidation && actionableCellIssueCount > 0 ? (
+        <Typography variant="caption" color="error.main" role="status">
+          Review the {actionableCellIssueCount} highlighted reference {actionableCellIssueCount === 1 ? "cell" : "cells"}.
+        </Typography>
+      ) : null}
+
       {profileOrderIssue ? (
         <Typography variant="caption" color="error" role="alert">{profileOrderIssue.message}</Typography>
       ) : null}
 
-      {showValidation && !profileOrderIssue && !hasFieldIssues && (error || validationError) ? (
+      {showValidation && !profileOrderIssue && !hasCellIssues && (error || validationError) ? (
         <Typography variant="caption" color="error" role="alert">{error || validationError}</Typography>
       ) : null}
     </Stack>

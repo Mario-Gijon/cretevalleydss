@@ -8,6 +8,7 @@ import {
 } from "../../../src/features/decisionPlugins/modelParameters";
 import { buildParameterContext } from "../../../src/features/modelParameters/context/index.js";
 import {
+  getBoundaryProfileCellValidation,
   reconcileBoundaryProfiles,
   reconcileBoundaryProfilesAfterCategoryChange,
   validateBoundaryProfilesValue,
@@ -81,6 +82,9 @@ const BoundaryFieldHarness = ({
   initialBoundaries = { profiles: [] },
   criteria,
   expressionDomainTypeKey = "numericContinuous",
+  expressionDomainMin = 0,
+  expressionDomainMax = 10,
+  expressionDomainStep,
 }) => {
   const activeCategories = categoryValues || (multipleBoundaries ? categories : [categories[0], categories[2]]);
   const leafCriteria = criteria || Array.from({ length: criteriaCount }, (_, index) => ({
@@ -94,10 +98,14 @@ const BoundaryFieldHarness = ({
     parameterValues: values,
     leafCriteria,
     expressionDomains: [
-      { id: "domain-benefit", name: "Renewables scale", typeKey: expressionDomainTypeKey, definition: { min: 0, max: 10 } },
+      { id: "domain-benefit", name: "Renewables scale", typeKey: expressionDomainTypeKey, definition: {
+        min: expressionDomainMin,
+        max: expressionDomainMax,
+        ...(Number.isFinite(expressionDomainStep) ? { step: expressionDomainStep } : {}),
+      } },
     ],
     expressionDomainConfig: { mode: "global", globalDomainId: "domain-benefit" },
-  }), [expressionDomainTypeKey, leafCriteria, values]);
+  }), [expressionDomainMax, expressionDomainMin, expressionDomainStep, expressionDomainTypeKey, leafCriteria, values]);
   const Field = PARAMETER_FIELD_REGISTRY.boundaryProfiles.FieldComponent;
   return (
     <>
@@ -143,14 +151,14 @@ describe("boundaryProfiles model-parameter plugin", () => {
       },
     };
     expect(validateBoundaryProfilesValue(parameter, value, unsupportedContext))
-      .toMatch(/Use a continuous or discrete numeric domain for Renewables/);
+      .toMatch(/Use a numeric expression domain/);
     expect(value.profiles[0].valuesByCriterionId["benefit-id"]).toBe(4);
   });
 
   it("rejects a configured range that does not overlap its expression domain", () => {
     const conflictingLimits = { ...parameter, restrictions: { min: 11, max: 12 } };
     expect(validateBoundaryProfilesValue(conflictingLimits, value, parameterContext))
-      .toMatch(/Adjust the numeric limits for Renewables to fit its expression domain/);
+      .toMatch(/Adjust the numeric limits to fit the expression domain/);
   });
 
   it("creates a profile for each configured boundary and stores values by criterion ID", async () => {
@@ -162,18 +170,174 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(screen.getByText("Benefit · 0–10")).toBeInTheDocument();
     expect(screen.getByRole("table").textContent).not.toMatch(/profileId|categoryId|criterionId|[0-9a-f]{8}-[0-9a-f-]{27}/i);
     expect(screen.queryByText(/values? to enter/i)).not.toBeInTheDocument();
-    const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveAttribute("inputmode", "decimal");
+    expect(input).not.toHaveAttribute("step");
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
     await user.type(input, "4.25");
-    await waitFor(() => expect(screen.getByRole("spinbutton", { name: "Renewables reference in Low → High" })).toHaveValue(4.25));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Renewables reference in Low → High" })).toHaveValue("4.25"));
     expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId)
-      .toEqual({ "benefit-id": "4.25" });
+      .toEqual({ "benefit-id": "" });
     expect(screen.queryByText(/Enter a finite number/)).not.toBeInTheDocument();
+
+    await user.tab();
+    await waitFor(() => expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe(4.25));
+    await user.clear(input);
+    await user.type(input, "4");
+    await user.tab();
+    await waitFor(() => expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe(4));
+  });
+
+  it("keeps incomplete numeric drafts editable and commits a finite number on blur", async () => {
+    const user = userEvent.setup();
+    render(<BoundaryFieldHarness />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+
+    await user.type(input, "0.");
+    expect(input).toHaveValue("0.");
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe("");
+    await user.tab();
+    await waitFor(() => {
+      expect(input).toHaveValue("0");
+      expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+        .toBe(0);
+    });
+
+    await user.clear(input);
+    await user.type(input, "-");
+    expect(input).toHaveValue("-");
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    await user.tab();
+    await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
+    expect(getBoundaryProfileCellValidation(parameter, parameterContext.leafCriteria[0], "-", parameterContext).kind)
+      .toBe("numeric");
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe("");
+    expect(input.parentElement.querySelector(".MuiFormHelperText-root")).toBeNull();
+  });
+
+  it("rejects pasted nonnumeric content without changing the reference", async () => {
+    const user = userEvent.setup();
+    render(<BoundaryFieldHarness />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+
+    await user.click(input);
+    await user.paste("2x invalid");
+
+    expect(input).toHaveValue("");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    const description = document.getElementById(input.getAttribute("aria-describedby"));
+    expect(description).toHaveTextContent("Use numbers only.");
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe("");
+  });
+
+  it("accepts negative decimals when the configured continuous domain allows them", async () => {
+    const user = userEvent.setup();
+    render(<BoundaryFieldHarness expressionDomainMin={-5} expressionDomainMax={5} />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+
+    await user.type(input, "-2.5");
+    expect(input).toHaveValue("-2.5");
+    await user.tab();
+    await waitFor(() => {
+      expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+        .toBe(-2.5);
+    });
+  });
+
+  it("accepts an intermediate reference on a discrete domain without applying its evaluation step", async () => {
+    const user = userEvent.setup();
+    render(<BoundaryFieldHarness expressionDomainTypeKey="numericDiscrete" expressionDomainStep={5} />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+
+    expect(input).not.toHaveAttribute("step");
+    await user.type(input, "2.5");
+    await user.tab();
+    await waitFor(() => {
+      expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+        .toBe(2.5);
+    });
+  });
+
+  it("accepts exact domain limits and rejects values outside the configured range", () => {
+    const criterion = { id: "benefit-id", name: "Renewables", type: "benefit" };
+    for (const boundaryValue of [0, 10]) {
+      expect(getBoundaryProfileCellValidation(parameter, criterion, boundaryValue, parameterContext).kind).toBeNull();
+    }
+    for (const invalidValue of [-0.01, 10.01]) {
+      expect(getBoundaryProfileCellValidation(parameter, criterion, invalidValue, parameterContext).kind).toBe("range");
+    }
+  });
+
+  it("keeps out-of-range drafts invalid so model-parameter validation blocks submission", async () => {
+    const outOfRangeValue = {
+      profiles: [
+        { profileId: "profile-high", categoryId: "high", valuesByCriterionId: { "benefit-id": 11 } },
+      ],
+    };
+    const outOfRangeContext = buildParameterContext({
+      parameterDefinitions: modelParameters,
+      parameterValues: { categories: [categories[0], categories[2]] },
+      leafCriteria: [{ id: "benefit-id", name: "Renewables", type: "benefit" }],
+      expressionDomains: [{
+        id: "continuous-domain",
+        typeKey: "numericContinuous",
+        definition: { min: 0, max: 10 },
+      }],
+      expressionDomainConfig: { mode: "global", globalDomainId: "continuous-domain" },
+    });
+    render(<BoundaryFieldHarness showValidation initialBoundaries={outOfRangeValue} />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+
+    expect(input).toHaveValue("11");
+    expect(input).toBeInvalid();
+    const description = document.getElementById(input.getAttribute("aria-describedby"));
+    expect(description).toHaveTextContent("Renewables must be between 0 and 10.");
+    expect(validateBoundaryProfilesValue(parameter, outOfRangeValue, outOfRangeContext))
+      .toMatch(/Renewables must be between 0 and 10/);
+    expect(getBoundaryProfileCellValidation(parameter, { id: "benefit-id", name: "Renewables", type: "benefit" }, 11, parameterContext).kind)
+      .toBe("range");
+  });
+
+  it("keeps out-of-range text local and clears the committed value after blur", async () => {
+    const user = userEvent.setup();
+    render(<BoundaryFieldHarness initialBoundaries={{
+      profiles: [{ profileId: "saved-profile", categoryId: "high", valuesByCriterionId: { "benefit-id": 5 } }],
+    }} />);
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe(5);
+    await user.clear(input);
+    await user.type(input, "11");
+    expect(input).toHaveValue("11");
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe(5);
+
+    await user.tab();
+    expect(input).toHaveValue("11");
+    expect(input).toBeInvalid();
+    const description = document.getElementById(input.getAttribute("aria-describedby"));
+    expect(description).toHaveTextContent("Renewables must be between 0 and 10.");
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"])
+      .toBe("");
+    expect(getBoundaryProfileCellValidation(
+      parameter,
+      parameterContext.leafCriteria[0],
+      JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId["benefit-id"],
+      parameterContext
+    ).kind).toBe("required");
   });
 
   it("shows every reference as a separate desktop table column", async () => {
     render(<BoundaryFieldHarness multipleBoundaries />);
-    expect(await screen.findByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
+    expect(await screen.findByRole("textbox", { name: "Renewables reference in Low → Medium" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
   });
 
   it("keeps the criterion header distinct and gives every reference column the same background", async () => {
@@ -253,8 +417,8 @@ describe("boundaryProfiles model-parameter plugin", () => {
     const table = await screen.findByRole("table", { name: "Classification reference values" });
     expect(within(table).getAllByRole("row")).toHaveLength(19);
     expect(within(table).getAllByRole("columnheader")).toHaveLength(8);
-    expect(within(table).getAllByRole("spinbutton")).toHaveLength(18 * 7);
-    expect(within(table).getByRole("spinbutton", {
+    expect(within(table).getAllByRole("textbox")).toHaveLength(18 * 7);
+    expect(within(table).getByRole("textbox", {
       name: "Criterion 18 reference in Custom level 7 → Custom level 8",
     })).toBeInTheDocument();
     expect(table.parentElement).toHaveStyle({ overflow: "auto" });
@@ -274,11 +438,11 @@ describe("boundaryProfiles model-parameter plugin", () => {
     const user = userEvent.setup();
     render(<BoundaryFieldHarness multipleBoundaries />);
     const select = await screen.findByRole("combobox", { name: "Classification reference" });
-    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Renewables reference in Low → Medium" })).toBeInTheDocument();
     await user.click(select);
     await user.click(await screen.findByRole("option", { name: "Medium → High" }));
-    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
-    expect(screen.queryByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Renewables reference in Low → Medium" })).not.toBeInTheDocument();
   });
 
   it("preserves the distinct criterion and reference backgrounds in the mobile table", async () => {
@@ -330,32 +494,36 @@ describe("boundaryProfiles model-parameter plugin", () => {
     await user.click(screen.getByRole("option", {
       name: "Riesgo moderado & estable → Riesgo bajo con etiqueta igualmente larga",
     }));
-    expect(screen.getByRole("spinbutton", {
+    expect(screen.getByRole("textbox", {
       name: "Renewables reference in Riesgo moderado & estable → Riesgo bajo con etiqueta igualmente larga",
     })).toBeInTheDocument();
   });
 
   it("leaves empty cells blank without a persistent missing-value count", async () => {
     render(<BoundaryFieldHarness />);
-    await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
+    await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Low → High" })).toHaveValue(null);
+    expect(screen.getByRole("textbox", { name: "Renewables reference in Low → High" })).toHaveValue("");
     expect(screen.queryByText(/values? to enter/i)).not.toBeInTheDocument();
   });
 
   it("shows a field-level message after validation is explicitly requested", async () => {
     render(<BoundaryFieldHarness showValidation />);
-    const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
     expect(input).toBeInvalid();
-    expect(screen.getByText("Enter a value for Renewables in the Low → High boundary.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Review the 1 highlighted reference cell.");
+    const errorDescription = document.getElementById(input.getAttribute("aria-describedby"));
+    expect(errorDescription).toHaveTextContent("Enter a value for Renewables in the Low → High boundary.");
+    expect(errorDescription).toHaveStyle({ position: "absolute", width: "1px", height: "1px", overflow: "hidden" });
+    expect(screen.queryByText("Enter a value for Renewables in the Low → High boundary.", { selector: "p" })).not.toBeInTheDocument();
   });
 
   it("disables reference editing and explains unsupported expression domains", async () => {
     render(<BoundaryFieldHarness expressionDomainTypeKey="boolean" />);
-    const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
+    const input = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
 
     expect(input).toBeDisabled();
-    expect(screen.getByText("Use a continuous or discrete numeric domain for Renewables.")).toBeInTheDocument();
+    expect(screen.getByText("Use a numeric expression domain.")).toBeInTheDocument();
   });
 
   it("uses the shared A×C matrix surface while leaving A×C styling unchanged", () => {
@@ -381,6 +549,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
   });
 
   it("associates edited cells with category IDs after the visual order changes", async () => {
+    const user = userEvent.setup();
     const reorderedCategories = [categories[0], categories[2], categories[1]];
     const initialBoundaries = {
       profiles: [
@@ -390,18 +559,23 @@ describe("boundaryProfiles model-parameter plugin", () => {
     };
     render(<BoundaryFieldHarness categoryValues={reorderedCategories} initialBoundaries={initialBoundaries} />);
 
-    const highBoundaryInput = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
-    const mediumBoundaryInput = screen.getByRole("spinbutton", { name: "Renewables reference in High → Medium" });
-    expect(highBoundaryInput).toHaveValue(8);
-    expect(mediumBoundaryInput).toHaveValue(5);
+    const highBoundaryInput = await screen.findByRole("textbox", { name: "Renewables reference in Low → High" });
+    const mediumBoundaryInput = screen.getByRole("textbox", { name: "Renewables reference in High → Medium" });
+    expect(highBoundaryInput).toHaveValue("8");
+    expect(mediumBoundaryInput).toHaveValue("5");
     expect(screen.getByRole("table").querySelector("tbody th")).toHaveStyle({ backgroundColor: decisionMatrixSurface.headerBackground });
 
-    await userEvent.clear(mediumBoundaryInput);
-    await userEvent.type(mediumBoundaryInput, "6");
+    await user.clear(mediumBoundaryInput);
+    await user.type(mediumBoundaryInput, "6");
+    expect(mediumBoundaryInput).toHaveValue("6");
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles
+      .find((profile) => profile.profileId === "medium-profile").valuesByCriterionId["benefit-id"])
+      .toBe(5);
+    await user.tab();
     await waitFor(() => {
       const saved = JSON.parse(screen.getByTestId("boundary-values").textContent).profiles;
       expect(saved.find((profile) => profile.profileId === "medium-profile").valuesByCriterionId["benefit-id"])
-        .toBe("6");
+        .toBe(6);
       expect(saved.find((profile) => profile.profileId === "high-profile").valuesByCriterionId["benefit-id"])
         .toBe(8);
     });

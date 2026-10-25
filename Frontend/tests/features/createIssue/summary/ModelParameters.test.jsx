@@ -96,7 +96,7 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     render(<Harness />);
 
     await user.click(screen.getByRole("button", { name: "Add category" }));
-    expect(await screen.findByRole("spinbutton", { name: "Quality reference in D → Category 5" })).toHaveValue(null);
+    expect(await screen.findByRole("textbox", { name: "Quality reference in D → Category 5" })).toHaveValue("");
 
     const values = JSON.parse(screen.getByTestId("parameter-values").textContent);
     expect(values.boundaryProfiles.profiles).toEqual([
@@ -148,9 +148,9 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     await user.click(screen.getByRole("button", { name: "Apply change" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("spinbutton", { name: "Quality reference in A → B" })).toHaveValue(2);
-      expect(screen.getByRole("spinbutton", { name: "Quality reference in B → D" })).toHaveValue(null);
-      expect(screen.getByRole("spinbutton", { name: "Quality reference in D → C" })).toHaveValue(null);
+      expect(screen.getByRole("textbox", { name: "Quality reference in A → B" })).toHaveValue("2");
+      expect(screen.getByRole("textbox", { name: "Quality reference in B → D" })).toHaveValue("");
+      expect(screen.getByRole("textbox", { name: "Quality reference in D → C" })).toHaveValue("");
     });
 
     const values = JSON.parse(screen.getByTestId("parameter-values").textContent);
@@ -170,9 +170,9 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     await user.type(categoryName, "Balanced & preferred");
 
     expect(await screen.findByRole("columnheader", { name: "A → Balanced & preferred" })).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", {
+    expect(screen.getByRole("textbox", {
       name: "Quality reference in Balanced & preferred → C",
-    })).toHaveValue(5);
+    })).toHaveValue("5");
 
     const saved = JSON.parse(screen.getByTestId("parameter-values").textContent);
     expect(saved.categories.find((category) => category.label === "Balanced & preferred"))

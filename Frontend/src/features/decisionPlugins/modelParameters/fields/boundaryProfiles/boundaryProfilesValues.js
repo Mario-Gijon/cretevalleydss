@@ -83,24 +83,57 @@ const categoryDisplayName = (category, categories) => {
 };
 
 export const getBoundaryCriterionSetupIssue = (criterion, domain, restrictions = {}) => {
-  const criterionName = criterion?.name?.trim() || "This criterion";
-  if (!domain) return `Choose a numeric expression domain for ${criterionName}.`;
+  if (!domain) return "Choose a numeric expression domain.";
   if (domain.typeKey !== "numericContinuous" && domain.typeKey !== "numericDiscrete") {
-    return `Use a continuous or discrete numeric domain for ${criterionName}.`;
+    return "Use a numeric expression domain.";
   }
   const { min, max } = domain.definition || {};
   if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
-    return `Set a valid numeric range for ${criterionName}.`;
+    return "Set a valid numeric range.";
   }
   const allowedMin = Number.isFinite(restrictions.min) ? Math.max(min, restrictions.min) : min;
   const allowedMax = Number.isFinite(restrictions.max) ? Math.min(max, restrictions.max) : max;
   if (allowedMin > allowedMax) {
-    return `Adjust the numeric limits for ${criterionName} to fit its expression domain.`;
+    return "Adjust the numeric limits to fit the expression domain.";
   }
   if (criterion?.type !== "benefit" && criterion?.type !== "cost") {
-    return `Set ${criterionName} to Benefit or Cost.`;
+    return "Set the criterion direction to Benefit or Cost.";
   }
   return null;
+};
+
+export const getBoundaryProfileCellValidation = (parameter, criterion, rawValue, parameterContext) => {
+  const criterionName = criterion?.name?.trim() || "This criterion";
+  if (rawValue === "" || rawValue === null || rawValue === undefined) {
+    return { kind: "required", value: null };
+  }
+  const number = normalizeFiniteNumber(rawValue);
+  if (number === null) return { kind: "numeric", value: null };
+
+  const domain = parameterContext?.criterionDomainsById?.[criterion?.id];
+  const restrictions = parameter?.restrictions && typeof parameter.restrictions === "object"
+    ? parameter.restrictions
+    : {};
+  const setupIssue = getBoundaryCriterionSetupIssue(criterion, domain, restrictions);
+  if (setupIssue) return { kind: "setup", value: number, message: setupIssue };
+
+  const { min, max } = domain.definition;
+  if (number < min || number > max) {
+    return { kind: "range", value: number, message: `${criterionName} must be between ${min} and ${max}.` };
+  }
+  if (
+    (Number.isFinite(restrictions.min) && number < restrictions.min) ||
+    (Number.isFinite(restrictions.max) && number > restrictions.max)
+  ) {
+    const allowedMin = Number.isFinite(restrictions.min) ? restrictions.min : min;
+    const allowedMax = Number.isFinite(restrictions.max) ? restrictions.max : max;
+    return {
+      kind: "range",
+      value: number,
+      message: `${criterionName} must be between ${allowedMin} and ${allowedMax}.`,
+    };
+  }
+  return { kind: null, value: number, message: null };
 };
 
 export const getBoundaryProfilesValidationIssues = (parameter, value, parameterContext) => {
@@ -156,9 +189,6 @@ export const getBoundaryProfilesValidationIssues = (parameter, value, parameterC
   if (criterionResult.error) return [{ message: criterionResult.error }];
   const { rows } = criterionResult;
   const expectedCriterionIds = new Set(rows.map((criterion) => criterion.id));
-  const restrictions = parameter?.restrictions && typeof parameter.restrictions === "object"
-    ? parameter.restrictions
-    : {};
   const profiles = expectedCategoryIds.map((categoryId) => profilesByCategory.get(categoryId));
 
   for (let profileIndex = 0; profileIndex < profiles.length; profileIndex += 1) {
@@ -188,34 +218,17 @@ export const getBoundaryProfilesValidationIssues = (parameter, value, parameterC
       const criterionName = criterion.name?.trim() || `Criterion ${rows.indexOf(criterion) + 1}`;
       const fieldDetails = { profileId: profile.profileId, criterionId: criterion.id, kind: "field" };
       const rawValue = profile.valuesByCriterionId[criterion.id];
-      if (!Object.hasOwn(profile.valuesByCriterionId, criterion.id) || rawValue === "" || rawValue === null || rawValue === undefined) {
+      const cellValidation = getBoundaryProfileCellValidation(parameter, criterion, rawValue, parameterContext);
+      if (cellValidation.kind === "required") {
         addIssue(`Enter a value for ${criterionName} in the ${boundaryName} boundary.`, fieldDetails);
         continue;
       }
-      const number = normalizeFiniteNumber(rawValue);
-      if (number === null) {
+      if (cellValidation.kind === "numeric") {
         addIssue(`Enter a numeric value for ${criterionName} in the ${boundaryName} boundary.`, fieldDetails);
         continue;
       }
-      const domain = parameterContext?.criterionDomainsById?.[criterion.id];
-      const setupIssue = getBoundaryCriterionSetupIssue(criterion, domain, restrictions);
-      if (setupIssue) {
-        addIssue(setupIssue, fieldDetails);
-        continue;
-      }
-      const min = domain.definition?.min;
-      const max = domain.definition?.max;
-      if (number < min || number > max) {
-        addIssue(`${criterionName} must be between ${min} and ${max}.`, fieldDetails);
-        continue;
-      }
-      if (
-        (Number.isFinite(restrictions.min) && number < restrictions.min) ||
-        (Number.isFinite(restrictions.max) && number > restrictions.max)
-      ) {
-        const allowedMin = Number.isFinite(restrictions.min) ? restrictions.min : min;
-        const allowedMax = Number.isFinite(restrictions.max) ? restrictions.max : max;
-        addIssue(`${criterionName} must be between ${allowedMin} and ${allowedMax}.`, fieldDetails);
+      if (cellValidation.kind) {
+        addIssue(cellValidation.message, fieldDetails);
         continue;
       }
     }
