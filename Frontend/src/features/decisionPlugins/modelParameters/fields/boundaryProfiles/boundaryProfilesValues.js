@@ -123,7 +123,7 @@ export const getBoundaryProfilesValidationIssues = (parameter, value, parameterC
     if (!profileId) addIssue("A saved boundary could not be matched to the categories. Review the boundary list.");
     if (profileId && profileIds.has(profileId)) addIssue("A saved boundary is duplicated. Review the model configuration.");
     profileIds.add(profileId);
-    if (!categoryId) addIssue("A saved boundary no longer matches the current categories. Review and remove it before continuing.");
+    if (!categoryId) addIssue("A saved boundary is missing its category reference.");
     if (categoryId && categoryIds.has(categoryId)) addIssue("Each category boundary can have one reference profile.");
     categoryIds.add(categoryId);
   }
@@ -143,7 +143,7 @@ export const getBoundaryProfilesValidationIssues = (parameter, value, parameterC
   const expectedIds = new Set(expectedCategoryIds);
   const staleProfile = value.profiles.find((profile) => !expectedIds.has(profile.categoryId));
   if (staleProfile) {
-    addIssue("A saved boundary no longer matches the current category order. Review and remove it before continuing.", {
+    addIssue("A saved boundary does not match the current category order.", {
       profileId: staleProfile.profileId,
       kind: "stale-profile",
     });
@@ -179,7 +179,7 @@ export const getBoundaryProfilesValidationIssues = (parameter, value, parameterC
     }
     const staleCriterionId = Object.keys(profile.valuesByCriterionId).find((id) => !expectedCriterionIds.has(id));
     if (staleCriterionId) {
-      addIssue("This boundary has a saved value for a criterion that is no longer in the Issue. Review and remove that value.", {
+      addIssue("This boundary contains a value for a criterion that is no longer in the Issue.", {
         profileId: profile.profileId,
         kind: "stale-criterion",
       });
@@ -268,6 +268,24 @@ export const validateBoundaryProfilesValue = (parameter, value, parameterContext
 
 const profilesEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
+const reconcileCriterionValues = (valuesByCriterionId, criteria) => {
+  const existingValues = isObject(valuesByCriterionId) ? valuesByCriterionId : {};
+  const criterionRows = Array.isArray(criteria) ? criteria : [];
+  const liveCriterionIds = new Set(criterionRows
+    .map((criterion) => criterion?.id)
+    .filter((id) => typeof id === "string" && id.trim()));
+  const reconciledValues = Object.fromEntries(
+    Object.entries(existingValues).filter(([criterionId]) => liveCriterionIds.has(criterionId))
+  );
+  criterionRows.forEach((criterion) => {
+    const criterionId = criterion?.id;
+    if (typeof criterionId === "string" && criterionId.trim() && !Object.hasOwn(reconciledValues, criterionId)) {
+      reconciledValues[criterionId] = "";
+    }
+  });
+  return reconciledValues;
+};
+
 export const reconcileBoundaryProfiles = ({ value, categories, leafCriteria }) => {
   const current = normalizeBoundaryProfilesValue(null, value);
   const categoryRows = Array.isArray(categories) ? categories : [];
@@ -276,33 +294,24 @@ export const reconcileBoundaryProfiles = ({ value, categories, leafCriteria }) =
     .map((category) => category?.categoryId)
     .filter((id) => typeof id === "string" && id.trim());
   const existingByCategory = new Map();
-  current.profiles.forEach((profile, index) => {
+  current.profiles.forEach((profile) => {
     if (!existingByCategory.has(profile.categoryId)) existingByCategory.set(profile.categoryId, []);
-    existingByCategory.get(profile.categoryId).push({ profile, index });
+    existingByCategory.get(profile.categoryId).push({ profile });
   });
-  const consumedIndexes = new Set();
   const activeProfiles = expectedCategoryIds.map((categoryId) => {
     const entry = existingByCategory.get(categoryId)?.shift();
     if (!entry) return createBoundaryProfile({ categoryId, leafCriteria: criterionRows });
     const existing = entry.profile;
-    consumedIndexes.add(entry.index);
     return {
       ...existing,
       categoryId,
-      valuesByCriterionId: Object.fromEntries([
-        ...Object.entries(existing.valuesByCriterionId),
-        ...criterionRows
-          .filter((criterion) => typeof criterion?.id === "string" && !Object.hasOwn(existing.valuesByCriterionId, criterion.id))
-          .map((criterion) => [criterion.id, ""]),
-      ]),
+      valuesByCriterionId: reconcileCriterionValues(existing.valuesByCriterionId, criterionRows),
     };
   });
-  const staleProfiles = current.profiles.filter((_, index) => !consumedIndexes.has(index));
-  const next = { profiles: [...activeProfiles, ...staleProfiles] };
+  const next = { profiles: activeProfiles };
   return {
     value: next,
     changed: !profilesEqual(current, next),
-    staleCount: staleProfiles.length,
   };
 };
 
@@ -322,18 +331,16 @@ export const reconcileBoundaryProfilesAfterCategoryChange = ({
     ])
   );
   const existingByCategory = new Map();
-  current.profiles.forEach((profile, index) => {
+  current.profiles.forEach((profile) => {
     if (!existingByCategory.has(profile.categoryId)) existingByCategory.set(profile.categoryId, []);
-    existingByCategory.get(profile.categoryId).push({ profile, index });
+    existingByCategory.get(profile.categoryId).push({ profile });
   });
-  const consumedIndexes = new Set();
   const activeProfiles = nextRows.slice(1)
     .map((category) => category?.categoryId)
     .filter((categoryId) => typeof categoryId === "string" && categoryId.trim())
     .map((categoryId, index) => {
       const entry = existingByCategory.get(categoryId)?.shift();
       if (!entry) return createBoundaryProfile({ categoryId, leafCriteria });
-      consumedIndexes.add(entry.index);
 
       const nextLowerCategoryId = nextRows[index]?.categoryId;
       const previousLowerCategoryId = previousLowerCategoryByUpperId.get(categoryId);
@@ -346,17 +353,8 @@ export const reconcileBoundaryProfilesAfterCategoryChange = ({
 
       return {
         ...entry.profile,
-        valuesByCriterionId: Object.fromEntries([
-          ...Object.entries(entry.profile.valuesByCriterionId),
-          ...(Array.isArray(leafCriteria) ? leafCriteria : [])
-            .filter((criterion) =>
-              typeof criterion?.id === "string" &&
-              !Object.hasOwn(entry.profile.valuesByCriterionId, criterion.id)
-            )
-            .map((criterion) => [criterion.id, ""]),
-        ]),
+        valuesByCriterionId: reconcileCriterionValues(entry.profile.valuesByCriterionId, leafCriteria),
       };
     });
-  const staleProfiles = current.profiles.filter((_, index) => !consumedIndexes.has(index));
-  return { profiles: [...activeProfiles, ...staleProfiles] };
+  return { profiles: activeProfiles };
 };

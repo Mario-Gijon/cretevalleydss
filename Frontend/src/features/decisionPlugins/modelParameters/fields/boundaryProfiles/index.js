@@ -16,23 +16,24 @@ const describeBoundaryValueResets = ({ value, reconciledValue, previousContext, 
   const previousCategories = previousContext?.parameterValuesByStructureKey?.orderedCategories?.[0]?.value || [];
   const nextCategories = nextContext?.parameterValuesByStructureKey?.orderedCategories?.[0]?.value || [];
   return (value?.profiles || []).flatMap((profile) => {
-    const hasValues = Object.values(profile?.valuesByCriterionId || {})
-      .some((cellValue) => cellValue !== "" && cellValue !== null && cellValue !== undefined);
-    if (!hasValues) return [];
+    const values = Object.entries(profile?.valuesByCriterionId || {})
+      .filter(([, cellValue]) => cellValue !== "" && cellValue !== null && cellValue !== undefined);
+    if (!values.length) return [];
     const nextProfile = (reconciledValue?.profiles || []).find((item) => item.profileId === profile.profileId);
-    const valuesWereReset = Object.entries(profile.valuesByCriterionId || {}).some(([criterionId, cellValue]) =>
-      cellValue !== "" && cellValue !== null && cellValue !== undefined &&
+    const valuesWereDiscarded = values.some(([criterionId, cellValue]) =>
       nextProfile?.valuesByCriterionId?.[criterionId] !== cellValue
     );
-    if (!valuesWereReset) return [];
+    if (!valuesWereDiscarded) return [];
     const upperIndex = previousCategories.findIndex((category) => category?.categoryId === profile.categoryId);
     const lower = upperIndex > 0 ? previousCategories[upperIndex - 1] : null;
     const upper = previousCategories[upperIndex];
-    if (!lower || !upper) return [];
+    if (!lower || !upper) return ["Some saved classification reference values will be removed because they no longer match the categories."];
     const nextUpperIndex = nextCategories.findIndex((category) => category?.categoryId === profile.categoryId);
     const nextLower = nextUpperIndex > 0 ? nextCategories[nextUpperIndex - 1] : null;
     const nextUpper = nextCategories[nextUpperIndex];
-    if (!nextLower || !nextUpper) return [];
+    if (!nextLower || !nextUpper) {
+      return [`Existing values for ${displayCategory(lower, previousCategories)} → ${displayCategory(upper, previousCategories)} will be removed because this boundary no longer exists.`];
+    }
     return [`Existing values for ${displayCategory(lower, previousCategories)} → ${displayCategory(upper, previousCategories)} will be reset because its neighboring categories changed.`];
   });
 };

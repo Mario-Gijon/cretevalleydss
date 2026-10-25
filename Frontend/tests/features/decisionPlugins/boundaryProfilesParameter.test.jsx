@@ -407,8 +407,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
     });
   });
 
-  it("shows a contextual confirmed resolver only for obsolete references and preserves active values", async () => {
-    const user = userEvent.setup();
+  it("automatically reconciles obsolete historical references without cleanup controls", async () => {
     const initialBoundaries = {
       profiles: [
         { profileId: "active-profile", categoryId: "high", valuesByCriterionId: { "benefit-id": 4, "retired-criterion": 9 } },
@@ -416,18 +415,6 @@ describe("boundaryProfiles model-parameter plugin", () => {
       ],
     };
     render(<BoundaryFieldHarness initialBoundaries={initialBoundaries} />);
-
-    expect(screen.queryByText(/saved values for|saved reference|remove saved value/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("table").textContent).not.toMatch(/retired-criterion|removed-category|removed-profile/);
-    await user.click(screen.getByRole("button", { name: "Review outdated references" }));
-    expect(screen.getByRole("dialog", { name: "Remove outdated references?" })).toBeInTheDocument();
-    expect(screen.getByText(/duplicate references will be deleted.*remaining references will be kept/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Keep references" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles).toHaveLength(2);
-    await user.click(screen.getByRole("button", { name: "Review outdated references" }));
-    await user.click(screen.getByRole("button", { name: "Remove outdated references" }));
 
     await waitFor(() => {
       expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles).toEqual([{
@@ -437,6 +424,36 @@ describe("boundaryProfiles model-parameter plugin", () => {
       }]);
     });
     expect(screen.queryByRole("button", { name: "Review outdated references" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Remove outdated references?" })).not.toBeInTheDocument();
+  });
+
+  it("automatically removes deleted criterion values while preserving shared values", async () => {
+    const initialBoundaries = {
+      profiles: [{
+        profileId: "active-profile",
+        categoryId: "high",
+        valuesByCriterionId: { "benefit-id": 4, "retired-criterion": 9 },
+      }],
+    };
+    const previousCriteria = [
+      { id: "benefit-id", name: "Renewables", type: "benefit" },
+      { id: "retired-criterion", name: "Retired", type: "cost" },
+    ];
+    const nextCriteria = [
+      previousCriteria[0],
+      { id: "new-criterion", name: "New criterion", type: "benefit" },
+    ];
+    const { rerender } = render(<BoundaryFieldHarness criteria={previousCriteria} initialBoundaries={initialBoundaries} />);
+
+    await waitFor(() => expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles[0].valuesByCriterionId)
+      .toEqual({ "benefit-id": 4, "retired-criterion": 9 }));
+    rerender(<BoundaryFieldHarness criteria={nextCriteria} initialBoundaries={initialBoundaries} />);
+
+    await waitFor(() => expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles).toEqual([{
+      profileId: "active-profile",
+      categoryId: "high",
+      valuesByCriterionId: { "benefit-id": 4, "new-criterion": "" },
+    }]));
   });
 
   it("validates missing profiles, missing values, nonnumeric values and domain ranges", () => {
@@ -495,36 +512,86 @@ describe("boundaryProfiles model-parameter plugin", () => {
     }, parameterContext)).toMatch(/more favorable than the previous boundary/);
   });
 
-  it("keeps IDs and values for boundaries that remain, creates blank profiles, and retains unmatched profiles for explicit review", () => {
+  it("keeps valid profiles, creates blank references, and removes obsolete profiles and criteria from saved values", () => {
     const expandedCategories = [
       categories[0],
       { categoryId: "between", label: "Between", order: 1 },
       { ...categories[1], order: 2 },
       { ...categories[2], order: 3 },
+      { categoryId: "top", label: "Top", order: 4 },
     ];
-    const result = reconcileBoundaryProfiles({ value, categories: expandedCategories, leafCriteria: parameterContext.leafCriteria });
-    expect(result.value.profiles).toHaveLength(3);
-    expect(result.value.profiles[1]).toMatchObject(value.profiles[0]);
-    expect(result.value.profiles[2]).toMatchObject(value.profiles[1]);
+    const legacyValue = {
+      profiles: [
+        { ...value.profiles[0], valuesByCriterionId: { ...value.profiles[0].valuesByCriterionId, "retired-criterion": 9 } },
+        value.profiles[1],
+        { profileId: "orphan-profile", categoryId: "removed-category", valuesByCriterionId: { "benefit-id": 8 } },
+      ],
+    };
+    const result = reconcileBoundaryProfiles({ value: legacyValue, categories: expandedCategories, leafCriteria: parameterContext.leafCriteria });
+    expect(result.changed).toBe(true);
+    expect(result.value.profiles).toHaveLength(4);
     expect(result.value.profiles[0]).toMatchObject({ categoryId: "between", valuesByCriterionId: { "benefit-id": "", "cost-id": "" } });
-
-    const removedBoundary = reconcileBoundaryProfiles({
-      value,
-      categories: [categories[0], categories[2]],
-      leafCriteria: parameterContext.leafCriteria,
-    });
-    expect(removedBoundary.staleCount).toBe(1);
-    expect(removedBoundary.value.profiles).toHaveLength(2);
-    expect(removedBoundary.value.profiles[1]).toMatchObject(value.profiles[0]);
-    expect(validateBoundaryProfilesValue(parameter, removedBoundary.value, buildParameterContext({
-      parameterDefinitions: modelParameters,
-      parameterValues: { categories: [categories[0], categories[2]] },
-      leafCriteria: parameterContext.leafCriteria,
-      criterionDomainsById: parameterContext.criterionDomainsById,
-    }))).toMatch(/saved boundary no longer matches the current category order/);
+    expect(result.value.profiles[1]).toMatchObject(value.profiles[0]);
+    expect(result.value.profiles[1].valuesByCriterionId).not.toHaveProperty("retired-criterion");
+    expect(result.value.profiles[2]).toMatchObject(value.profiles[1]);
+    expect(result.value.profiles[3]).toMatchObject({ categoryId: "top", valuesByCriterionId: { "benefit-id": "", "cost-id": "" } });
+    expect(result.value.profiles.some((profile) => profile.profileId === "orphan-profile")).toBe(false);
   });
 
-  it("preserves saved values for removed criteria until the user explicitly reviews them", () => {
+  it("cleans removed criteria, drops deleted boundaries, and retains unchanged adjacent profiles", () => {
+    const previousCategories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "medium", label: "Medium", order: 1 },
+      { categoryId: "high", label: "High", order: 2 },
+      { categoryId: "top", label: "Top", order: 3 },
+    ];
+    const nextCategories = previousCategories.slice(0, 3);
+    const result = reconcileBoundaryProfilesAfterCategoryChange({
+      value: {
+        profiles: [
+          { profileId: "profile-medium", categoryId: "medium", valuesByCriterionId: { "benefit-id": 2, "retired-criterion": 11 } },
+          { profileId: "profile-high", categoryId: "high", valuesByCriterionId: { "benefit-id": 5 } },
+          { profileId: "profile-top", categoryId: "top", valuesByCriterionId: { "benefit-id": 8 } },
+        ],
+      },
+      previousCategories,
+      nextCategories,
+      leafCriteria: [{ id: "benefit-id", name: "Renewables", type: "benefit" }],
+    });
+
+    expect(result.profiles).toEqual([
+      { profileId: "profile-medium", categoryId: "medium", valuesByCriterionId: { "benefit-id": 2 } },
+      { profileId: "profile-high", categoryId: "high", valuesByCriterionId: { "benefit-id": 5 } },
+    ]);
+  });
+
+  it("creates blank new references and preserves IDs and values for unchanged adjacent categories", () => {
+    const previousCategories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "medium", label: "Medium", order: 1 },
+      { categoryId: "high", label: "High", order: 2 },
+    ];
+    const nextCategories = [...previousCategories, { categoryId: "top", label: "Top", order: 3 }];
+    const result = reconcileBoundaryProfilesAfterCategoryChange({
+      value: {
+        profiles: [
+          { profileId: "profile-medium", categoryId: "medium", valuesByCriterionId: { "benefit-id": 2 } },
+          { profileId: "profile-high", categoryId: "high", valuesByCriterionId: { "benefit-id": 5 } },
+        ],
+      },
+      previousCategories,
+      nextCategories,
+      leafCriteria: [{ id: "benefit-id", name: "Renewables", type: "benefit" }],
+    });
+
+    expect(result.profiles.slice(0, 2)).toEqual([
+      { profileId: "profile-medium", categoryId: "medium", valuesByCriterionId: { "benefit-id": 2 } },
+      { profileId: "profile-high", categoryId: "high", valuesByCriterionId: { "benefit-id": 5 } },
+    ]);
+    expect(result.profiles[2]).toMatchObject({ categoryId: "top", valuesByCriterionId: { "benefit-id": "" } });
+  });
+
+  it("removes saved values for criteria that are no longer present", () => {
     const profileWithOldCriterion = {
       profiles: [{
         profileId: "profile-high",
@@ -538,8 +605,6 @@ describe("boundaryProfiles model-parameter plugin", () => {
       leafCriteria: [{ id: "new-id", name: "New criterion", type: "benefit" }],
     });
     expect(result.value.profiles[0].valuesByCriterionId).toEqual({
-      "benefit-id": 6,
-      "removed-criterion-id": 8,
       "new-id": "",
     });
 
@@ -549,8 +614,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
       leafCriteria: [{ id: "new-id", name: "New criterion", type: "benefit" }],
     });
     const error = validateBoundaryProfilesValue(parameter, result.value, context);
-    expect(error).toMatch(/saved value for a criterion that is no longer in the Issue/i);
-    expect(error).not.toContain("removed-criterion-id");
+    expect(error).toMatch(/Enter a value for New criterion in the Low → High boundary/);
   });
 
   it("resets only profiles whose adjacent category pair changes", () => {

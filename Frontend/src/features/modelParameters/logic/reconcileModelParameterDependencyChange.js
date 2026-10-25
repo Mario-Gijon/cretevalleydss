@@ -1,5 +1,7 @@
 import { resolveParameterFieldEntry } from "../../decisionPlugins/modelParameters";
 
+const valuesEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
 export const reconcileModelParameterDependencyChange = ({
   changedParameter,
   parameters,
@@ -28,7 +30,7 @@ export const reconcileModelParameterDependencyChange = ({
       previousContext,
       nextContext,
     });
-    if (nextValue !== undefined) {
+    if (nextValue !== undefined && !valuesEqual(reconciledValues[parameter.key], nextValue)) {
       if (reconciledValues === nextValues) reconciledValues = { ...nextValues };
       reconciledValues[parameter.key] = nextValue;
     }

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ModelParameters from "../../../../src/features/createIssue/summary/components/ModelParameters.jsx";
+import { buildParameterContext } from "../../../../src/features/modelParameters/context/index.js";
+import { reconcileModelParameterDependencyChange } from "../../../../src/features/modelParameters/logic/reconcileModelParameterDependencyChange.js";
 
 const selectedModel = {
   parameters: [
@@ -61,6 +63,74 @@ const Harness = () => {
 };
 
 describe("Create Issue model parameter dependency reconciliation", () => {
+  it("does not replace dependent profiles when category labels change without changing boundaries", () => {
+    const categoriesParameter = selectedModel.parameters.find((item) => item.parameterStructureKey === "orderedCategories");
+    const previousContext = buildParameterContext({
+      parameterDefinitions: selectedModel.parameters,
+      parameterValues: initialValues,
+      leafCriteria: criteria,
+    });
+    const nextCategories = initialValues.categories.map((category) => category.categoryId === "b"
+      ? { ...category, label: "Balanced" }
+      : category);
+    const nextValues = { ...initialValues, categories: nextCategories };
+    const nextContext = buildParameterContext({
+      parameterDefinitions: selectedModel.parameters,
+      parameterValues: nextValues,
+      leafCriteria: criteria,
+    });
+
+    const reconciled = reconcileModelParameterDependencyChange({
+      changedParameter: categoriesParameter,
+      parameters: selectedModel.parameters,
+      nextValues,
+      previousContext,
+      nextContext,
+    });
+
+    expect(reconciled).toBe(nextValues);
+  });
+
+  it("creates a blank reference when a category is added and preserves existing profiles", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+    expect(await screen.findByRole("spinbutton", { name: "Quality reference in D → Category 5" })).toHaveValue(null);
+
+    const values = JSON.parse(screen.getByTestId("parameter-values").textContent);
+    expect(values.boundaryProfiles.profiles).toEqual([
+      ...initialValues.boundaryProfiles.profiles,
+      expect.objectContaining({ categoryId: expect.any(String), valuesByCriterionId: { "quality-id": "" } }),
+    ]);
+    expect(values.boundaryProfiles.profiles.slice(0, 3)).toEqual(initialValues.boundaryProfiles.profiles);
+    expect(screen.queryByRole("dialog", { name: "Review this category change" })).not.toBeInTheDocument();
+  });
+
+  it("confirms removal before discarding a category boundary, then reconciles automatically", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: "Remove category 4" }));
+    expect(screen.getByRole("dialog", { name: "Review this category change" })).toBeInTheDocument();
+    expect(screen.getByText(/Existing values for C → D will be removed because this boundary no longer exists/)).toBeInTheDocument();
+    expect(JSON.parse(screen.getByTestId("parameter-values").textContent)).toEqual(initialValues);
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(JSON.parse(screen.getByTestId("parameter-values").textContent)).toEqual(initialValues);
+    await user.click(screen.getByRole("button", { name: "Remove category 4" }));
+    await user.click(screen.getByRole("button", { name: "Apply change" }));
+
+    await waitFor(() => {
+      expect(JSON.parse(screen.getByTestId("parameter-values").textContent).boundaryProfiles.profiles).toEqual([
+        initialValues.boundaryProfiles.profiles[0],
+        initialValues.boundaryProfiles.profiles[1],
+      ]);
+    });
+    expect(screen.queryByRole("columnheader", { name: "C → D" })).not.toBeInTheDocument();
+  });
+
   it("preserves profiles for unchanged adjacent categories and clears changed boundaries on reorder", async () => {
     const user = userEvent.setup();
     render(<Harness />);

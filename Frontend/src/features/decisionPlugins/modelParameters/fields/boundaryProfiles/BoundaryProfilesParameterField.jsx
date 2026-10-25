@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   IconButton,
   MenuItem,
@@ -22,7 +17,6 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import { alpha } from "@mui/material/styles";
 import { getParameterValueByStructureKey } from "../../../../modelParameters/context";
 import { decisionMatrixSurface } from "../../../shared/styles/decisionMatrixSurface.styles.js";
@@ -376,7 +370,6 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
   const normalized = useMemo(() => normalizeBoundaryProfilesValue(parameter, value), [parameter, value]);
   const [touchedCells, setTouchedCells] = useState(() => new Set());
   const [selectedBoundaryCategoryId, setSelectedBoundaryCategoryId] = useState("");
-  const [confirmOutdatedRemoval, setConfirmOutdatedRemoval] = useState(false);
   const isMobileViewport = useMediaQuery("(max-width:899.95px)");
   const categoryIdsKey = categories.map((category) => category?.categoryId || "").join("\u001f");
   const criterionIdsKey = leafCriteria.map((criterion) => criterion?.id || "").join("\u001f");
@@ -391,11 +384,9 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
   const issues = getBoundaryProfilesValidationIssues(parameter, normalized, parameterContext);
   const validationError = validateBoundaryProfilesValue(parameter, normalized, parameterContext);
   const profilesByCategory = new Map();
-  const staleProfiles = [];
   const expectedCategoryIds = new Set(categories.slice(1).map((category) => category?.categoryId));
   normalized.profiles.forEach((profile) => {
     if (!expectedCategoryIds.has(profile.categoryId) || profilesByCategory.has(profile.categoryId)) {
-      staleProfiles.push(profile);
       return;
     }
     profilesByCategory.set(profile.categoryId, profile);
@@ -410,10 +401,6 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
     boundary.upperCategory?.categoryId === selectedBoundaryCategoryId
   ) || boundaries[0] || null;
 
-  const liveCriterionIds = new Set(leafCriteria.map((criterion) => criterion.id));
-  const staleCriterionValueCount = normalized.profiles.reduce((count, profile) =>
-    count + Object.keys(profile.valuesByCriterionId || {}).filter((id) => !liveCriterionIds.has(id)).length, 0);
-  const hasOutdatedReferences = staleProfiles.length > 0 || staleCriterionValueCount > 0;
   const touchCell = (profileId, criterionId) => setTouchedCells((previous) => {
     const next = new Set(previous);
     next.add(`${profileId}:${criterionId}`);
@@ -425,23 +412,6 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
       return;
     }
     onChange(updateProfileValue(normalized.profiles, profileId, criterionId, nextValue));
-  };
-  const removeOutdatedReferences = () => {
-    const retainedCategoryIds = new Set();
-    const profiles = normalized.profiles
-      .filter((profile) => {
-        if (!expectedCategoryIds.has(profile.categoryId) || retainedCategoryIds.has(profile.categoryId)) return false;
-        retainedCategoryIds.add(profile.categoryId);
-        return true;
-      })
-      .map((profile) => ({
-        ...profile,
-        valuesByCriterionId: Object.fromEntries(
-          Object.entries(profile.valuesByCriterionId || {}).filter(([criterionId]) => liveCriterionIds.has(criterionId))
-        ),
-      }));
-    onChange({ profiles });
-    setConfirmOutdatedRemoval(false);
   };
   const profileOrderIssue = showValidation
     ? issues.find((issue) => issue.kind === "profile-order" || (issue.kind !== "field" && issue.kind !== "stale-profile" && issue.kind !== "stale-criterion" && !issue.criterionId))
@@ -465,19 +435,6 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
             </IconButton>
           </Tooltip>
         </Stack>
-        {hasOutdatedReferences && !disabled ? (
-          <Button
-            size="small"
-            color="secondary"
-            variant="text"
-            startIcon={<FactCheckOutlinedIcon fontSize="small" />}
-            aria-label="Review outdated references"
-            onClick={() => setConfirmOutdatedRemoval(true)}
-            sx={{ alignSelf: { xs: "flex-start", sm: "center" }, whiteSpace: "nowrap" }}
-          >
-            Review outdated references
-          </Button>
-        ) : null}
       </Stack>
 
       {categories.length < 2 ? (
@@ -540,34 +497,9 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
         <Typography variant="caption" color="error" role="alert">{profileOrderIssue.message}</Typography>
       ) : null}
 
-      {showValidation && hasOutdatedReferences ? (
-        <Typography variant="caption" color="error" role="alert">
-          Review outdated references before continuing.
-        </Typography>
-      ) : null}
-
-      {showValidation && !profileOrderIssue && !hasOutdatedReferences && !hasFieldIssues && (error || validationError) ? (
+      {showValidation && !profileOrderIssue && !hasFieldIssues && (error || validationError) ? (
         <Typography variant="caption" color="error" role="alert">{error || validationError}</Typography>
       ) : null}
-
-      <Dialog
-        open={confirmOutdatedRemoval}
-        onClose={() => setConfirmOutdatedRemoval(false)}
-        aria-labelledby="outdated-classification-references-title"
-      >
-        <DialogTitle id="outdated-classification-references-title">Remove outdated references?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            Removed categories, removed criteria, and duplicate references will be deleted. The remaining references will be kept.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="text" onClick={() => setConfirmOutdatedRemoval(false)}>Keep references</Button>
-          <Button variant="outlined" color="secondary" size="small" onClick={removeOutdatedReferences}>
-            Remove outdated references
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Stack>
   );
 };
