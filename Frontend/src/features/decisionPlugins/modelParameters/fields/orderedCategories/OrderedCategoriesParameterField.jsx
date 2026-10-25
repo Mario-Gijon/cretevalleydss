@@ -35,6 +35,7 @@ import DragIndicatorRoundedIcon from "@mui/icons-material/DragIndicatorRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { alpha } from "@mui/material/styles";
 import { createOrderedCategory, normalizeOrderedCategoriesValue } from "./orderedCategoriesValues.js";
 
 const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, onRemove, showError }) => {
@@ -47,21 +48,22 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
     <Stack
       ref={setNodeRef}
       direction={{ xs: "column", sm: "row" }}
-      spacing={0.75}
-      alignItems={{ sm: "center" }}
-      sx={{
+      spacing={{ xs: 0.25, sm: 0.5 }}
+      alignItems={{ xs: "stretch", sm: "center" }}
+      sx={(theme) => ({
+        minWidth: 0,
         px: 0.25,
-        py: 0.35,
+        py: 0.3,
         borderBottom: 1,
-        borderColor: "divider",
-        bgcolor: isDragging ? "action.hover" : "background.paper",
+        borderColor: alpha(theme.palette.divider, 0.55),
+        bgcolor: isDragging ? alpha(theme.palette.secondary.main, 0.12) : "transparent",
         transform: CSS.Transform.toString(transform),
         transition,
-      }}
+      })}
       role="listitem"
       data-testid={`ordered-category-${index + 1}`}
     >
-      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ minWidth: 0, flex: 1 }}>
+      <Stack direction="row" alignItems="center" spacing={{ xs: 0.2, sm: 0.45 }} sx={{ minWidth: 0, flex: 1 }}>
         {!disabled ? (
           <Tooltip title={`Drag ${category.label || `category ${index + 1}`} to reorder`}>
             <IconButton
@@ -70,7 +72,14 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
               aria-label={`Drag category ${index + 1} to reorder`}
               {...attributes}
               {...listeners}
-              sx={{ cursor: isDragging ? "grabbing" : "grab", touchAction: "none" }}
+              sx={{
+                width: 30,
+                height: 30,
+                p: 0.5,
+                color: "text.secondary",
+                cursor: isDragging ? "grabbing" : "grab",
+                touchAction: "none",
+              }}
             >
               <DragIndicatorRoundedIcon fontSize="small" />
             </IconButton>
@@ -80,10 +89,10 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
           aria-label={`Preference order ${index + 1}`}
           sx={{
             flexShrink: 0,
-            width: 30,
+            width: 24,
             textAlign: "center",
-            fontWeight: "fontWeightBold",
-            color: "secondary.main",
+            fontWeight: 700,
+            color: "text.secondary",
           }}
         >
           {index + 1}
@@ -91,7 +100,8 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
         <TextField
           size="small"
           fullWidth
-          label={`Category ${index + 1}`}
+          sx={{ flex: 1, minWidth: 0, "& .MuiInputBase-input": { py: 0.7 } }}
+          placeholder={`Category ${index + 1}`}
           value={category.label}
           onChange={(event) => onLabelChange(category.categoryId, event.target.value)}
           disabled={disabled}
@@ -102,7 +112,12 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
         />
       </Stack>
       {!disabled ? (
-        <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+        <Stack
+          direction="row"
+          spacing={0}
+          justifyContent="flex-end"
+          sx={{ flexShrink: 0, alignSelf: { xs: "flex-end", sm: "auto" } }}
+        >
           <Tooltip title="Move category up">
             <span>
               <IconButton
@@ -110,6 +125,13 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
                 aria-label={`Move category ${index + 1} up`}
                 disabled={index === 0}
                 onClick={() => onMove(index, index - 1)}
+                sx={{
+                  width: 30,
+                  height: 30,
+                  p: 0.5,
+                  color: "text.secondary",
+                  "&.Mui-disabled": { opacity: 0.3 },
+                }}
               >
                 <KeyboardArrowUpRoundedIcon fontSize="small" />
               </IconButton>
@@ -122,6 +144,13 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
                 aria-label={`Move category ${index + 1} down`}
                 disabled={index === total - 1}
                 onClick={() => onMove(index, index + 1)}
+                sx={{
+                  width: 30,
+                  height: 30,
+                  p: 0.5,
+                  color: "text.secondary",
+                  "&.Mui-disabled": { opacity: 0.3 },
+                }}
               >
                 <KeyboardArrowDownRoundedIcon fontSize="small" />
               </IconButton>
@@ -132,6 +161,7 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
               size="small"
               aria-label={`Remove category ${index + 1}`}
               onClick={() => onRemove(category.categoryId)}
+              sx={{ width: 30, height: 30, p: 0.5, color: "text.secondary" }}
             >
               <DeleteOutlineRoundedIcon fontSize="small" />
             </IconButton>
@@ -184,15 +214,15 @@ export const OrderedCategoriesParameterField = ({ parameter, value, onChange, er
   };
 
   return (
-    <Stack spacing={1}>
+    <Stack spacing={0.65} sx={{ minWidth: 0 }}>
       <Box>
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>{label}</Typography>
-        <Typography variant="caption" color="text.secondary">Less preferred → More preferred</Typography>
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>{label}</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.72rem" }}>Less preferred → More preferred</Typography>
       </Box>
       {categories.length ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={categories.map((category) => category.categoryId)} strategy={verticalListSortingStrategy}>
-            <Stack role="list" aria-label={`${label} from less to more preferred`} spacing={0.25}>
+            <Stack role="list" aria-label={`${label} from less to more preferred`} spacing={0}>
               {categories.map((category, index) => (
                 <CategoryRow
                   key={category.categoryId}

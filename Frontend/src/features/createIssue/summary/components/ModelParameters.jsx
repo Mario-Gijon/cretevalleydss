@@ -145,29 +145,27 @@ export const ModelParameters = ({
     });
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0.75, sm: 2 }} sx={{ mb: 1 }} alignItems={{ sm: "center" }}>
-        {defaultsAvailable ? (
-          <ToggleButton
-            value="default"
-            selected={defaultModelParams && defaultsAvailable}
-            onChange={handleDefaultChange}
-            color="secondary"
-            size="small"
-          >
-            Default
-          </ToggleButton>
-        ) : null}
-        <Typography variant="caption" color={hasParameterErrors ? "text.secondary" : "success.main"}>
-          {defaultModelParams && defaultsAvailable
-            ? "Using valid default values."
-            : hasParameterErrors
-              ? validationAttempted
-                ? "Review the highlighted model settings."
-                : "Complete the required settings before creating this Issue."
-              : "Custom settings are ready."}
-        </Typography>
-      </Stack>
+    <Stack spacing={1.5}>
+      {defaultsAvailable || (validationAttempted && hasParameterErrors) ? (
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0.75, sm: 1.5 }} alignItems={{ sm: "center" }}>
+          {defaultsAvailable ? (
+            <ToggleButton
+              value="default"
+              selected={defaultModelParams && defaultsAvailable}
+              onChange={handleDefaultChange}
+              color="secondary"
+              size="small"
+            >
+              Default
+            </ToggleButton>
+          ) : null}
+          {validationAttempted && hasParameterErrors ? (
+            <Typography variant="caption" color="error.main" role="status">
+              Review the highlighted model settings.
+            </Typography>
+          ) : null}
+        </Stack>
+      ) : null}
 
       <Stack spacing={2} sx={{ width: "100%" }}>
         {renderableNormalParameters.map((parameter, index) => {

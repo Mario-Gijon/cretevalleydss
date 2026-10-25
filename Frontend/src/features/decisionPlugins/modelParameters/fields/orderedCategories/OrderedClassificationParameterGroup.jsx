@@ -18,7 +18,7 @@ export const OrderedClassificationParameterGroup = ({
   if (!categoriesParameter || !profilesParameter) return null;
 
   return (
-    <Stack spacing={1.75} sx={{ minWidth: 0 }}>
+    <Stack spacing={1.5} sx={{ minWidth: 0 }}>
       <OrderedCategoriesParameterField
         parameter={categoriesParameter}
         value={valuesByParameterKey[categoriesParameter.key]}

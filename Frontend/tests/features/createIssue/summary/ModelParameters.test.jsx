@@ -115,7 +115,8 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Default" })).not.toBeInTheDocument();
-    expect(screen.getByText("Complete the required settings before creating this Issue.")).toBeInTheDocument();
+    expect(screen.queryByText("Complete the required settings before creating this Issue.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Custom settings are ready.")).not.toBeInTheDocument();
   });
 
   it("keeps the default selection available for models with valid existing defaults", () => {
@@ -135,6 +136,26 @@ describe("Create Issue model parameter dependency reconciliation", () => {
 
     expect(screen.getByRole("button", { name: "Default" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Default" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("Using valid default values.")).toBeInTheDocument();
+    expect(screen.queryByText("Using valid default values.")).not.toBeInTheDocument();
+  });
+
+  it("keeps the concise validation prompt after the user attempts to continue", () => {
+    render(
+      <ModelParameters
+        selectedModel={{ parameters: [
+          { key: "categories", label: "Categories", parameterStructureKey: "orderedCategories", required: true },
+        ] }}
+        allData={{ criteria, alternatives: [] }}
+        paramValues={{ categories: [{ categoryId: "blank", label: " ", order: 0 }] }}
+        setParamValues={() => {}}
+        defaultModelParams={false}
+        setDefaultModelParams={() => {}}
+        handleDefaultChange={() => {}}
+        validationAttempted
+      />
+    );
+
+    expect(screen.getByText("Review the highlighted model settings.")).toHaveAttribute("role", "status");
+    expect(screen.getByText("Enter a category name.")).toBeInTheDocument();
   });
 });

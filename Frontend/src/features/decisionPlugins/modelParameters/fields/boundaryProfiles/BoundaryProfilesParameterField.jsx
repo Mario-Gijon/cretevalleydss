@@ -18,6 +18,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { alpha } from "@mui/material/styles";
 import { getParameterValueByStructureKey } from "../../../../modelParameters/context";
 import {
   getBoundaryCriterionSetupIssue,
@@ -118,8 +119,8 @@ const BoundaryValueField = ({
         step: "any",
       }}
       sx={{
-        minWidth: { xs: 112, md: 105 },
-        "& .MuiInputBase-input": { py: 0.8 },
+        minWidth: { xs: 96, md: 105 },
+        "& .MuiInputBase-input": { py: 0.65 },
         "& .MuiFormHelperText-root": { mx: 0, minWidth: 160 },
       }}
     />
@@ -154,15 +155,17 @@ const BoundaryTable = ({
         <TableCell
           component="th"
           scope="row"
-          sx={{
+          sx={(theme) => ({
             position: "sticky",
             left: 0,
             zIndex: 1,
-            bgcolor: "background.paper",
-            minWidth: { xs: 155, md: 190 },
-            maxWidth: { xs: 190, md: 250 },
-            py: 0.8,
-          }}
+            // Keep the sticky criterion column opaque while the table scrolls.
+            bgcolor: theme.palette.background.default,
+            borderColor: alpha(theme.palette.divider, 0.6),
+            minWidth: { xs: 115, md: 190 },
+            maxWidth: { xs: 150, md: 250 },
+            py: 0.55,
+          })}
         >
           <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
             {criterion.name?.trim() || `Criterion ${criterionIndex + 1}`}
@@ -183,7 +186,14 @@ const BoundaryTable = ({
           );
           const touched = showValidation || touchedCells.has(`${profile?.profileId}:${criterion.id}`);
           return (
-            <TableCell key={boundary.upperCategory.categoryId} sx={{ minWidth: { xs: 145, md: 165 }, py: 0.6 }}>
+            <TableCell
+              key={boundary.upperCategory.categoryId}
+              sx={(theme) => ({
+                minWidth: { xs: 130, md: 165 },
+                py: 0.45,
+                borderColor: alpha(theme.palette.divider, 0.6),
+              })}
+            >
               {profile ? (
                 <BoundaryValueField
                   profile={profile}
@@ -212,25 +222,35 @@ const BoundaryTable = ({
     <TableHead>
       <TableRow>
         <TableCell
-          sx={{
+          sx={(theme) => ({
             position: "sticky",
             top: 0,
             left: 0,
             zIndex: 3,
-            bgcolor: "background.paper",
-            minWidth: { xs: 155, md: 190 },
-            py: 0.75,
-          }}
+            // Sticky headers use solid theme surfaces to prevent text bleed-through.
+            bgcolor: theme.palette.background.paper,
+            borderColor: alpha(theme.palette.secondary.main, 0.28),
+            minWidth: { xs: 115, md: 190 },
+            py: 0.6,
+          })}
         >
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>Criterion</Typography>
         </TableCell>
         {activeBoundaries.map((boundary) => (
           <TableCell
             key={boundary.upperCategory.categoryId}
-            sx={{ position: "sticky", top: 0, zIndex: 2, bgcolor: "background.paper", minWidth: 145, py: 0.75 }}
+            sx={(theme) => ({
+              position: "sticky",
+              top: 0,
+              zIndex: 2,
+              bgcolor: theme.palette.background.paper,
+              borderColor: alpha(theme.palette.secondary.main, 0.28),
+              minWidth: { xs: 130, md: 145 },
+              py: 0.6,
+            })}
           >
-            <Typography variant="caption" sx={{ fontWeight: 750, whiteSpace: "nowrap" }}>
-            {isMobileViewport ? "Reference value" : boundaryName(boundary.lowerCategory, boundary.upperCategory)}
+            <Typography variant="caption" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+              {isMobileViewport ? "Reference value" : boundaryName(boundary.lowerCategory, boundary.upperCategory)}
             </Typography>
             {showValidation && boundary.profile ? issues
               .filter((issue) => issue.profileId === boundary.profile.profileId && issue.kind !== "field" && !issue.criterionId)
@@ -248,13 +268,17 @@ const BoundaryTable = ({
 
   const renderTable = (activeBoundaries) => (
     <TableContainer
-      sx={{
+      sx={(theme) => ({
+        width: "100%",
+        minWidth: 0,
         maxHeight: { xs: 440, md: 520 },
         overflow: "auto",
+        bgcolor: theme.palette.background.default,
         border: 1,
-        borderColor: "divider",
+        borderColor: alpha(theme.palette.divider, 0.65),
         borderRadius: 1,
-      }}
+        "& .MuiTableCell-root": { borderColor: alpha(theme.palette.divider, 0.55) },
+      })}
     >
       <Table size="small" stickyHeader aria-label="Classification reference values">
         {renderHeader(activeBoundaries)}
@@ -331,9 +355,9 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
     : null;
 
   return (
-    <Stack spacing={0.8} sx={{ minWidth: 0 }}>
+    <Stack spacing={0.65} sx={{ minWidth: 0 }}>
       <Stack direction="row" alignItems="center" spacing={0.5}>
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>Classification references</Typography>
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>Classification references</Typography>
         <Tooltip title="Each column is one complete reference between adjacent categories. Discrete criteria can use values between domain steps.">
           <IconButton size="small" aria-label="About classification references">
             <InfoOutlinedIcon fontSize="inherit" />

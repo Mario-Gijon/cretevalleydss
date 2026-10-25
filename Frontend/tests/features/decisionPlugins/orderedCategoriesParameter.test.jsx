@@ -41,6 +41,7 @@ describe("orderedCategories model-parameter plugin", () => {
 
     await user.click(screen.getByRole("button", { name: "Add category" }));
     await user.click(screen.getByRole("button", { name: "Add category" }));
+    expect(screen.getByLabelText("Category 1")).toHaveAttribute("placeholder", "Category 1");
 
     const first = screen.getByLabelText("Category 1");
     const second = screen.getByLabelText("Category 2");
