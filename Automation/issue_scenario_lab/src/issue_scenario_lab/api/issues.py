@@ -20,6 +20,10 @@ class IssuesApi:
     def expression_domains(self) -> Any:
         return self.client.request("GET", "/issues/expression-domains")
 
+    def create_expression_domain(self, payload: dict[str, Any]) -> Any:
+        """Create one owner-private expression domain through the Backend API."""
+        return self.client.request("POST", "/issues/expression-domains", json=payload)
+
     def create_issue(self, issue_info: dict[str, Any]) -> Any:
         return self.client.request("POST", "/issues", json={"issueInfo": issue_info})
 

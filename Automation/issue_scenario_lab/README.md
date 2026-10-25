@@ -46,6 +46,7 @@ python -m issue_scenario_lab generate no-consensus-basic
 python -m issue_scenario_lab generate no-consensus-criteria-weighting
 python -m issue_scenario_lab generate no-consensus-expert-weights
 python -m issue_scenario_lab generate topsis-sort-2016
+python -m issue_scenario_lab generate topsis-sort-2016-tehran
 python -m issue_scenario_lab generate consensus-first-round
 python -m issue_scenario_lab generate consensus-later-round
 python -m issue_scenario_lab generate consensus-max-rounds
@@ -201,6 +202,41 @@ the `alternativeEvaluation` collective `rawPayload` empty, so its collective
 matrix renderer can report that an alternative row is missing. The individual
 expert matrices remain available there; this scenario does not alter the
 `sorting@1` result contract to add a second copy of its input matrix.
+
+`topsis-sort-2016-tehran` reproduces the published Sabokbar et al. (2016)
+Tehran example. It imports `DecisionModelsService/models/topsis_sort_2016/tehran_2016.py`
+at runtime, so the alternative values, g1–g5 directions and weights, four
+profiles, published Tables 3–5 references, and expected classes have one source
+of truth. The scenario does not copy the data into another JSON fixture. It
+creates one non-consensus Issue with the 22 districts, five criteria, four
+profiles, and one expert who submits the paper's sole published evaluation
+matrix unchanged. It configures the categories as C5, C4, C3, C2, C1 because
+the paper orders C1 as best and the DSS contract orders categories from least
+to most preferred. The boundary profiles consequently map p4, p3, p2, p1 to
+the four consecutive application boundaries. Before the generated Issue is
+recorded in the manifest, Scenario Lab verifies the remapped IDs and original
+values, exact Table 5 assignments, and the published Table 3 and 4 results
+within the rounding tolerances already documented by the mathematical tests.
+
+With the development API available on `localhost:5000` and the usual local
+Scenario Lab credentials configured, generate the real Tehran Issue through
+the Backend API:
+
+```bash
+cd Automation/issue_scenario_lab
+.venv/bin/python -m issue_scenario_lab generate topsis-sort-2016-tehran
+```
+
+The command uses the `owner` and `expert_a` aliases, leaves consensus disabled,
+and does not delete or modify any previously generated Issues. Its output lists
+the new Issue ID, its 22 assignments, and maximum differences from the rounded
+published Tables 3 and 4. The local manifest records the generation for later
+inspection or explicit cleanup. Scenario Lab first reuses any compatible
+numeric domain available to the owner. If none can represent the original
+values, it creates one owner-private `numericContinuous` domain with the exact
+fixture range `0–916.67` through the normal Backend expression-domain API. The
+domain is retained for reuse by later generations and is never inserted
+directly into MongoDB or silently replaced.
 
 ## TOPSIS-Sort 2016
 

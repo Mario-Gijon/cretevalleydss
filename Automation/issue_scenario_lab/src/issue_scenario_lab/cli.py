@@ -32,6 +32,8 @@ from issue_scenario_lab.scenarios.topsis_sort_2016 import SCENARIO_ID as TOPSIS_
 from issue_scenario_lab.scenarios.topsis_sort_2016 import generate as generate_topsis_sort_2016
 from issue_scenario_lab.scenarios.topsis_sort_2016_rich import SCENARIO_ID as TOPSIS_SORT_2016_RICH_SCENARIO_ID
 from issue_scenario_lab.scenarios.topsis_sort_2016_rich import generate as generate_topsis_sort_2016_rich
+from issue_scenario_lab.scenarios.topsis_sort_2016_tehran import SCENARIO_ID as TOPSIS_SORT_2016_TEHRAN_SCENARIO_ID
+from issue_scenario_lab.scenarios.topsis_sort_2016_tehran import generate as generate_topsis_sort_2016_tehran
 from issue_scenario_lab.scenarios.two_tuple_greece import SCENARIO_ID as TWO_TUPLE_GREECE_SCENARIO_ID
 from issue_scenario_lab.scenarios.two_tuple_greece import generate as generate_two_tuple_greece
 from issue_scenario_lab.scenarios.two_tuple_greece_video import SCENARIO_ID as TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID
@@ -320,6 +322,19 @@ def generate(
                 "consensus": False,
             },
         ),
+        TOPSIS_SORT_2016_TEHRAN_SCENARIO_ID: (
+            generate_topsis_sort_2016_tehran,
+            {
+                "model": "TOPSIS-Sort 2016",
+                "source": "Sabokbar et al. (2016), Tehran example, Tables 1–5",
+                "alternatives": 22,
+                "criteria": 5,
+                "criteriaWeights": {"g1": 0.2, "g2": 0.2, "g3": 0.2, "g4": 0.2, "g5": 0.2},
+                "experts": 1,
+                "consensus": False,
+                "resultStructure": "sorting@1",
+            },
+        ),
         TWO_TUPLE_GREECE_SCENARIO_ID: (
             generate_two_tuple_greece,
             {
@@ -346,15 +361,19 @@ def generate(
                 {"owner_alias": "owner"}
                 if scenario_id in {TOPSIS_2TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_SCENARIO_ID, TWO_TUPLE_GREECE_VIDEO_SCENARIO_ID}
                 else (
-                    {
-                        "owner_alias": owner_alias,
-                        "expert_a_alias": expert_a_alias,
-                        "expert_b_alias": expert_b_alias,
-                        "expert_c_alias": expert_c_alias,
-                        "expert_d_alias": expert_d_alias,
-                    }
-                    if scenario_id == TOPSIS_SORT_2016_RICH_SCENARIO_ID
-                    else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+                    {"owner_alias": owner_alias, "expert_alias": expert_a_alias}
+                    if scenario_id == TOPSIS_SORT_2016_TEHRAN_SCENARIO_ID
+                    else (
+                        {
+                            "owner_alias": owner_alias,
+                            "expert_a_alias": expert_a_alias,
+                            "expert_b_alias": expert_b_alias,
+                            "expert_c_alias": expert_c_alias,
+                            "expert_d_alias": expert_d_alias,
+                        }
+                        if scenario_id == TOPSIS_SORT_2016_RICH_SCENARIO_ID
+                        else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+                    )
                 )
             )
             result = selected[0](sessions, ManifestStore(settings.manifest_file), **kwargs)
@@ -372,7 +391,28 @@ def generate(
             "manifest": result.manifest_path,
             **(
                 {"assignments": result.assignments_by_alternative_name}
-                if scenario_id in {TOPSIS_SORT_2016_SCENARIO_ID, TOPSIS_SORT_2016_RICH_SCENARIO_ID}
+                if scenario_id in {TOPSIS_SORT_2016_SCENARIO_ID, TOPSIS_SORT_2016_RICH_SCENARIO_ID, TOPSIS_SORT_2016_TEHRAN_SCENARIO_ID}
+                else {}
+            ),
+            **(
+                {
+                    "maxTable3AbsoluteDifference": result.max_table_3_absolute_difference,
+                    "maxTable4DistanceAbsoluteDifference": result.max_table_4_distance_absolute_difference,
+                    "maxTable4ClosenessAbsoluteDifference": result.max_table_4_closeness_absolute_difference,
+                }
+                if scenario_id == TOPSIS_SORT_2016_TEHRAN_SCENARIO_ID
+                else {}
+            ),
+            **(
+                {
+                    "expressionDomain": {
+                        "name": result.expression_domain_name,
+                        "typeKey": "numericContinuous",
+                        "range": result.expression_domain_range,
+                        "createdForThisGeneration": result.expression_domain_created,
+                    }
+                }
+                if scenario_id == TOPSIS_SORT_2016_TEHRAN_SCENARIO_ID
                 else {}
             ),
             **({"collectiveCriteriaWeights": result.collective_weights_by_criterion_name} if scenario_id == TOPSIS_SORT_2016_RICH_SCENARIO_ID else {}),
