@@ -91,6 +91,26 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     ]);
   });
 
+  it("updates the boundary header immediately when a category is renamed and preserves its profile values", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const categoryName = screen.getByRole("textbox", { name: "Category 2" });
+    await user.clear(categoryName);
+    await user.type(categoryName, "Balanced & preferred");
+
+    expect(await screen.findByRole("columnheader", { name: "A → Balanced & preferred" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", {
+      name: "Quality reference in Balanced & preferred → C",
+    })).toHaveValue(5);
+
+    const saved = JSON.parse(screen.getByTestId("parameter-values").textContent);
+    expect(saved.categories.find((category) => category.label === "Balanced & preferred"))
+      .toMatchObject({ categoryId: "b", order: 1 });
+    expect(saved.boundaryProfiles.profiles.find((profile) => profile.categoryId === "b"))
+      .toMatchObject({ profileId: "profile-b", valuesByCriterionId: { "quality-id": 2 } });
+  });
+
   it("does not present required blank boundary settings as valid defaults", () => {
     render(
       <ModelParameters

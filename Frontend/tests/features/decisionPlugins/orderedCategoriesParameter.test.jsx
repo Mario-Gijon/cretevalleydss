@@ -83,6 +83,18 @@ describe("orderedCategories model-parameter plugin", () => {
     expect(screen.getByRole("list").textContent).not.toMatch(/profileId|categoryId|[0-9a-f]{8}-[0-9a-f-]{27}/i);
   });
 
+  it("retains an accessible keyboard-sortable handle alongside button reordering", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+    const handle = screen.getByRole("button", { name: "Drag category 2 to reorder" });
+    expect(handle).toHaveAttribute("tabindex", "0");
+    expect(handle).toHaveAttribute("aria-roledescription", "sortable");
+    expect(screen.getByRole("button", { name: "Move category 2 up" })).toBeEnabled();
+  });
+
   it("keeps stored categories readable without exposing IDs or zero-based order", () => {
     const ReadOnly = PARAMETER_FIELD_REGISTRY.orderedCategories.ReadOnlyComponent;
     render(<ReadOnly value={[

@@ -47,24 +47,72 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
   return (
     <Stack
       ref={setNodeRef}
-      direction={{ xs: "column", sm: "row" }}
-      spacing={{ xs: 0.25, sm: 0.5 }}
-      alignItems={{ xs: "stretch", sm: "center" }}
+      direction="row"
+      spacing={0.45}
+      alignItems="center"
       sx={(theme) => ({
         minWidth: 0,
-        px: 0.25,
-        py: 0.3,
+        minHeight: 42,
+        px: 0.15,
+        py: 0.2,
         borderBottom: 1,
-        borderColor: alpha(theme.palette.divider, 0.55),
+        borderColor: alpha(theme.palette.divider, 0.4),
         bgcolor: isDragging ? alpha(theme.palette.secondary.main, 0.12) : "transparent",
         transform: CSS.Transform.toString(transform),
         transition,
+        "&:hover": { bgcolor: isDragging ? alpha(theme.palette.secondary.main, 0.12) : alpha(theme.palette.common.white, 0.018) },
       })}
       role="listitem"
       data-testid={`ordered-category-${index + 1}`}
     >
-      <Stack direction="row" alignItems="center" spacing={{ xs: 0.2, sm: 0.45 }} sx={{ minWidth: 0, flex: 1 }}>
-        {!disabled ? (
+      <Typography
+        aria-label={`Preference order ${index + 1}`}
+        variant="caption"
+        sx={{ flexShrink: 0, width: 20, textAlign: "center", color: "text.secondary", fontWeight: 700 }}
+      >
+        {index + 1}
+      </Typography>
+      <TextField
+        size="small"
+        fullWidth
+        sx={{ flex: 1, minWidth: 0, "& .MuiInputBase-root": { minHeight: 34 }, "& .MuiInputBase-input": { py: 0.5 } }}
+        placeholder={`Category ${index + 1}`}
+        value={category.label}
+        onChange={(event) => onLabelChange(category.categoryId, event.target.value)}
+        disabled={disabled}
+        color="secondary"
+        error={showError && !category.label.trim()}
+        helperText={showError && !category.label.trim() ? "Enter a category name." : undefined}
+        inputProps={{ "aria-label": `Category ${index + 1}` }}
+      />
+      {!disabled ? (
+        <Stack direction="row" spacing={0.05} alignItems="center" sx={{ flexShrink: 0 }}>
+          <Tooltip title={`Move category ${index + 1} up`}>
+            <span>
+              <IconButton
+                size="small"
+                aria-label={`Move category ${index + 1} up`}
+                disabled={index === 0}
+                onClick={() => onMove(index, index - 1)}
+                sx={{ width: 26, height: 28, p: 0.35, color: "text.secondary", opacity: 0.78 }}
+              >
+                <KeyboardArrowUpRoundedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={`Move category ${index + 1} down`}>
+            <span>
+              <IconButton
+                size="small"
+                aria-label={`Move category ${index + 1} down`}
+                disabled={index === total - 1}
+                onClick={() => onMove(index, index + 1)}
+                sx={{ width: 26, height: 28, p: 0.35, color: "text.secondary", opacity: 0.78 }}
+              >
+                <KeyboardArrowDownRoundedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
           <Tooltip title={`Drag ${category.label || `category ${index + 1}`} to reorder`}>
             <IconButton
               ref={setActivatorNodeRef}
@@ -73,9 +121,9 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
               {...attributes}
               {...listeners}
               sx={{
-                width: 30,
-                height: 30,
-                p: 0.5,
+                width: 26,
+                height: 28,
+                p: 0.35,
                 color: "text.secondary",
                 cursor: isDragging ? "grabbing" : "grab",
                 touchAction: "none",
@@ -84,84 +132,12 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
               <DragIndicatorRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-        ) : null}
-        <Typography
-          aria-label={`Preference order ${index + 1}`}
-          sx={{
-            flexShrink: 0,
-            width: 24,
-            textAlign: "center",
-            fontWeight: 700,
-            color: "text.secondary",
-          }}
-        >
-          {index + 1}
-        </Typography>
-        <TextField
-          size="small"
-          fullWidth
-          sx={{ flex: 1, minWidth: 0, "& .MuiInputBase-input": { py: 0.7 } }}
-          placeholder={`Category ${index + 1}`}
-          value={category.label}
-          onChange={(event) => onLabelChange(category.categoryId, event.target.value)}
-          disabled={disabled}
-          color="secondary"
-          error={showError && !category.label.trim()}
-          helperText={showError && !category.label.trim() ? "Enter a category name." : undefined}
-          inputProps={{ "aria-label": `Category ${index + 1}` }}
-        />
-      </Stack>
-      {!disabled ? (
-        <Stack
-          direction="row"
-          spacing={0}
-          justifyContent="flex-end"
-          sx={{ flexShrink: 0, alignSelf: { xs: "flex-end", sm: "auto" } }}
-        >
-          <Tooltip title="Move category up">
-            <span>
-              <IconButton
-                size="small"
-                aria-label={`Move category ${index + 1} up`}
-                disabled={index === 0}
-                onClick={() => onMove(index, index - 1)}
-                sx={{
-                  width: 30,
-                  height: 30,
-                  p: 0.5,
-                  color: "text.secondary",
-                  "&.Mui-disabled": { opacity: 0.3 },
-                }}
-              >
-                <KeyboardArrowUpRoundedIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Move category down">
-            <span>
-              <IconButton
-                size="small"
-                aria-label={`Move category ${index + 1} down`}
-                disabled={index === total - 1}
-                onClick={() => onMove(index, index + 1)}
-                sx={{
-                  width: 30,
-                  height: 30,
-                  p: 0.5,
-                  color: "text.secondary",
-                  "&.Mui-disabled": { opacity: 0.3 },
-                }}
-              >
-                <KeyboardArrowDownRoundedIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Remove category">
+          <Tooltip title={`Remove category ${index + 1}`}>
             <IconButton
               size="small"
               aria-label={`Remove category ${index + 1}`}
               onClick={() => onRemove(category.categoryId)}
-              sx={{ width: 30, height: 30, p: 0.5, color: "text.secondary" }}
+              sx={{ width: 26, height: 28, p: 0.35, color: "text.secondary" }}
             >
               <DeleteOutlineRoundedIcon fontSize="small" />
             </IconButton>

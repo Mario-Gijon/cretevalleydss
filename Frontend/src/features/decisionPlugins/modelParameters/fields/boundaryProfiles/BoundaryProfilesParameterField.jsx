@@ -22,7 +22,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import { alpha } from "@mui/material/styles";
 import { getParameterValueByStructureKey } from "../../../../modelParameters/context";
 import { decisionMatrixSurface } from "../../../shared/styles/decisionMatrixSurface.styles.js";
@@ -39,7 +39,15 @@ const getCategories = (parameterContext) => {
   const categories = getParameterValueByStructureKey(parameterContext, "orderedCategories");
   return Array.isArray(categories) ? categories : [];
 };
-const boundaryName = (lower, upper) => `${lower?.label?.trim() || "Category"} → ${upper?.label?.trim() || "Category"}`;
+const categoryDisplayName = (category, categories) => {
+  const label = category?.label?.trim() || "Category";
+  const duplicateCount = categories.filter((item) => item?.label?.trim() === label).length;
+  if (duplicateCount < 2) return label;
+  const position = categories.findIndex((item) => item?.categoryId === category?.categoryId) + 1;
+  return `${label} (${position})`;
+};
+const boundaryName = (lower, upper, categories) =>
+  `${categoryDisplayName(lower, categories)} → ${categoryDisplayName(upper, categories)}`;
 const valueFor = (profile, criterionId) => {
   const value = profile?.valuesByCriterionId?.[criterionId];
   return value === null || value === undefined ? "" : String(value);
@@ -127,17 +135,19 @@ const BoundaryValueField = ({
       sx={{
         minWidth: { xs: 96, md: 105 },
         "& .MuiInputBase-input": { py: 0.65 },
-        "& .MuiFormHelperText-root": { mx: 0, minWidth: 160 },
-        "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: "transparent",
-        },
-        "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-          borderColor: "secondary.main",
-          borderWidth: 1,
-        },
-        "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
-          borderColor: "error.main",
-          borderWidth: 1,
+        "& .MuiFormHelperText-root": { mx: 0, maxWidth: "100%", overflowWrap: "anywhere", lineHeight: 1.25 },
+        "& .MuiOutlinedInput-root": {
+          minHeight: 36,
+          bgcolor: decisionMatrixSurface.inputBackground,
+          "& .MuiOutlinedInput-notchedOutline": { border: decisionMatrixSurface.inputBorder },
+          "&:hover .MuiOutlinedInput-notchedOutline": { border: decisionMatrixSurface.inputHoverBorder },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "secondary.main", borderWidth: 1 },
+          "&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "error.main",
+            borderWidth: 1,
+          },
+          "&.Mui-disabled": { bgcolor: "rgba(255,255,255,0.01)" },
+          "&.Mui-disabled .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.08)" },
         },
       }}
     />
@@ -147,6 +157,7 @@ const BoundaryValueField = ({
 const BoundaryTable = ({
   criteria,
   boundaries,
+  categories,
   selectedBoundary,
   isMobileViewport,
   parameter,
@@ -158,6 +169,8 @@ const BoundaryTable = ({
   onValueChange,
   onTouch,
 }) => {
+  const criterionColumnWidth = isMobileViewport ? 130 : 190;
+  const boundaryColumnWidth = isMobileViewport ? 160 : 190;
 
   const renderRows = (activeBoundaries) => criteria.map((criterion, criterionIndex) => {
     const { setupIssue } = getRange(parameter, criterion, parameterContext);
@@ -180,9 +193,10 @@ const BoundaryTable = ({
             bgcolor: decisionMatrixSurface.headerBackground,
             borderRight: decisionMatrixSurface.cellBorder,
             borderBottom: decisionMatrixSurface.cellBorder,
-            minWidth: { xs: 115, md: 190 },
-            maxWidth: { xs: 150, md: 250 },
-            py: 0.55,
+            width: criterionColumnWidth,
+            minWidth: criterionColumnWidth,
+            maxWidth: criterionColumnWidth,
+            py: 0.5,
           })}
         >
           <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
@@ -207,8 +221,10 @@ const BoundaryTable = ({
             <TableCell
               key={boundary.upperCategory.categoryId}
               sx={() => ({
-                minWidth: { xs: 130, md: 165 },
-                py: 0.45,
+                width: boundaryColumnWidth,
+                minWidth: boundaryColumnWidth,
+                maxWidth: boundaryColumnWidth,
+                py: 0.4,
                 bgcolor: decisionMatrixSurface.cellBackground,
                 borderRight: decisionMatrixSurface.cellBorder,
                 borderBottom: decisionMatrixSurface.cellBorder,
@@ -219,7 +235,7 @@ const BoundaryTable = ({
                   profile={profile}
                   criterion={criterion}
                   criterionIndex={criterionIndex}
-                  boundary={boundaryName(boundary.lowerCategory, boundary.upperCategory)}
+                  boundary={boundaryName(boundary.lowerCategory, boundary.upperCategory, categories)}
                   parameter={parameter}
                   parameterContext={parameterContext}
                   touched={touched}
@@ -250,39 +266,66 @@ const BoundaryTable = ({
             bgcolor: decisionMatrixSurface.headerBackground,
             borderRight: decisionMatrixSurface.cellBorder,
             borderBottom: decisionMatrixSurface.cellBorder,
-            minWidth: { xs: 115, md: 190 },
-            py: 0.6,
+            width: criterionColumnWidth,
+            minWidth: criterionColumnWidth,
+            maxWidth: criterionColumnWidth,
+            py: 0.55,
           })}
         >
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>Criterion</Typography>
         </TableCell>
-        {activeBoundaries.map((boundary) => (
-          <TableCell
-            key={boundary.upperCategory.categoryId}
-            sx={() => ({
-              position: "sticky",
-              top: 0,
-              zIndex: 2,
-              bgcolor: decisionMatrixSurface.headerBackground,
-              borderRight: decisionMatrixSurface.cellBorder,
-              borderBottom: decisionMatrixSurface.cellBorder,
-              minWidth: { xs: 130, md: 145 },
-              py: 0.6,
-            })}
-          >
-            <Typography variant="caption" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
-              {isMobileViewport ? "Reference value" : boundaryName(boundary.lowerCategory, boundary.upperCategory)}
-            </Typography>
-            {showValidation && boundary.profile ? issues
-              .filter((issue) => issue.profileId === boundary.profile.profileId && issue.kind !== "field" && !issue.criterionId)
-              .slice(0, 1)
-              .map((issue) => (
-                <Typography key={issue.message} variant="caption" color="error" display="block" role="alert">
-                  {issue.message}
+        {activeBoundaries.map((boundary) => {
+          const label = boundaryName(boundary.lowerCategory, boundary.upperCategory, categories);
+          return (
+            <TableCell
+              key={boundary.upperCategory.categoryId}
+              scope="col"
+              aria-label={label}
+              sx={() => ({
+                position: "sticky",
+                top: 0,
+                zIndex: 2,
+                bgcolor: decisionMatrixSurface.headerBackground,
+                borderRight: decisionMatrixSurface.cellBorder,
+                borderBottom: decisionMatrixSurface.cellBorder,
+                width: boundaryColumnWidth,
+                minWidth: boundaryColumnWidth,
+                maxWidth: boundaryColumnWidth,
+                py: 0.55,
+              })}
+            >
+              {isMobileViewport ? (
+                <Typography
+                  variant="caption"
+                  aria-label={label}
+                  sx={{ display: "block", fontWeight: 700, whiteSpace: "normal", overflowWrap: "anywhere" }}
+                >
+                  {label}
                 </Typography>
-              )) : null}
-          </TableCell>
-        ))}
+              ) : (
+                <Tooltip title={label} placement="top" enterDelay={350}>
+                  <Typography
+                    component="span"
+                    tabIndex={0}
+                    aria-label={label}
+                    variant="caption"
+                    sx={{ display: "block", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 700 }}
+                  >
+                    {label}
+                  </Typography>
+                </Tooltip>
+              )}
+              {showValidation && boundary.profile ? issues
+                .filter((issue) => issue.profileId === boundary.profile.profileId && issue.kind !== "field" && !issue.criterionId)
+                .slice(0, 1)
+                .map((issue) => (
+                  <Typography key={issue.message} variant="caption" color="error" display="block" role="alert">
+                    {issue.message}
+                  </Typography>
+                )) : null}
+            </TableCell>
+          );
+        })}
       </TableRow>
     </TableHead>
   );
@@ -292,6 +335,7 @@ const BoundaryTable = ({
       sx={(theme) => ({
         width: "100%",
         minWidth: 0,
+        maxWidth: "100%",
         maxHeight: { xs: 440, md: 520 },
         overflow: "auto",
         bgcolor: decisionMatrixSurface.cellBackground,
@@ -306,14 +350,24 @@ const BoundaryTable = ({
         },
       })}
     >
-      <Table size="small" stickyHeader aria-label="Classification reference values">
+      <Table
+        size="small"
+        stickyHeader
+        aria-label="Classification reference values"
+        sx={{
+          tableLayout: "fixed",
+          width: "100%",
+          minWidth: criterionColumnWidth + boundaryColumnWidth * activeBoundaries.length,
+        }}
+      >
         {renderHeader(activeBoundaries)}
         <TableBody>{renderRows(activeBoundaries)}</TableBody>
       </Table>
     </TableContainer>
   );
 
-  return renderTable(isMobileViewport && selectedBoundary ? [selectedBoundary] : boundaries);
+  const activeBoundaries = isMobileViewport && selectedBoundary ? [selectedBoundary] : boundaries;
+  return renderTable(activeBoundaries);
 };
 
 export const BoundaryProfilesParameterField = ({ parameter, value, onChange, error = "", disabled = false, parameterContext, showValidation = false }) => {
@@ -396,24 +450,33 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
 
   return (
     <Stack spacing={0.65} sx={{ minWidth: 0 }}>
-      <Stack direction="row" alignItems="center" spacing={0.5}>
-        <Typography variant="body2" sx={{ fontWeight: 700 }}>Classification references</Typography>
-        <Tooltip title="Each column is one complete reference between adjacent categories. Discrete criteria can use values between domain steps.">
-          <IconButton size="small" aria-label="About classification references">
-            <InfoOutlinedIcon fontSize="inherit" />
-          </IconButton>
-        </Tooltip>
-        {hasOutdatedReferences && !disabled ? (
-          <Tooltip title="Remove references tied to categories or criteria that no longer exist">
-            <IconButton
-              size="small"
-              color="secondary"
-              aria-label="Review outdated classification references"
-              onClick={() => setConfirmOutdatedRemoval(true)}
-            >
-              <DeleteOutlineRoundedIcon fontSize="inherit" />
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        spacing={0.5}
+        sx={{ minWidth: 0 }}
+      >
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>Classification references</Typography>
+          <Tooltip title="Each column is one complete reference between adjacent categories. Discrete criteria can use values between domain steps.">
+            <IconButton size="small" aria-label="About classification references">
+              <InfoOutlinedIcon fontSize="inherit" />
             </IconButton>
           </Tooltip>
+        </Stack>
+        {hasOutdatedReferences && !disabled ? (
+          <Button
+            size="small"
+            color="secondary"
+            variant="text"
+            startIcon={<FactCheckOutlinedIcon fontSize="small" />}
+            aria-label="Review outdated references"
+            onClick={() => setConfirmOutdatedRemoval(true)}
+            sx={{ alignSelf: { xs: "flex-start", sm: "center" }, whiteSpace: "nowrap" }}
+          >
+            Review outdated references
+          </Button>
         ) : null}
       </Stack>
 
@@ -425,23 +488,33 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
       ) : null}
 
       {boundaries.length > 1 ? (
-        <FormControl size="small" sx={{ display: { xs: "block", md: "none" }, maxWidth: "100%" }}>
+        <FormControl size="small" sx={{ display: { xs: "block", md: "none" }, width: "100%", minWidth: 0 }}>
           <Select
             value={selectedBoundary?.upperCategory?.categoryId || ""}
             onChange={(event) => setSelectedBoundaryCategoryId(event.target.value)}
             color="secondary"
             inputProps={{ "aria-label": "Classification reference" }}
+            sx={{
+              "& .MuiSelect-select": { minWidth: 0, whiteSpace: "normal", overflowWrap: "anywhere", py: 0.8 },
+            }}
+            MenuProps={{
+              PaperProps: { sx: { maxWidth: "calc(100vw - 32px)" } },
+            }}
           >
             {boundaries.map((boundary) => (
-              <MenuItem key={boundary.upperCategory.categoryId} value={boundary.upperCategory.categoryId}>
-                {boundaryName(boundary.lowerCategory, boundary.upperCategory)}
+              <MenuItem
+                key={boundary.upperCategory.categoryId}
+                value={boundary.upperCategory.categoryId}
+                sx={{ whiteSpace: "normal", overflowWrap: "anywhere" }}
+              >
+                {boundaryName(boundary.lowerCategory, boundary.upperCategory, categories)}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
       ) : boundaries.length === 1 ? (
         <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "block", md: "none" } }}>
-          {boundaryName(boundaries[0].lowerCategory, boundaries[0].upperCategory)}
+          {boundaryName(boundaries[0].lowerCategory, boundaries[0].upperCategory, categories)}
         </Typography>
       ) : null}
 
@@ -449,6 +522,7 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
         <BoundaryTable
           criteria={leafCriteria}
           boundaries={boundaries}
+          categories={categories}
           selectedBoundary={selectedBoundary}
           isMobileViewport={isMobileViewport}
           parameter={parameter}

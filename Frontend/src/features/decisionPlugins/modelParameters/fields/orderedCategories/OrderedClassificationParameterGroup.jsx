@@ -1,4 +1,5 @@
-import { Stack } from "@mui/material";
+import { Divider, Stack } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import OrderedCategoriesParameterField from "./OrderedCategoriesParameterField.jsx";
 import BoundaryProfilesParameterField from "../boundaryProfiles/BoundaryProfilesParameterField.jsx";
 
@@ -18,7 +19,7 @@ export const OrderedClassificationParameterGroup = ({
   if (!categoriesParameter || !profilesParameter) return null;
 
   return (
-    <Stack spacing={1.5} sx={{ minWidth: 0 }}>
+    <Stack spacing={1} sx={{ minWidth: 0 }}>
       <OrderedCategoriesParameterField
         parameter={categoriesParameter}
         value={valuesByParameterKey[categoriesParameter.key]}
@@ -28,6 +29,7 @@ export const OrderedClassificationParameterGroup = ({
         showValidation={showValidation}
         inspectDependencyChange={(nextValue) => inspectDependencyChange(categoriesParameter, nextValue)}
       />
+      <Divider sx={(theme) => ({ borderColor: alpha(theme.palette.divider, 0.45) })} />
       <BoundaryProfilesParameterField
         parameter={profilesParameter}
         value={valuesByParameterKey[profilesParameter.key]}

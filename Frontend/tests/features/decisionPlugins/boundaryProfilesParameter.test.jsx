@@ -186,6 +186,56 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(table.parentElement).toHaveStyle({ overflow: "auto" });
   });
 
+  it("keeps real custom category names in bounded headers, including duplicates and special characters", async () => {
+    const user = userEvent.setup();
+    const customCategories = [
+      { categoryId: "risk-low", label: "Riesgo <moderado> & control", order: 0 },
+      { categoryId: "duplicate-a", label: "Medium", order: 1 },
+      { categoryId: "duplicate-b", label: "Medium", order: 2 },
+      { categoryId: "risk-high", label: "Riesgo crítico con un nombre deliberadamente muy largo para probar el ancho", order: 3 },
+    ];
+    render(<BoundaryFieldHarness categoryValues={customCategories} />);
+
+    const firstHeader = await screen.findByRole("columnheader", { name: "Riesgo <moderado> & control → Medium (2)" });
+    const nextDuplicateHeader = screen.getByRole("columnheader", { name: "Medium (2) → Medium (3)" });
+    const longHeaderName = "Medium (3) → Riesgo crítico con un nombre deliberadamente muy largo para probar el ancho";
+    const longHeader = screen.getByRole("columnheader", { name: longHeaderName });
+
+    expect(firstHeader).toBeInTheDocument();
+    expect(nextDuplicateHeader).toBeInTheDocument();
+    expect(longHeader).toBeInTheDocument();
+    expect(longHeader).toHaveStyle({ maxWidth: "190px" });
+    const longHeaderText = within(longHeader).getByText(longHeaderName);
+    expect(longHeaderText).toHaveStyle({ overflow: "hidden", textOverflow: "ellipsis" });
+    expect(longHeaderText).toHaveAttribute("aria-label", longHeaderName);
+    await user.hover(longHeaderText);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(longHeaderName);
+    expect(longHeader.textContent).not.toMatch(/categoryId|profileId|[0-9a-f]{8}-[0-9a-f-]{27}/i);
+  });
+
+  it("supports large category and criterion configurations with a contained scroll area", async () => {
+    const manyCategories = Array.from({ length: 8 }, (_, index) => ({
+      categoryId: "category-" + (index + 1),
+      label: "Custom level " + (index + 1),
+      order: index,
+    }));
+    const manyCriteria = Array.from({ length: 18 }, (_, index) => ({
+      id: "criterion-" + (index + 1),
+      name: "Criterion " + (index + 1),
+      type: index % 2 ? "cost" : "benefit",
+    }));
+    render(<BoundaryFieldHarness categoryValues={manyCategories} criteria={manyCriteria} />);
+
+    const table = await screen.findByRole("table", { name: "Classification reference values" });
+    expect(within(table).getAllByRole("row")).toHaveLength(19);
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(8);
+    expect(within(table).getAllByRole("spinbutton")).toHaveLength(18 * 7);
+    expect(within(table).getByRole("spinbutton", {
+      name: "Criterion 18 reference in Custom level 7 → Custom level 8",
+    })).toBeInTheDocument();
+    expect(table.parentElement).toHaveStyle({ overflow: "auto" });
+  });
+
   it("shows one shared reference at a time on mobile", async () => {
     vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
       matches: query.includes("max-width"),
@@ -205,6 +255,37 @@ describe("boundaryProfiles model-parameter plugin", () => {
     await user.click(await screen.findByRole("option", { name: "Medium → High" }));
     expect(screen.getByRole("spinbutton", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
     expect(screen.queryByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).not.toBeInTheDocument();
+  });
+
+  it("keeps full custom labels available in the mobile boundary selector", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    const customCategories = [
+      { categoryId: "start", label: "Riesgo crítico con etiqueta larga", order: 0 },
+      { categoryId: "middle", label: "Riesgo moderado & estable", order: 1 },
+      { categoryId: "end", label: "Riesgo bajo con etiqueta igualmente larga", order: 2 },
+    ];
+    const user = userEvent.setup();
+    render(<BoundaryFieldHarness categoryValues={customCategories} />);
+
+    await user.click(await screen.findByRole("combobox", { name: "Classification reference" }));
+    expect(await screen.findByRole("option", {
+      name: "Riesgo crítico con etiqueta larga → Riesgo moderado & estable",
+    })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", {
+      name: "Riesgo moderado & estable → Riesgo bajo con etiqueta igualmente larga",
+    }));
+    expect(screen.getByRole("spinbutton", {
+      name: "Renewables reference in Riesgo moderado & estable → Riesgo bajo con etiqueta igualmente larga",
+    })).toBeInTheDocument();
   });
 
   it("leaves empty cells blank without a persistent missing-value count", async () => {
@@ -235,6 +316,9 @@ describe("boundaryProfiles model-parameter plugin", () => {
       headerBackground: "#0c0c0c",
       cellBackground: "#11111128",
       cellBorder: "1px solid rgba(255,255,255,0.075)",
+      inputBackground: "rgba(255,255,255,0.035)",
+      inputBorder: "1px solid rgba(255,255,255,0.18)",
+      inputHoverBorder: "1px solid rgba(255,255,255,0.32)",
     });
     expect(evaluationMatrixCellBackground).toBe("#11111128");
     const styles = buildEvaluationMatrixDataGridSx({ palette: { common: { white: "#fff" }, text: { primary: "#fff", disabled: "#777" } } });
@@ -276,7 +360,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
     });
   });
 
-  it("shows a compact confirmed resolver only for obsolete references and preserves active values", async () => {
+  it("shows a contextual confirmed resolver only for obsolete references and preserves active values", async () => {
     const user = userEvent.setup();
     const initialBoundaries = {
       profiles: [
@@ -288,14 +372,14 @@ describe("boundaryProfiles model-parameter plugin", () => {
 
     expect(screen.queryByText(/saved values for|saved reference|remove saved value/i)).not.toBeInTheDocument();
     expect(screen.getByRole("table").textContent).not.toMatch(/retired-criterion|removed-category|removed-profile/);
-    await user.click(screen.getByRole("button", { name: "Review outdated classification references" }));
+    await user.click(screen.getByRole("button", { name: "Review outdated references" }));
     expect(screen.getByRole("dialog", { name: "Remove outdated references?" })).toBeInTheDocument();
     expect(screen.getByText(/duplicate references will be deleted.*remaining references will be kept/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Keep references" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles).toHaveLength(2);
-    await user.click(screen.getByRole("button", { name: "Review outdated classification references" }));
+    await user.click(screen.getByRole("button", { name: "Review outdated references" }));
     await user.click(screen.getByRole("button", { name: "Remove outdated references" }));
 
     await waitFor(() => {
@@ -305,7 +389,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
         valuesByCriterionId: { "benefit-id": 4 },
       }]);
     });
-    expect(screen.queryByRole("button", { name: "Review outdated classification references" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review outdated references" })).not.toBeInTheDocument();
   });
 
   it("validates missing profiles, missing values, nonnumeric values and domain ranges", () => {
