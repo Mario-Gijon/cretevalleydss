@@ -344,7 +344,7 @@ const BoundaryTable = ({
         "& tbody .MuiTableRow-root:hover .MuiTableCell-root": {
           bgcolor: decisionMatrixSurface.cellBackground,
         },
-        "& tbody .MuiTableCell-root:first-of-type": {
+        "& tbody .MuiTableRow-root > th[scope='row']": {
           bgcolor: decisionMatrixSurface.headerBackground,
           fontWeight: 800,
         },

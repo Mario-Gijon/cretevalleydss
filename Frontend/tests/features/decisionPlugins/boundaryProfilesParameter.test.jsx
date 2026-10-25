@@ -176,6 +176,30 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(screen.getByRole("spinbutton", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
   });
 
+  it("keeps the criterion header distinct and gives every reference column the same background", async () => {
+    for (const categoryCount of [2, 3, 5]) {
+      const categoryValues = Array.from({ length: categoryCount }, (_, index) => ({
+        categoryId: `level-${index + 1}`,
+        label: `Level ${index + 1}`,
+        order: index,
+      }));
+      const { unmount } = render(<BoundaryFieldHarness categoryValues={categoryValues} />);
+      const table = await screen.findByRole("table", { name: "Classification reference values" });
+      const firstRow = table.querySelector("tbody tr");
+      const criterionCell = firstRow.querySelector("th[scope='row']");
+      const referenceCells = [...firstRow.querySelectorAll("td")];
+      const criterionBackground = window.getComputedStyle(criterionCell).backgroundColor;
+      const referenceBackgrounds = referenceCells.map((cell) => window.getComputedStyle(cell).backgroundColor);
+
+      expect(referenceCells).toHaveLength(categoryCount - 1);
+      expect(criterionBackground).not.toBe(referenceBackgrounds[0]);
+      expect(new Set(referenceBackgrounds).size).toBe(1);
+      expect(criterionBackground).toBe("rgb(12, 12, 12)");
+      expect(referenceBackgrounds[0]).not.toBe("rgb(12, 12, 12)");
+      unmount();
+    }
+  });
+
   it("keeps six criteria in a scrollable classification matrix", async () => {
     render(<BoundaryFieldHarness multipleBoundaries criteriaCount={6} />);
     const table = await screen.findByRole("table", { name: "Classification reference values" });
@@ -255,6 +279,29 @@ describe("boundaryProfiles model-parameter plugin", () => {
     await user.click(await screen.findByRole("option", { name: "Medium → High" }));
     expect(screen.getByRole("spinbutton", { name: "Renewables reference in Medium → High" })).toBeInTheDocument();
     expect(screen.queryByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).not.toBeInTheDocument();
+  });
+
+  it("preserves the distinct criterion and reference backgrounds in the mobile table", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    render(<BoundaryFieldHarness multipleBoundaries />);
+
+    const table = await screen.findByRole("table", { name: "Classification reference values" });
+    const firstRow = table.querySelector("tbody tr");
+    const criterionCell = firstRow.querySelector("th[scope='row']");
+    const referenceCells = firstRow.querySelectorAll("td");
+
+    expect(screen.getByRole("combobox", { name: "Classification reference" })).toBeInTheDocument();
+    expect(referenceCells).toHaveLength(1);
+    expect(window.getComputedStyle(criterionCell).backgroundColor).not.toBe(window.getComputedStyle(referenceCells[0]).backgroundColor);
   });
 
   it("keeps full custom labels available in the mobile boundary selector", async () => {
