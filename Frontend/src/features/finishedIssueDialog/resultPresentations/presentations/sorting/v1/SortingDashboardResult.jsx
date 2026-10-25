@@ -12,6 +12,7 @@ const isValidCloseness = (value) => typeof value === "number"
   && Number.isFinite(value)
   && value >= 0
   && value <= 1;
+const toScalePercent = (value) => `${Number((value * 100).toPrecision(12))}%`;
 
 const CategoryHeader = ({ category, theme, compact = false }) => (
   <Stack direction="row" spacing={0.8} alignItems={compact ? "center" : "flex-start"} justifyContent="space-between" sx={{ minWidth: 0, mb: compact ? 0.8 : 1 }}>
@@ -30,7 +31,75 @@ const CategoryHeader = ({ category, theme, compact = false }) => (
   </Stack>
 );
 
-const TopsisSortAlternativeRow = ({ alternative, theme }) => {
+const formatClosenessInterval = (interval) => {
+  if (!interval) return null;
+  if (interval.lower === null && isValidCloseness(interval.upper)) {
+    return `Closeness < ${interval.upper.toFixed(4)}`;
+  }
+  if (isValidCloseness(interval.lower) && interval.upper === null) {
+    return `Closeness > ${interval.lower.toFixed(4)}`;
+  }
+  if (isValidCloseness(interval.lower) && isValidCloseness(interval.upper)) {
+    return `${interval.lower.toFixed(4)} < Closeness < ${interval.upper.toFixed(4)}`;
+  }
+  return null;
+};
+
+const TopsisSortAlternativeScale = ({ alternative, interval, theme }) => (
+  <Box
+    data-testid="topsis-sort-closeness-scale"
+    data-closeness={alternative.closeness}
+    aria-hidden="true"
+    sx={{ position: "relative", height: 12, mx: 0.45, overflow: "visible" }}
+  >
+    <Box
+      sx={{
+        position: "absolute",
+        top: "50%",
+        left: 0,
+        right: 0,
+        height: "1px",
+        transform: "translateY(-50%)",
+        bgcolor: alpha(theme.palette.secondary.main, 0.34),
+      }}
+    />
+    {[interval?.lower, interval?.upper]
+      .filter(isValidCloseness)
+      .map((boundary) => (
+        <Box
+          key={boundary}
+          data-testid="topsis-sort-boundary-marker"
+          data-boundary-value={boundary}
+          aria-hidden="true"
+          style={{ left: toScalePercent(boundary) }}
+          sx={{
+            position: "absolute",
+            top: 1,
+            height: 10,
+            borderLeft: `1px dashed ${alpha(theme.palette.text.secondary, 0.8)}`,
+            transform: "translateX(-50%)",
+          }}
+        />
+      ))}
+    <Box
+      data-testid="topsis-sort-closeness-point"
+      data-closeness-value={alternative.closeness}
+      aria-hidden="true"
+      style={{ left: toScalePercent(alternative.closeness) }}
+      sx={{
+        position: "absolute",
+        top: "50%",
+        width: 7,
+        height: 7,
+        borderRadius: "50%",
+        bgcolor: "secondary.main",
+        transform: "translate(-50%, -50%)",
+      }}
+    />
+  </Box>
+);
+
+const TopsisSortAlternativeRow = ({ alternative, interval, theme }) => {
   const closeness = isValidCloseness(alternative.closeness) ? alternative.closeness : null;
   const closenessLabel = closeness === null ? null : closeness.toFixed(4);
   const accessibleLabel = closenessLabel
@@ -67,23 +136,7 @@ const TopsisSortAlternativeRow = ({ alternative, theme }) => {
           </Typography>
         )}
       </Box>
-      {closeness !== null && (
-        <Box
-          role="meter"
-          aria-label="Relative closeness"
-          aria-valuemin={0}
-          aria-valuemax={1}
-          aria-valuenow={closeness}
-          sx={{ height: 6, width: "100%", overflow: "hidden", borderRadius: 99, bgcolor: alpha(theme.palette.common.black, 0.38) }}
-        >
-          <Box
-            data-testid="topsis-sort-closeness-fill"
-            aria-hidden="true"
-            style={{ width: `${closeness * 100}%` }}
-            sx={{ height: "100%", borderRadius: 99, bgcolor: "secondary.main", transition: "width 180ms ease" }}
-          />
-        </Box>
-      )}
+      {closeness !== null && <TopsisSortAlternativeScale alternative={{ ...alternative, closeness }} interval={interval} theme={theme} />}
     </Box>
   );
 };
@@ -119,10 +172,20 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
           <Typography variant="subtitle1" title={category.label} sx={{ mb: 0.75, minWidth: 0, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>
             {category.label}
           </Typography>
+          {formatClosenessInterval(category.closenessInterval) && (
+            <Typography
+              variant="caption"
+              aria-label="Closeness interval"
+              data-testid="topsis-sort-closeness-interval"
+              sx={{ display: "block", mb: 0.8, color: "text.secondary", fontVariantNumeric: "tabular-nums", lineHeight: 1.3 }}
+            >
+              {formatClosenessInterval(category.closenessInterval)}
+            </Typography>
+          )}
           {alternatives.length ? (
             <Box component="ul" aria-label={`${category.label} alternatives`} data-testid="topsis-sort-category-body" sx={{ ...topsisSortCategoryBodySx, listStyle: "none", p: 0, m: 0 }}>
               {alternatives.map((alternative) => (
-                <TopsisSortAlternativeRow key={alternative.id} alternative={alternative} theme={theme} />
+                <TopsisSortAlternativeRow key={alternative.id} alternative={alternative} interval={category.closenessInterval} theme={theme} />
               ))}
             </Box>
           ) : (

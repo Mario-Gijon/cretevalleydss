@@ -119,43 +119,28 @@ const readClosestBoundaries = (result, execution) => {
 };
 
 /**
- * Build category-relative display positions from validated TOPSIS-Sort evidence.
- * The outer category extents use the closeness coefficient's defined [0, 1] scale;
- * no missing category profile is fabricated.
+ * Return the strict closeness interval for each category only when the
+ * selected execution has complete, ordered profile evidence consistent with
+ * its stored assignments. Missing or stale diagnostics produce no intervals.
  */
-export const buildTopsisSortCategoryPositions = (result, execution) => {
+export const buildTopsisSortCategoryIntervals = (result, execution) => {
   const evidence = readTopsisSortBoundaryEvidence(result, execution);
   if (!evidence) return null;
-  const { alternatives, categoriesByOrder, profiles } = evidence;
+
+  const { categoriesByOrder, profiles } = evidence;
   const profileByCategoryOrder = new Map(profiles.map((profile) => [profile.categoryOrder, profile]));
   const highestOrder = categoriesByOrder.at(-1)?.order;
   if (!Number.isInteger(highestOrder)) return null;
 
-  const positionsByAlternativeId = new Map();
-  for (const { alternative, category, value } of alternatives) {
-    const lowerBoundary = category.order === 0 ? 0 : profileByCategoryOrder.get(category.order)?.value;
-    const upperBoundary = category.order === highestOrder ? 1 : profileByCategoryOrder.get(category.order + 1)?.value;
-    if (!Number.isFinite(lowerBoundary) || !Number.isFinite(upperBoundary) || upperBoundary <= lowerBoundary) return null;
-    const position = (value - lowerBoundary) / (upperBoundary - lowerBoundary);
-    if (!Number.isFinite(position) || position < 0 || position > 1) return null;
-    const centered = areNumericallyTied(position, 0.5);
-
-    let proximity;
-    if (category.order === 0) {
-      proximity = position > 0.5 && !centered ? "Closer to higher category" : "Centered in this category";
-    } else if (category.order === highestOrder) {
-      proximity = position < 0.5 && !centered ? "Closer to lower category" : "Centered in this category";
-    } else if (centered) {
-      proximity = "Centered in this category";
-    } else if (position < 0.5) {
-      proximity = "Closer to lower category";
-    } else {
-      proximity = "Closer to higher category";
-    }
-
-    positionsByAlternativeId.set(alternative.id, { closeness: value, position, proximity });
-  }
-  return positionsByAlternativeId;
+  return new Map(categoriesByOrder.map((category) => {
+    const lower = category.order === 0 ? null : profileByCategoryOrder.get(category.order);
+    const upper = category.order === highestOrder ? null : profileByCategoryOrder.get(category.order + 1);
+    if ((category.order > 0 && !lower) || (category.order < highestOrder && !upper)) return [category.id, null];
+    return [category.id, {
+      lower: lower?.value ?? null,
+      upper: upper?.value ?? null,
+    }];
+  }));
 };
 
 const joinNatural = (items) => {

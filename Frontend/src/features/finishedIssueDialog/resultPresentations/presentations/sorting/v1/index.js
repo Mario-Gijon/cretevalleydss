@@ -2,7 +2,7 @@ import SortingDashboardResult from "./SortingDashboardResult.jsx";
 import SortingFinishedIssueCardSummary from "./SortingFinishedIssueCardSummary.jsx";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import {
-  buildTopsisSortCategoryPositions,
+  buildTopsisSortCategoryIntervals,
   buildTopsisSort2016Findings,
   isTopsisSort2016Execution,
 } from "../../../modelFindings/topsis_sort_2016.js";
@@ -67,20 +67,18 @@ const normalizeSortingDashboardResult = ({ execution, alternatives }) => {
   const topsisSort = isTopsisSort2016Execution(execution);
   if (topsisSort) {
     const closenessByAlternativeId = execution?.standardizedOutput?.diagnostics?.closeness_by_alternative_id;
-    const relativePositions = buildTopsisSortCategoryPositions({ categories, assignmentCount: assignedIds.size }, execution);
+    const categoryIntervals = buildTopsisSortCategoryIntervals({ categories, assignmentCount: assignedIds.size }, execution);
     const closenessFor = (alternativeId) => {
       const value = closenessByAlternativeId?.[alternativeId];
       return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
     };
     for (const category of categories) {
+      category.closenessInterval = categoryIntervals?.get(category.id) ?? null;
       category.alternatives = category.alternatives
         .map((alternative) => {
-          const relative = relativePositions?.get(alternative.id);
           return {
             ...alternative,
-            closeness: relative?.closeness ?? closenessFor(alternative.id),
-            relativePosition: relative?.position ?? null,
-            proximity: relative?.proximity ?? null,
+            closeness: closenessFor(alternative.id),
           };
         });
     }
