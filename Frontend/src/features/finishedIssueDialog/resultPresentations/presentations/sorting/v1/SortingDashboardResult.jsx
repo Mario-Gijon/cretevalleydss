@@ -1,7 +1,12 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
-import { sortingResultGridSx } from "./sortingResultGrid.styles.js";
+import {
+  sortingResultGridSx,
+  topsisSortCategoryBodySx,
+  topsisSortCategoryCardSx,
+  topsisSortResultGridSx,
+} from "./sortingResultGrid.styles.js";
 
 const CategoryHeader = ({ category, theme, compact = false }) => (
   <Stack direction="row" spacing={0.8} alignItems={compact ? "center" : "flex-start"} justifyContent="space-between" sx={{ minWidth: 0, mb: compact ? 0.8 : 1 }}>
@@ -38,15 +43,15 @@ const TopsisSortAlternativeRow = ({ alternative, theme }) => {
         gridTemplateColumns: "minmax(0, 1fr) auto",
         alignItems: "center",
         columnGap: 1,
-        rowGap: 0.55,
+        rowGap: 0.35,
         minWidth: 0,
-        px: 0.8,
-        py: 0.7,
+        px: 0.7,
+        py: 0.45,
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.42)}`,
         "&:last-of-type": { borderBottom: 0 },
       }}
     >
-      <Typography variant="body2" title={alternative.name} sx={{ minWidth: 0, fontWeight: 550, overflowWrap: "anywhere", lineHeight: 1.35 }}>
+      <Typography variant="body2" title={alternative.name} sx={{ minWidth: 0, fontWeight: 550, overflowWrap: "anywhere", lineHeight: 1.25 }}>
         {alternative.name}
       </Typography>
       <Typography
@@ -64,7 +69,7 @@ const TopsisSortAlternativeRow = ({ alternative, theme }) => {
           sx={{
             gridColumn: "1 / -1",
             position: "relative",
-            height: 7,
+            height: 5,
             borderRadius: 99,
             bgcolor: alpha(theme.palette.secondary.main, 0.18),
             overflow: "visible",
@@ -75,8 +80,8 @@ const TopsisSortAlternativeRow = ({ alternative, theme }) => {
               position: "absolute",
               top: "50%",
               left: `${position * 100}%`,
-              width: 9,
-              height: 9,
+              width: 8,
+              height: 8,
               borderRadius: "50%",
               bgcolor: "secondary.light",
               border: `2px solid ${theme.palette.background.paper}`,
@@ -94,10 +99,10 @@ const TopsisSortAlternativeRow = ({ alternative, theme }) => {
             gridColumn: "1 / -1",
             justifySelf: "start",
             maxWidth: "100%",
-            height: "auto",
+            height: 20,
             color: "text.secondary",
-            bgcolor: alpha(theme.palette.secondary.main, 0.12),
-            "& .MuiChip-label": { display: "block", whiteSpace: "normal", py: 0.2, lineHeight: 1.3 },
+            bgcolor: alpha(theme.palette.secondary.main, 0.08),
+            "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem", lineHeight: 1.1, whiteSpace: "nowrap" },
           }}
         />
       )}
@@ -106,7 +111,7 @@ const TopsisSortAlternativeRow = ({ alternative, theme }) => {
 };
 
 const TopsisSortDashboardResult = ({ result, theme }) => (
-  <Box role="list" aria-label="Final sorting by category" sx={sortingResultGridSx}>
+  <Box role="list" aria-label="Final sorting by category" sx={topsisSortResultGridSx}>
     {result.categories.map((category) => {
       const alternatives = [...category.alternatives].sort((left, right) => {
         const leftValue = left.relativePosition ?? left.closeness ?? Number.NEGATIVE_INFINITY;
@@ -119,8 +124,8 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
           role="listitem"
           aria-label={`${category.label}: ${alternatives.length} ${alternatives.length === 1 ? "alternative" : "alternatives"}`}
           sx={{
-            minWidth: 0,
-            p: { xs: 1.1, sm: 1.3 },
+            ...topsisSortCategoryCardSx,
+            p: { xs: 1, sm: 1.2 },
             borderRadius: 2,
             border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
             bgcolor: alpha(theme.palette.background.paper, 0.55),
@@ -128,15 +133,17 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
         >
           <CategoryHeader category={category} theme={theme} compact />
           {alternatives.length ? (
-            <Box component="ul" aria-label={`${category.label} alternatives`} sx={{ listStyle: "none", p: 0, m: 0 }}>
+            <Box component="ul" aria-label={`${category.label} alternatives`} data-testid="topsis-sort-category-body" sx={{ ...topsisSortCategoryBodySx, listStyle: "none", p: 0, m: 0 }}>
               {alternatives.map((alternative) => (
                 <TopsisSortAlternativeRow key={alternative.id} alternative={alternative} theme={theme} />
               ))}
             </Box>
           ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 0.8, py: 0.25 }}>
-              No alternatives in this category.
-            </Typography>
+            <Box sx={{ ...topsisSortCategoryBodySx, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Typography variant="caption" color="text.secondary" sx={{ px: 0.8, py: 0.25, textAlign: "center" }}>
+                No alternatives in this category.
+              </Typography>
+            </Box>
           )}
         </Box>
       );

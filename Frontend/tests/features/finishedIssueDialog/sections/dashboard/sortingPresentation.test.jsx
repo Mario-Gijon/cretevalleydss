@@ -4,7 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import DashboardView from "../../../../../src/features/finishedIssueDialog/sections/dashboard/components/DashboardView.jsx";
 import { buildDashboardData } from "../../../../../src/features/finishedIssueDialog/sections/dashboard/logic/buildFinishedIssueDashboardData.js";
-import { sortingResultGridSx } from "../../../../../src/features/finishedIssueDialog/resultPresentations/presentations/sorting/v1/sortingResultGrid.styles.js";
+import {
+  sortingResultGridSx,
+  topsisSortCategoryBodySx,
+  topsisSortCategoryCardSx,
+  topsisSortResultGridSx,
+} from "../../../../../src/features/finishedIssueDialog/resultPresentations/presentations/sorting/v1/sortingResultGrid.styles.js";
 import { selectFinishedIssueExecution } from "../../../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
 
 const alternatives = [
@@ -136,6 +141,39 @@ describe("sorting@1 Finished Issue presentation", () => {
       overflowY: "auto",
       overflowX: "hidden",
     });
+  });
+
+  it("keeps TOPSIS-Sort category cards equal-height and scrolls only their alternative lists", () => {
+    expect(topsisSortResultGridSx).toMatchObject({
+      alignItems: "stretch",
+    });
+    expect(topsisSortResultGridSx.gridTemplateColumns).toEqual({
+      xs: "minmax(0, 1fr)",
+      sm: "repeat(2, minmax(0, 1fr))",
+      xl: "repeat(3, minmax(0, 1fr))",
+    });
+    expect(topsisSortResultGridSx).not.toHaveProperty("maxHeight");
+    expect(topsisSortResultGridSx).not.toHaveProperty("overflowY");
+    expect(topsisSortCategoryCardSx).toMatchObject({
+      display: "flex",
+      flexDirection: "column",
+      height: { xs: 228, sm: 300, md: 320 },
+    });
+    expect(topsisSortCategoryCardSx.height.xs).toBeLessThan(topsisSortCategoryCardSx.height.md);
+    expect(topsisSortCategoryBodySx).toMatchObject({
+      flex: "1 1 auto",
+      minHeight: 0,
+      overflowY: "auto",
+      overflowX: "hidden",
+      scrollbarWidth: "thin",
+    });
+
+    renderTopsisDashboard();
+    const category = screen.getByRole("listitem", { name: "High: 1 alternative" });
+    const header = within(category).getByText("High").closest("div");
+    const body = within(category).getByTestId("topsis-sort-category-body");
+    expect(header.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(body).toContainElement(within(category).getByText("Premium option"));
   });
 
   it.each([
