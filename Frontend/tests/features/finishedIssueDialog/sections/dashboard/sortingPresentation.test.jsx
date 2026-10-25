@@ -111,6 +111,8 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(categoryCards[2]).toHaveAccessibleName("Repeated label: 0 alternatives");
     expect(within(categoryCards[2]).getByText("No alternatives assigned.")).toBeInTheDocument();
     expect(data.result.categories.map(({ id }) => id)).toEqual(["cat-top", "cat-high", "cat-low"]);
+    expect(data.result.displayMode).toBe("standard");
+    expect(screen.queryByText("0.7100")).not.toBeInTheDocument();
     expect(data.findings[0].items).toContain("Alternatives assigned to the highest-preference category (Preferred category): Alternative A, Alternative C.");
   });
 
@@ -174,6 +176,86 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.getByText("Budget option")).toBeInTheDocument();
     expect(screen.queryByText(/position|rank|score|winner/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/0\.01|closeness|distance|uncertainty|sensitivity/i)).not.toBeInTheDocument();
+  });
+
+  it("orders TOPSIS-Sort alternatives within an intermediate category by relative position and shows compact closeness cues", () => {
+    const execution = topsisExecution({
+      diagnostics: topsisDiagnostics({
+        closeness_by_alternative_id: { "mongo-a": 0.51, "mongo-b": 0.6, "mongo-c": 0.69 },
+      }),
+      assignments: topsisAlternatives.map(({ id }) => ({ alternativeId: id, categoryId: "cat-medium" })),
+    });
+    const data = renderTopsisDashboard(execution);
+    const category = screen.getByRole("listitem", { name: "Medium: 3 alternatives" });
+    const rows = within(category).getAllByRole("listitem");
+
+    expect(data.result.displayMode).toBe("topsis-sort");
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Budget option, Relative closeness 0.6900, Closer to higher category",
+      "Balanced option, Relative closeness 0.6000, Centered in this category",
+      "Premium option, Relative closeness 0.5100, Closer to lower category",
+    ]);
+    expect(within(category).getByRole("img", { name: "Position within category: 95%" })).toBeInTheDocument();
+    expect(within(category).getByText("0.6900")).toBeInTheDocument();
+    expect(within(category).getByText("Closer to higher category")).toBeInTheDocument();
+    expect(screen.queryByText(/rank/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("No alternatives in this category.")).toHaveLength(2);
+  });
+
+  it("uses only existing adjacent boundaries for the lowest and highest categories", () => {
+    const alternativesAtExtremes = [
+      ...topsisAlternatives,
+      { id: "mongo-d", name: "Top category option" },
+    ];
+    renderTopsisDashboard(topsisExecution({
+      diagnostics: topsisDiagnostics({
+        closeness_by_alternative_id: {
+          "mongo-a": 0.1,
+          "mongo-b": 0.35,
+          "mongo-c": 0.71,
+          "mongo-d": 0.95,
+        },
+      }),
+      assignments: [
+        { alternativeId: "mongo-a", categoryId: "cat-low" },
+        { alternativeId: "mongo-b", categoryId: "cat-low" },
+        { alternativeId: "mongo-c", categoryId: "cat-high" },
+        { alternativeId: "mongo-d", categoryId: "cat-high" },
+      ],
+    }), alternativesAtExtremes);
+    const lowest = screen.getByRole("listitem", { name: "Low: 2 alternatives" });
+    const highest = screen.getByRole("listitem", { name: "High: 2 alternatives" });
+
+    expect(within(lowest).getAllByRole("listitem").map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Balanced option, Relative closeness 0.3500, Closer to higher category",
+      "Premium option, Relative closeness 0.1000, Centered in this category",
+    ]);
+    expect(within(lowest).getByRole("img", { name: "Position within category: 70%" })).toBeInTheDocument();
+    expect(within(highest).getByRole("img", { name: "Position within category: 3%" })).toBeInTheDocument();
+    expect(within(highest).getByRole("img", { name: "Position within category: 83%" })).toBeInTheDocument();
+    expect(within(lowest).getByText("Closer to higher category")).toBeInTheDocument();
+    expect(within(lowest).getByText("Centered in this category")).toBeInTheDocument();
+    expect(within(highest).getByText("Closer to lower category")).toBeInTheDocument();
+    expect(within(highest).getByText("Centered in this category")).toBeInTheDocument();
+    expect(within(highest).queryByText(/higher category/)).not.toBeInTheDocument();
+  });
+
+  it("keeps category groups and closeness when boundary evidence is unavailable, but hides unreliable position cues", () => {
+    const data = renderTopsisDashboard(topsisExecution({
+      diagnostics: topsisDiagnostics({ closeness_by_profile_id: { "profile-medium": 0.7, "profile-high": 0.5 } }),
+      assignments: topsisAlternatives.map(({ id }) => ({ alternativeId: id, categoryId: "cat-medium" })),
+    }));
+    const category = screen.getByRole("listitem", { name: "Medium: 3 alternatives" });
+    const rows = within(category).getAllByRole("listitem");
+
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Premium option, Relative closeness 0.7100",
+      "Balanced option, Relative closeness 0.5400",
+      "Budget option, Relative closeness 0.2200",
+    ]);
+    expect(within(category).queryByRole("img", { name: /Position within category/ })).not.toBeInTheDocument();
+    expect(within(category).queryByText(/Closer to|Centered in this category/)).not.toBeInTheDocument();
+    expect(data.result.categories).toHaveLength(3);
   });
 
   it("uses the highest and lowest non-empty categories when an extreme category is empty", () => {
