@@ -1,9 +1,9 @@
 import { alpha } from "@mui/material/styles";
+import { decisionMatrixSurface } from "../../../shared/styles/decisionMatrixSurface.styles.js";
 
-const headerBg = "#0c0c0c";
-export const evaluationMatrixCellBackground = "#11111128";
+const { headerBackground: headerBg, cellBackground, cellBorder } = decisionMatrixSurface;
+export const evaluationMatrixCellBackground = cellBackground;
 const diagonalCellBg = "#000000";
-const cellBorder = "1px solid rgba(255,255,255,0.075)";
 
 export const evaluationMatrixInputBoundarySx = {
   "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline": {

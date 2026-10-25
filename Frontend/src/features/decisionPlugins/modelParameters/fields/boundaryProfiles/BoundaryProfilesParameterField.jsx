@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   IconButton,
   MenuItem,
@@ -18,8 +22,10 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { alpha } from "@mui/material/styles";
 import { getParameterValueByStructureKey } from "../../../../modelParameters/context";
+import { decisionMatrixSurface } from "../../../shared/styles/decisionMatrixSurface.styles.js";
 import {
   getBoundaryCriterionSetupIssue,
   getBoundaryProfilesValidationIssues,
@@ -122,6 +128,17 @@ const BoundaryValueField = ({
         minWidth: { xs: 96, md: 105 },
         "& .MuiInputBase-input": { py: 0.65 },
         "& .MuiFormHelperText-root": { mx: 0, minWidth: 160 },
+        "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+          borderColor: "transparent",
+        },
+        "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+          borderColor: "secondary.main",
+          borderWidth: 1,
+        },
+        "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
+          borderColor: "error.main",
+          borderWidth: 1,
+        },
       }}
     />
   );
@@ -155,13 +172,14 @@ const BoundaryTable = ({
         <TableCell
           component="th"
           scope="row"
-          sx={(theme) => ({
+          sx={() => ({
             position: "sticky",
             left: 0,
             zIndex: 1,
             // Keep the sticky criterion column opaque while the table scrolls.
-            bgcolor: theme.palette.background.default,
-            borderColor: alpha(theme.palette.divider, 0.6),
+            bgcolor: decisionMatrixSurface.headerBackground,
+            borderRight: decisionMatrixSurface.cellBorder,
+            borderBottom: decisionMatrixSurface.cellBorder,
             minWidth: { xs: 115, md: 190 },
             maxWidth: { xs: 150, md: 250 },
             py: 0.55,
@@ -188,10 +206,12 @@ const BoundaryTable = ({
           return (
             <TableCell
               key={boundary.upperCategory.categoryId}
-              sx={(theme) => ({
+              sx={() => ({
                 minWidth: { xs: 130, md: 165 },
                 py: 0.45,
-                borderColor: alpha(theme.palette.divider, 0.6),
+                bgcolor: decisionMatrixSurface.cellBackground,
+                borderRight: decisionMatrixSurface.cellBorder,
+                borderBottom: decisionMatrixSurface.cellBorder,
               })}
             >
               {profile ? (
@@ -222,14 +242,14 @@ const BoundaryTable = ({
     <TableHead>
       <TableRow>
         <TableCell
-          sx={(theme) => ({
+          sx={() => ({
             position: "sticky",
             top: 0,
             left: 0,
             zIndex: 3,
-            // Sticky headers use solid theme surfaces to prevent text bleed-through.
-            bgcolor: theme.palette.background.paper,
-            borderColor: alpha(theme.palette.secondary.main, 0.28),
+            bgcolor: decisionMatrixSurface.headerBackground,
+            borderRight: decisionMatrixSurface.cellBorder,
+            borderBottom: decisionMatrixSurface.cellBorder,
             minWidth: { xs: 115, md: 190 },
             py: 0.6,
           })}
@@ -239,12 +259,13 @@ const BoundaryTable = ({
         {activeBoundaries.map((boundary) => (
           <TableCell
             key={boundary.upperCategory.categoryId}
-            sx={(theme) => ({
+            sx={() => ({
               position: "sticky",
               top: 0,
               zIndex: 2,
-              bgcolor: theme.palette.background.paper,
-              borderColor: alpha(theme.palette.secondary.main, 0.28),
+              bgcolor: decisionMatrixSurface.headerBackground,
+              borderRight: decisionMatrixSurface.cellBorder,
+              borderBottom: decisionMatrixSurface.cellBorder,
               minWidth: { xs: 130, md: 145 },
               py: 0.6,
             })}
@@ -273,11 +294,16 @@ const BoundaryTable = ({
         minWidth: 0,
         maxHeight: { xs: 440, md: 520 },
         overflow: "auto",
-        bgcolor: theme.palette.background.default,
-        border: 1,
-        borderColor: alpha(theme.palette.divider, 0.65),
+        bgcolor: decisionMatrixSurface.cellBackground,
+        border: `1px solid ${alpha(theme.palette.common.white, 0.075)}`,
         borderRadius: 1,
-        "& .MuiTableCell-root": { borderColor: alpha(theme.palette.divider, 0.55) },
+        "& tbody .MuiTableRow-root:hover .MuiTableCell-root": {
+          bgcolor: decisionMatrixSurface.cellBackground,
+        },
+        "& tbody .MuiTableCell-root:first-of-type": {
+          bgcolor: decisionMatrixSurface.headerBackground,
+          fontWeight: 800,
+        },
       })}
     >
       <Table size="small" stickyHeader aria-label="Classification reference values">
@@ -296,6 +322,7 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
   const normalized = useMemo(() => normalizeBoundaryProfilesValue(parameter, value), [parameter, value]);
   const [touchedCells, setTouchedCells] = useState(() => new Set());
   const [selectedBoundaryCategoryId, setSelectedBoundaryCategoryId] = useState("");
+  const [confirmOutdatedRemoval, setConfirmOutdatedRemoval] = useState(false);
   const isMobileViewport = useMediaQuery("(max-width:899.95px)");
   const categoryIdsKey = categories.map((category) => category?.categoryId || "").join("\u001f");
   const criterionIdsKey = leafCriteria.map((criterion) => criterion?.id || "").join("\u001f");
@@ -329,10 +356,10 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
     boundary.upperCategory?.categoryId === selectedBoundaryCategoryId
   ) || boundaries[0] || null;
 
-  const missingValues = boundaries.reduce((count, boundary) => count + leafCriteria.filter((criterion) => {
-    const raw = boundary.profile?.valuesByCriterionId?.[criterion.id];
-    return raw === "" || raw === null || raw === undefined;
-  }).length, 0);
+  const liveCriterionIds = new Set(leafCriteria.map((criterion) => criterion.id));
+  const staleCriterionValueCount = normalized.profiles.reduce((count, profile) =>
+    count + Object.keys(profile.valuesByCriterionId || {}).filter((id) => !liveCriterionIds.has(id)).length, 0);
+  const hasOutdatedReferences = staleProfiles.length > 0 || staleCriterionValueCount > 0;
   const touchCell = (profileId, criterionId) => setTouchedCells((previous) => {
     const next = new Set(previous);
     next.add(`${profileId}:${criterionId}`);
@@ -345,14 +372,27 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
     }
     onChange(updateProfileValue(normalized.profiles, profileId, criterionId, nextValue));
   };
-  const removeProfile = (profileId) => onChange({
-    profiles: normalized.profiles.filter((profile) => profile.profileId !== profileId),
-  });
-  const removeStaleCriterionValue = (profileId, criterionId) =>
-    onChange(removeProfileValue(normalized.profiles, profileId, criterionId));
+  const removeOutdatedReferences = () => {
+    const retainedCategoryIds = new Set();
+    const profiles = normalized.profiles
+      .filter((profile) => {
+        if (!expectedCategoryIds.has(profile.categoryId) || retainedCategoryIds.has(profile.categoryId)) return false;
+        retainedCategoryIds.add(profile.categoryId);
+        return true;
+      })
+      .map((profile) => ({
+        ...profile,
+        valuesByCriterionId: Object.fromEntries(
+          Object.entries(profile.valuesByCriterionId || {}).filter(([criterionId]) => liveCriterionIds.has(criterionId))
+        ),
+      }));
+    onChange({ profiles });
+    setConfirmOutdatedRemoval(false);
+  };
   const profileOrderIssue = showValidation
     ? issues.find((issue) => issue.kind === "profile-order" || (issue.kind !== "field" && issue.kind !== "stale-profile" && issue.kind !== "stale-criterion" && !issue.criterionId))
     : null;
+  const hasFieldIssues = issues.some((issue) => issue.kind === "field");
 
   return (
     <Stack spacing={0.65} sx={{ minWidth: 0 }}>
@@ -363,6 +403,18 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
             <InfoOutlinedIcon fontSize="inherit" />
           </IconButton>
         </Tooltip>
+        {hasOutdatedReferences && !disabled ? (
+          <Tooltip title="Remove references tied to categories or criteria that no longer exist">
+            <IconButton
+              size="small"
+              color="secondary"
+              aria-label="Review outdated classification references"
+              onClick={() => setConfirmOutdatedRemoval(true)}
+            >
+              <DeleteOutlineRoundedIcon fontSize="inherit" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
       </Stack>
 
       {categories.length < 2 ? (
@@ -410,66 +462,38 @@ export const BoundaryProfilesParameterField = ({ parameter, value, onChange, err
         />
       ) : null}
 
-      {missingValues ? (
-        <Typography variant="caption" color="text.secondary" aria-live="polite">
-          {missingValues} value{missingValues === 1 ? "" : "s"} to enter
-        </Typography>
-      ) : null}
-
       {profileOrderIssue ? (
         <Typography variant="caption" color="error" role="alert">{profileOrderIssue.message}</Typography>
       ) : null}
 
-      {staleProfiles.length ? (
-        <Stack spacing={0.25}>
-          <Typography variant="caption" color="warning.main">
-            {staleProfiles.length} saved reference{staleProfiles.length === 1 ? " needs" : "s need"} review
-          </Typography>
-          {staleProfiles.map((profile, index) => (
-            <Stack key={profile.profileId || `stale-${index}`} direction="row" alignItems="center" spacing={0.5}>
-              <Typography variant="caption" color="text.secondary" sx={{ flex: 1, minWidth: 0 }}>
-                Saved values for {Object.entries(profile.valuesByCriterionId || {}).map(([criterionId, savedValue]) => {
-                  const criterion = leafCriteria.find((item) => item.id === criterionId);
-                  return `${criterion?.name || "removed criterion"}: ${savedValue === "" ? "blank" : savedValue}`;
-                }).join(" · ") || "an unmatched category"}
-              </Typography>
-              {!disabled ? (
-                <Button size="small" color="secondary" onClick={() => removeProfile(profile.profileId)}>
-                  Remove
-                </Button>
-              ) : null}
-            </Stack>
-          ))}
-        </Stack>
+      {showValidation && hasOutdatedReferences ? (
+        <Typography variant="caption" color="error" role="alert">
+          Review outdated references before continuing.
+        </Typography>
       ) : null}
 
-      {normalized.profiles.map((profile) => {
-        const staleIds = Object.keys(profile.valuesByCriterionId || {}).filter((criterionId) =>
-          !leafCriteria.some((criterion) => criterion.id === criterionId)
-        );
-        if (!staleIds.length) return null;
-        return (
-          <Stack key={`stale-values-${profile.profileId}`} direction="row" alignItems="center" spacing={0.5}>
-            <Typography variant="caption" color="warning.main" sx={{ flex: 1 }}>
-              {staleIds.length} saved value{staleIds.length === 1 ? "" : "s"} for removed criteria
-            </Typography>
-            {!disabled ? staleIds.map((criterionId) => (
-              <Button
-                key={criterionId}
-                size="small"
-                color="secondary"
-                onClick={() => removeStaleCriterionValue(profile.profileId, criterionId)}
-              >
-                Remove saved value
-              </Button>
-            )) : null}
-          </Stack>
-        );
-      })}
-
-      {showValidation && !missingValues && !staleProfiles.length && !profileOrderIssue && (error || validationError) ? (
+      {showValidation && !profileOrderIssue && !hasOutdatedReferences && !hasFieldIssues && (error || validationError) ? (
         <Typography variant="caption" color="error" role="alert">{error || validationError}</Typography>
       ) : null}
+
+      <Dialog
+        open={confirmOutdatedRemoval}
+        onClose={() => setConfirmOutdatedRemoval(false)}
+        aria-labelledby="outdated-classification-references-title"
+      >
+        <DialogTitle id="outdated-classification-references-title">Remove outdated references?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Removed categories, removed criteria, and duplicate references will be deleted. The remaining references will be kept.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="text" onClick={() => setConfirmOutdatedRemoval(false)}>Keep references</Button>
+          <Button variant="outlined" color="secondary" size="small" onClick={removeOutdatedReferences}>
+            Remove outdated references
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 };

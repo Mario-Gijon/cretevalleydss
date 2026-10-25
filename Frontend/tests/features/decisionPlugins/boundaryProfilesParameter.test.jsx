@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -12,6 +12,11 @@ import {
   reconcileBoundaryProfilesAfterCategoryChange,
   validateBoundaryProfilesValue,
 } from "../../../src/features/decisionPlugins/modelParameters/fields/boundaryProfiles/boundaryProfilesValues.js";
+import { decisionMatrixSurface } from "../../../src/features/decisionPlugins/shared/styles/decisionMatrixSurface.styles.js";
+import {
+  buildEvaluationMatrixDataGridSx,
+  evaluationMatrixCellBackground,
+} from "../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
 
 const modelParameters = [
   { key: "categories", parameterStructureKey: "orderedCategories" },
@@ -55,23 +60,44 @@ const value = {
 };
 const parameter = modelParameters[1];
 
-const BoundaryFieldHarness = ({ showValidation = false, multipleBoundaries = false, criteriaCount = 1 }) => {
-  const activeCategories = multipleBoundaries ? categories : [categories[0], categories[2]];
-  const leafCriteria = Array.from({ length: criteriaCount }, (_, index) => ({
+beforeEach(() => {
+  window.matchMedia = vi.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+});
+
+const BoundaryFieldHarness = ({
+  showValidation = false,
+  multipleBoundaries = false,
+  criteriaCount = 1,
+  categoryValues,
+  initialBoundaries = { profiles: [] },
+  criteria,
+  expressionDomainTypeKey = "numericContinuous",
+}) => {
+  const activeCategories = categoryValues || (multipleBoundaries ? categories : [categories[0], categories[2]]);
+  const leafCriteria = criteria || Array.from({ length: criteriaCount }, (_, index) => ({
     id: index === 0 ? "benefit-id" : `criterion-${index + 1}-id`,
     name: index === 0 ? "Renewables" : `Criterion ${index + 1}`,
     type: "benefit",
   }));
-  const [values, setValues] = useState({ categories: activeCategories, boundaries: { profiles: [] } });
+  const [values, setValues] = useState({ categories: activeCategories, boundaries: initialBoundaries });
   const context = useMemo(() => buildParameterContext({
     parameterDefinitions: modelParameters,
     parameterValues: values,
     leafCriteria,
     expressionDomains: [
-      { id: "domain-benefit", name: "Renewables scale", typeKey: "numericContinuous", definition: { min: 0, max: 10 } },
+      { id: "domain-benefit", name: "Renewables scale", typeKey: expressionDomainTypeKey, definition: { min: 0, max: 10 } },
     ],
     expressionDomainConfig: { mode: "global", globalDomainId: "domain-benefit" },
-  }), [leafCriteria, values]);
+  }), [expressionDomainTypeKey, leafCriteria, values]);
   const Field = PARAMETER_FIELD_REGISTRY.boundaryProfiles.FieldComponent;
   return (
     <>
@@ -135,6 +161,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(screen.getByRole("button", { name: "About classification references" })).toBeInTheDocument();
     expect(screen.getByText("Benefit · 0–10")).toBeInTheDocument();
     expect(screen.getByRole("table").textContent).not.toMatch(/profileId|categoryId|criterionId|[0-9a-f]{8}-[0-9a-f-]{27}/i);
+    expect(screen.queryByText(/values? to enter/i)).not.toBeInTheDocument();
     const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
     await user.type(input, "4.25");
     await waitFor(() => expect(screen.getByRole("spinbutton", { name: "Renewables reference in Low → High" })).toHaveValue(4.25));
@@ -156,6 +183,7 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(within(table).getByText("Criterion 6")).toBeInTheDocument();
     expect(within(table).getByText("Low → Medium")).toBeInTheDocument();
     expect(within(table).getByText("Medium → High")).toBeInTheDocument();
+    expect(table.parentElement).toHaveStyle({ overflow: "auto" });
   });
 
   it("shows one shared reference at a time on mobile", async () => {
@@ -179,11 +207,12 @@ describe("boundaryProfiles model-parameter plugin", () => {
     expect(screen.queryByRole("spinbutton", { name: "Renewables reference in Low → Medium" })).not.toBeInTheDocument();
   });
 
-  it("does not show red validation alerts before a user edits an incomplete profile", async () => {
+  it("leaves empty cells blank without a persistent missing-value count", async () => {
     render(<BoundaryFieldHarness />);
     await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(screen.getByText("1 value to enter")).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Renewables reference in Low → High" })).toHaveValue(null);
+    expect(screen.queryByText(/values? to enter/i)).not.toBeInTheDocument();
   });
 
   it("shows a field-level message after validation is explicitly requested", async () => {
@@ -191,6 +220,92 @@ describe("boundaryProfiles model-parameter plugin", () => {
     const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
     expect(input).toBeInvalid();
     expect(screen.getByText("Enter a value for Renewables in the Low → High boundary.")).toBeInTheDocument();
+  });
+
+  it("disables reference editing and explains unsupported expression domains", async () => {
+    render(<BoundaryFieldHarness expressionDomainTypeKey="boolean" />);
+    const input = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
+
+    expect(input).toBeDisabled();
+    expect(screen.getByText("Use a continuous or discrete numeric domain for Renewables.")).toBeInTheDocument();
+  });
+
+  it("uses the shared A×C matrix surface while leaving A×C styling unchanged", () => {
+    expect(decisionMatrixSurface).toEqual({
+      headerBackground: "#0c0c0c",
+      cellBackground: "#11111128",
+      cellBorder: "1px solid rgba(255,255,255,0.075)",
+    });
+    expect(evaluationMatrixCellBackground).toBe("#11111128");
+    const styles = buildEvaluationMatrixDataGridSx({ palette: { common: { white: "#fff" }, text: { primary: "#fff", disabled: "#777" } } });
+    expect(styles).toMatchObject({
+      backgroundColor: "#11111128",
+      "& .MuiDataGrid-columnHeaders": { backgroundColor: "#0c0c0c", borderBottom: "1px solid rgba(255,255,255,0.075)" },
+      "& .MuiDataGrid-cell": {
+        backgroundColor: "#11111128",
+        borderRight: "1px solid rgba(255,255,255,0.075)",
+        borderBottom: "1px solid rgba(255,255,255,0.075)",
+      },
+    });
+  });
+
+  it("associates edited cells with category IDs after the visual order changes", async () => {
+    const reorderedCategories = [categories[0], categories[2], categories[1]];
+    const initialBoundaries = {
+      profiles: [
+        { profileId: "medium-profile", categoryId: "medium", valuesByCriterionId: { "benefit-id": 5 } },
+        { profileId: "high-profile", categoryId: "high", valuesByCriterionId: { "benefit-id": 8 } },
+      ],
+    };
+    render(<BoundaryFieldHarness categoryValues={reorderedCategories} initialBoundaries={initialBoundaries} />);
+
+    const highBoundaryInput = await screen.findByRole("spinbutton", { name: "Renewables reference in Low → High" });
+    const mediumBoundaryInput = screen.getByRole("spinbutton", { name: "Renewables reference in High → Medium" });
+    expect(highBoundaryInput).toHaveValue(8);
+    expect(mediumBoundaryInput).toHaveValue(5);
+    expect(screen.getByRole("table").querySelector("tbody th")).toHaveStyle({ backgroundColor: decisionMatrixSurface.headerBackground });
+
+    await userEvent.clear(mediumBoundaryInput);
+    await userEvent.type(mediumBoundaryInput, "6");
+    await waitFor(() => {
+      const saved = JSON.parse(screen.getByTestId("boundary-values").textContent).profiles;
+      expect(saved.find((profile) => profile.profileId === "medium-profile").valuesByCriterionId["benefit-id"])
+        .toBe("6");
+      expect(saved.find((profile) => profile.profileId === "high-profile").valuesByCriterionId["benefit-id"])
+        .toBe(8);
+    });
+  });
+
+  it("shows a compact confirmed resolver only for obsolete references and preserves active values", async () => {
+    const user = userEvent.setup();
+    const initialBoundaries = {
+      profiles: [
+        { profileId: "active-profile", categoryId: "high", valuesByCriterionId: { "benefit-id": 4, "retired-criterion": 9 } },
+        { profileId: "removed-profile", categoryId: "removed-category", valuesByCriterionId: { "benefit-id": 7 } },
+      ],
+    };
+    render(<BoundaryFieldHarness initialBoundaries={initialBoundaries} />);
+
+    expect(screen.queryByText(/saved values for|saved reference|remove saved value/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("table").textContent).not.toMatch(/retired-criterion|removed-category|removed-profile/);
+    await user.click(screen.getByRole("button", { name: "Review outdated classification references" }));
+    expect(screen.getByRole("dialog", { name: "Remove outdated references?" })).toBeInTheDocument();
+    expect(screen.getByText(/duplicate references will be deleted.*remaining references will be kept/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Keep references" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Review outdated classification references" }));
+    await user.click(screen.getByRole("button", { name: "Remove outdated references" }));
+
+    await waitFor(() => {
+      expect(JSON.parse(screen.getByTestId("boundary-values").textContent).profiles).toEqual([{
+        profileId: "active-profile",
+        categoryId: "high",
+        valuesByCriterionId: { "benefit-id": 4 },
+      }]);
+    });
+    expect(screen.queryByRole("button", { name: "Review outdated classification references" })).not.toBeInTheDocument();
   });
 
   it("validates missing profiles, missing values, nonnumeric values and domain ranges", () => {
