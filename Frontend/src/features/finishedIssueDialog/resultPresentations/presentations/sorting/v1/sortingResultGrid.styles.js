@@ -14,30 +14,33 @@ export const sortingResultGridSx = Object.freeze({
   ...finishedIssueScrollbarSx,
 });
 
-/** TOPSIS-Sort keeps category cards at a consistent size and scrolls their contents. */
+/** TOPSIS-Sort cards follow their content and cap long alternative lists. */
 export const topsisSortResultGridSx = Object.freeze({
-  display: "grid",
-  gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
-  alignContent: "start",
-  alignItems: "stretch",
-  gap: 1,
+  columnCount: { xs: 1, md: 2 },
+  columnGap: 1,
+  columnFill: "balance",
   width: "100%",
   minWidth: 0,
   p: 0.2,
+  "& > [role='listitem']": {
+    display: "inline-block",
+    verticalAlign: "top",
+    width: "100%",
+    boxSizing: "border-box",
+    breakInside: "avoid",
+    mb: 1,
+  },
 });
 
 export const topsisSortCategoryCardSx = Object.freeze({
-  boxSizing: "border-box",
   display: "flex",
   flexDirection: "column",
   minWidth: 0,
-  minHeight: 0,
-  height: { xs: 228, sm: 300, md: 320 },
 });
 
 export const topsisSortCategoryBodySx = Object.freeze({
-  flex: "1 1 auto",
   minHeight: 0,
+  maxHeight: { xs: 220, md: 280 },
   overflowY: "auto",
   overflowX: "hidden",
   overscrollBehavior: "contain",
