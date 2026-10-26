@@ -1,13 +1,12 @@
-from copy import deepcopy
 import json
 import math
+from copy import deepcopy
 
 import pytest
-
 from models.topsis_sort_2016.analysis import analyze_issue
+from models.topsis_sort_2016.analysis.interpretation import build_interpretation
 from models.topsis_sort_2016.examples import TOPSIS_SORT_2016_REQUEST_EXAMPLES
 from models.topsis_sort_2016.executor import execute_topsis_sort_2016
-from models.topsis_sort_2016.analysis.interpretation import build_interpretation
 from schemas.model_requests import GenericModelExecutionRequest
 from services.results_analysis.contexts import build_model_issue_context
 from services.results_analysis.model_analysis import load_model_analysis_handlers
@@ -443,7 +442,8 @@ def test_weight_sensitivity_preserves_ratios_includes_exact_baseline_and_recompu
     assert changed_point["changedAssignments"]
     assert "Supplier A" in analysis["interpretation"]
     assert "**High** to **Middle**" in analysis["interpretation"]
-    assert "the tested scenario" in analysis["interpretation"]
+    assert "Each scenario changes the importance" in analysis["interpretation"]
+    assert "in the tested scenario" not in analysis["interpretation"]
 
 
 def test_analysis_visualizations_include_two_graphs_and_dynamic_alternative_and_profile_series():
@@ -733,6 +733,8 @@ def test_interpretation_groups_many_assignments_and_keeps_single_changes_clear()
 
     assert "three alternatives move from **Medium** to **Low**" in grouped
     assert "including **Alpha** and **Beta**" in grouped
+    assert "When **Purchase cost** increases" in grouped
+    assert "in the tested scenario" not in grouped
     assert "Alpha; Beta; Gamma" not in grouped
 
     one = _interpretation_facts(
@@ -770,7 +772,7 @@ def test_interpretation_keeps_distinct_category_transitions_in_the_same_scenario
     interpretation = build_interpretation(facts)
 
     assert "**Alpha** moves from **Medium** to **Low**" in interpretation
-    assert "while **Beta** moves from **High** to **Medium**" in interpretation
+    assert "Meanwhile, **Beta** moves from **High** to **Medium**" in interpretation
 
 
 def test_no_observed_changes_are_summarized_once_and_partial_invalid_samples_are_quiet():
@@ -783,6 +785,10 @@ def test_no_observed_changes_are_summarized_once_and_partial_invalid_samples_are
     complete_text = build_interpretation(complete)
     assert complete_text.count("No category changes were observed") == 1
     assert "valid weight variations examined" in complete_text
+    assert (
+        "Some tested weights could not produce a clear classification"
+        not in complete_text
+    )
     assert "Purchase cost" not in complete_text
 
     partial = _interpretation_facts(
@@ -820,6 +826,7 @@ def test_unavailable_and_partially_unavailable_sensitivity_use_short_explanation
     assert "only one criterion" in unavailable_text
     assert "Purchase cost" not in unavailable_text
     assert "independently" in unavailable_text
+    assert "could not produce a clear classification" not in unavailable_text
 
     partial = _interpretation_facts(
         [
@@ -959,7 +966,7 @@ def test_result_interpretation_handles_sparse_and_within_category_comparisons():
     )
     same_category["alternatives"][1]["closeness"] = 0.8
     relevant = build_interpretation(same_category)
-    assert "relative closeness values differ by 0.30" in relevant
+    assert "**B** has a higher relative closeness (0.80 compared with 0.50)" in relevant
     assert "ranking" not in relevant.lower()
 
     no_categories = _interpretation_facts()
@@ -972,6 +979,40 @@ def test_result_interpretation_handles_sparse_and_within_category_comparisons():
         not in no_empty_header
     )
     assert "### Result interpretation\n\nNo validated alternatives" in no_empty_header
+
+
+def test_result_comparison_names_the_higher_closeness_and_avoids_misleading_rounding():
+    facts = _interpretation_facts()
+    facts["alternatives"] = [
+        {
+            "alternativeId": "lower",
+            "name": "District 4",
+            "categoryId": "high",
+            "closeness": 0.713,
+        },
+        {
+            "alternativeId": "higher",
+            "name": "District 22",
+            "categoryId": "high",
+            "closeness": 0.844,
+        },
+    ]
+
+    interpretation = build_interpretation(facts)
+
+    assert (
+        "**District 4** and **District 22** were both classified as **High**, "
+        "although **District 22** has a higher relative closeness "
+        "(0.84 compared with 0.71)."
+    ) in interpretation
+    assert "probability" not in interpretation.lower()
+    assert "ranking" not in interpretation.lower()
+
+    facts["alternatives"][0]["closeness"] = 0.741
+    facts["alternatives"][1]["closeness"] = 0.749
+    close_interpretation = build_interpretation(facts)
+    assert "very similar relative closeness values" in close_interpretation
+    assert "0.74 compared with 0.75" not in close_interpretation
 
 
 def test_sensitivity_interpretation_uses_valid_points_not_summaries_or_item_flags():

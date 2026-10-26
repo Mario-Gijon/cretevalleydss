@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 import pytest
-
 from models.topsis_sort_2016.analysis.evidence import TopsisSort2016Evidence
 from models.topsis_sort_2016.analysis.interpretation import (
     _sensitivity_evidence,
@@ -227,4 +226,53 @@ def test_interpretation_does_not_treat_a_partial_boundary_scenario_as_a_change()
     assert all(candidate["variedWeight"] != 1.0 for candidate in candidates)
     assert indeterminate_count == 1
     interpretation = build_interpretation({"status": "available", **facts})
-    assert "Indeterminate samples do not support category conclusions" in interpretation
+    assert (
+        "Some tested weights could not produce a clear classification and were "
+        "excluded from these conclusions."
+    ) in interpretation
+
+
+def test_tehran_interpretation_names_closeness_and_uses_compact_sensitivity_language():
+    evidence, baseline_facts = _tehran_evidence()
+    sensitivity = build_sensitivity_facts(evidence, baseline_facts)
+    facts = {
+        "status": "available",
+        "criteria": evidence.criteria,
+        "categories": [
+            {
+                "categoryId": item["category_id"],
+                "label": item["label"],
+                "order": item["order"],
+            }
+            for item in evidence.categories
+        ],
+        "alternatives": baseline_facts["alternatives"],
+        "sensitivity": sensitivity,
+    }
+
+    interpretation = build_interpretation(facts)
+    sensitivity_text = interpretation.split(
+        "### Criterion weight sensitivity\n\n", 1
+    )[1]
+
+    assert "**District 04** and **District 22** were both classified as" in interpretation
+    assert "**District 22** has a higher relative closeness" in interpretation
+    assert "(0.84 compared with 0.71)" in interpretation
+    assert "Each scenario changes the importance" in sensitivity_text
+    assert "When **g1** increases from 20% to 25%" in sensitivity_text
+    assert "Meanwhile, **District 13** moves from **Suitable** to **High suitable**" in sensitivity_text
+    assert "When **g5** increases from 20% to 25%" in sensitivity_text
+    assert "When **g4** increases from 20% to 25%" in sensitivity_text
+    assert "District 10** changes category in two scenarios" in sensitivity_text
+    assert "Some tested weights could not produce a clear classification" in sensitivity_text
+    assert "in the tested scenario" not in sensitivity_text
+    assert sensitivity_text.count("exact switching points were not calculated") == 1
+
+    for item in sensitivity["items"]:
+        for point in item["points"]:
+            if point.get("classificationAvailable") is False:
+                point["numericAvailable"] = False
+    without_numeric_indeterminate = build_interpretation({"status": "available", **facts})
+    assert "Some tested weights could not produce a clear classification" not in (
+        without_numeric_indeterminate
+    )

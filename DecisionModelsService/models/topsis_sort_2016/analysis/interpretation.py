@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections import Counter
 import math
+from collections import Counter
 from typing import Any
-
 
 MAX_SENSITIVITY_OBSERVATIONS = 3
 MAX_TRANSITIONS_PER_OBSERVATION = 2
@@ -165,9 +164,10 @@ def _category_interpretation(facts: dict[str, Any]) -> list[str]:
     )
     return [
         (
-            f"Although {_bold(lowest_name)} and {_bold(highest_name)} both fall "
-            f"in {_bold(label)}, their relative closeness values differ by "
-            f"{spread:.2f}."
+            f"{_bold(lowest_name)} and {_bold(highest_name)} were both classified "
+            f"as {_bold(display_label)}, although {_bold(highest_name)} has a higher "
+            f"relative closeness ({float(highest['closeness']):.2f} compared "
+            f"with {float(lowest['closeness']):.2f})."
         )
     ]
 
@@ -567,14 +567,13 @@ def _observation_interpretation(
     before = candidate["configuredWeight"]
     after = candidate["variedWeight"]
     if after > before:
-        verb = "rises"
+        verb = "increases"
     elif after < before:
-        verb = "falls"
+        verb = "decreases"
     else:
-        verb = "is varied"
+        verb = "changes"
     opening = (
-        f"When the weight for {criterion_name} {verb} from {_percent(before)} "
-        f"to {_percent(after)}, "
+        f"When {criterion_name} {verb} from {_percent(before)} to {_percent(after)}, "
     )
     groups = _change_groups(candidate, facts)
     selected_groups = groups[:MAX_TRANSITIONS_PER_OBSERVATION]
@@ -585,13 +584,13 @@ def _observation_interpretation(
     if len(descriptions) == 1:
         changes_text = descriptions[0]
     elif len(descriptions) == 2:
-        changes_text = f"{descriptions[0]}, while {descriptions[1]}"
+        changes_text = f"{descriptions[0]}. Meanwhile, {descriptions[1]}"
     else:
         changes_text = "category assignments change"
     remaining = sum(len(group["changes"]) for group in groups[len(selected_groups) :])
     if remaining:
-        changes_text += f", plus {_count_word(remaining)} other category changes"
-    return opening + changes_text + " in the tested scenario."
+        changes_text += f", alongside {_count_word(remaining)} other category changes"
+    return opening + changes_text + "."
 
 
 def _repeated_alternative_interpretation(
@@ -633,8 +632,8 @@ def _repeated_alternative_interpretation(
     count = counts[first]
     name = display_names.get(first) or names_by_key.get(first) or "An alternative"
     return (
-        f"{_bold(name)} changed category in {_count_word(count)} of these tested "
-        "weight scenarios."
+        f"{_bold(name)} changes category in {_count_word(count)} scenarios; "
+        "its classification responds across multiple criteria."
     )
 
 
@@ -651,9 +650,7 @@ def _criterion_sensitivity_interpretation(facts: dict[str, Any]) -> list[str]:
         unchanged_count,
         redistribution_impossible,
         indeterminate_criterion_count,
-    ) = (
-        _sensitivity_evidence(facts)
-    )
+    ) = _sensitivity_evidence(facts)
     if not criteria:
         return [
             "There isn't enough information to assess how changing the criterion "
@@ -663,9 +660,9 @@ def _criterion_sensitivity_interpretation(facts: dict[str, Any]) -> list[str]:
         if assessed_count:
             if indeterminate_criterion_count:
                 text = (
-                    "No category changes were observed among tested weight variations "
-                    "with fully determined classifications. Indeterminate samples do "
-                    "not support category conclusions."
+                    "No category changes were observed among scenarios with clear "
+                    "classifications. Some tested weights could not produce a clear "
+                    "classification and were excluded from these conclusions."
                 )
             else:
                 text = (
@@ -676,19 +673,26 @@ def _criterion_sensitivity_interpretation(facts: dict[str, Any]) -> list[str]:
                 text += " Some criteria could not be assessed with sufficient evidence."
             return [text]
         if redistribution_impossible:
-            return [
+            paragraphs = [
                 "There isn't enough information to assess how changing the criterion "
                 "weights would affect the classifications because the remaining criteria "
                 "have no weight available for redistribution."
             ]
-        return [
-            "There isn't enough information to assess how changing the criterion "
-            "weights would affect the classifications."
-        ]
+        else:
+            paragraphs = [
+                "There isn't enough information to assess how changing the criterion "
+                "weights would affect the classifications."
+            ]
+        if indeterminate_criterion_count:
+            paragraphs.append(
+                "Some tested weights could not produce a clear classification and "
+                "were excluded from these conclusions."
+            )
+        return paragraphs
 
     paragraphs = [
-        "Each scenario varies one criterion's weight while proportionally adjusting "
-        "the others."
+        "Each scenario changes the importance of one criterion while adjusting the "
+        "others proportionally."
     ]
     paragraphs.extend(
         _observation_interpretation(candidate, facts) for candidate in candidates
@@ -702,7 +706,8 @@ def _criterion_sensitivity_interpretation(facts: dict[str, Any]) -> list[str]:
         )
     if indeterminate_criterion_count:
         paragraphs.append(
-            "Indeterminate samples do not support category conclusions."
+            "Some tested weights could not produce a clear classification and were "
+            "excluded from these conclusions."
         )
     if assessed_count < len(criteria):
         paragraphs.append(

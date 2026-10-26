@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = PROJECT_ROOT / "Automation/issue_scenario_lab/data/topsis_sort_2016_rich.json"
 HELPER_PATH = PROJECT_ROOT / "Automation/issue_scenario_lab/src/issue_scenario_lab/scenarios/topsis_sort_2016_rich_math.py"
@@ -39,7 +38,14 @@ def test_rich_scenario_reproduces_mcc_sorting_analysis_sensitivity_and_projectio
     assert "Purchase cost" in interpretation and "from 20% to 25%" in interpretation
     assert "Delivery time" in interpretation and "from 12.5% to 20%" in interpretation
     assert "Sustainability" in interpretation and "from 14.5% to 10%" in interpretation
-    assert "Evergreen Circular Supply** changed category in three" in interpretation
+    assert (
+        "Evergreen Circular Supply** changes category in three scenarios"
+        in interpretation
+    )
+    assert "Each scenario changes the importance" in interpretation
+    assert interpretation.count("Each scenario changes the importance") == 1
+    assert "its classification responds across multiple criteria" in interpretation
+    assert "in the tested scenario" not in interpretation
     assert "After-sales support" not in interpretation
     assert "the exact switching points were not calculated" in interpretation
     assert len(interpretation.split()) <= 160
