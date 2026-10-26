@@ -13,7 +13,7 @@ const TAB_LABELS = {
   overview: "Issue info",
   "results-analysis": "Analysis",
   evaluations: "Evaluations",
-  models: "Models",
+  models: "Executions",
 };
 
 const TAB_ICONS = {

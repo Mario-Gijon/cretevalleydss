@@ -55,7 +55,7 @@ describe("buildModelsPreview description normalization", () => {
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
   });
 
-  it("keeps Dashboard Models compact and never exposes raw parameter values", () => {
+  it("labels the Dashboard entry point as Executions and never exposes raw parameter values", () => {
     renderCard({
       selectedExecutionLabel: "Scenario A",
       selectedModelName: "TOPSIS",
@@ -64,6 +64,8 @@ describe("buildModelsPreview description normalization", () => {
       parameters: { weights: { "criterion-internal-id": 0.5 } },
     });
 
+    expect(screen.getByRole("heading", { name: "Executions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View executions" })).toBeInTheDocument();
     expect(screen.getByText("Selected execution")).toBeInTheDocument();
     expect(screen.getByText("Runs generated")).toBeInTheDocument();
     expect(screen.queryByText("Model parameters")).not.toBeInTheDocument();

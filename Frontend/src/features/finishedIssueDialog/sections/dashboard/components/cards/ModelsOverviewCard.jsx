@@ -13,7 +13,7 @@ const ModelInfoRow = ({ label, value, tone = "default", multiline = false }) => 
 
 const ModelsOverviewCard = ({ models, onViewModels }) => {
   const hasDescription = typeof models.selectedModelDescription === "string" && models.selectedModelDescription.trim();
-  return <DashboardPreviewCard icon={<ScienceRoundedIcon fontSize="small" />} title="Models" actionLabel="View models" onAction={onViewModels}>
+  return <DashboardPreviewCard icon={<ScienceRoundedIcon fontSize="small" />} title="Executions" actionLabel="View executions" onAction={onViewModels}>
     <DashboardInnerPanel sx={{ p: 0 }}>
       <ModelInfoRow label="Selected execution" value={models.selectedExecutionLabel || "Base"} tone="cyan" />
       <ModelInfoRow label="Model" value={models.selectedModelName || models.baseModelName || "—"} tone="cyan" />
