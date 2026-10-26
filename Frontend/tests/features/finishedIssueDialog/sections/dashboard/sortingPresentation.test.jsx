@@ -87,6 +87,23 @@ const topsisDiagnostics = (overrides = {}) => ({
   ...overrides,
 });
 
+const topsisScenarioForCounts = (counts, labels) => {
+  const categories = labels.map((label, order) => ({ categoryId: `scenario-category-${order}`, label, order }));
+  const alternativesForCategories = counts.map((count, categoryOrder) => Array.from({ length: count }, (_, index) => ({
+    id: `scenario-alternative-${categoryOrder}-${index}`,
+    name: `Scenario option ${categoryOrder}-${index}`,
+  })));
+  const evaluatedAlternatives = alternativesForCategories.flat();
+  const assignments = alternativesForCategories.flatMap((categoryAlternatives, categoryOrder) => categoryAlternatives.map(({ id }) => ({
+    alternativeId: id,
+    categoryId: categories[categoryOrder].categoryId,
+  })));
+  return {
+    execution: topsisExecution({ categories, assignments, diagnostics: undefined }),
+    alternatives: evaluatedAlternatives,
+  };
+};
+
 const renderTopsisDashboard = (
   execution = topsisExecution({ diagnostics: topsisDiagnostics() }),
   evaluatedAlternatives = topsisAlternatives,
@@ -207,19 +224,102 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(data.findings.map(({ title }) => title)).toEqual([
       "Most favorable classification",
       "Closest category boundary",
-      "Least favorable classification",
+      "Lowest assigned category",
     ]);
     expect(data.findings[0]).toMatchObject({ headline: "High" });
     expect(data.findings[0].text).toBe("Premium option received the most favorable classification in this evaluation, placing it in the High category.");
     expect(data.findings[1]).toMatchObject({ headline: "Medium / High" });
     expect(data.findings[1].text).toBe("Among the evaluated alternatives, Premium option was classified as High and is closest to the dividing line between Medium and High.");
     expect(data.findings[2]).toMatchObject({ headline: "Low" });
-    expect(data.findings[2].text).toBe("At the other end, Budget option was placed in the Low category, receiving the least favorable classification in this evaluation.");
+    expect(data.findings[2].text).toBe("Low is the lowest configured category and contains 1 alternative.");
     expect(screen.getByText("Premium option")).toBeInTheDocument();
     expect(screen.getByText("Balanced option")).toBeInTheDocument();
     expect(screen.getByText("Budget option")).toBeInTheDocument();
     expect(screen.queryByText(/position|rank|score|winner/i)).not.toBeInTheDocument();
     expect(data.findings.flatMap(({ title, text }) => `${title} ${text}`).join(" ")).not.toMatch(/0\.01|closeness|distance|uncertainty|sensitivity/i);
+  });
+
+  it("describes the lowest assigned Tehran category and the configured categories below it", () => {
+    const scenario = topsisScenarioForCounts(
+      [0, 0, 11, 9, 2],
+      ["Very low suitable", "Low suitable", "Moderately suitable", "Suitable", "High suitable"],
+    );
+    const data = renderTopsisDashboard(scenario.execution, scenario.alternatives);
+    const leastFinding = data.findings.at(-1);
+
+    expect(data.result.categories.map(({ label, alternatives: assigned }) => [label, assigned.length])).toEqual([
+      ["High suitable", 2],
+      ["Suitable", 9],
+      ["Moderately suitable", 11],
+      ["Low suitable", 0],
+      ["Very low suitable", 0],
+    ]);
+    expect(leastFinding).toMatchObject({
+      kind: "least_favorable_classification",
+      title: "Lowest assigned category",
+      headline: "Moderately suitable",
+      text: "Moderately suitable is the lowest category containing evaluated alternatives, with 11 alternatives assigned. No alternatives were assigned to the Low suitable and Very low suitable categories.",
+    });
+    expect(leastFinding.text).not.toMatch(/Scenario option|and others|district/i);
+  });
+
+  it("describes an occupied lowest configured category using its actual count", () => {
+    const scenario = topsisScenarioForCounts([4, 3, 2], ["Low", "Medium", "High"]);
+    const data = renderTopsisDashboard(scenario.execution, scenario.alternatives);
+
+    expect(data.findings.at(-1)).toMatchObject({
+      title: "Lowest assigned category",
+      headline: "Low",
+      text: "Low is the lowest configured category and contains 4 alternatives.",
+    });
+  });
+
+  it("uses singular grammar when one alternative is assigned to the lowest category", () => {
+    const scenario = topsisScenarioForCounts([1, 3, 2], ["Low", "Medium", "High"]);
+    const data = renderTopsisDashboard(scenario.execution, scenario.alternatives);
+
+    expect(data.findings.at(-1).text).toBe("Low is the lowest configured category and contains 1 alternative.");
+  });
+
+  it("mentions a small set of empty lower categories by their configured names", () => {
+    const scenario = topsisScenarioForCounts([0, 2, 1], ["Very low", "Low", "High"]);
+    const data = renderTopsisDashboard(scenario.execution, scenario.alternatives);
+
+    expect(data.findings.at(-1).text).toBe("Low is the lowest category containing evaluated alternatives, with 2 alternatives assigned. No alternatives were assigned to the Very low category.");
+  });
+
+  it("summarizes many empty lower categories without a long list", () => {
+    const labels = ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8"];
+    const scenario = topsisScenarioForCounts([0, 0, 0, 0, 0, 0, 2, 1], labels);
+    const data = renderTopsisDashboard(scenario.execution, scenario.alternatives);
+    const text = data.findings.at(-1).text;
+
+    expect(text).toBe("Class 7 is the lowest category containing evaluated alternatives, with 2 alternatives assigned. No alternatives were assigned to any of the 6 lower categories.");
+    expect(text).not.toContain("Class 1");
+    expect(text).not.toContain("Class 6");
+    expect(text).not.toContain("Scenario option");
+  });
+
+  it("counts empty lower categories by ID when their visible names are duplicated", () => {
+    const scenario = topsisScenarioForCounts([0, 0, 1, 3], ["Low", "Unassigned", "Low", "High"]);
+    const data = renderTopsisDashboard(scenario.execution, scenario.alternatives);
+
+    expect(data.findings.at(-1).text).toBe("Low is the lowest category containing an alternative, with 1 alternative assigned. No alternatives were assigned to any of the 2 lower categories.");
+  });
+
+  it("keeps the all-alternatives-in-one-category finding and handles one configured category", () => {
+    const oneCategoryScenario = topsisScenarioForCounts([2], ["Single class"]);
+    const data = renderTopsisDashboard(oneCategoryScenario.execution, oneCategoryScenario.alternatives);
+
+    expect(data.findings).toHaveLength(1);
+    expect(data.findings[0]).toMatchObject({
+      title: "Most favorable classification",
+      text: "All evaluated alternatives share the Single class category, so this evaluation does not establish category differences among them.",
+    });
+
+    const emptyScenario = topsisScenarioForCounts([0], ["Single class"]);
+    const emptyData = renderTopsisDashboard(emptyScenario.execution, emptyScenario.alternatives);
+    expect(emptyData.findings).toEqual([]);
   });
 
   it("shows position scales on a common 0-to-1 range without technical interval labels", () => {
@@ -456,7 +556,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(data.findings[0]).toMatchObject({ headline: "Medium" });
     expect(data.findings[0].text).toContain("Premium option received the most favorable classification");
     expect(data.findings[2]).toMatchObject({ headline: "Low" });
-    expect(data.findings[2].text).toContain("Balanced option and Budget option were placed in the Low category");
+    expect(data.findings[2].text).toBe("Low is the lowest configured category and contains 2 alternatives.");
   });
 
   it("uses one finding when every alternative shares one category", () => {
@@ -483,10 +583,10 @@ describe("sorting@1 Finished Issue presentation", () => {
     const data = renderTopsisDashboard(execution);
     expect(data.findings.map(({ title }) => title)).toEqual([
       "Most favorable classification",
-      "Least favorable classification",
+      "Lowest assigned category",
     ]);
     expect(data.findings[0].text).toContain("received the most favorable classification");
-    expect(data.findings[1].text).toContain("receiving the least favorable classification");
+    expect(data.findings[1].text).toContain("is the lowest configured category");
     expect(data.findings.some(({ title }) => title === "Closest category boundary")).toBe(false);
   });
 
@@ -571,8 +671,13 @@ describe("sorting@1 Finished Issue presentation", () => {
 
     const scenarioOutput = {
       ...output,
+      assignments: [
+        { alternativeId: "mongo-a", categoryId: "cat-high" },
+        { alternativeId: "mongo-b", categoryId: "cat-medium" },
+        { alternativeId: "mongo-c", categoryId: "cat-medium" },
+      ],
       diagnostics: {
-        closeness_by_alternative_id: { "mongo-a": 0.8, "mongo-b": 0.6, "mongo-c": 0.12 },
+        closeness_by_alternative_id: { "mongo-a": 0.8, "mongo-b": 0.6, "mongo-c": 0.49 },
         closeness_by_profile_id: { "profile-medium": 0.48, "profile-high": 0.75 },
       },
     };
@@ -596,6 +701,12 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(scenarioExecution.modelSpecificOutput.apiModelKey).toBe("topsis_sort_2016");
     const scenarioDashboard = buildDashboardData({ payload: scenarioPayload, selectedExecution: scenarioExecution });
     expect(scenarioDashboard.findings).toHaveLength(3);
+    expect(baseDashboard.findings.at(-1).text).toBe("Low is the lowest configured category and contains 1 alternative.");
+    expect(scenarioDashboard.findings.at(-1)).toMatchObject({
+      title: "Lowest assigned category",
+      headline: "Medium",
+      text: "Medium is the lowest category containing evaluated alternatives, with 2 alternatives assigned. No alternatives were assigned to the Low category.",
+    });
     expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").closenessInterval).toEqual({ lower: 0.48, upper: 0.75 });
     expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").alternatives.find(({ id }) => id === "mongo-b").closeness).toBe(0.6);
   });

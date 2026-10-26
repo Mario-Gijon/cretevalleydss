@@ -172,14 +172,32 @@ const buildMostFavorableFinding = (category) => {
   };
 };
 
-const buildLeastFavorableFinding = (category) => {
-  const subject = nameAlternatives(category.alternatives);
-  const verb = category.alternatives.length === 1 ? "was" : "were";
+const describeEmptyLowerCategories = (categories, configuredCategoryNamesAreUnique) => {
+  if (!categories.length) return null;
+  const labels = categories.map(({ label }) => label);
+  if (categories.length <= 3 && configuredCategoryNamesAreUnique) {
+    const categoryNames = joinNatural(labels);
+    return categories.length === 1
+      ? `No alternatives were assigned to the ${categoryNames} category.`
+      : `No alternatives were assigned to the ${categoryNames} categories.`;
+  }
+  return `No alternatives were assigned to any of the ${categories.length} lower categories.`;
+};
+
+const buildLeastFavorableFinding = (category, lowerEmptyCategories, configuredCategories) => {
+  const count = category.alternatives.length;
+  const alternativeLabel = count === 1 ? "alternative" : "alternatives";
+  const categoryContent = count === 1 ? "an alternative" : "evaluated alternatives";
+  const lead = lowerEmptyCategories.length
+    ? `${category.label} is the lowest category containing ${categoryContent}, with ${count} ${alternativeLabel} assigned.`
+    : `${category.label} is the lowest configured category and contains ${count} ${alternativeLabel}.`;
+  const configuredCategoryNamesAreUnique = new Set(configuredCategories.map(({ label }) => label)).size === configuredCategories.length;
+  const emptyCategoryNote = describeEmptyLowerCategories(lowerEmptyCategories, configuredCategoryNamesAreUnique);
   return {
     kind: "least_favorable_classification",
-    title: "Least favorable classification",
+    title: "Lowest assigned category",
     headline: category.label,
-    text: `At the other end, ${subject} ${verb} placed in the ${category.label} category, receiving the least favorable classification in this evaluation.`,
+    text: [lead, emptyCategoryNote].filter(Boolean).join(" "),
   };
 };
 
@@ -256,7 +274,11 @@ export const buildTopsisSort2016Findings = (result, execution) => {
   const findings = [buildMostFavorableFinding(mostFavorable)];
   const closest = readClosestBoundaries(result, execution);
   if (closest) findings.push(buildClosestBoundaryFinding(closest));
-  findings.push(buildLeastFavorableFinding(leastFavorable));
+  const leastFavorableIndex = result.categories.findIndex(({ id }) => id === leastFavorable.id);
+  const lowerEmptyCategories = leastFavorableIndex < 0
+    ? []
+    : result.categories.slice(leastFavorableIndex + 1).filter((category) => category.alternatives.length === 0);
+  findings.push(buildLeastFavorableFinding(leastFavorable, lowerEmptyCategories, result.categories));
   return findings;
 };
 
