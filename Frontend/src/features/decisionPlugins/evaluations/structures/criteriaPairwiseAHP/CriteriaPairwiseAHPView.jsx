@@ -7,6 +7,7 @@ import {
   ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
   EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
 } from "../../shared/evaluationMatrixSizing.js";
+import { buildPairwiseMatrixSx } from "../alternativePairwiseByCriterion/styles/PairwiseMatrix.styles.js";
 import ComparisonCell from "./components/ComparisonCell";
 import CollectiveAHPResult from "./components/CollectiveAHPResult";
 import { expectedComparisonCount, validateEvaluation } from "./operations/validateEvaluation";
@@ -14,7 +15,6 @@ import { getOrientedComparisonValue, updateComparison } from "./operations/updat
 import { resolveCollective } from "./operations/resolveCollective";
 import { resolveCriteria } from "./operations/resolveCriteria";
 import {
-  buildCriteriaPairwiseAHPGridSx,
   criteriaPairwiseAHPViewSx,
 } from "./styles/CriteriaPairwiseAHPView.styles";
 
@@ -115,14 +115,12 @@ const CriteriaPairwiseAHPView = ({
           comparedCriterionId: columnCriterion.id,
         });
         const diagonal = rowCriterion.id === columnCriterion.id;
-        const editable = rowCriterion.index < columnCriterion.index;
         return (
           <ComparisonCell
             rowCriterion={rowCriterion}
             columnCriterion={columnCriterion}
             value={value}
             diagonal={diagonal}
-            editable={editable}
             permitEdit={permitEdit}
             onChange={(nextValue) => {
               const nextEvaluation = updateComparison({
@@ -181,13 +179,13 @@ const CriteriaPairwiseAHPView = ({
             if (params.field === "criterionLabel") return "first-column";
             const rowIndex = criteria.findIndex((criterion) => criterion.id === params.row.id);
             const columnIndex = criteria.findIndex((criterion) => criterion.id === params.field);
-            if (rowIndex === columnIndex) return "diagonal-cell";
-            return rowIndex > columnIndex ? "derived-cell" : "editable-cell";
+            return rowIndex === columnIndex ? "diagonal-cell" : "pairwise-grid-cell";
           }}
-          sx={{
-            ...buildEvaluationMatrixDataGridSx(theme),
-            ...buildCriteriaPairwiseAHPGridSx(theme, criteria.length),
-          }}
+          sx={buildPairwiseMatrixSx({
+            theme,
+            alternativeCount: criteria.length,
+            buildSharedStyles: buildEvaluationMatrixDataGridSx,
+          })}
         />
       </Box> : null}
     </Stack>

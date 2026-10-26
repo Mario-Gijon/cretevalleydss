@@ -33,6 +33,7 @@ const ExpressionDomainEvaluationInput = ({
   showHelperText = true,
   maxDecimalPlaces,
   collectiveValue,
+  inputProps = {},
   fallback = null,
 }) => {
   const typeKey =
@@ -66,6 +67,7 @@ const ExpressionDomainEvaluationInput = ({
       showHelperText={showHelperText}
       maxDecimalPlaces={maxDecimalPlaces}
       collectiveValue={collectiveValue}
+      inputProps={inputProps}
     />
   );
 };

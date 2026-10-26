@@ -3,6 +3,7 @@ export const SAATY_SCALE_VALUES = Object.freeze([
   ...Array.from({ length: 8 }, (_, index) => 1 / (index + 2)),
 ]);
 
+export const AHP_NORMALIZED_PREFERENCE_DECIMAL_PLACES = 4;
 const NORMALIZED_VALUE_TOLERANCE = 0.000051;
 
 export const saatyValueToNormalizedPreference = (value) => {
@@ -14,7 +15,9 @@ export const saatyValueToNormalizedPreference = (value) => {
 
 export const formatNormalizedPreference = (value) => {
   const normalized = saatyValueToNormalizedPreference(value);
-  return normalized === null ? "" : normalized.toFixed(4);
+  return normalized === null
+    ? ""
+    : normalized.toFixed(AHP_NORMALIZED_PREFERENCE_DECIMAL_PLACES);
 };
 
 // The UI uses p = a / (1 + a), where a is the AHP judgment ratio. This keeps

@@ -69,6 +69,7 @@ export const NumericContinuousEvaluationInput = ({
   helperText = "",
   showHelperText = true,
   maxDecimalPlaces,
+  inputProps = {},
 }) => {
   const definition = normalizeDefinition(expressionDomain);
   const hasDecimalLimit =
@@ -157,6 +158,7 @@ export const NumericContinuousEvaluationInput = ({
         min,
         max,
         step: hasDecimalLimit ? 10 ** -maxDecimalPlaces : undefined,
+        ...inputProps,
       }}
     />
   );
