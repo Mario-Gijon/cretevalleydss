@@ -1,3 +1,4 @@
+import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
 import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import {
@@ -13,24 +14,6 @@ const isValidCloseness = (value) => typeof value === "number"
   && value <= 1;
 const toScalePercent = (value) => `${Number((value * 100).toPrecision(12))}%`;
 
-const CategoryHeader = ({ category }) => (
-  <Box sx={{ minWidth: 0, pr: { md: 1.5 } }}>
-    <Typography variant="subtitle1" title={category.label} sx={{ minWidth: 0, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>
-      {category.label}
-    </Typography>
-    {formatClosenessInterval(category.closenessInterval) && (
-      <Typography
-        variant="caption"
-        aria-label="Closeness interval"
-        data-testid="topsis-sort-closeness-interval"
-        sx={{ display: "block", mt: 0.35, color: "text.secondary", fontVariantNumeric: "tabular-nums", lineHeight: 1.35, overflowWrap: "anywhere" }}
-      >
-        {formatClosenessInterval(category.closenessInterval)}
-      </Typography>
-    )}
-  </Box>
-);
-
 const formatClosenessInterval = (interval) => {
   if (!interval) return null;
   if (interval.lower === null && isValidCloseness(interval.upper)) {
@@ -44,6 +27,24 @@ const formatClosenessInterval = (interval) => {
   }
   return null;
 };
+
+const CategoryHeader = ({ category, showClosenessInterval = true }) => (
+  <Box sx={{ minWidth: 0, pr: { md: 1.5 } }}>
+    <Typography variant="subtitle1" title={category.label} sx={{ minWidth: 0, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+      {category.label}
+    </Typography>
+    {showClosenessInterval && formatClosenessInterval(category.closenessInterval) && (
+      <Typography
+        variant="caption"
+        aria-label="Closeness interval"
+        data-testid="topsis-sort-closeness-interval"
+        sx={{ display: "block", mt: 0.35, color: "text.secondary", fontVariantNumeric: "tabular-nums", lineHeight: 1.35, overflowWrap: "anywhere" }}
+      >
+        {formatClosenessInterval(category.closenessInterval)}
+      </Typography>
+    )}
+  </Box>
+);
 
 const TopsisSortAlternativeScale = ({ alternative, interval, theme }) => (
   <Box
@@ -165,7 +166,7 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
           data-testid="topsis-sort-category"
           sx={{ ...topsisSortCategorySx, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.42)}` }}
         >
-          <CategoryHeader category={category} />
+          <CategoryHeader category={category} showClosenessInterval={false} />
           {alternatives.length ? (
             <Box component="ul" aria-label={`${category.label} alternatives`} data-testid="topsis-sort-category-body" sx={topsisSortCategoryGroupSx}>
               {alternatives.map((alternative) => (
@@ -173,9 +174,23 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
               ))}
             </Box>
           ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0, alignSelf: { md: "center" }, py: 0.3, fontSize: "0.82rem" }}>
-              No alternatives assigned
-            </Typography>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={0.65}
+              aria-label="No alternatives in this category"
+              data-testid="topsis-sort-empty-category"
+              sx={{ minWidth: 0, alignSelf: { md: "center" }, py: 0.3, color: "text.secondary" }}
+            >
+              <InboxOutlinedIcon
+                aria-hidden="true"
+                data-testid="topsis-sort-empty-category-icon"
+                sx={{ flex: "0 0 auto", fontSize: 17, color: (theme) => alpha(theme.palette.secondary.light, 0.68) }}
+              />
+              <Typography variant="body2" sx={{ minWidth: 0, fontSize: "0.8rem", lineHeight: 1.35 }}>
+                No alternatives in this category
+              </Typography>
+            </Stack>
           )}
         </Box>
       );
