@@ -326,19 +326,19 @@ def _validated_sensitivity_points(
 
 def _sensitivity_evidence(
     facts: dict[str, Any],
-) -> tuple[list[dict[str, Any]], int, int, bool]:
+) -> tuple[list[dict[str, Any]], int, int, bool, int]:
     """Return one nearest observed change per criterion plus coverage counts."""
     criteria = [item for item in facts.get("criteria", []) if isinstance(item, dict)]
     if not criteria:
-        return [], 0, 0, False
+        return [], 0, 0, False, 0
     criterion_ids = [item.get("criterionId") for item in criteria]
     if any(identifier is None for identifier in criterion_ids) or len(
         set(map(str, criterion_ids))
     ) != len(criteria):
-        return [], 0, 0, False
+        return [], 0, 0, False, 0
     configured_weights = [_finite_number(item.get("weight")) for item in criteria]
     if any(weight is None or not 0.0 <= weight <= 1.0 for weight in configured_weights):
-        return [], 0, 0, False
+        return [], 0, 0, False, 0
     normalized_criteria = [
         {**criterion, "weight": configured_weights[index]}
         for index, criterion in enumerate(criteria)
@@ -346,7 +346,7 @@ def _sensitivity_evidence(
     category_labels = _category_labels(facts)
     baseline, alternatives_by_id = _baseline_assignments(facts, category_labels)
     if not baseline:
-        return [], 0, 0, False
+        return [], 0, 0, False, 0
 
     items_by_id: dict[str, list[dict[str, Any]]] = {}
     for item in facts.get("sensitivity", {}).get("items", []):
@@ -356,6 +356,7 @@ def _sensitivity_evidence(
     candidates = []
     assessed_count = 0
     proportional_redistribution_impossible = False
+    indeterminate_criterion_count = 0
     for criterion_index, criterion in enumerate(normalized_criteria):
         criterion_id = str(criterion["criterionId"])
         matching_items = items_by_id.get(criterion_id, [])
@@ -375,6 +376,15 @@ def _sensitivity_evidence(
         configured_weight = float(criterion["weight"])
         if configured_weight not in points:
             continue
+        has_indeterminate_scenarios = any(
+            isinstance(point, dict)
+            and point.get("numericAvailable") is True
+            and point.get("classificationAvailable") is False
+            and _finite_number(point.get("variedWeight")) != configured_weight
+            for point in (item.get("points") or [])
+        )
+        if has_indeterminate_scenarios:
+            indeterminate_criterion_count += 1
         variations = [
             (weight, point)
             for weight, point in points.items()
@@ -483,6 +493,7 @@ def _sensitivity_evidence(
         assessed_count,
         assessed_count - changed_criterion_count,
         proportional_redistribution_impossible,
+        indeterminate_criterion_count,
     )
 
 
@@ -634,7 +645,13 @@ def _criterion_sensitivity_interpretation(facts: dict[str, Any]) -> list[str]:
             "There is only one criterion, so its weight cannot be varied independently."
         ]
 
-    candidates, assessed_count, unchanged_count, redistribution_impossible = (
+    (
+        candidates,
+        assessed_count,
+        unchanged_count,
+        redistribution_impossible,
+        indeterminate_criterion_count,
+    ) = (
         _sensitivity_evidence(facts)
     )
     if not criteria:
@@ -644,10 +661,17 @@ def _criterion_sensitivity_interpretation(facts: dict[str, Any]) -> list[str]:
         ]
     if not candidates:
         if assessed_count:
-            text = (
-                "No category changes were observed across the valid weight variations "
-                "examined. This only describes the tested scenarios."
-            )
+            if indeterminate_criterion_count:
+                text = (
+                    "No category changes were observed among tested weight variations "
+                    "with fully determined classifications. Indeterminate samples do "
+                    "not support category conclusions."
+                )
+            else:
+                text = (
+                    "No category changes were observed across the valid weight variations "
+                    "examined. This only describes the tested scenarios."
+                )
             if assessed_count < len(criteria):
                 text += " Some criteria could not be assessed with sufficient evidence."
             return [text]
@@ -675,6 +699,10 @@ def _criterion_sensitivity_interpretation(facts: dict[str, Any]) -> list[str]:
     if unchanged_count:
         paragraphs.append(
             "Other criteria showed no category changes in their valid weight variations."
+        )
+    if indeterminate_criterion_count:
+        paragraphs.append(
+            "Indeterminate samples do not support category conclusions."
         )
     if assessed_count < len(criteria):
         paragraphs.append(

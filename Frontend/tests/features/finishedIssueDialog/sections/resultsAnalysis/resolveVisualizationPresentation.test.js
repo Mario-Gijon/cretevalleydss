@@ -44,6 +44,31 @@ describe("criterion weight sensitivity presentation", () => {
     }, 3)).toEqual(["a", "z"]);
   });
 
+  it("does not interpret an indeterminate boundary sample as a category change", () => {
+    const tied = item("district-21", "District 21", ["High", "High", "High", "High"]);
+    tied.values[2] = {
+      x: 0.6,
+      y: 0.5208,
+      details: {
+        Weight: 0.6,
+        "Relative closeness coefficient": 0.5208,
+        "Category status": "Undetermined — exactly on a boundary",
+      },
+    };
+    const visualization = {
+      data: {
+        configuredWeight: 0.48,
+        series: [
+          tied,
+          item("actual-change", "Actual change", ["Low", "High", "Low", "High"]),
+        ],
+      },
+    };
+
+    expect(recommendSensitivityAlternativeIds(visualization, 1)).toEqual(["actual-change"]);
+    expect(getSensitivityAlternativeOptions([visualization]).map(({ id }) => id)).toContain("district-21");
+  });
+
   it("keeps every alternative available and filters only the visual projection while retaining all boundaries", () => {
     const visualization = {
       data: { series: [

@@ -340,6 +340,19 @@ def calculate_closeness_coefficients(
     return closeness
 
 
+def _matching_profile_ids(
+    *,
+    closeness: float,
+    profile_rows: Sequence[Mapping[str, Any]],
+    profile_closeness_by_id: Mapping[str, float],
+) -> list[str]:
+    return [
+        profile["profile_id"]
+        for profile in profile_rows
+        if closeness == profile_closeness_by_id[profile["profile_id"]]
+    ]
+
+
 def _assign_order(
     *,
     alternative_id: str,
@@ -351,15 +364,19 @@ def _assign_order(
 ) -> int:
     """Apply Eq. (8)'s strict intervals; equalities are deliberately errors."""
 
-    for profile in profile_rows:
-        profile_id = profile["profile_id"]
+    matching_profiles = _matching_profile_ids(
+        closeness=closeness,
+        profile_rows=profile_rows,
+        profile_closeness_by_id=profile_closeness_by_id,
+    )
+    if matching_profiles:
+        profile_id = matching_profiles[0]
         boundary = profile_closeness_by_id[profile_id]
-        if closeness == boundary:
-            raise ProfileBoundaryTieError(
-                f"alternative '{alternative_id}' has closeness {closeness:.17g} "
-                f"equal to boundary profile '{profile_id}' ({boundary:.17g}); "
-                "Eq. (8) uses strict inequalities and defines no assignment for equality"
-            )
+        raise ProfileBoundaryTieError(
+            f"alternative '{alternative_id}' has closeness {closeness:.17g} "
+            f"equal to boundary profile '{profile_id}' ({boundary:.17g}); "
+            "Eq. (8) uses strict inequalities and defines no assignment for equality"
+        )
 
     thresholds: dict[int, float] = {}
     for category in categories[1:]:
@@ -379,14 +396,14 @@ def _assign_order(
     )
 
 
-def run_topsis_sort_2016(
+def _calculate_topsis_sort_2016_numeric(
     *,
     alternatives: Sequence[Mapping[str, Any]],
     criteria: Sequence[Mapping[str, Any]],
     profiles: Sequence[Mapping[str, Any]],
     categories: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
-    """Classify alternatives with TOPSIS-Sort as formulated in the 2016 paper.
+    """Calculate validated numeric evidence before applying strict assignments.
 
     ``categories`` follow the application's order convention: order zero is
     least preferred, and increasing order is more preferred. ``profiles`` are
@@ -520,23 +537,6 @@ def run_topsis_sort_2016(
     boundary_profile_by_category = {
         profile["category_id"]: profile for profile in ordered_profiles
     }
-    assignments = []
-    for index, alternative_id in enumerate(alternative_ids):
-        order = _assign_order(
-            alternative_id=alternative_id,
-            closeness=float(closeness[index]),
-            categories=category_rows,
-            profile_rows=ordered_profiles,
-            profile_closeness_by_id=profile_closeness_by_id,
-            boundary_profile_by_category=boundary_profile_by_category,
-        )
-        assignments.append(
-            {
-                "alternative_id": alternative_id,
-                "category_id": category_rows[order]["category_id"],
-            }
-        )
-
     def criterion_map(row: np.ndarray) -> dict[str, float]:
         return {criterion_id: float(row[index]) for index, criterion_id in enumerate(criterion_ids)}
 
@@ -586,7 +586,6 @@ def run_topsis_sort_2016(
     return {
         "categories": category_rows,
         "category_order_semantics": "lower-order-is-less-preferred",
-        "assignments": assignments,
         "diagnostics": {
             "method": "TOPSIS-Sort (Sabokbar et al., 2016)",
             "normalized_values_by_alternative_id": normalized_by_alternative_id,
@@ -605,4 +604,95 @@ def run_topsis_sort_2016(
             "closeness_by_profile_id": closeness_by_profile_id,
             "article_class_by_category_id": article_class_by_category_id,
         },
+        "_classification": {
+            "alternative_ids": alternative_ids,
+            "closeness_by_alternative_id": closeness_by_alternative_id,
+            "profile_rows": ordered_profiles,
+            "profile_closeness_by_id": profile_closeness_by_id,
+            "boundary_profile_by_category": boundary_profile_by_category,
+        },
+    }
+
+
+def _classify_numeric_result(
+    numeric_result: Mapping[str, Any],
+) -> tuple[list[dict[str, str]], dict[str, dict[str, Any]]]:
+    """Classify each alternative strictly while reporting exact boundary ties.
+
+    This internal diagnostic is used only by sensitivity analysis. It never
+    chooses a side for an equality. Other assignment failures still raise.
+    """
+    categories = numeric_result["categories"]
+    context = numeric_result["_classification"]
+    assignments: list[dict[str, str]] = []
+    status_by_alternative_id: dict[str, dict[str, Any]] = {}
+    for alternative_id in context["alternative_ids"]:
+        closeness = context["closeness_by_alternative_id"][alternative_id]
+        matching_profiles = _matching_profile_ids(
+            closeness=closeness,
+            profile_rows=context["profile_rows"],
+            profile_closeness_by_id=context["profile_closeness_by_id"],
+        )
+        if matching_profiles:
+            status_by_alternative_id[alternative_id] = {
+                "status": "undetermined_on_boundary",
+                "boundaryProfileIds": matching_profiles,
+            }
+            continue
+
+        order = _assign_order(
+            alternative_id=alternative_id,
+            closeness=closeness,
+            categories=categories,
+            profile_rows=context["profile_rows"],
+            profile_closeness_by_id=context["profile_closeness_by_id"],
+            boundary_profile_by_category=context["boundary_profile_by_category"],
+        )
+        category = categories[order]
+        assignments.append(
+            {"alternative_id": alternative_id, "category_id": category["category_id"]}
+        )
+        status_by_alternative_id[alternative_id] = {
+            "status": "assigned",
+            "categoryId": category["category_id"],
+        }
+    return assignments, status_by_alternative_id
+
+
+def run_topsis_sort_2016(
+    *,
+    alternatives: Sequence[Mapping[str, Any]],
+    criteria: Sequence[Mapping[str, Any]],
+    profiles: Sequence[Mapping[str, Any]],
+    categories: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Classify alternatives with the original strict TOPSIS-Sort Eq. (8)."""
+    numeric_result = _calculate_topsis_sort_2016_numeric(
+        alternatives=alternatives,
+        criteria=criteria,
+        profiles=profiles,
+        categories=categories,
+    )
+    context = numeric_result["_classification"]
+    assignments = []
+    for alternative_id in context["alternative_ids"]:
+        order = _assign_order(
+            alternative_id=alternative_id,
+            closeness=context["closeness_by_alternative_id"][alternative_id],
+            categories=numeric_result["categories"],
+            profile_rows=context["profile_rows"],
+            profile_closeness_by_id=context["profile_closeness_by_id"],
+            boundary_profile_by_category=context["boundary_profile_by_category"],
+        )
+        assignments.append(
+            {
+                "alternative_id": alternative_id,
+                "category_id": numeric_result["categories"][order]["category_id"],
+            }
+        )
+    return {
+        "categories": numeric_result["categories"],
+        "category_order_semantics": numeric_result["category_order_semantics"],
+        "assignments": assignments,
+        "diagnostics": numeric_result["diagnostics"],
     }

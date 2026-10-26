@@ -11,7 +11,8 @@ from ..run import (
     TopsisSort2016Error,
     UndefinedClosenessError,
     UndefinedNormalizationError,
-    run_topsis_sort_2016,
+    _calculate_topsis_sort_2016_numeric,
+    _classify_numeric_result,
 )
 from .evidence import TopsisSort2016Evidence
 
@@ -67,13 +68,6 @@ def _unavailable_reason(error: TopsisSort2016Error) -> str:
     return "invalid_scenario"
 
 
-def _assignment_map(result: dict[str, Any]) -> dict[str, str]:
-    return {
-        item["alternative_id"]: item["category_id"]
-        for item in result["assignments"]
-    }
-
-
 def _valid_point(
     *,
     evidence: TopsisSort2016Evidence,
@@ -82,7 +76,10 @@ def _valid_point(
     result: dict[str, Any],
     baseline_assignments: dict[str, str],
 ) -> dict[str, Any]:
-    assignments = _assignment_map(result)
+    raw_assignments, classification_status = _classify_numeric_result(result)
+    assignments = {
+        item["alternative_id"]: item["category_id"] for item in raw_assignments
+    }
     categories_by_id = {item["category_id"]: item for item in evidence.categories}
     alternatives_by_id = {
         item["alternativeId"]: item for item in evidence.alternatives
@@ -100,10 +97,42 @@ def _valid_point(
         if category_id != baseline_assignments[alternative_id]
     ]
     diagnostics = result["diagnostics"]
+    normalized_assignments = [
+        {
+            "alternativeId": alternative_id,
+            "alternativeName": alternatives_by_id[alternative_id]["name"],
+            "categoryId": category_id,
+            "category": categories_by_id[category_id]["label"],
+        }
+        for alternative_id, category_id in assignments.items()
+    ]
+    normalized_status = {
+        alternative_id: (
+            {
+                "status": "assigned",
+                "categoryId": status["categoryId"],
+                "category": categories_by_id[status["categoryId"]]["label"],
+            }
+            if status["status"] == "assigned"
+            else {
+                "status": "undetermined_on_boundary",
+                "boundaryProfileIds": status["boundaryProfileIds"],
+            }
+        )
+        for alternative_id, status in classification_status.items()
+    }
+    classification_available = all(
+        status["status"] == "assigned" for status in classification_status.values()
+    )
     return {
         "variedWeight": varied_weight,
-        "available": True,
-        "reason": None,
+        # `available` retains its historical meaning: complete classification
+        # evidence. Numeric curves have their own explicit availability.
+        "available": classification_available,
+        "numericAvailable": True,
+        "profilesAvailable": True,
+        "classificationAvailable": classification_available,
+        "reason": None if classification_available else "alternative_equals_boundary",
         "criterionWeights": [
             {
                 "criterionId": criterion["criterionId"],
@@ -113,15 +142,8 @@ def _valid_point(
         ],
         "closenessByAlternativeId": diagnostics["closeness_by_alternative_id"],
         "closenessByProfileId": diagnostics["closeness_by_profile_id"],
-        "assignments": [
-            {
-                "alternativeId": alternative_id,
-                "alternativeName": alternatives_by_id[alternative_id]["name"],
-                "categoryId": category_id,
-                "category": categories_by_id[category_id]["label"],
-            }
-            for alternative_id, category_id in assignments.items()
-        ],
+        "classificationStatusByAlternativeId": normalized_status,
+        "assignments": normalized_assignments,
         "changedAssignments": changes,
         "distancesByAlternativeId": diagnostics["distances_by_alternative_id"],
         "distancesByProfileId": diagnostics["distances_by_profile_id"],
@@ -172,13 +194,22 @@ def build_sensitivity_facts(
     """Re-run the pure model for each valid sampled criterion weight."""
     if len(evidence.criteria) == 1:
         return {
-            "availability": {"available": False, "reason": "single_criterion"},
+            "availability": {
+                "available": False,
+                "numericAvailable": False,
+                "profilesAvailable": False,
+                "classificationAvailable": False,
+                "reason": "single_criterion",
+            },
             "items": [
                 {
                     "criterionId": evidence.criteria[0]["criterionId"],
                     "criterionName": evidence.criteria[0]["name"],
                     "configuredWeight": evidence.criteria[0]["weight"],
                     "available": False,
+                    "numericAvailable": False,
+                    "profilesAvailable": False,
+                    "classificationAvailable": False,
                     "reason": "single_criterion",
                     "points": [],
                     "summary": None,
@@ -202,6 +233,9 @@ def build_sensitivity_facts(
                     {
                         "variedWeight": varied_weight,
                         "available": False,
+                        "numericAvailable": False,
+                        "profilesAvailable": False,
+                        "classificationAvailable": False,
                         "reason": weight_error,
                         "criterionWeights": None,
                         "closenessByAlternativeId": None,
@@ -219,7 +253,7 @@ def build_sensitivity_facts(
                 for index, item in enumerate(evidence.criteria)
             ]
             try:
-                result = run_topsis_sort_2016(
+                result = _calculate_topsis_sort_2016_numeric(
                     alternatives=[
                         {
                             "alternative_id": item["alternativeId"],
@@ -245,6 +279,9 @@ def build_sensitivity_facts(
                     {
                         "variedWeight": varied_weight,
                         "available": False,
+                        "numericAvailable": False,
+                        "profilesAvailable": False,
+                        "classificationAvailable": False,
                         "reason": _unavailable_reason(error),
                         "criterionWeights": [
                             {
@@ -296,6 +333,9 @@ def build_sensitivity_facts(
             )
 
         valid_points = [point for point in points if point["available"]]
+        numeric_points = [
+            point for point in points if point.get("numericAvailable") is True
+        ]
         transitions = _transitions(points)
         observed_changes = [
             {
@@ -306,19 +346,29 @@ def build_sensitivity_facts(
             for point in valid_points
             if point["changedAssignments"]
         ]
+        indeterminate_points = [
+            point
+            for point in points
+            if point.get("numericAvailable") is True
+            and point.get("classificationAvailable") is False
+        ]
         nearest_change = min(
             observed_changes,
             key=lambda item: abs(item["weightDifferenceFromConfigured"]),
             default=None,
         )
         trajectory_available = len(valid_points) >= 2
+        numeric_trajectory_available = len(numeric_points) >= 2
         unavailable_reason = None
         if not trajectory_available:
-            unavailable_reason = (
-                "insufficient_valid_weight_samples"
-                if valid_points
-                else "no_valid_weight_samples"
-            )
+            if indeterminate_points:
+                unavailable_reason = "classification_indeterminate_samples"
+            else:
+                unavailable_reason = (
+                    "insufficient_valid_weight_samples"
+                    if valid_points
+                    else "no_valid_weight_samples"
+                )
         items.append(
             {
                 "criterionId": criterion["criterionId"],
@@ -326,6 +376,9 @@ def build_sensitivity_facts(
                 "criterionIndex": criterion_index,
                 "configuredWeight": configured_weight,
                 "available": trajectory_available,
+                "numericAvailable": numeric_trajectory_available,
+                "profilesAvailable": numeric_trajectory_available,
+                "classificationAvailable": trajectory_available,
                 "reason": unavailable_reason,
                 "redistribution": {
                     "method": "proportional_preserve_other_weight_ratios",
@@ -338,20 +391,33 @@ def build_sensitivity_facts(
                 "points": points,
                 "summary": {
                     "validSampleCount": len(valid_points),
+                    "numericValidSampleCount": len(numeric_points),
+                    "indeterminateSampleCount": len(indeterminate_points),
                     "unavailableSampleCount": len(points) - len(valid_points),
                     "observedChanges": observed_changes,
                     "nearestObservedChange": nearest_change,
                     "observedAdjacentTransitions": transitions,
-                    "noChangesAcrossValidSamples": not observed_changes,
-                    "allValidSamplesRetainBaselineCategory": not observed_changes,
+                    "noChangesAcrossValidSamples": (
+                        not observed_changes and not indeterminate_points
+                    ),
+                    "allValidSamplesRetainBaselineCategory": (
+                        not observed_changes and not indeterminate_points
+                    ),
                 },
             }
         )
 
     return {
         "availability": {
-            "available": any(item["available"] for item in items),
-            "reason": None if any(item["available"] for item in items) else "no_renderable_criterion_trajectories",
+            "available": any(item["numericAvailable"] for item in items),
+            "reason": (
+                None
+                if any(item["numericAvailable"] for item in items)
+                else "no_renderable_numeric_criterion_trajectories"
+            ),
+            "numericAvailable": any(item["numericAvailable"] for item in items),
+            "profilesAvailable": any(item["profilesAvailable"] for item in items),
+            "classificationAvailable": any(item["classificationAvailable"] for item in items),
         },
         "items": items,
     }

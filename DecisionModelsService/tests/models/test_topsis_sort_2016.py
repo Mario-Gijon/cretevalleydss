@@ -8,6 +8,8 @@ from models.topsis_sort_2016.run import (
     TopsisSort2016Error,
     UndefinedClosenessError,
     UndefinedNormalizationError,
+    _calculate_topsis_sort_2016_numeric,
+    _classify_numeric_result,
     calculate_closeness_coefficients,
     calculate_euclidean_distances,
     normalize_eq7,
@@ -263,6 +265,63 @@ def test_exact_equality_with_a_profile_returns_controlled_error():
         match=r"Eq\. \(8\) uses strict inequalities",
     ):
         _run(problem)
+
+
+def test_numeric_diagnostics_survive_exact_boundary_tie_without_relaxing_executor():
+    problem = _two_category_problem()
+    problem["alternatives"].append(
+        {
+            "alternative_id": "on-boundary",
+            "values_by_criterion_id": {"growth": 3, "cost": 4},
+        }
+    )
+    numeric = _calculate_topsis_sort_2016_numeric(**problem)
+
+    assert set(numeric["diagnostics"]["closeness_by_alternative_id"]) == {
+        "a-best", "a-worst", "on-boundary"
+    }
+    assert numeric["diagnostics"]["closeness_by_alternative_id"]["on-boundary"] == numeric[
+        "diagnostics"]["closeness_by_profile_id"]["limit-high"]
+    assert set(numeric["diagnostics"]["closeness_by_profile_id"]) == {"limit-high"}
+    with pytest.raises(ProfileBoundaryTieError):
+        _run(problem)
+
+
+def test_numeric_diagnostic_marks_multiple_lower_and_upper_boundary_ties_individually():
+    alternatives = deepcopy(TEHRAN_ALTERNATIVES)
+    alternatives.append(
+        {
+            "alternative_id": "district-extra-lower-boundary",
+            "values_by_criterion_id": {"g1": 0, "g2": 1, "g3": 1, "g4": 1, "g5": 1},
+        }
+    )
+    criteria = [
+        {**criterion, "weight": 1.0 if criterion["criterion_id"] == "g1" else 0.0}
+        for criterion in TEHRAN_CRITERIA
+    ]
+    numeric = _calculate_topsis_sort_2016_numeric(
+        alternatives=alternatives,
+        criteria=criteria,
+        profiles=TEHRAN_PROFILES,
+        categories=TEHRAN_CATEGORIES,
+    )
+    _, status = _classify_numeric_result(numeric)
+
+    assert status["district-21"] == {
+        "status": "undetermined_on_boundary",
+        "boundaryProfileIds": ["p1"],
+    }
+    assert status["district-extra-lower-boundary"] == {
+        "status": "undetermined_on_boundary",
+        "boundaryProfileIds": ["p4"],
+    }
+    with pytest.raises(ProfileBoundaryTieError, match="district-21"):
+        run_topsis_sort_2016(
+            alternatives=alternatives,
+            criteria=criteria,
+            profiles=TEHRAN_PROFILES,
+            categories=TEHRAN_CATEGORIES,
+        )
 
 
 @pytest.mark.parametrize(

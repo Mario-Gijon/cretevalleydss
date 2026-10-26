@@ -294,6 +294,42 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText("ALTERNATIVES").compareDocumentPosition(screen.getByText("CATEGORY BOUNDARIES")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("keeps valid closeness at an indeterminate category sample and labels it only in the tooltip", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "topsis-sort-criterion-weight-sensitivity-g1",
+      type: "line",
+      title: "Criterion weight sensitivity · g1",
+      xAxis: { label: "Varied importance weight", min: 0, max: 1, scaleType: "linear" },
+      yAxis: { label: "Relative closeness coefficient", min: 0, max: 1, scaleType: "linear" },
+      data: {
+        xScaleType: "linear",
+        x: [0.95, 1],
+        configuredWeight: 0.2,
+        series: [
+          { key: "district-21", label: "District 21", role: "alternative", values: [
+            { x: 0.95, y: 0.51, details: { Weight: 0.95, Category: "High suitable" } },
+            { x: 1, y: 0.5208, details: { Weight: 1, "Relative closeness coefficient": 0.5208, "Category status": "Undetermined — exactly on a boundary" } },
+          ] },
+          { key: "profile-p1", label: "Suitable / High suitable boundary", role: "boundary", values: [
+            { x: 0.95, y: 0.515 },
+            { x: 1, y: 0.5208 },
+          ] },
+        ],
+      },
+    }} />);
+
+    const alternativeData = lineState.data.datasets[0].data;
+    expect(alternativeData[1]).toMatchObject({ x: 1, y: 0.5208 });
+    expect(alternativeData[1].details.Category).toBeUndefined();
+    expect(alternativeData[1].details["Category status"]).toBe("Undetermined — exactly on a boundary");
+    expect(lineState.data.datasets[1].data[1]).toMatchObject({ x: 1, y: 0.5208 });
+    expect(lineState.options.plugins.tooltip.callbacks.label({ raw: alternativeData[1] })).toEqual([
+      "Weight: 1",
+      "Relative closeness coefficient: 0.5208",
+      "Category status: Undetermined — exactly on a boundary",
+    ]);
+  });
+
   it("preserves the existing numeric line-chart colors and point sizing without sensitivity metadata", () => {
     const visualization = {
       key: "generic-numeric-line",

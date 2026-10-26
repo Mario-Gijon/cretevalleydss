@@ -604,6 +604,9 @@ def test_single_criterion_and_zero_complement_are_controlled_sensitivity_cases()
     analysis = analyze_issue(_analysis_context(request))
     assert analysis["facts"]["sensitivity"]["availability"] == {
         "available": False,
+        "numericAvailable": False,
+        "profilesAvailable": False,
+        "classificationAvailable": False,
         "reason": "single_criterion",
     }
     assert all(item["type"] != "line" for item in analysis["visualizations"])

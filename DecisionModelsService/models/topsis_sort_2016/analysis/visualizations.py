@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 
@@ -114,10 +115,20 @@ def _sensitivity_line(
     facts: dict[str, Any],
     item: dict[str, Any],
 ) -> dict[str, Any] | None:
-    if not item.get("available"):
+    item_numeric_available = item.get("numericAvailable", item.get("available"))
+    if item_numeric_available is not True:
         return None
     points = item.get("points") or []
-    if len([point for point in points if point.get("available")]) < 2:
+    if (
+        len(
+            [
+                point
+                for point in points
+                if point.get("numericAvailable", point.get("available")) is True
+            ]
+        )
+        < 2
+    ):
         return None
 
     alternative_series = []
@@ -125,6 +136,13 @@ def _sensitivity_line(
         values = []
         for point in points:
             closeness = point.get("closenessByAlternativeId") or {}
+            coefficient = closeness.get(alternative["alternativeId"])
+            numeric_available = (
+                point.get("numericAvailable", point.get("available")) is True
+                and isinstance(coefficient, (int, float))
+                and not isinstance(coefficient, bool)
+                and math.isfinite(coefficient)
+            )
             assignment = next(
                 (
                     entry
@@ -133,21 +151,27 @@ def _sensitivity_line(
                 ),
                 None,
             )
-            available = point["available"] and alternative["alternativeId"] in closeness
+            status = (point.get("classificationStatusByAlternativeId") or {}).get(
+                alternative["alternativeId"]
+            )
+            available = numeric_available
             values.append(
                 {
                     "x": point["variedWeight"],
-                    "y": closeness.get(alternative["alternativeId"]) if available else None,
+                    "y": coefficient if available else None,
                     "label": alternative["name"],
                     "category": assignment["category"] if assignment else None,
                     "details": {
                         "Weight": point["variedWeight"],
                         "Relative closeness coefficient": (
-                            closeness.get(alternative["alternativeId"])
-                            if available
-                            else None
+                            coefficient if available else None
                         ),
                         "Category": assignment["category"] if assignment else None,
+                        "Category status": (
+                            "Undetermined — exactly on a boundary"
+                            if status and status.get("status") == "undetermined_on_boundary"
+                            else None
+                        ),
                         "Unavailable reason": point.get("reason") if not available else None,
                     },
                     "isConfiguredWeight": point["variedWeight"] == item["configuredWeight"],
@@ -170,7 +194,16 @@ def _sensitivity_line(
         for point in points:
             closeness = point.get("closenessByProfileId") or {}
             coefficient = closeness.get(profile["profileId"])
-            available = point["available"] and coefficient is not None
+            available = (
+                point.get(
+                    "profilesAvailable",
+                    point.get("numericAvailable", point.get("available")),
+                )
+                is True
+                and isinstance(coefficient, (int, float))
+                and not isinstance(coefficient, bool)
+                and math.isfinite(coefficient)
+            )
             values.append(
                 {
                     "x": point["variedWeight"],
@@ -242,7 +275,19 @@ def _sensitivity_line(
                     "reason": point.get("reason"),
                 }
                 for point in points
-                if not point["available"]
+                if point.get("numericAvailable", point.get("available")) is not True
+            ],
+            "classificationUnavailableSamples": [
+                {
+                    "weight": point["variedWeight"],
+                    "reason": point.get("reason"),
+                    "classificationStatusByAlternativeId": point.get(
+                        "classificationStatusByAlternativeId"
+                    ),
+                }
+                for point in points
+                if point.get("numericAvailable") is True
+                and point.get("classificationAvailable") is False
             ],
             "series": [*alternative_series, *profile_series],
         },
