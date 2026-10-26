@@ -44,6 +44,14 @@ describe("evaluation structure registry", () => {
     ).toEqual(expect.any(Function));
   });
 
+  it("discovers AHP as a criteria-weighting structure with criterion remapping", () => {
+    expect(EVALUATION_STRUCTURE_REGISTRY.criteriaPairwiseAHP).toMatchObject({
+      key: "criteriaPairwiseAHP",
+      stage: "criteriaWeighting",
+      remapCriterionIds: expect.any(Function),
+    });
+  });
+
   it("registers legacy and explicitly ready structures but omits scaffold structures", async () => {
     const root = createTemporaryStructuresRoot();
     writeEvaluationStructure({ root, folderName: "legacy" });

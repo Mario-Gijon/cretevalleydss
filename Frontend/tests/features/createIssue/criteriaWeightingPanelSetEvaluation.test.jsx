@@ -383,4 +383,24 @@ describe("CriteriaWeightingPanel setEvaluation contract", () => {
     ).toBeInTheDocument();
     expect(mockViewState.lastProps).toBeNull();
   });
+
+  it("keeps creator-side weighting on leaf criteria when parent weighting is unavailable for that mode", () => {
+    renderPanel(
+      { ...initialConfig, level: "parent" },
+      [
+        {
+          id: "root",
+          name: "Root",
+          children: [
+            { id: "parent-a", name: "Parent A", children: [{ id: "criterion-a", name: "A", children: [] }] },
+            { id: "parent-b", name: "Parent B", children: [{ id: "criterion-b", name: "B", children: [] }] },
+          ],
+        },
+      ]
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Parent criteria weighting" })
+    ).toBeDisabled();
+  });
 });

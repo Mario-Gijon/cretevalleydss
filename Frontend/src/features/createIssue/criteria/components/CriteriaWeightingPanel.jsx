@@ -18,6 +18,7 @@ import {
   buildApiCriteriaWeightingConfig,
   buildConfigByMode,
   isManualCriteriaWeightingApiModel,
+  isExpertCriteriaWeightingMode,
   normalizeCriteriaWeightingLevel,
   normalizeMode,
   resolveCriteriaWeightingLevel,
@@ -125,7 +126,10 @@ export const CriteriaWeightingPanel = ({
     () => isParentCriteriaWeightingAvailable(criteria),
     [criteria]
   );
-  const parentLevelAvailable = parentHierarchyAvailable;
+  // Parent-level weighting is currently supported by Backend only for
+  // expert-side collection. Keep creator-side configurations on leaf criteria.
+  const parentLevelAvailable =
+    parentHierarchyAvailable && isExpertCriteriaWeightingMode(mode);
   const availableCriteriaWeightingModels = useMemo(
     () =>
       (Array.isArray(criteriaWeightingModels) ? criteriaWeightingModels : []).filter(
