@@ -116,7 +116,7 @@ export const ModelSelectionStep = () => {
           const selected = selectedModel?._id === model?._id;
 
           return (
-            <Grid key={model._id || model.name} item size={{ xs: 12, sm: 6, lg: 4 }}>
+            <Grid key={model._id || model.name} size={{ xs: 12, sm: 6, lg: 4 }}>
               <Box sx={getCreateIssueModelTileSx(theme, selected)} onClick={() => handleSelectModel(model)}>
                 {selected && (
                   <Box sx={getCreateIssueModelSelectedBadgeSx(theme)}>

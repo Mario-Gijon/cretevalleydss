@@ -37,6 +37,37 @@ The authentication smoke test uses `auth.smoke@example.test`. The create-issue s
 
 Coverage: authentication verifies login and logout; issue creation verifies a logged-in owner can select the seeded model and domain, add alternatives, a criterion, and an expert, then create an active issue.
 
+## Run the AHP → TOPSIS-Sort end-to-end flow
+
+The AHP test creates a fresh TOPSIS-Sort Issue in the isolated database. It uses
+the E2E owner and two seeded experts, saves and restores an incomplete AHP
+matrix, computes expert priorities and MCC, submits alternative evaluations,
+and resolves the Issue through DecisionModelsService. The create-issue fixture
+seeder refreshes the persisted Decision Plugin catalog from the live manifest
+after a deletion-safe dry run, so AHP is available in a newly seeded E2E stack.
+
+Start the isolated services and seed the test users, catalog, and expression
+domain:
+
+```bash
+docker compose -f docker-compose.e2e.yml up --build -d
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:auth
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:create-issue
+docker compose -f docker-compose.e2e.yml exec backend-e2e bun run seed:e2e:topsis-sort-rich
+```
+
+Then run the real Chromium flow from `Frontend`:
+
+```bash
+E2E_BASE_URL=http://localhost:5174 bun run test:e2e -- ahpTopsisSort.spec.js
+```
+
+It produces desktop and mobile screenshots under `Frontend/test-results/`.
+The mobile check asserts the C×C grid can scroll horizontally. The test
+compares persisted AHP weights with the weights represented in TOPSIS-Sort's
+weighted evaluation diagnostics and confirms the actual category assignments.
+Each run creates a new E2E Issue; it does not delete prior Issues.
+
 ## Run the TOPSIS-Sort rich Finished Issue visual test
 
 The Scenario Lab scenario creates and records the finished Issue in a separate

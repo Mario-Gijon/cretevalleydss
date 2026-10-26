@@ -5,6 +5,8 @@ import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { IssueModel } from "../../models/IssueModels.js";
 import { User } from "../../models/Users.js";
 import { assertIsolatedE2eEnvironment } from "./assertIsolatedE2eEnvironment.js";
+import { runModelManifestDryRun } from "../../services/modelApi/modelManifestDryRun.js";
+import { syncModelManifestToIssueModels } from "../../services/modelApi/modelManifestSync.js";
 
 const issueExpert = {
   name: "E2E Issue Expert",
@@ -403,7 +405,23 @@ const seedCreateIssueSmokeFixtures = async () => {
     }),
   ]);
 
-  console.log("[e2e] Create-issue smoke fixtures ready.");
+  const manifestPreview = await runModelManifestDryRun();
+  if (manifestPreview.summary.deletedCandidates.length > 0) {
+    throw new Error(
+      "Refusing E2E model-catalog sync because the manifest preview contains managed-model deletion candidates."
+    );
+  }
+
+  const manifestSync = await syncModelManifestToIssueModels();
+  if (manifestSync.summary.deleted > 0) {
+    throw new Error(
+      "E2E model-catalog sync unexpectedly deleted managed models."
+    );
+  }
+
+  console.log(
+    `[e2e] Create-issue fixtures and Decision Plugin catalog ready (${manifestSync.summary.created} model records created, ${manifestSync.summary.updated} updated).`
+  );
 };
 
 try {
