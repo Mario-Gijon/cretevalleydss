@@ -1,5 +1,9 @@
 import { alpha } from "@mui/material/styles";
 import { decisionMatrixSurface } from "../../../../shared/styles/decisionMatrixSurface.styles";
+import { evaluationMatrixInputBoundarySx } from "../../../shared/styles/evaluationMatrixTable.styles.js";
+import { EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH } from "../../../shared/evaluationMatrixSizing.js";
+
+const CRITERIA_PAIRWISE_LABEL_COLUMN_MIN_WIDTH = 180;
 
 export const criteriaPairwiseAHPViewSx = {
   container: { minWidth: 0, width: "100%", gap: 1.1 },
@@ -17,7 +21,7 @@ export const criteriaPairwiseAHPViewSx = {
 
 export const buildCriteriaPairwiseAHPGridSx = (theme, criterionCount) => ({
   width: "100%",
-  minWidth: `${220 + Math.max(criterionCount, 1) * 150}px`,
+  minWidth: `${CRITERIA_PAIRWISE_LABEL_COLUMN_MIN_WIDTH + Math.max(criterionCount, 1) * EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH}px`,
   ...{
     "& .MuiDataGrid-cell[data-field='criterionLabel']": {
       backgroundColor: decisionMatrixSurface.headerBackground,
@@ -47,30 +51,30 @@ export const buildCriteriaPairwiseAHPGridSx = (theme, criterionCount) => ({
 export const judgmentCellSx = {
   control: {
     minWidth: 0,
+    width: "100%",
+    ...evaluationMatrixInputBoundarySx,
     "& .MuiOutlinedInput-root": {
       height: 34,
       bgcolor: "rgba(5, 12, 20, 0.52)",
       "& fieldset": { borderColor: "rgba(255,255,255,0.10)" },
       "&:hover fieldset": { borderColor: "secondary.main" },
       "&.Mui-focused fieldset": { borderColor: "secondary.main" },
+      "&.Mui-error fieldset": { borderColor: "error.main" },
     },
-    "& .MuiSelect-select": { px: 0.8, py: 0.5, textAlign: "center" },
+    "& .MuiOutlinedInput-input": {
+      px: 0.8,
+      py: 0.5,
+      textAlign: "center",
+      fontWeight: 800,
+    },
   },
-  menu: {
-    maxHeight: 420,
-    "& .MuiMenuItem-root": { minHeight: 38 },
-  },
-  option: { display: "flex", alignItems: "center", gap: 1, minWidth: 220 },
-  optionValue: { color: "secondary.light", fontWeight: 850, minWidth: 34 },
-  optionLabel: { color: "text.secondary" },
   value: { color: "text.primary", fontWeight: 800, textAlign: "center" },
-  placeholder: { color: "text.secondary", fontWeight: 700, textAlign: "center" },
   fixed: {
     display: "grid",
     placeItems: "center",
     width: "100%",
     minHeight: 32,
-    color: "text.disabled",
+    color: "text.secondary",
     bgcolor: "rgba(0,0,0,0.45)",
     borderRadius: 1,
     fontWeight: 800,
@@ -90,7 +94,6 @@ export const judgmentCellSx = {
     width: "100%",
     minHeight: 34,
   },
-  derivedLabel: { color: "text.secondary", lineHeight: 1.1 },
 };
 
 export const collectiveResultSx = {

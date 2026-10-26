@@ -1,10 +1,7 @@
 import { resolveCriteria } from "./resolveCriteria";
+import { SAATY_SCALE_VALUES } from "./saatyPreference";
 
 export const MAX_AHP_CRITERIA = 15;
-const ALLOWED_SAATY_VALUES = [
-  ...Array.from({ length: 9 }, (_, index) => index + 1),
-  ...Array.from({ length: 8 }, (_, index) => 1 / (index + 2)),
-];
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -12,7 +9,7 @@ const isPlainObject = (value) =>
 const isSaatyValue = (value) =>
   typeof value === "number" &&
   Number.isFinite(value) &&
-  ALLOWED_SAATY_VALUES.some((allowed) => Math.abs(value - allowed) <= 1e-12);
+  SAATY_SCALE_VALUES.some((allowed) => Math.abs(value - allowed) <= 1e-12);
 
 export const validateEvaluation = ({ decisionContext, evaluation }) => {
   const criteria = resolveCriteria({ decisionContext });

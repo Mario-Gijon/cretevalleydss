@@ -5,6 +5,12 @@ import { getOrientedComparisonValue, updateComparison } from "../../../../../src
 import { expectedComparisonCount, validateEvaluation } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/validateEvaluation";
 import { resolveCollective, isCollectiveEvaluationUsable } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/resolveCollective";
 import { resolveCriteria } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/resolveCriteria";
+import {
+  formatNormalizedPreference,
+  normalizedPreferenceToSaatyValue,
+  SAATY_SCALE_VALUES,
+  saatyValueToNormalizedPreference,
+} from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/saatyPreference";
 import { getEvaluationStructureEntryForStage } from "../../../../../src/features/decisionPlugins/evaluations/registry";
 
 const decisionContext = {
@@ -28,6 +34,24 @@ describe("criteriaPairwiseAHP payload operations", () => {
     expect(expectedComparisonCount(1)).toBe(0);
     expect(expectedComparisonCount(2)).toBe(1);
     expect(expectedComparisonCount(6)).toBe(15);
+  });
+
+  it("maps the normalized UI scale exactly to supported reciprocal Saaty values", () => {
+    expect(saatyValueToNormalizedPreference(3)).toBe(0.75);
+    expect(saatyValueToNormalizedPreference(1 / 3)).toBe(0.25);
+    expect(formatNormalizedPreference(3)).toBe("0.7500");
+    expect(formatNormalizedPreference(1 / 3)).toBe("0.2500");
+    expect(normalizedPreferenceToSaatyValue("0.7500")).toBe(3);
+    expect(normalizedPreferenceToSaatyValue("0.2500")).toBe(1 / 3);
+    expect(normalizedPreferenceToSaatyValue("0.7400")).toBeNull();
+    for (const value of SAATY_SCALE_VALUES) {
+      const normalized = formatNormalizedPreference(value);
+      expect(normalizedPreferenceToSaatyValue(normalized)).toBe(value);
+      expect(
+        saatyValueToNormalizedPreference(1 / value)
+        + saatyValueToNormalizedPreference(value)
+      ).toBeCloseTo(1, 12);
+    }
   });
 
   it("stores one judgment and derives its reciprocal by stable criterion IDs", () => {

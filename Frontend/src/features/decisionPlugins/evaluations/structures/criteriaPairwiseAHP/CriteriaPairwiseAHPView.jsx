@@ -3,6 +3,10 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Alert, Box, Stack, Typography, useTheme } from "@mui/material";
 
 import { buildEvaluationMatrixDataGridSx } from "../../shared/styles/evaluationMatrixTable.styles";
+import {
+  ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
+  EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
+} from "../../shared/evaluationMatrixSizing.js";
 import ComparisonCell from "./components/ComparisonCell";
 import CollectiveAHPResult from "./components/CollectiveAHPResult";
 import { expectedComparisonCount, validateEvaluation } from "./operations/validateEvaluation";
@@ -92,15 +96,15 @@ const CriteriaPairwiseAHPView = ({
     {
       field: "criterionLabel",
       headerName: "Criteria",
-      minWidth: 220,
-      width: 220,
+      minWidth: ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
+      width: ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
       sortable: false,
       flex: 0,
     },
     ...criteria.map((columnCriterion) => ({
       field: columnCriterion.id,
       headerName: columnCriterion.name,
-      minWidth: 150,
+      minWidth: EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
       flex: 1,
       sortable: false,
       renderCell: (params) => {
@@ -145,11 +149,11 @@ const CriteriaPairwiseAHPView = ({
       ) : null}
       <Box>
         <Typography variant="subtitle2" sx={{ fontWeight: 850 }}>
-          Pairwise criteria comparisons
+          Criteria comparisons
         </Typography>
         {currentEvaluation ? (
           <Typography variant="caption" sx={criteriaPairwiseAHPViewSx.caption}>
-            Compare the row criterion with the column criterion. The opposite half is reciprocal.
+            0.5 is neutral. Values above 0.5 favour the row criterion.
           </Typography>
         ) : null}
       </Box>
@@ -159,11 +163,6 @@ const CriteriaPairwiseAHPView = ({
             ? "One criterion · no pairwise comparisons needed"
             : `${completedComparisons} of ${totalComparisons} comparisons complete`}
         </Typography>
-        {criteria.length > 1 ? (
-          <Typography variant="caption" sx={criteriaPairwiseAHPViewSx.caption}>
-            Saaty scale: 1–9 and reciprocal values
-          </Typography>
-        ) : null}
       </Stack> : null}
       {currentEvaluation ? <Box sx={criteriaPairwiseAHPViewSx.matrixViewport}>
         <DataGrid

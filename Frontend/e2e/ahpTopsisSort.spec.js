@@ -49,21 +49,15 @@ const acceptInvitationAndOpenIssue = async (page, issueName) => {
   return issueHeading;
 };
 
-const selectComparison = async (page, rowCriterion, columnCriterion, value) => {
-  const select = page.getByRole("combobox", {
+const fillNormalizedComparison = async (page, rowCriterion, columnCriterion, value) => {
+  const input = page.getByRole("textbox", {
     name: `Compare ${rowCriterion} with ${columnCriterion}`,
   });
-  await select.click();
   if (value === null) {
-    await page.getByRole("option", { name: "Clear comparison", exact: true }).click();
+    await input.fill("");
     return;
   }
-  const optionLabel = value === 1
-    ? "1 · equal importance"
-    : value > 1
-      ? `${value} · row`
-      : `1/${Math.round(1 / value)} · column`;
-  await page.getByRole("option", { name: new RegExp(`^${optionLabel}`) }).click();
+  await input.fill((value / (1 + value)).toFixed(4));
 };
 
 const submitEvaluation = async (page) => {
@@ -81,9 +75,9 @@ const completeAHPEvaluation = async (page, { qualityCost, qualityReliability, co
 
   const status = page.getByRole("status").filter({ hasText: /of 3 comparisons complete/ });
   await expect(status).toHaveText("0 of 3 comparisons complete");
-  await selectComparison(page, "AHP Quality", "AHP Cost", qualityCost);
-  await selectComparison(page, "AHP Quality", longReliabilityCriterion, qualityReliability);
-  await selectComparison(page, "AHP Cost", longReliabilityCriterion, costReliability);
+  await fillNormalizedComparison(page, "AHP Quality", "AHP Cost", qualityCost);
+  await fillNormalizedComparison(page, "AHP Quality", longReliabilityCriterion, qualityReliability);
+  await fillNormalizedComparison(page, "AHP Cost", longReliabilityCriterion, costReliability);
   await expect(status).toHaveText("3 of 3 comparisons complete");
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-evaluation-desktop.png"), fullPage: true });
   await submitEvaluation(page);
@@ -152,10 +146,11 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   const ahpMethod = page.getByRole("button", { name: /AHP/ });
   await expect(ahpMethod).toBeVisible();
   await ahpMethod.click();
-  await expect(page.getByText("Pairwise criteria comparisons", { exact: true })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
-  await expect(page.locator(".MuiDataGrid-root").getByRole("combobox")).toHaveCount(3);
-  await expect(page.getByLabel("Fixed self-comparison: 1")).toHaveCount(3);
+  await expect(page.getByText("Criteria comparisons", { exact: true })).toBeVisible();
+  await expect(page.getByText("0.5 is neutral. Values above 0.5 favour the row criterion.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
+  await expect(page.locator(".MuiDataGrid-root").getByRole("textbox")).toHaveCount(3);
+  await expect(page.getByLabel("Neutral self-comparison")).toHaveCount(3);
   const longCriterionCell = page.locator(".MuiDataGrid-row")
     .filter({ hasText: longReliabilityCriterion })
     .locator(".MuiDataGrid-cell[data-field='criterionLabel']");
@@ -163,7 +158,7 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-create-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-create-mobile.png"), fullPage: true });
-  await expect(page.getByRole("combobox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
   const matrixScroller = page.locator(".MuiDataGrid-root .MuiDataGrid-virtualScroller");
   const mobileScrollMetrics = await matrixScroller.evaluate((element) => ({
     clientWidth: element.clientWidth,
@@ -178,9 +173,9 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
 
   const manualWeightingMethod = page.getByRole("button", { name: /^Manual\s+Set weights now/ });
   await manualWeightingMethod.click();
-  await expect(page.getByText("Pairwise criteria comparisons", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Criteria comparisons", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: /^AHP\s+Compute now/ }).click();
-  await expect(page.getByText("Pairwise criteria comparisons", { exact: true })).toBeVisible();
+  await expect(page.getByText("Criteria comparisons", { exact: true })).toBeVisible();
 
   const mccToggle = page.getByRole("button", { name: "MCC EXPERTS CONSENSUS" });
   await expect(mccToggle).toBeVisible();
@@ -247,15 +242,13 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await expect(page.getByRole("heading", { name: "Criteria weighting", exact: true })).toBeVisible();
   const status = page.getByRole("status").filter({ hasText: /of 3 comparisons complete/ });
   await expect(status).toHaveText("0 of 3 comparisons complete");
-  const firstComparison = page.getByRole("combobox", { name: "Compare AHP Quality with AHP Cost" });
-  await firstComparison.click();
-  await expect(page.getByRole("option")).toHaveCount(18);
-  await expect(page.getByRole("option", { name: /^1\.5\b/ })).toHaveCount(0);
-  await page.getByRole("option", { name: /^3 · row/ }).click();
-  await selectComparison(page, "AHP Quality", "AHP Cost", 4);
-  await selectComparison(page, "AHP Quality", "AHP Cost", 3);
-  await selectComparison(page, "AHP Quality", longReliabilityCriterion, 6);
-  await selectComparison(page, "AHP Cost", longReliabilityCriterion, null);
+  const firstComparison = page.getByRole("textbox", { name: "Compare AHP Quality with AHP Cost" });
+  await firstComparison.fill("0.7500");
+  await expect(page.getByLabel("Reciprocal comparison 0.2500")).toBeVisible();
+  await fillNormalizedComparison(page, "AHP Quality", "AHP Cost", 4);
+  await fillNormalizedComparison(page, "AHP Quality", "AHP Cost", 3);
+  await fillNormalizedComparison(page, "AHP Quality", longReliabilityCriterion, 6);
+  await fillNormalizedComparison(page, "AHP Cost", longReliabilityCriterion, null);
   await expect(status).toHaveText("2 of 3 comparisons complete");
   await page.keyboard.press("Escape");
   const saveDialog = page.getByRole("dialog", { name: "Save changes?" });
@@ -268,8 +261,8 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await evaluateWeights.click();
   await expect(page.getByRole("heading", { name: "Criteria weighting", exact: true })).toBeVisible();
   await expect(status).toHaveText("2 of 3 comparisons complete");
-  await expect(page.getByLabel("Reciprocal comparison 1/3")).toBeVisible();
-  await selectComparison(page, "AHP Cost", longReliabilityCriterion, 2);
+  await expect(page.getByLabel("Reciprocal comparison 0.2500")).toBeVisible();
+  await fillNormalizedComparison(page, "AHP Cost", longReliabilityCriterion, 2);
   await expect(status).toHaveText("3 of 3 comparisons complete");
   await submitEvaluation(page);
   await expect(page.getByRole("heading", { name: issueName, exact: true })).toBeVisible();

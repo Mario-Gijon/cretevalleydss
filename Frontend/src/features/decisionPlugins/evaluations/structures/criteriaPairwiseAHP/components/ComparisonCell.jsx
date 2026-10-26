@@ -1,41 +1,11 @@
-import { Box, FormControl, MenuItem, Select, Typography } from "@mui/material";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Box, TextField, Typography } from "@mui/material";
 
-import { formatJudgment } from "../operations/formatJudgment";
+import {
+  formatNormalizedPreference,
+  normalizedPreferenceToSaatyValue,
+} from "../operations/saatyPreference";
 import { judgmentCellSx } from "../styles/CriteriaPairwiseAHPView.styles";
-
-const INTENSITY_LABELS = {
-  1: "equal importance",
-  2: "between equal and moderate",
-  3: "moderately more important",
-  4: "between moderate and strong",
-  5: "strongly more important",
-  6: "between strong and very strong",
-  7: "very strongly more important",
-  8: "between very strong and extreme",
-  9: "extremely more important",
-};
-
-const options = [
-  ...Array.from({ length: 8 }, (_, index) => {
-    const denominator = index + 2;
-    const value = 1 / denominator;
-    const intensity = denominator;
-    return {
-      value,
-      label: `1/${denominator} · column ${INTENSITY_LABELS[intensity]}`,
-      shortLabel: `1/${denominator}`,
-    };
-  }).reverse(),
-  { value: 1, label: "1 · equal importance", shortLabel: "1" },
-  ...Array.from({ length: 8 }, (_, index) => {
-    const value = index + 2;
-    return {
-      value,
-      label: `${value} · row ${INTENSITY_LABELS[value]}`,
-      shortLabel: String(value),
-    };
-  }),
-];
 
 const ComparisonCell = ({
   rowCriterion,
@@ -46,87 +16,94 @@ const ComparisonCell = ({
   permitEdit,
   onChange,
 }) => {
+  const [draftValue, setDraftValue] = useState(() => formatNormalizedPreference(value));
+  const [invalidDraft, setInvalidDraft] = useState(false);
+  const previousValueRef = useRef(value);
+  const pendingLocalValueRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (Object.is(previousValueRef.current, value)) return;
+    previousValueRef.current = value;
+
+    if (pendingLocalValueRef.current?.value === value) {
+      pendingLocalValueRef.current = null;
+      return;
+    }
+
+    pendingLocalValueRef.current = null;
+    setDraftValue(formatNormalizedPreference(value));
+    setInvalidDraft(false);
+  }, [value]);
+
   if (diagonal) {
     return (
-      <Box sx={judgmentCellSx.fixed} aria-label="Fixed self-comparison: 1">
-        1
+      <Box sx={judgmentCellSx.fixed} aria-label="Neutral self-comparison">
+        Neutral
       </Box>
     );
   }
 
   if (editable && permitEdit) {
     const inputId = `ahp-${rowCriterion.id}-${columnCriterion.id}`;
+    const accessibleLabel = `Compare ${rowCriterion.name} with ${columnCriterion.name}`;
+    const updateDraft = (nextDraft) => {
+      setDraftValue(nextDraft);
+      if (nextDraft === "") {
+        setInvalidDraft(false);
+        pendingLocalValueRef.current = { value: "" };
+        onChange(null);
+        return;
+      }
+
+      const nextSaatyValue = normalizedPreferenceToSaatyValue(nextDraft);
+      if (nextSaatyValue === null) {
+        setInvalidDraft(true);
+        pendingLocalValueRef.current = { value: "" };
+        onChange(null);
+        return;
+      }
+
+      setInvalidDraft(false);
+      pendingLocalValueRef.current = { value: nextSaatyValue };
+      onChange(nextSaatyValue);
+    };
+
     return (
-      <FormControl size="small" fullWidth sx={judgmentCellSx.control}>
-        <Select
-          id={inputId}
-          value={value === "" ? "" : String(value)}
-          displayEmpty
-          color="secondary"
-          onChange={(event) =>
-            onChange(
-              event.target.value === "" ? null : Number(event.target.value)
-            )
-          }
-          inputProps={{
-            "aria-label": `Compare ${rowCriterion.name} with ${columnCriterion.name}`,
-          }}
-          renderValue={(selected) =>
-            selected === "" ? (
-              <Typography variant="caption" sx={judgmentCellSx.placeholder}>
-                Choose
-              </Typography>
-            ) : (
-              <Typography variant="body2" sx={judgmentCellSx.value}>
-                {formatJudgment(Number(selected))}
-              </Typography>
-            )
-          }
-          MenuProps={{ PaperProps: { sx: judgmentCellSx.menu } }}
-        >
-          <MenuItem value="">
-            <em>Clear comparison</em>
-          </MenuItem>
-          {options.map((option) => (
-            <MenuItem
-              key={option.value}
-              value={String(option.value)}
-              aria-label={option.label}
-            >
-              <Box sx={judgmentCellSx.option}>
-                <Typography variant="body2" sx={judgmentCellSx.optionValue}>
-                  {option.shortLabel}
-                </Typography>
-                <Typography variant="caption" sx={judgmentCellSx.optionLabel}>
-                  {option.label.slice(option.label.indexOf("·") + 1).trim()}
-                </Typography>
-              </Box>
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <TextField
+        id={inputId}
+        value={draftValue}
+        type="text"
+        size="small"
+        fullWidth
+        color="secondary"
+        error={invalidDraft}
+        title={invalidDraft ? "Enter a supported normalized value from 0.1 to 0.9." : undefined}
+        onChange={(event) => updateDraft(event.target.value)}
+        inputProps={{
+          inputMode: "decimal",
+          "aria-label": accessibleLabel,
+          "aria-invalid": invalidDraft,
+        }}
+        sx={judgmentCellSx.control}
+      />
     );
   }
 
+  const normalizedValue = formatNormalizedPreference(value);
   const isDerived = !editable;
   return (
     <Box
       sx={isDerived ? judgmentCellSx.derived : judgmentCellSx.readOnly}
-      title={isDerived && value !== "" ? "Reciprocal comparison" : undefined}
+      title={isDerived && normalizedValue ? "Reciprocal comparison" : undefined}
       aria-label={
         isDerived
-          ? `Reciprocal comparison ${formatJudgment(value) || "not entered"}`
-          : `Comparison ${formatJudgment(value) || "not entered"}`
+          ? `Reciprocal comparison ${normalizedValue || "not entered"}`
+          : `Comparison ${normalizedValue || "not entered"}`
       }
     >
       <Typography variant="body2" sx={judgmentCellSx.value}>
-        {formatJudgment(value) || "—"}
+        {normalizedValue || "—"}
       </Typography>
-      {isDerived && value !== "" ? (
-        <Typography variant="caption" sx={judgmentCellSx.derivedLabel}>
-          Reciprocal
-        </Typography>
-      ) : null}
     </Box>
   );
 };

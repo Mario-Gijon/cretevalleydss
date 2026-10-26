@@ -35,20 +35,21 @@ describe("CriteriaPairwiseAHPView", () => {
 
     expect(screen.getByRole("grid")).toBeInTheDocument();
     expect(screen.getByText("0 of 3 comparisons complete")).toBeInTheDocument();
-    expect(screen.getAllByRole("combobox")).toHaveLength(3);
-    expect(screen.getAllByLabelText("Fixed self-comparison: 1")).toHaveLength(3);
-    expect(screen.getByRole("combobox", { name: "Compare Quality with Cost" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Compare Quality with Delivery" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Compare Cost with Delivery" })).toBeInTheDocument();
+    expect(screen.getAllByRole("textbox")).toHaveLength(3);
+    expect(screen.getByText("0.5 is neutral. Values above 0.5 favour the row criterion.")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);
+    expect(screen.getByRole("textbox", { name: "Compare Quality with Cost" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Compare Quality with Delivery" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Compare Cost with Delivery" })).toBeInTheDocument();
   });
 
-  it("offers Saaty scale choices and saves only the selected independent comparison", () => {
+  it("accepts a normalized preference and persists the matching Saaty judgment by IDs", () => {
     const setEvaluation = vi.fn();
     renderView({ evaluation: { comparisons: [] }, setEvaluation });
 
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Compare Quality with Cost" }));
-    const option = screen.getByRole("option", { name: "3 · row moderately more important" });
-    fireEvent.click(option);
+    const input = screen.getByRole("textbox", { name: "Compare Quality with Cost" });
+    expect(input).toHaveAttribute("inputmode", "decimal");
+    fireEvent.change(input, { target: { value: "0.7500" } });
 
     expect(setEvaluation).toHaveBeenCalledWith({
       comparisons: [
@@ -57,19 +58,50 @@ describe("CriteriaPairwiseAHPView", () => {
     });
   });
 
-  it("offers both orientations and the full Saaty range", () => {
-    renderView({ evaluation: { comparisons: [] } });
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Compare Quality with Cost" }));
-    expect(screen.getByRole("option", { name: "1/9 · column extremely more important" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "1 · equal importance" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "9 · row extremely more important" })).toBeInTheDocument();
+  it("updates the opposite cell as a normalized reciprocal and keeps the diagonal neutral", () => {
+    const setEvaluation = vi.fn();
+    const props = {
+      decisionContext,
+      evaluation: { comparisons: [] },
+      setEvaluation,
+      collectiveEvaluation: null,
+      readOnly: false,
+    };
+    const { rerender } = renderWithProviders(<CriteriaPairwiseAHPView {...props} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Compare Quality with Cost" }), {
+      target: { value: "0.7500" },
+    });
+
+    const updatedEvaluation = {
+      comparisons: [
+        { criterionId: "quality", comparedCriterionId: "cost", value: 3 },
+      ],
+    };
+    expect(setEvaluation).toHaveBeenCalledWith(updatedEvaluation);
+    rerender(<CriteriaPairwiseAHPView {...props} evaluation={updatedEvaluation} />);
+
+    expect(screen.getByLabelText("Reciprocal comparison 0.2500")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);
+    expect(screen.getAllByLabelText("Neutral self-comparison")[0]).toHaveTextContent("Neutral");
+  });
+
+  it("clears a prior judgment and marks unsupported normalized drafts invalid", () => {
+    const setEvaluation = vi.fn();
+    renderView({ setEvaluation });
+
+    const input = screen.getByRole("textbox", { name: "Compare Quality with Cost" });
+    fireEvent.change(input, { target: { value: "0.7400" } });
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(setEvaluation).toHaveBeenCalledWith({ comparisons: [] });
   });
 
   it("shows the reciprocal as read-only and disables editing in read-only mode", () => {
     const { container } = renderView({ readOnly: true });
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Comparison 3")).toBeInTheDocument();
-    expect(screen.getByLabelText("Reciprocal comparison 1/3")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /Compare/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Comparison 0.7500")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reciprocal comparison 0.2500")).toBeInTheDocument();
     expect(container.querySelectorAll(".derived-cell")).toHaveLength(3);
   });
 
