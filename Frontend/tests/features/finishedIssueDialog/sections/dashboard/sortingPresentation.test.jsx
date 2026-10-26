@@ -6,8 +6,8 @@ import DashboardView from "../../../../../src/features/finishedIssueDialog/secti
 import { buildDashboardData } from "../../../../../src/features/finishedIssueDialog/sections/dashboard/logic/buildFinishedIssueDashboardData.js";
 import {
   sortingResultGridSx,
-  topsisSortCategoryBodySx,
-  topsisSortCategoryCardSx,
+  topsisSortCategoryGroupSx,
+  topsisSortCategorySx,
   topsisSortResultGridSx,
 } from "../../../../../src/features/finishedIssueDialog/resultPresentations/presentations/sorting/v1/sortingResultGrid.styles.js";
 import { selectFinishedIssueExecution } from "../../../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
@@ -143,39 +143,39 @@ describe("sorting@1 Finished Issue presentation", () => {
     });
   });
 
-  it("flows natural-height categories into responsive columns and caps only long lists", () => {
+  it("renders a continuous vertical classification with one bounded scroll region", () => {
     expect(topsisSortResultGridSx).toMatchObject({
-      columnCount: { xs: 1, md: 2 },
-      columnGap: 1,
-      columnFill: "balance",
-    });
-    expect(topsisSortResultGridSx).not.toHaveProperty("maxHeight");
-    expect(topsisSortResultGridSx).not.toHaveProperty("overflowY");
-    expect(topsisSortResultGridSx["& > [role='listitem']"]).toMatchObject({
-      display: "inline-block",
-      breakInside: "avoid",
-      width: "100%",
-    });
-    expect(topsisSortCategoryCardSx).toMatchObject({
       display: "flex",
       flexDirection: "column",
-    });
-    expect(topsisSortCategoryCardSx).not.toHaveProperty("height");
-    expect(topsisSortCategoryBodySx).toMatchObject({
-      minHeight: 0,
-      maxHeight: { xs: 220, md: 280 },
+      maxHeight: { xs: 340, md: 440 },
       overflowY: "auto",
       overflowX: "hidden",
       scrollbarWidth: "thin",
     });
+    expect(topsisSortCategorySx).toMatchObject({
+      display: "grid",
+      gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(190px, 0.34fr) minmax(0, 1fr)" },
+      columnGap: { xs: 0, md: 2 },
+    });
+    expect(topsisSortCategorySx).not.toHaveProperty("height");
+    expect(topsisSortCategorySx).not.toHaveProperty("borderRadius");
+    expect(topsisSortCategorySx).not.toHaveProperty("bgcolor");
+    expect(topsisSortCategoryGroupSx).toMatchObject({
+      position: "relative",
+      borderLeft: "1px solid",
+      borderColor: "secondary.dark",
+    });
+    expect(topsisSortCategoryGroupSx).not.toHaveProperty("maxHeight");
+    expect(topsisSortCategoryGroupSx).not.toHaveProperty("overflowY");
 
     renderTopsisDashboard();
     const category = screen.getByRole("listitem", { name: "High", exact: true });
-    const header = category.firstElementChild;
+    const header = within(category).getByText("High");
     const body = within(category).getByTestId("topsis-sort-category-body");
     expect(header).toHaveTextContent("High");
     expect(header.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(body).toContainElement(within(category).getByText("Premium option"));
+    expect(screen.getByTestId("topsis-sort-category-list")).toContainElement(body);
   });
 
   it.each([
@@ -336,7 +336,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(within(category).queryByText("0.9000")).not.toBeInTheDocument();
   });
 
-  it("keeps empty categories compact and scrolls only a long alternative list", () => {
+  it("keeps empty categories compact and scrolls only the complete classification", () => {
     const manyAlternatives = Array.from({ length: 14 }, (_, index) => ({
       id: `many-${index}`,
       name: index === 0 ? "A deliberately long alternative name that still fits its category row" : `Alternative ${index + 1}`,
@@ -353,10 +353,60 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(within(empty).getByText("No alternatives assigned", { exact: true })).toBeInTheDocument();
     expect(within(empty).queryByTestId("topsis-sort-closeness-point")).not.toBeInTheDocument();
     const populated = screen.getByRole("listitem", { name: "Medium", exact: true });
-    expect(within(populated).getByTestId("topsis-sort-category-body")).toHaveStyle({ overflowY: "auto" });
+    expect(within(populated).getByTestId("topsis-sort-category-body")).not.toHaveStyle({ overflowY: "auto" });
+    expect(within(populated).getByTestId("topsis-sort-category-body")).not.toHaveStyle({ maxHeight: "280px" });
+    expect(screen.getByTestId("topsis-sort-category-list")).toHaveStyle({ overflowY: "auto" });
     expect(within(populated).getAllByRole("listitem")).toHaveLength(14);
     expect(within(populated).getByText(manyAlternatives[0].name)).toBeInTheDocument();
     expect(data.result.categories.map(({ label }) => label)).toEqual(["High", "Medium", "Low"]);
+  });
+
+  it.each([
+    [1, ["Single named class"]],
+    [2, ["High tier", "Low tier"]],
+    [5, ["Preferred", "Repeated", "Repeated", "Lower", "Least preferred"]],
+  ])("preserves configured category names and vertical order with %i categories", (count, labels) => {
+    const categories = labels.map((label, index) => ({ categoryId: `category-${index}`, label, order: index }));
+    const execution = topsisExecution({ categories, assignments: [] });
+    const data = renderTopsisDashboard(execution, []);
+    const renderedCategories = within(screen.getByTestId("topsis-sort-category-list")).getAllByTestId("topsis-sort-category");
+
+    expect(renderedCategories).toHaveLength(count);
+    expect([...labels].reverse().every((label, index) => within(renderedCategories[index]).getByText(label))).toBe(true);
+    expect(data.result.categories.map(({ label }) => label)).toEqual([...labels].reverse());
+    expect(screen.queryAllByText("Repeated")).toHaveLength(labels.filter((label) => label === "Repeated").length);
+    expect(screen.queryByText(/category-\d|cat-(?:low|medium|high)|profile-/i)).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("keeps long category and alternative names intact without exposing internal IDs", () => {
+    const longCategory = "Most favorable classification for the long-term regional investment alternatives";
+    const longAlternative = "A supplier alternative with a deliberately long public display name";
+    const evaluatedAlternatives = [
+      { id: "mongo-a", name: longAlternative },
+      { id: "mongo-b", name: "Balanced option" },
+      { id: "mongo-c", name: "Budget option" },
+    ];
+    const data = renderTopsisDashboard(topsisExecution({
+      categories: [
+        { categoryId: "custom-high-id", label: longCategory, order: 2 },
+        { categoryId: "custom-middle-id", label: "Repeated label", order: 1 },
+        { categoryId: "custom-low-id", label: "Repeated label", order: 0 },
+      ],
+      assignments: [
+        { alternativeId: "mongo-a", categoryId: "custom-high-id" },
+        { alternativeId: "mongo-b", categoryId: "custom-middle-id" },
+        { alternativeId: "mongo-c", categoryId: "custom-low-id" },
+      ],
+    }), evaluatedAlternatives);
+
+    expect(data.result.categories.map(({ label }) => label)).toEqual([longCategory, "Repeated label", "Repeated label"]);
+    const renderedCategories = screen.getByTestId("topsis-sort-category-list");
+    const longCategoryGroup = screen.getByRole("listitem", { name: longCategory, exact: true });
+    expect(within(longCategoryGroup).getByText(longCategory)).toBeInTheDocument();
+    expect(within(longCategoryGroup).getByText(longAlternative)).toBeInTheDocument();
+    expect(within(renderedCategories).getAllByText("Repeated label")).toHaveLength(2);
+    expect(within(renderedCategories).queryByText(/custom-(?:high|middle|low)-id|mongo-[abc]|profile-/i)).not.toBeInTheDocument();
   });
 
   it("keeps closeness points and hides unsupported boundaries when boundary evidence is unavailable", () => {

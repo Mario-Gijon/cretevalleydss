@@ -14,35 +14,47 @@ export const sortingResultGridSx = Object.freeze({
   ...finishedIssueScrollbarSx,
 });
 
-/** TOPSIS-Sort cards follow their content and cap long alternative lists. */
+/** TOPSIS-Sort categories share one scrollable, continuous classification list. */
 export const topsisSortResultGridSx = Object.freeze({
-  columnCount: { xs: 1, md: 2 },
-  columnGap: 1,
-  columnFill: "balance",
-  width: "100%",
-  minWidth: 0,
-  p: 0.2,
-  "& > [role='listitem']": {
-    display: "inline-block",
-    verticalAlign: "top",
-    width: "100%",
-    boxSizing: "border-box",
-    breakInside: "avoid",
-    mb: 1,
-  },
-});
-
-export const topsisSortCategoryCardSx = Object.freeze({
   display: "flex",
   flexDirection: "column",
+  width: "100%",
   minWidth: 0,
-});
-
-export const topsisSortCategoryBodySx = Object.freeze({
-  minHeight: 0,
-  maxHeight: { xs: 220, md: 280 },
+  maxHeight: { xs: 340, md: 440 },
   overflowY: "auto",
   overflowX: "hidden",
   overscrollBehavior: "contain",
+  p: 0.2,
   ...finishedIssueScrollbarSx,
+});
+
+export const topsisSortCategorySx = Object.freeze({
+  display: "grid",
+  gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(190px, 0.34fr) minmax(0, 1fr)" },
+  columnGap: { xs: 0, md: 2 },
+  rowGap: 0.55,
+  minWidth: 0,
+  py: { xs: 1, sm: 1.15 },
+  px: { xs: 0.65, sm: 0.85 },
+  "&:last-of-type": { borderBottom: 0 },
+});
+
+export const topsisSortCategoryGroupSx = Object.freeze({
+  position: "relative",
+  listStyle: "none",
+  minWidth: 0,
+  m: 0,
+  py: 0.15,
+  pl: { xs: 1.15, md: 1.3 },
+  borderLeft: "1px solid",
+  borderColor: "secondary.dark",
+  "&:before, &:after": {
+    content: '""',
+    position: "absolute",
+    left: -1,
+    width: { xs: 7, md: 8 },
+    borderColor: "secondary.dark",
+  },
+  "&:before": { top: 0, borderTop: "1px solid" },
+  "&:after": { bottom: 0, borderBottom: "1px solid" },
 });

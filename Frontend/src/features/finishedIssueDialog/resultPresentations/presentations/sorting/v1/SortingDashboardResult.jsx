@@ -1,10 +1,9 @@
-import { Box, Chip, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import {
   sortingResultGridSx,
-  topsisSortCategoryBodySx,
-  topsisSortCategoryCardSx,
+  topsisSortCategoryGroupSx,
+  topsisSortCategorySx,
   topsisSortResultGridSx,
 } from "./sortingResultGrid.styles.js";
 
@@ -14,21 +13,22 @@ const isValidCloseness = (value) => typeof value === "number"
   && value <= 1;
 const toScalePercent = (value) => `${Number((value * 100).toPrecision(12))}%`;
 
-const CategoryHeader = ({ category, theme, compact = false }) => (
-  <Stack direction="row" spacing={0.8} alignItems={compact ? "center" : "flex-start"} justifyContent="space-between" sx={{ minWidth: 0, mb: compact ? 0.8 : 1 }}>
-    <Stack direction="row" spacing={0.7} alignItems={compact ? "center" : "flex-start"} sx={{ minWidth: 0 }}>
-      <CategoryRoundedIcon sx={{ flex: "0 0 auto", mt: compact ? 0 : 0.1, fontSize: 18, color: "secondary.light" }} aria-hidden="true" />
-      <Typography variant="subtitle1" title={category.label} sx={{ minWidth: 0, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>
-        {category.label}
+const CategoryHeader = ({ category }) => (
+  <Box sx={{ minWidth: 0, pr: { md: 1.5 } }}>
+    <Typography variant="subtitle1" title={category.label} sx={{ minWidth: 0, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+      {category.label}
+    </Typography>
+    {formatClosenessInterval(category.closenessInterval) && (
+      <Typography
+        variant="caption"
+        aria-label="Closeness interval"
+        data-testid="topsis-sort-closeness-interval"
+        sx={{ display: "block", mt: 0.35, color: "text.secondary", fontVariantNumeric: "tabular-nums", lineHeight: 1.35, overflowWrap: "anywhere" }}
+      >
+        {formatClosenessInterval(category.closenessInterval)}
       </Typography>
-    </Stack>
-    <Chip
-      size="small"
-      label={category.alternatives.length}
-      aria-label={`${category.alternatives.length} alternatives`}
-      sx={{ flex: "0 0 auto", color: "text.secondary", bgcolor: alpha(theme.palette.common.white, 0.055) }}
-    />
-  </Stack>
+    )}
+  </Box>
 );
 
 const formatClosenessInterval = (interval) => {
@@ -142,7 +142,7 @@ const TopsisSortAlternativeRow = ({ alternative, interval, theme }) => {
 };
 
 const TopsisSortDashboardResult = ({ result, theme }) => (
-  <Box role="list" aria-label="Final sorting by category" sx={topsisSortResultGridSx}>
+  <Box role="list" aria-label="Final sorting by category" data-testid="topsis-sort-category-list" sx={topsisSortResultGridSx}>
     {result.categories.map((category) => {
       const alternatives = category.alternatives
         .map((alternative, index) => ({ alternative, index }))
@@ -159,37 +159,23 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
       return (
         <Box
           key={category.id}
+          component="section"
           role="listitem"
           aria-label={category.label}
-          sx={{
-            ...topsisSortCategoryCardSx,
-            p: { xs: 1, sm: 1.2 },
-            borderRadius: 2,
-            border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
-            bgcolor: alpha(theme.palette.background.paper, 0.55),
-          }}
+          data-testid="topsis-sort-category"
+          sx={{ ...topsisSortCategorySx, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.42)}` }}
         >
-          <Typography variant="subtitle1" title={category.label} sx={{ mb: 0.75, minWidth: 0, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>
-            {category.label}
-          </Typography>
-          {formatClosenessInterval(category.closenessInterval) && (
-            <Typography
-              variant="caption"
-              aria-label="Closeness interval"
-              data-testid="topsis-sort-closeness-interval"
-              sx={{ display: "block", mb: 0.8, color: "text.secondary", fontVariantNumeric: "tabular-nums", lineHeight: 1.3 }}
-            >
-              {formatClosenessInterval(category.closenessInterval)}
-            </Typography>
-          )}
+          <CategoryHeader category={category} />
           {alternatives.length ? (
-            <Box component="ul" aria-label={`${category.label} alternatives`} data-testid="topsis-sort-category-body" sx={{ ...topsisSortCategoryBodySx, listStyle: "none", p: 0, m: 0 }}>
+            <Box component="ul" aria-label={`${category.label} alternatives`} data-testid="topsis-sort-category-body" sx={topsisSortCategoryGroupSx}>
               {alternatives.map((alternative) => (
                 <TopsisSortAlternativeRow key={alternative.id} alternative={alternative} interval={category.closenessInterval} theme={theme} />
               ))}
             </Box>
           ) : (
-            <Typography variant="body2" color="text.secondary">No alternatives assigned</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0, alignSelf: { md: "center" }, py: 0.3, fontSize: "0.82rem" }}>
+              No alternatives assigned
+            </Typography>
           )}
         </Box>
       );
