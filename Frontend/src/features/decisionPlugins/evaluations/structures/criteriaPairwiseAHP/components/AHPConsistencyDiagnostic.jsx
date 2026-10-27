@@ -122,17 +122,15 @@ const AHPConsistencyDiagnostic = ({
           </Typography>
         ) : null}
 
-        {!hasResult && !notApplicable ? (
+        {!hasResult && !notApplicable && state.status !== "ready" ? (
           <Typography variant="body2" color="text.secondary" role="status">
             {state.status === "incomplete"
               ? "Complete all pairwise comparisons to check consistency."
-              : state.status === "ready"
-                ? "Consistency has not been checked for the current comparisons."
-                : state.status === "error"
-                  ? "Consistency check unavailable. Please try again."
-                  : state.status === "checking"
-                    ? "Checking your comparisons…"
-                    : ""}
+              : state.status === "error"
+                ? "Consistency check unavailable. Please try again."
+                : state.status === "checking"
+                  ? "Checking your comparisons…"
+                  : ""}
           </Typography>
         ) : null}
 

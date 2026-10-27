@@ -131,7 +131,7 @@ describe("manual AHP consistency check", () => {
         diagnosticContext={creatorContext}
       />,
     );
-    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Consistency has not been checked for the current comparisons.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Check Consistency" })).toBeEnabled();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
 
@@ -159,7 +159,7 @@ describe("manual AHP consistency check", () => {
         diagnosticContext={creatorContext}
       />,
     );
-    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Consistency has not been checked for the current comparisons.")).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
   }, 10000);
 
@@ -324,7 +324,7 @@ describe("manual AHP consistency check", () => {
       />,
     );
     expect(screen.queryByText("Some comparisons don't match.")).not.toBeInTheDocument();
-    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Consistency has not been checked for the current comparisons.")).not.toBeInTheDocument();
     expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(0);
     expect(onConsistencyWarningChange).toHaveBeenLastCalledWith(null);
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
@@ -485,7 +485,7 @@ describe("manual AHP consistency check", () => {
     );
     expect(firstSignal.aborted).toBe(true);
     expect(screen.queryByText("Your comparisons are sufficiently consistent.")).not.toBeInTheDocument();
-    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Consistency has not been checked for the current comparisons.")).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -505,7 +505,7 @@ describe("manual AHP consistency check", () => {
         diagnosticContext={creatorContext}
       />,
     );
-    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Consistency has not been checked for the current comparisons.")).not.toBeInTheDocument();
     expect(screen.queryByText("Some comparisons don't match.")).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
 
@@ -562,7 +562,7 @@ describe("manual AHP consistency check", () => {
     );
     expect(firstSignal.aborted).toBe(true);
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Consistency has not been checked for the current comparisons.")).not.toBeInTheDocument();
 
     await act(async () => {
       resolveFirst({ success: true, data: diagnostic(0.9) });
@@ -605,7 +605,7 @@ describe("manual AHP consistency check", () => {
       />,
     );
     expect(firstSignal.aborted).toBe(true);
-    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Consistency has not been checked for the current comparisons.")).not.toBeInTheDocument();
 
     await act(async () => {
       resolveFirst({ success: true, data: diagnostic(0.9) });
