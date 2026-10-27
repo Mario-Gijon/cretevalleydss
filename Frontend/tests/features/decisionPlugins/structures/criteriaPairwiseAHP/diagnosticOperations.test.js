@@ -3,12 +3,8 @@ import { describe, expect, it } from "vitest";
 import { explainDiagnosticTriad, formatAHPDiagnosticRatio } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/explainDiagnosticTriad.js";
 import { isReviewCandidatePair, resolveReviewCandidatePairs } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/resolveReviewCandidatePairs.js";
 
-const makeTriad = (firstToSecond, secondToThird, firstToThird) => ({
-  criteria: [
-    { id: "quality", name: "Quality" },
-    { id: "cost", name: "Cost" },
-    { id: "sustainability", name: "Sustainability" },
-  ],
+const makeTriad = (firstToSecond, secondToThird, firstToThird, names = ["Quality", "Cost", "Sustainability"]) => ({
+  criteria: names.map((name, index) => ({ id: ["quality", "cost", "sustainability"][index], name })),
   comparisons: [
     { fromCriterionId: "quality", toCriterionId: "cost", value: firstToSecond },
     { fromCriterionId: "cost", toCriterionId: "sustainability", value: secondToThird },
@@ -35,7 +31,7 @@ describe("AHP diagnostic presentation operations", () => {
     expect(result.type).toBe("intensity");
     expect(result.text).toBe(
       "You rated Quality as 3 times as important as Cost, and Cost as 2 times as important as Sustainability. " +
-      "Together, those comparisons imply Quality is 6 times as important as Sustainability, while you rated Quality as 4 times as important as Sustainability.",
+      "Together, these judgments suggest Quality is 6 times as important as Sustainability, but you rated Quality as 4 times as important as Sustainability.",
     );
   });
 
@@ -43,8 +39,8 @@ describe("AHP diagnostic presentation operations", () => {
     const result = explainDiagnosticTriad(makeTriad(1 / 3, 3, 1 / 3));
 
     expect(result.type).toBe("intensity");
-    expect(result.text).toContain("Together, those comparisons imply Quality and Sustainability are equally important");
-    expect(result.text).toContain("while you rated Sustainability as 3 times as important as Quality");
+    expect(result.text).toContain("Together, these judgments suggest Quality and Sustainability are equally important");
+    expect(result.text).toContain("but you rated Sustainability as 3 times as important as Quality");
   });
 
   it("describes reciprocal intensities in natural language", () => {
@@ -55,6 +51,26 @@ describe("AHP diagnostic presentation operations", () => {
     expect(result.text).toContain("Sustainability as 2 times as important as Cost");
     expect(result.text).toContain("Sustainability is 6 times as important as Quality");
     expect(result.text).toContain("Sustainability as 4 times as important as Quality");
+  });
+
+  it("uses magnitudes when transitive directions conflict only in intensity", () => {
+    const result = explainDiagnosticTriad(makeTriad(4, 1 / 5, 4, ["A", "B", "C"]));
+
+    expect(result.type).toBe("intensity");
+    expect(result.text).toBe(
+      "You rated A as 4 times as important as B, and C as 5 times as important as B. " +
+      "Together, these judgments suggest C is 1.25 times as important as A, but you rated A as 4 times as important as C.",
+    );
+  });
+
+  it("preserves meaningful precision for judgments close to equal importance", () => {
+    const result = explainDiagnosticTriad(makeTriad(1.001, 1, 1.002));
+
+    expect(result.type).toBe("intensity");
+    expect(result.text).toContain("Quality as 1.001 times as important as Cost");
+    expect(result.text).toContain("Quality is 1.001 times as important as Sustainability");
+    expect(result.text).toContain("Quality as 1.002 times as important as Sustainability");
+    expect(formatAHPDiagnosticRatio(0.999)).toBe("0.999");
   });
 
   it("keeps numerical detail concise for a large intensity mismatch", () => {

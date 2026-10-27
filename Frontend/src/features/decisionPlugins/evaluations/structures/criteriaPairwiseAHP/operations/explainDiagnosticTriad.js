@@ -8,7 +8,13 @@ export const formatAHPDiagnosticRatio = (value) => {
   if (reciprocalInteger > 1 && ratioClose(value, 1 / reciprocalInteger)) {
     return `1/${reciprocalInteger}`;
   }
-  return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+
+  let precision = 2;
+  let formatted = value.toFixed(precision);
+  while (Number(formatted) === 1 && !ratioClose(value, 1) && precision < 12) {
+    formatted = value.toFixed(++precision);
+  }
+  return formatted.replace(/0+$/, "").replace(/\.$/, "");
 };
 
 const describeRatedJudgment = ({ firstName, secondName, ratio }) => {
@@ -60,9 +66,12 @@ export const explainDiagnosticTriad = (triad) => {
   const impliedRatio = isValidRatio(triad.impliedRatio)
     ? triad.impliedRatio
     : firstToSecond * secondToThird;
-  const hasOpposingDirections =
-    (impliedRatio > 1 && firstToThird < 1) ||
-    (impliedRatio < 1 && firstToThird > 1);
+  const firstDirection = ratioClose(firstToSecond, 1) ? 0 : Math.sign(firstToSecond - 1);
+  const secondDirection = ratioClose(secondToThird, 1) ? 0 : Math.sign(secondToThird - 1);
+  const directDirection = ratioClose(firstToThird, 1) ? 0 : Math.sign(firstToThird - 1);
+  const hasOpposingDirections = firstDirection !== 0 &&
+    firstDirection === secondDirection &&
+    directDirection === -firstDirection;
 
   if (hasOpposingDirections) {
     return {
@@ -73,6 +82,6 @@ export const explainDiagnosticTriad = (triad) => {
 
   return {
     type: "intensity",
-    text: `You rated ${describeRatedStrength({ firstName: first.name, secondName: second.name, ratio: firstToSecond })}, and ${describeRatedStrength({ firstName: second.name, secondName: third.name, ratio: secondToThird })}. Together, those comparisons imply ${describeImportanceStatement({ firstName: first.name, secondName: third.name, ratio: impliedRatio })}, while you rated ${describeRatedStrength({ firstName: first.name, secondName: third.name, ratio: firstToThird })}.`,
+    text: `You rated ${describeRatedStrength({ firstName: first.name, secondName: second.name, ratio: firstToSecond })}, and ${describeRatedStrength({ firstName: second.name, secondName: third.name, ratio: secondToThird })}. Together, these judgments suggest ${describeImportanceStatement({ firstName: first.name, secondName: third.name, ratio: impliedRatio })}, but you rated ${describeRatedStrength({ firstName: first.name, secondName: third.name, ratio: firstToThird })}.`,
   };
 };
