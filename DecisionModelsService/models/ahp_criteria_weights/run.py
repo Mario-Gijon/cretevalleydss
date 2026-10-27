@@ -35,6 +35,7 @@ SAATY_SCALE = frozenset(
     [float(value) for value in range(1, 10)]
     + [1.0 / value for value in range(2, 10)]
 )
+SAATY_SCALE_VALUES = tuple(sorted(SAATY_SCALE))
 SCALE_TOLERANCE = 1e-12
 EIGEN_RESIDUAL_TOLERANCE = 1e-9
 CONSISTENCY_REVIEW_THRESHOLD = 0.10
@@ -176,6 +177,38 @@ def _principal_eigenvector(matrix: np.ndarray) -> tuple[float, np.ndarray]:
     return lambda_max, priorities
 
 
+def _calculate_consistency_metrics(
+    *, lambda_max: float, criterion_count: int
+) -> dict[str, Any]:
+    """Calculate Saaty's CI/CR using the same rules as the final AHP solver."""
+
+    if criterion_count <= 2:
+        return {
+            "consistencyIndex": None,
+            "randomIndex": None,
+            "consistencyRatio": None,
+            "consistencyStatus": "not_applicable",
+        }
+
+    raw_ci = (lambda_max - criterion_count) / (criterion_count - 1)
+    consistency_index = max(0.0, float(raw_ci))
+    random_index = RANDOM_INDEX_BY_SIZE[criterion_count]
+    if random_index <= 0:
+        raise ValueError(f"Saaty Random Index is unavailable for n={criterion_count}")
+    consistency_ratio = consistency_index / random_index
+
+    return {
+        "consistencyIndex": consistency_index,
+        "randomIndex": random_index,
+        "consistencyRatio": consistency_ratio,
+        "consistencyStatus": (
+            "consistent"
+            if consistency_ratio <= CONSISTENCY_REVIEW_THRESHOLD
+            else "review"
+        ),
+    }
+
+
 def _solve_one(
     *, evaluation: dict[str, Any], criteria: list[dict[str, str]], evaluation_index: int
 ) -> dict[str, Any]:
@@ -186,30 +219,10 @@ def _solve_one(
     )
     lambda_max, priorities = _principal_eigenvector(matrix)
     criterion_count = len(criteria)
-    if criterion_count == 1:
-        consistency_index = None
-        random_index = None
-        consistency_ratio = None
-        consistency_status = "not_applicable"
-    elif criterion_count == 2:
-        # Every positive reciprocal 2×2 matrix is perfectly consistent, but
-        # Saaty's conventional CI/CR denominator and RI are zero at n=2.
-        consistency_index = None
-        random_index = None
-        consistency_ratio = None
-        consistency_status = "not_applicable"
-    else:
-        raw_ci = (lambda_max - criterion_count) / (criterion_count - 1)
-        consistency_index = max(0.0, float(raw_ci))
-        random_index = RANDOM_INDEX_BY_SIZE[criterion_count]
-        if random_index <= 0:
-            raise ValueError(f"Saaty Random Index is unavailable for n={criterion_count}")
-        consistency_ratio = consistency_index / random_index
-        consistency_status = (
-            "consistent"
-            if consistency_ratio <= CONSISTENCY_REVIEW_THRESHOLD
-            else "review"
-        )
+    consistency = _calculate_consistency_metrics(
+        lambda_max=lambda_max,
+        criterion_count=criterion_count,
+    )
 
     expert_key, expert_name = _resolve_expert_key(evaluation, evaluation_index)
     return {
@@ -220,10 +233,7 @@ def _solve_one(
             for index, criterion in enumerate(criteria)
         },
         "lambdaMax": lambda_max,
-        "consistencyIndex": consistency_index,
-        "randomIndex": random_index,
-        "consistencyRatio": consistency_ratio,
-        "consistencyStatus": consistency_status,
+        **consistency,
         "completedComparisons": completed,
         "requiredComparisons": completed,
     }
