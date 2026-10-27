@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import CriteriaPairwiseAHPView from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/CriteriaPairwiseAHPView.jsx";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
+import { SAATY_NORMALIZED_PREFERENCE_OPTIONS } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/saatyPreference.js";
 
 const decisionContext = {
   leafCriteria: [
@@ -29,43 +30,48 @@ const renderView = (props = {}) =>
     />
   );
 
+const choosePreference = (rowCriterion, columnCriterion, normalizedValue) => {
+  const select = screen.getByRole("combobox", {
+    name: `Compare ${rowCriterion} with ${columnCriterion}`,
+  });
+  fireEvent.mouseDown(select, { button: 0 });
+  fireEvent.click(screen.getByRole("option", { name: normalizedValue, exact: true }));
+  return select;
+};
+
 describe("CriteriaPairwiseAHPView", () => {
   it("renders a C by C grid with neutral diagonals and editable comparisons in both directions", () => {
     const { container } = renderView({ evaluation: { comparisons: [] } });
 
     expect(screen.getByRole("grid")).toBeInTheDocument();
     expect(screen.getByText("0 of 3 comparisons complete")).toBeInTheDocument();
-    expect(screen.getAllByRole("textbox")).toHaveLength(6);
+    expect(screen.getAllByRole("combobox")).toHaveLength(6);
     expect(screen.getByText("0.5 is neutral. Values above 0.5 favour the row criterion.")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);
-    expect(screen.getByRole("textbox", { name: "Compare Quality with Cost" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Compare Quality with Delivery" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Compare Cost with Delivery" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Compare Cost with Quality" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Compare Quality with Cost" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Compare Quality with Delivery" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Compare Cost with Delivery" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Compare Cost with Quality" })).toBeInTheDocument();
     expect(container.querySelectorAll(".pairwise-grid-cell")).toHaveLength(6);
   });
 
-  it("uses the shared numeric continuous input with a local 0-to-1 presentation domain", () => {
-    const setEvaluation = vi.fn();
-    renderView({ evaluation: { comparisons: [] }, setEvaluation });
+  it("offers exactly the 17 normalized Saaty preferences in each off-diagonal Select", () => {
+    renderView({ evaluation: { comparisons: [] } });
 
-    const input = screen.getByRole("textbox", { name: "Compare Quality with Cost" });
-    expect(input).toHaveAttribute("inputmode", "decimal");
-    expect(input).toHaveAttribute("min", "0");
-    expect(input).toHaveAttribute("max", "1");
-    expect(Number(input.getAttribute("step"))).toBeCloseTo(0.0001, 10);
+    const select = screen.getByRole("combobox", { name: "Compare Quality with Cost" });
+    fireEvent.mouseDown(select, { button: 0 });
 
-    fireEvent.change(input, { target: { value: "0." } });
-    expect(input).toHaveValue("0.");
-    expect(setEvaluation).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("option")).toHaveLength(17);
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(
+      SAATY_NORMALIZED_PREFERENCE_OPTIONS.map(({ normalizedValue }) => normalizedValue)
+    );
   });
 
   it("converts normalized preferences to a single Saaty judgment stored by criterion IDs", () => {
     const setEvaluation = vi.fn();
     renderView({ evaluation: { comparisons: [] }, setEvaluation });
 
-    const input = screen.getByRole("textbox", { name: "Compare Quality with Cost" });
-    fireEvent.change(input, { target: { value: "0.7500" } });
+    choosePreference("Quality", "Cost", "0.750");
 
     expect(setEvaluation).toHaveBeenCalledWith({
       comparisons: [
@@ -85,9 +91,7 @@ describe("CriteriaPairwiseAHPView", () => {
     };
     const { rerender } = renderWithProviders(<CriteriaPairwiseAHPView {...props} />);
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Compare Quality with Cost" }), {
-      target: { value: "0.7500" },
-    });
+    choosePreference("Quality", "Cost", "0.750");
 
     const updatedEvaluation = {
       comparisons: [
@@ -97,7 +101,7 @@ describe("CriteriaPairwiseAHPView", () => {
     expect(setEvaluation).toHaveBeenCalledWith(updatedEvaluation);
     rerender(<CriteriaPairwiseAHPView {...props} evaluation={updatedEvaluation} />);
 
-    expect(screen.getByRole("textbox", { name: "Compare Cost with Quality" })).toHaveValue("0.2500");
+    expect(screen.getByRole("combobox", { name: "Compare Cost with Quality" })).toHaveTextContent("0.250");
     expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);
     expect(screen.getAllByLabelText("Neutral self-comparison")[0]).toHaveTextContent("Neutral");
   });
@@ -112,10 +116,10 @@ describe("CriteriaPairwiseAHPView", () => {
       readOnly: false,
     };
     const { rerender } = renderWithProviders(<CriteriaPairwiseAHPView {...props} />);
-    const reverseInput = screen.getByRole("textbox", { name: "Compare Cost with Quality" });
-    expect(reverseInput).toHaveValue("0.2500");
+    const reverseInput = screen.getByRole("combobox", { name: "Compare Cost with Quality" });
+    expect(reverseInput).toHaveTextContent("0.250");
 
-    fireEvent.change(reverseInput, { target: { value: "0.6667" } });
+    choosePreference("Cost", "Quality", "0.667");
 
     const updatedEvaluation = {
       comparisons: [
@@ -124,48 +128,43 @@ describe("CriteriaPairwiseAHPView", () => {
     };
     expect(setEvaluation).toHaveBeenCalledWith(updatedEvaluation);
     rerender(<CriteriaPairwiseAHPView {...props} evaluation={updatedEvaluation} />);
-    expect(screen.getAllByRole("textbox")).toHaveLength(6);
-    expect(screen.getByRole("textbox", { name: "Compare Cost with Quality" })).toHaveValue("0.6667");
-    expect(screen.getByRole("textbox", { name: "Compare Quality with Cost" })).toHaveValue("0.3333");
+    expect(screen.getAllByRole("combobox")).toHaveLength(6);
+    expect(screen.getByRole("combobox", { name: "Compare Cost with Quality" })).toHaveTextContent("0.667");
+    expect(screen.getByRole("combobox", { name: "Compare Quality with Cost" })).toHaveTextContent("0.333");
     expect(updatedEvaluation.comparisons).toHaveLength(1);
   });
 
-  it("keeps the committed judgment while an unsupported normalized value is being edited", () => {
+  it("surfaces legacy judgments outside Saaty's scale without changing them", () => {
     const setEvaluation = vi.fn();
-    renderView({ setEvaluation });
-
-    const input = screen.getByRole("textbox", { name: "Compare Quality with Cost" });
-    fireEvent.change(input, { target: { value: "0.7400" } });
-
-    expect(input).toHaveAttribute("aria-invalid", "true");
-    expect(input).toHaveValue("0.7400");
-    expect(screen.getByText("1 of 3 comparisons complete")).toBeInTheDocument();
-    expect(setEvaluation).not.toHaveBeenCalled();
-
-    fireEvent.change(input, { target: { value: "0.7500" } });
-    expect(input).not.toHaveAttribute("aria-invalid", "true");
-    expect(setEvaluation).toHaveBeenCalledWith({
-      comparisons: [
-        { criterionId: "quality", comparedCriterionId: "cost", value: 3 },
-      ],
+    renderView({
+      evaluation: {
+        comparisons: [
+          { criterionId: "quality", comparedCriterionId: "cost", value: 1.5 },
+        ],
+      },
+      setEvaluation,
     });
+
+    expect(screen.getByText("AHP comparison 1 is outside Saaty's scale.")).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    expect(setEvaluation).not.toHaveBeenCalled();
   });
 
-  it("clears a judgment only when the user empties its input", () => {
+  it("clears a judgment explicitly with Backspace without adding a clear option", () => {
     const setEvaluation = vi.fn();
     renderView({ setEvaluation });
 
-    const input = screen.getByRole("textbox", { name: "Compare Quality with Cost" });
-    fireEvent.change(input, { target: { value: "" } });
+    const select = screen.getByRole("combobox", { name: "Compare Quality with Cost" });
+    fireEvent.keyDown(select, { key: "Backspace" });
 
     expect(setEvaluation).toHaveBeenCalledWith({ comparisons: [] });
   });
 
   it("disables all non-diagonal inputs in read-only mode", () => {
     const { container } = renderView({ readOnly: true });
-    const inputs = screen.getAllByRole("textbox", { name: /Compare/ });
+    const inputs = screen.getAllByRole("combobox", { name: /Compare/ });
     expect(inputs).toHaveLength(6);
-    expect(inputs.every((input) => input.disabled)).toBe(true);
+    expect(inputs.every((input) => input.getAttribute("aria-disabled") === "true")).toBe(true);
     expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);
     expect(container.querySelectorAll(".pairwise-grid-cell")).toHaveLength(6);
   });

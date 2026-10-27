@@ -6,8 +6,10 @@ import { expectedComparisonCount, validateEvaluation } from "../../../../../src/
 import { resolveCollective, isCollectiveEvaluationUsable } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/resolveCollective";
 import { resolveCriteria } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/resolveCriteria";
 import {
+  formatNormalizedPreferenceOption,
   formatNormalizedPreference,
   normalizedPreferenceToSaatyValue,
+  SAATY_NORMALIZED_PREFERENCE_OPTIONS,
   SAATY_SCALE_VALUES,
   saatyValueToNormalizedPreference,
 } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/saatyPreference";
@@ -37,8 +39,16 @@ describe("criteriaPairwiseAHP payload operations", () => {
   });
 
   it("maps the normalized UI scale exactly to supported reciprocal Saaty values", () => {
+    expect(SAATY_NORMALIZED_PREFERENCE_OPTIONS).toHaveLength(17);
+    expect(new Set(SAATY_NORMALIZED_PREFERENCE_OPTIONS.map(({ normalizedValue }) => normalizedValue)).size).toBe(17);
+    expect(SAATY_NORMALIZED_PREFERENCE_OPTIONS.map(({ saatyValue }) => saatyValue)).toEqual(SAATY_SCALE_VALUES);
+    expect(SAATY_NORMALIZED_PREFERENCE_OPTIONS.map(({ normalizedValue }) => normalizedValue)).toEqual(
+      SAATY_SCALE_VALUES.map((value) => formatNormalizedPreferenceOption(value))
+    );
     expect(saatyValueToNormalizedPreference(3)).toBe(0.75);
     expect(saatyValueToNormalizedPreference(1 / 3)).toBe(0.25);
+    expect(formatNormalizedPreferenceOption(3)).toBe("0.750");
+    expect(formatNormalizedPreferenceOption(1 / 3)).toBe("0.250");
     expect(formatNormalizedPreference(3)).toBe("0.7500");
     expect(formatNormalizedPreference(1 / 3)).toBe("0.2500");
     expect(normalizedPreferenceToSaatyValue("0.7500")).toBe(3);

@@ -49,15 +49,20 @@ const acceptInvitationAndOpenIssue = async (page, issueName) => {
   return issueHeading;
 };
 
-const fillNormalizedComparison = async (page, rowCriterion, columnCriterion, value) => {
-  const input = page.getByRole("textbox", {
+const selectSaatyComparison = async (page, rowCriterion, columnCriterion, value) => {
+  const select = page.getByRole("combobox", {
     name: `Compare ${rowCriterion} with ${columnCriterion}`,
   });
   if (value === null) {
-    await input.fill("");
+    await select.focus();
+    await select.press("Backspace");
     return;
   }
-  await input.fill((value / (1 + value)).toFixed(4));
+  await select.click();
+  await page.getByRole("option", {
+    name: (value / (1 + value)).toFixed(3),
+    exact: true,
+  }).click();
 };
 
 const submitEvaluation = async (page) => {
@@ -75,9 +80,9 @@ const completeAHPEvaluation = async (page, { qualityCost, qualityReliability, co
 
   const status = page.getByRole("status").filter({ hasText: /of 3 comparisons complete/ });
   await expect(status).toHaveText("0 of 3 comparisons complete");
-  await fillNormalizedComparison(page, "AHP Quality", "AHP Cost", qualityCost);
-  await fillNormalizedComparison(page, "AHP Quality", longReliabilityCriterion, qualityReliability);
-  await fillNormalizedComparison(page, "AHP Cost", longReliabilityCriterion, costReliability);
+  await selectSaatyComparison(page, "AHP Quality", "AHP Cost", qualityCost);
+  await selectSaatyComparison(page, "AHP Quality", longReliabilityCriterion, qualityReliability);
+  await selectSaatyComparison(page, "AHP Cost", longReliabilityCriterion, costReliability);
   await expect(status).toHaveText("3 of 3 comparisons complete");
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-evaluation-desktop.png"), fullPage: true });
   await submitEvaluation(page);
@@ -148,8 +153,8 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await ahpMethod.click();
   await expect(page.getByText("Criteria comparisons", { exact: true })).toBeVisible();
   await expect(page.getByText("0.5 is neutral. Values above 0.5 favour the row criterion.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
-  await expect(page.locator(".MuiDataGrid-root").getByRole("textbox")).toHaveCount(6);
+  await expect(page.getByRole("combobox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
+  await expect(page.locator(".MuiDataGrid-root").getByRole("combobox")).toHaveCount(6);
   await expect(page.getByLabel("Neutral self-comparison")).toHaveCount(3);
   const longCriterionCell = page.locator(".MuiDataGrid-row")
     .filter({ hasText: longReliabilityCriterion })
@@ -158,7 +163,7 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-create-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-create-mobile.png"), fullPage: true });
-  await expect(page.getByRole("textbox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
   const matrixScroller = page.locator(".MuiDataGrid-root .MuiDataGrid-virtualScroller");
   const mobileScrollMetrics = await matrixScroller.evaluate((element) => ({
     clientWidth: element.clientWidth,
@@ -242,18 +247,18 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await expect(page.getByRole("heading", { name: "Criteria weighting", exact: true })).toBeVisible();
   const status = page.getByRole("status").filter({ hasText: /of 3 comparisons complete/ });
   await expect(status).toHaveText("0 of 3 comparisons complete");
-  const firstComparison = page.getByRole("textbox", { name: "Compare AHP Quality with AHP Cost" });
-  const reverseComparison = page.getByRole("textbox", { name: "Compare AHP Cost with AHP Quality" });
-  await firstComparison.fill("0.7500");
-  await expect(reverseComparison).toHaveValue("0.2500");
-  await reverseComparison.fill("0.6667");
-  await expect(firstComparison).toHaveValue("0.3333");
-  await firstComparison.fill("0.7500");
-  await expect(reverseComparison).toHaveValue("0.2500");
-  await fillNormalizedComparison(page, "AHP Quality", "AHP Cost", 4);
-  await fillNormalizedComparison(page, "AHP Quality", "AHP Cost", 3);
-  await fillNormalizedComparison(page, "AHP Quality", longReliabilityCriterion, 6);
-  await fillNormalizedComparison(page, "AHP Cost", longReliabilityCriterion, null);
+  const firstComparison = page.getByRole("combobox", { name: "Compare AHP Quality with AHP Cost" });
+  const reverseComparison = page.getByRole("combobox", { name: "Compare AHP Cost with AHP Quality" });
+  await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 3);
+  await expect(reverseComparison).toHaveText("0.250");
+  await selectSaatyComparison(page, "AHP Cost", "AHP Quality", 2);
+  await expect(firstComparison).toHaveText("0.333");
+  await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 3);
+  await expect(reverseComparison).toHaveText("0.250");
+  await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 4);
+  await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 3);
+  await selectSaatyComparison(page, "AHP Quality", longReliabilityCriterion, 6);
+  await selectSaatyComparison(page, "AHP Cost", longReliabilityCriterion, null);
   await expect(status).toHaveText("2 of 3 comparisons complete");
   await page.keyboard.press("Escape");
   const saveDialog = page.getByRole("dialog", { name: "Save changes?" });
@@ -266,8 +271,8 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await evaluateWeights.click();
   await expect(page.getByRole("heading", { name: "Criteria weighting", exact: true })).toBeVisible();
   await expect(status).toHaveText("2 of 3 comparisons complete");
-  await expect(page.getByRole("textbox", { name: "Compare AHP Cost with AHP Quality" })).toHaveValue("0.2500");
-  await fillNormalizedComparison(page, "AHP Cost", longReliabilityCriterion, 2);
+  await expect(page.getByRole("combobox", { name: "Compare AHP Cost with AHP Quality" })).toHaveText("0.250");
+  await selectSaatyComparison(page, "AHP Cost", longReliabilityCriterion, 2);
   await expect(status).toHaveText("3 of 3 comparisons complete");
   await submitEvaluation(page);
   await expect(page.getByRole("heading", { name: issueName, exact: true })).toBeVisible();
