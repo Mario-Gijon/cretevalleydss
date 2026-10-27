@@ -232,9 +232,6 @@ const AHPConsistencyDiagnostic = ({
                   </Accordion>
                 ) : null}
 
-                <Typography variant="caption" color="text.secondary">
-                  You can still submit without changing any comparisons.
-                </Typography>
               </Stack>
             ) : null}
           </>

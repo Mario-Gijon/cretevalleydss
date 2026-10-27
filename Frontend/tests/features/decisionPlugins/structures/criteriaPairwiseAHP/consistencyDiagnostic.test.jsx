@@ -308,7 +308,7 @@ describe("manual AHP consistency check", () => {
     expect(screen.queryByText(/What can I do|Advanced details|all DMS simulations|CI 0\.0500|λmax|discrepancy|counterfactual/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/suggestion|would decrease|should change/i)).not.toBeInTheDocument();
     expect(setEvaluation).not.toHaveBeenCalled();
-    expect(screen.getByText("You can still submit without changing any comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("You can still submit without changing any comparisons.")).not.toBeInTheDocument();
     expect(onConsistencyWarningChange).toHaveBeenLastCalledWith(expect.stringContaining("0.2400"));
 
     rerender(
