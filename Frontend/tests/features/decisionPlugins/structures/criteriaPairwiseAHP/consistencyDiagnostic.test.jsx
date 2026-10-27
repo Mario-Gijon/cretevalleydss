@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCreatorDiagnostic = vi.hoisted(() => vi.fn());
@@ -30,6 +30,14 @@ const consistentEvaluation = {
     { criterionId: "cost", comparedCriterionId: "sustainability", value: 3 },
   ],
 };
+const changedEvaluation = {
+  comparisons: [
+    { criterionId: "quality", comparedCriterionId: "cost", value: 3 },
+    { criterionId: "quality", comparedCriterionId: "sustainability", value: 6 },
+    { criterionId: "cost", comparedCriterionId: "sustainability", value: 2 },
+  ],
+};
+const incompleteEvaluation = { comparisons: [] };
 const inconsistentEvaluation = {
   comparisons: [
     { criterionId: "quality", comparedCriterionId: "cost", value: 9 },
@@ -75,13 +83,25 @@ const renderView = (props = {}) => renderWithProviders(
   />,
 );
 
-const advanceDiagnosticDebounce = async (milliseconds = 300) => {
+const clickCheckCR = async () => {
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(milliseconds);
+    fireEvent.click(screen.getByRole("button", { name: "Check CR" }));
+    await Promise.resolve();
   });
 };
 
-describe("CriteriaPairwiseAHP consistency preview", () => {
+const choosePreference = async (criterionName, comparedCriterionName, optionLabel) => {
+  await act(async () => {
+    fireEvent.mouseDown(screen.getByRole("combobox", {
+      name: `Compare ${criterionName} with ${comparedCriterionName}`,
+    }), { button: 0 });
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("option", { name: optionLabel }));
+  });
+};
+
+describe("manual AHP consistency check", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -92,29 +112,66 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
     vi.useRealTimers();
   });
 
-  it("does not request an incomplete matrix and debounces a complete creator matrix", async () => {
-    mockCreatorDiagnostic.mockResolvedValue({ success: true, data: diagnostic(0) });
-    const { rerender } = renderView({ evaluation: { comparisons: [] } });
+  it("never requests automatically when a matrix is completed or a Select changes", async () => {
+    const setEvaluation = vi.fn();
+    const { rerender } = renderView({ evaluation: incompleteEvaluation, setEvaluation });
 
-    expect(screen.getByText("Complete all valid pairwise comparisons to check consistency.")).toBeInTheDocument();
-    await advanceDiagnosticDebounce(300);
+    expect(screen.getByText("Complete all pairwise comparisons to check consistency.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check CR" })).toBeDisabled();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
 
     rerender(
       <CriteriaPairwiseAHPView
         decisionContext={decisionContext}
         evaluation={consistentEvaluation}
-        setEvaluation={vi.fn()}
+        setEvaluation={setEvaluation}
         collectiveEvaluation={null}
         readOnly={false}
         diagnosticContext={creatorContext}
       />,
     );
-    await advanceDiagnosticDebounce(299);
+    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check CR" })).toBeEnabled();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
-    await advanceDiagnosticDebounce(1);
+
+    await choosePreference("Quality", "Cost", "4");
+    expect(setEvaluation).toHaveBeenCalledWith({
+      comparisons: [
+        { criterionId: "quality", comparedCriterionId: "cost", value: 4 },
+        { criterionId: "quality", comparedCriterionId: "sustainability", value: 6 },
+        { criterionId: "cost", comparedCriterionId: "sustainability", value: 3 },
+      ],
+    });
+    rerender(
+      <CriteriaPairwiseAHPView
+        decisionContext={decisionContext}
+        evaluation={{
+          comparisons: [
+            { criterionId: "quality", comparedCriterionId: "cost", value: 4 },
+            { criterionId: "quality", comparedCriterionId: "sustainability", value: 6 },
+            { criterionId: "cost", comparedCriterionId: "sustainability", value: 3 },
+          ],
+        }}
+        setEvaluation={setEvaluation}
+        collectiveEvaluation={null}
+        readOnly={false}
+        diagnosticContext={creatorContext}
+      />,
+    );
+    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
+  }, 10000);
+
+  it("checks a complete creator matrix only after Check CR and displays an acceptable CR", async () => {
+    mockCreatorDiagnostic.mockResolvedValue({ success: true, data: diagnostic(0) });
+    renderView({ evaluation: consistentEvaluation });
+
+    expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
+    await clickCheckCR();
+
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
     expect(mockCreatorDiagnostic).toHaveBeenCalledWith(expect.objectContaining({
+      criteriaWeightingModelId: creatorContext.criteriaWeightingModelId,
       criteria: criteria.map(({ id, name }, index) => ({ id, name, index })),
       evaluation: consistentEvaluation,
       signal: expect.any(AbortSignal),
@@ -123,20 +180,21 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
     expect(screen.getByText("CR 0.0000")).toBeInTheDocument();
   });
 
-  it("shows non-applicable for fewer than three criteria without requesting a diagnostic", async () => {
+  it("shows CR not applicable with fewer than three criteria without a button or request", () => {
     const twoCriteria = criteria.slice(0, 2);
     renderView({
       decisionContext: { leafCriteria: twoCriteria },
       evaluation: { comparisons: [{ criterionId: "quality", comparedCriterionId: "cost", value: 3 }] },
     });
 
-    expect(screen.getByText("A consistency ratio is not calculated with fewer than three criteria.")).toBeInTheDocument();
-    await advanceDiagnosticDebounce(1000);
+    expect(screen.getByText("CR not applicable.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Check CR" })).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
   });
 
-  it("shows high-CR explanations and recommendations, highlights both orientations, and never mutates judgments", async () => {
+  it("shows high-CR explanations, recommendations and both highlights only after checking", async () => {
     const setEvaluation = vi.fn();
+    const onConsistencyWarningChange = vi.fn();
     mockCreatorDiagnostic.mockResolvedValue({
       success: true,
       data: diagnostic(0.24, {
@@ -167,8 +225,15 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
       }),
     });
 
-    const { container } = renderView({ evaluation: inconsistentEvaluation, setEvaluation });
-    await advanceDiagnosticDebounce();
+    const { container, rerender } = renderView({
+      evaluation: inconsistentEvaluation,
+      setEvaluation,
+      onConsistencyWarningChange,
+    });
+    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(0);
+
+    await clickCheckCR();
 
     expect(screen.getByText("Review consistency")).toBeInTheDocument();
     expect(screen.getByText("CR 0.2400")).toBeInTheDocument();
@@ -179,29 +244,35 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
     expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(2);
     expect(setEvaluation).not.toHaveBeenCalled();
     expect(screen.getByText(/nothing is changed automatically/)).toBeInTheDocument();
-  });
+    expect(onConsistencyWarningChange).toHaveBeenLastCalledWith(expect.stringContaining("0.2400"));
 
-  it("does not highlight local cycles when the global CR is acceptable", async () => {
-    mockCreatorDiagnostic.mockResolvedValue({
-      success: true,
-      data: diagnostic(0.1, {
-        candidateComparisons: [{ criterionId: "quality", comparedCriterionId: "cost" }],
-      }),
-    });
-    const { container } = renderView();
-    await advanceDiagnosticDebounce();
-
-    expect(screen.getByText("Consistent")).toBeInTheDocument();
+    rerender(
+      <CriteriaPairwiseAHPView
+        decisionContext={decisionContext}
+        evaluation={changedEvaluation}
+        setEvaluation={setEvaluation}
+        collectiveEvaluation={null}
+        readOnly={false}
+        diagnosticContext={creatorContext}
+        onConsistencyWarningChange={onConsistencyWarningChange}
+      />,
+    );
+    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
     expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(0);
+    expect(onConsistencyWarningChange).toHaveBeenLastCalledWith(null);
+    expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the expert route with only the issue and local evaluation and does not query in readonly mode", async () => {
+  it("uses the expert endpoint and hides manual checks in readonly mode", async () => {
     mockExpertDiagnostic.mockResolvedValue({ success: true, data: diagnostic(0) });
-    const props = {
+    const expertProps = {
       diagnosticContext: { mode: "expert", issueId: "issue-22" },
     };
-    const expertView = renderView(props);
-    await advanceDiagnosticDebounce();
+    const expertView = renderView(expertProps);
+
+    expect(mockExpertDiagnostic).not.toHaveBeenCalled();
+    await clickCheckCR();
 
     expect(mockExpertDiagnostic).toHaveBeenCalledWith(expect.objectContaining({
       issueId: "issue-22",
@@ -210,15 +281,14 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
     }));
     expect(screen.getByText("Consistent")).toBeInTheDocument();
 
-    mockExpertDiagnostic.mockClear();
     expertView.unmount();
-    renderView({ ...props, readOnly: true });
-    await advanceDiagnosticDebounce(1000);
-    expect(mockExpertDiagnostic).not.toHaveBeenCalled();
+    renderView({ ...expertProps, readOnly: true });
+    expect(screen.queryByRole("button", { name: "Check CR" })).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahp-consistency-diagnostic")).not.toBeInTheDocument();
+    expect(mockExpertDiagnostic).toHaveBeenCalledTimes(1);
   });
 
-  it("invalidates pending results on evaluation change and ignores a late cancelled response", async () => {
+  it("invalidates a pending result immediately, including after values are restored", async () => {
     let resolveFirst;
     let firstSignal;
     mockCreatorDiagnostic
@@ -229,20 +299,14 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
       .mockResolvedValueOnce({ success: true, data: diagnostic(0) });
 
     const { rerender } = renderView({ evaluation: consistentEvaluation });
-    await advanceDiagnosticDebounce();
+    await clickCheckCR();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Checking..." })).toBeDisabled();
 
-    const nextEvaluation = {
-      comparisons: [
-        { criterionId: "quality", comparedCriterionId: "cost", value: 3 },
-        { criterionId: "quality", comparedCriterionId: "sustainability", value: 6 },
-        { criterionId: "cost", comparedCriterionId: "sustainability", value: 2 },
-      ],
-    };
     rerender(
       <CriteriaPairwiseAHPView
         decisionContext={decisionContext}
-        evaluation={nextEvaluation}
+        evaluation={changedEvaluation}
         setEvaluation={vi.fn()}
         collectiveEvaluation={null}
         readOnly={false}
@@ -251,19 +315,38 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
     );
     expect(firstSignal.aborted).toBe(true);
     expect(screen.queryByText("Consistent")).not.toBeInTheDocument();
+    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
 
-    await advanceDiagnosticDebounce();
     await act(async () => {
       resolveFirst({ success: true, data: diagnostic(0.9) });
       await Promise.resolve();
     });
     expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <CriteriaPairwiseAHPView
+        decisionContext={decisionContext}
+        evaluation={consistentEvaluation}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
+        readOnly={false}
+        diagnosticContext={creatorContext}
+      />,
+    );
+    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
+
+    await clickCheckCR();
+    expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Consistent")).toBeInTheDocument();
   });
 
-  it("invalidates requests when the selected model or criterion IDs change", async () => {
-    let firstSignal;
+  it("aborts and ignores a response from an old model or criteria context", async () => {
     let resolveFirst;
+    let firstSignal;
     mockCreatorDiagnostic
       .mockImplementationOnce(({ signal }) => {
         firstSignal = signal;
@@ -279,9 +362,9 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
           ],
         }),
       });
-    const { rerender } = renderView();
-    await advanceDiagnosticDebounce();
 
+    const { rerender } = renderView();
+    await clickCheckCR();
     const changedCriteria = [
       { id: "quality", name: "Quality" },
       { id: "cost", name: "Cost" },
@@ -308,11 +391,16 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
       />,
     );
     expect(firstSignal.aborted).toBe(true);
-    await advanceDiagnosticDebounce();
+    expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+
     await act(async () => {
       resolveFirst({ success: true, data: diagnostic(0.9) });
       await Promise.resolve();
     });
+    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+
+    await clickCheckCR();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
     expect(mockCreatorDiagnostic.mock.calls[1][0]).toMatchObject({
       criteriaWeightingModelId: "abcdefabcdefabcdefabcdef",
@@ -321,7 +409,63 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
     expect(screen.getByText("Consistent")).toBeInTheDocument();
   });
 
-  it("reports timeout as an unavailable preview and aborts without blocking the matrix", async () => {
+  it("invalidates an expert diagnostic when the active Issue changes", async () => {
+    let resolveFirst;
+    let firstSignal;
+    mockExpertDiagnostic
+      .mockImplementationOnce(({ signal }) => {
+        firstSignal = signal;
+        return new Promise((resolve) => { resolveFirst = resolve; });
+      })
+      .mockResolvedValueOnce({ success: true, data: diagnostic(0) });
+    const { rerender } = renderView({
+      diagnosticContext: { mode: "expert", issueId: "issue-22" },
+    });
+    await clickCheckCR();
+    expect(mockExpertDiagnostic.mock.calls[0][0]).toMatchObject({ issueId: "issue-22" });
+
+    rerender(
+      <CriteriaPairwiseAHPView
+        decisionContext={decisionContext}
+        evaluation={consistentEvaluation}
+        setEvaluation={vi.fn()}
+        collectiveEvaluation={null}
+        readOnly={false}
+        diagnosticContext={{ mode: "expert", issueId: "issue-23" }}
+      />,
+    );
+    expect(firstSignal.aborted).toBe(true);
+    expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFirst({ success: true, data: diagnostic(0.9) });
+      await Promise.resolve();
+    });
+    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(mockExpertDiagnostic).toHaveBeenCalledTimes(1);
+
+    await clickCheckCR();
+    expect(mockExpertDiagnostic).toHaveBeenCalledTimes(2);
+    expect(mockExpertDiagnostic.mock.calls[1][0]).toMatchObject({ issueId: "issue-23" });
+    expect(screen.getByText("Consistent")).toBeInTheDocument();
+  });
+
+  it("allows retry after an unavailable service response", async () => {
+    mockCreatorDiagnostic
+      .mockResolvedValueOnce({ success: false, status: 503 })
+      .mockResolvedValueOnce({ success: true, data: diagnostic(0) });
+    renderView();
+
+    await clickCheckCR();
+    expect(screen.getByText("Consistency check unavailable. Please try again.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check CR" })).toBeEnabled();
+
+    await clickCheckCR();
+    expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Consistent")).toBeInTheDocument();
+  });
+
+  it("reports timeout and cancels an active request on unmount", async () => {
     let signal;
     mockCreatorDiagnostic.mockImplementation(({ signal: requestSignal }) => {
       signal = requestSignal;
@@ -331,35 +475,17 @@ describe("CriteriaPairwiseAHP consistency preview", () => {
         });
       });
     });
-    renderView();
-    await advanceDiagnosticDebounce();
-    await advanceDiagnosticDebounce(15000);
-
-    expect(signal.aborted).toBe(true);
-    expect(screen.getByText("The consistency check took too long. You can continue without it.")).toBeInTheDocument();
-    expect(screen.getAllByRole("combobox")).toHaveLength(6);
-  });
-
-  it("cancels an active request when the AHP view unmounts", async () => {
-    let signal;
-    mockCreatorDiagnostic.mockImplementation(({ signal: requestSignal }) => {
-      signal = requestSignal;
-      return new Promise(() => {});
-    });
     const view = renderView();
-    await advanceDiagnosticDebounce();
+    await clickCheckCR();
     expect(signal.aborted).toBe(false);
-    view.unmount();
+    expect(screen.getByRole("button", { name: "Checking..." })).toBeDisabled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
     expect(signal.aborted).toBe(true);
-  });
+    expect(screen.getByText("Consistency check unavailable. Please try again.")).toBeInTheDocument();
 
-  it("reports a service failure without blocking editing", async () => {
-    mockCreatorDiagnostic.mockResolvedValue({ success: false, status: 503 });
-    const setEvaluation = vi.fn();
-    renderView({ setEvaluation });
-    await advanceDiagnosticDebounce();
-
-    expect(screen.getByText("Consistency could not be checked right now. You can continue without it.")).toBeInTheDocument();
-    expect(screen.getAllByRole("combobox")).toHaveLength(6);
+    view.unmount();
   });
 });

@@ -169,7 +169,10 @@ const CriteriaPairwiseAHPView = ({
                 comparedCriterionId: columnCriterion.id,
                 value: nextValue,
               });
-              if (nextEvaluation !== currentEvaluation) setEvaluation(nextEvaluation);
+              if (nextEvaluation !== currentEvaluation) {
+                onConsistencyWarningChange?.(null);
+                setEvaluation(nextEvaluation);
+              }
             }}
           />
         );
@@ -229,7 +232,10 @@ const CriteriaPairwiseAHPView = ({
         />
       </Box> : null}
       {!readOnly && diagnosticContext?.mode ? (
-        <AHPConsistencyDiagnostic state={diagnosticState} />
+        <AHPConsistencyDiagnostic
+          state={diagnosticState}
+          onCheck={diagnosticState.checkConsistency}
+        />
       ) : null}
     </Stack>
   );

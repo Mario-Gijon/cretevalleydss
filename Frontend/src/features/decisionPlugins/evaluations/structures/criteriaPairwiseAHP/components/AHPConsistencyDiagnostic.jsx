@@ -38,7 +38,7 @@ const triadSummary = (triad) => {
   return explanation;
 };
 
-const AHPConsistencyDiagnostic = ({ state }) => {
+const AHPConsistencyDiagnostic = ({ state, onCheck }) => {
   const [showMoreTriads, setShowMoreTriads] = useState(false);
   const [showMoreRecommendations, setShowMoreRecommendations] = useState(false);
   const statusKey = `${state?.diagnosticKey ?? ""}:${state?.status}:${state?.data?.consistencyRatio ?? ""}`;
@@ -78,32 +78,49 @@ const AHPConsistencyDiagnostic = ({ state }) => {
           </Typography>
         </Stack>
 
-        {state.status === "incomplete" ? (
-          <Typography variant="caption" color="text.secondary">
-            Complete all valid pairwise comparisons to check consistency.
-          </Typography>
-        ) : null}
-
-        {state.status === "calculating" ? (
-          <Stack direction="row" alignItems="center" spacing={0.8} role="status">
-            <CircularProgress size={15} thickness={5} />
-            <Typography variant="caption" color="text.secondary">
-              Checking consistency…
-            </Typography>
-          </Stack>
-        ) : null}
-
         {state.status === "notApplicable" ? (
-          <Typography variant="caption" color="text.secondary">
-            A consistency ratio is not calculated with fewer than three criteria.
-          </Typography>
-        ) : null}
-
-        {state.status === "error" ? (
           <Typography variant="caption" color="text.secondary" role="status">
-            {state.message || "Consistency could not be checked right now. You can continue without it."}
+            CR not applicable.
           </Typography>
-        ) : null}
+        ) : (
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            justifyContent="space-between"
+            spacing={0.8}
+          >
+            {state.status === "incomplete" ? (
+              <Typography variant="caption" color="text.secondary" role="status">
+                Complete all pairwise comparisons to check consistency.
+              </Typography>
+            ) : null}
+            {state.status === "ready" ? (
+              <Typography variant="caption" color="text.secondary" role="status">
+                Consistency has not been checked for the current comparisons.
+              </Typography>
+            ) : null}
+            {state.status === "error" ? (
+              <Typography variant="caption" color="text.secondary" role="status">
+                Consistency check unavailable. Please try again.
+              </Typography>
+            ) : null}
+            {state.status !== "disabled" ? (
+              <Button
+                variant="outlined"
+                color="secondary"
+                size="small"
+                disabled={state.status === "incomplete" || state.status === "checking"}
+                startIcon={state.status === "checking"
+                  ? <CircularProgress size={14} color="inherit" thickness={5} />
+                  : undefined}
+                onClick={onCheck}
+                sx={{ alignSelf: { xs: "flex-start", sm: "center" }, flexShrink: 0 }}
+              >
+                {state.status === "checking" ? "Checking..." : "Check CR"}
+              </Button>
+            ) : null}
+          </Stack>
+        )}
 
         {state.status === "result" && data ? (
           <>

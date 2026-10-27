@@ -84,12 +84,25 @@ const submitEvaluation = async (page, { expectConsistencyWarning = false } = {})
   await dialog.getByRole("button", { name: "Submit", exact: true }).click();
 };
 
+const clickCheckCR = async (page, requestPathSuffix) => {
+  const responsePromise = page.waitForResponse((response) =>
+    response.request().method() === "POST" &&
+    new URL(response.url()).pathname.endsWith(requestPathSuffix),
+  );
+  await page.getByRole("button", { name: "Check CR", exact: true }).click();
+  const response = await responsePromise;
+  expect(response.ok()).toBe(true);
+  return response;
+};
+
 const completeAHPEvaluation = async (page, {
   qualityCost,
   qualityReliability,
   costReliability,
   expectReview = false,
+  consistencyRequests,
 }) => {
+  const requestsBeforeEvaluation = consistencyRequests.length;
   const evaluateWeights = page.getByRole("button", { name: "Evaluate weights" });
   await expect(evaluateWeights).toBeEnabled();
   await evaluateWeights.click();
@@ -103,8 +116,28 @@ const completeAHPEvaluation = async (page, {
   await expect(status).toHaveText("3 of 3 comparisons complete");
   const diagnostic = page.getByTestId("ahp-consistency-diagnostic");
   await expect(diagnostic).toBeVisible();
+  await expect(diagnostic).toContainText("Consistency has not been checked for the current comparisons.");
+  await page.waitForTimeout(350);
+  expect(consistencyRequests).toHaveLength(requestsBeforeEvaluation);
+  await clickCheckCR(page, "/evaluations/criteriaWeighting/diagnostics");
+  expect(consistencyRequests).toHaveLength(requestsBeforeEvaluation + 1);
   await expect(diagnostic).toContainText(expectReview ? "Review consistency" : "Consistent");
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-evaluation-desktop.png"), fullPage: true });
+  if (expectReview) {
+    await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 8);
+    await expect(diagnostic).toContainText("Consistency has not been checked for the current comparisons.");
+    await page.waitForTimeout(350);
+    expect(consistencyRequests).toHaveLength(requestsBeforeEvaluation + 1);
+    await page.getByRole("button", { name: "Submit", exact: true }).click();
+    const submitDialog = page.getByRole("dialog", { name: "Submit evaluations?" });
+    await expect(submitDialog.getByRole("alert")).toHaveCount(0);
+    await submitDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await selectSaatyComparison(page, "AHP Quality", "AHP Cost", qualityCost);
+    await expect(diagnostic).toContainText("Consistency has not been checked for the current comparisons.");
+    await clickCheckCR(page, "/evaluations/criteriaWeighting/diagnostics");
+    expect(consistencyRequests).toHaveLength(requestsBeforeEvaluation + 2);
+    await expect(diagnostic).toContainText("Review consistency");
+  }
   await submitEvaluation(page, { expectConsistencyWarning: expectReview });
   await expect(page.getByRole("heading", { name: "Criteria weighting", exact: true })).not.toBeVisible();
 };
@@ -133,7 +166,18 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
     expectedAuth401s: [],
     failedRequests: [],
     failedResponses: [],
+    consistencyRequests: [],
   };
+  page.on("request", (request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (
+      request.method() === "POST" &&
+      (pathname.endsWith("/api/issues/criteria-weighting/diagnostics") ||
+        pathname.endsWith("/evaluations/criteriaWeighting/diagnostics"))
+    ) {
+      diagnostics.consistencyRequests.push(pathname);
+    }
+  });
   page.on("pageerror", (error) => diagnostics.pageErrors.push(error.message));
   page.on("console", (message) => {
     if (message.type() !== "error") return;
@@ -176,21 +220,26 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await expect(page.getByRole("combobox", { name: "Compare AHP Quality with AHP Cost" })).toBeVisible();
   await expect(page.locator(".MuiDataGrid-root").getByRole("combobox")).toHaveCount(6);
   const creatorDiagnostic = page.getByTestId("ahp-consistency-diagnostic");
-  await expect(creatorDiagnostic).toContainText("Complete all valid pairwise comparisons");
+  await expect(creatorDiagnostic).toContainText("Complete all pairwise comparisons to check consistency.");
   await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 2);
   await selectSaatyComparison(page, "AHP Quality", longReliabilityCriterion, 6);
-  const creatorDiagnosticResponse = page.waitForResponse((response) =>
-    response.request().method() === "POST" &&
-    new URL(response.url()).pathname.endsWith("/api/issues/criteria-weighting/diagnostics"),
-  );
   await selectSaatyComparison(page, "AHP Cost", longReliabilityCriterion, 3);
-  expect((await creatorDiagnosticResponse).ok()).toBe(true);
+  await expect(creatorDiagnostic).toContainText("Consistency has not been checked for the current comparisons.");
+  await page.waitForTimeout(350);
+  expect(diagnostics.consistencyRequests).toHaveLength(0);
+  await clickCheckCR(page, "/api/issues/criteria-weighting/diagnostics");
+  expect(diagnostics.consistencyRequests).toHaveLength(1);
   await expect(creatorDiagnostic).toContainText("CR 0.0000");
   await expect(creatorDiagnostic).toContainText("Consistent");
   await page.screenshot({ path: test.info().outputPath("ahp-diagnostic-creator-consistent.png"), fullPage: true });
   await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 9);
   await selectSaatyComparison(page, "AHP Quality", longReliabilityCriterion, 1);
   await selectSaatyComparison(page, "AHP Cost", longReliabilityCriterion, 9);
+  await expect(creatorDiagnostic).toContainText("Consistency has not been checked for the current comparisons.");
+  await page.waitForTimeout(350);
+  expect(diagnostics.consistencyRequests).toHaveLength(1);
+  await clickCheckCR(page, "/api/issues/criteria-weighting/diagnostics");
+  expect(diagnostics.consistencyRequests).toHaveLength(2);
   await expect(creatorDiagnostic).toContainText("Review consistency");
   await expect(creatorDiagnostic).toContainText("Optional mathematical simulations");
   await expect(creatorDiagnostic).toContainText("nothing is changed automatically");
@@ -315,8 +364,32 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await expect(page.getByRole("combobox", { name: "Compare AHP Cost with AHP Quality" })).toHaveText("1/3");
   await selectSaatyComparison(page, "AHP Cost", longReliabilityCriterion, 2);
   await expect(status).toHaveText("3 of 3 comparisons complete");
-  await expect(page.getByTestId("ahp-consistency-diagnostic")).toContainText("Consistent");
+  const expertDiagnostic = page.getByTestId("ahp-consistency-diagnostic");
+  await expect(expertDiagnostic).toContainText("Consistency has not been checked for the current comparisons.");
+  await page.waitForTimeout(350);
+  expect(diagnostics.consistencyRequests).toHaveLength(2);
+  await clickCheckCR(page, "/evaluations/criteriaWeighting/diagnostics");
+  expect(diagnostics.consistencyRequests).toHaveLength(3);
+  await expect(expertDiagnostic).toContainText("Consistent");
   await page.screenshot({ path: test.info().outputPath("ahp-diagnostic-expert-consistent.png"), fullPage: true });
+
+  await page.keyboard.press("Escape");
+  const completedDraftDialog = page.getByRole("dialog", { name: "Save changes?" });
+  await expect(completedDraftDialog).toBeVisible();
+  await completedDraftDialog.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByText("Evaluation draft saved successfully", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: issueName, exact: true })).toBeVisible();
+
+  await evaluateWeights.click();
+  await expect(page.getByRole("heading", { name: "Criteria weighting", exact: true })).toBeVisible();
+  await expect(status).toHaveText("3 of 3 comparisons complete");
+  await expect(expertDiagnostic).toContainText("Consistency has not been checked for the current comparisons.");
+  await page.waitForTimeout(350);
+  expect(diagnostics.consistencyRequests).toHaveLength(3);
+  await clickCheckCR(page, "/evaluations/criteriaWeighting/diagnostics");
+  expect(diagnostics.consistencyRequests).toHaveLength(4);
+  await expect(expertDiagnostic).toContainText("Consistent");
+
   await submitEvaluation(page);
   await expect(page.getByRole("heading", { name: issueName, exact: true })).toBeVisible();
 
@@ -328,6 +401,7 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
     qualityReliability: 1,
     costReliability: 9,
     expectReview: true,
+    consistencyRequests: diagnostics.consistencyRequests,
   });
 
   await logout(page);

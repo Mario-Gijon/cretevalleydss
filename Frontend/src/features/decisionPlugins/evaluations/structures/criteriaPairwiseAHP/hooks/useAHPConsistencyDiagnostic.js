@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { diagnoseCreatorAHPConsistency } from "../../../../../../services/issue.service.js";
 import { diagnoseExpertAHPConsistency } from "../../../../../issueEvaluation/services/issueEvaluation.service.js";
 import { expectedComparisonCount, validateEvaluation } from "../operations/validateEvaluation.js";
 
-export const AHP_DIAGNOSTIC_DEBOUNCE_MS = 300;
 export const AHP_DIAGNOSTIC_TIMEOUT_MS = 15000;
+
+const CHECK_UNAVAILABLE_MESSAGE = "Consistency check unavailable. Please try again.";
 
 const sameCriteria = (actual, expected) =>
   Array.isArray(actual) &&
@@ -36,7 +37,7 @@ export const validateAHPDiagnosticResponse = (data, criteria) => {
   return valid ? data : null;
 };
 
-const getPreflightState = ({ enabled, readOnly, diagnosticContext, criteria, evaluation }) => {
+const getInputState = ({ enabled, readOnly, diagnosticContext, criteria, evaluation }) => {
   if (
     !enabled ||
     readOnly === true ||
@@ -63,7 +64,7 @@ const getPreflightState = ({ enabled, readOnly, diagnosticContext, criteria, eva
     return { status: "incomplete", data: null, message: "" };
   }
 
-  return { status: "calculating", data: null, message: "" };
+  return { status: "ready", data: null, message: "" };
 };
 
 const buildDiagnosticFingerprint = ({
@@ -97,10 +98,16 @@ export const useAHPConsistencyDiagnostic = ({
   enabled = true,
   readOnly = false,
 }) => {
-  const [storedState, setStoredState] = useState({ key: null, status: "disabled", data: null, message: "" });
+  const [storedState, setStoredState] = useState({
+    key: null,
+    status: "disabled",
+    data: null,
+    message: "",
+  });
   const requestSequence = useRef(0);
-  const diagnosticContextRef = useRef(diagnosticContext);
-  diagnosticContextRef.current = diagnosticContext;
+  const activeRequest = useRef(null);
+  const currentFingerprint = useRef(null);
+  const inputRevision = useRef({ fingerprint: null, revision: 0 });
   const fingerprint = buildDiagnosticFingerprint({
     enabled,
     readOnly,
@@ -108,108 +115,111 @@ export const useAHPConsistencyDiagnostic = ({
     criteria,
     evaluation,
   });
-  const preflight = getPreflightState({
+  if (inputRevision.current.fingerprint !== fingerprint) {
+    inputRevision.current = {
+      fingerprint,
+      revision: inputRevision.current.revision + 1,
+    };
+  }
+  const diagnosticKey = JSON.stringify([
+    inputRevision.current.revision,
+    fingerprint,
+  ]);
+  currentFingerprint.current = diagnosticKey;
+
+  const inputState = getInputState({
     enabled,
     readOnly,
     diagnosticContext,
     criteria,
     evaluation,
   });
-  const preflightStatus = preflight.status;
 
-  useEffect(() => {
+  const abortActiveRequest = useCallback(() => {
+    requestSequence.current += 1;
+    if (activeRequest.current) {
+      clearTimeout(activeRequest.current.timeoutId);
+      activeRequest.current.controller.abort();
+      activeRequest.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => {
+    abortActiveRequest();
+  }, [abortActiveRequest, diagnosticKey]);
+
+  const checkConsistency = useCallback(async () => {
+    if (inputState.status !== "ready") return;
+
+    abortActiveRequest();
     const sequence = ++requestSequence.current;
-    let active = true;
-    let timedOut = false;
     const controller = new AbortController();
-    let timeoutTimer = null;
-
-    setStoredState({ key: fingerprint, status: preflightStatus, data: null, message: "" });
-    if (preflightStatus !== "calculating") return () => {
-      active = false;
+    const timeoutId = setTimeout(() => {
       controller.abort();
-    };
+    }, AHP_DIAGNOSTIC_TIMEOUT_MS);
+    activeRequest.current = { controller, timeoutId };
+    setStoredState({ key: diagnosticKey, status: "checking", data: null, message: "" });
 
-    const debounceTimer = setTimeout(async () => {
-      timeoutTimer = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-      }, AHP_DIAGNOSTIC_TIMEOUT_MS);
+    const isCurrentRequest = () =>
+      requestSequence.current === sequence &&
+      currentFingerprint.current === diagnosticKey;
 
-      try {
-        const context = diagnosticContextRef.current;
-        const response = context.mode === "creator"
-          ? await diagnoseCreatorAHPConsistency({
-              criteriaWeightingModelId: context.criteriaWeightingModelId,
-              criteriaWeightingModelKey: context.criteriaWeightingModelKey,
-              criteriaWeightingParameters: context.criteriaWeightingParameters,
-              criteria,
-              evaluation,
-              signal: controller.signal,
-            })
-          : context.mode === "expert"
-            ? await diagnoseExpertAHPConsistency({
-                issueId: context.issueId,
-                evaluation,
-                signal: controller.signal,
-              })
-            : null;
+    try {
+      const response = diagnosticContext.mode === "creator"
+        ? await diagnoseCreatorAHPConsistency({
+            criteriaWeightingModelId: diagnosticContext.criteriaWeightingModelId,
+            criteriaWeightingModelKey: diagnosticContext.criteriaWeightingModelKey,
+            criteriaWeightingParameters: diagnosticContext.criteriaWeightingParameters,
+            criteria,
+            evaluation,
+            signal: controller.signal,
+          })
+        : await diagnoseExpertAHPConsistency({
+            issueId: diagnosticContext.issueId,
+            evaluation,
+            signal: controller.signal,
+          });
 
-        if (!active || requestSequence.current !== sequence) return;
-        if (timedOut) {
-          setStoredState({
-            key: fingerprint,
+      if (!isCurrentRequest()) return;
+      const data = response?.success
+        ? validateAHPDiagnosticResponse(response.data, criteria)
+        : null;
+      setStoredState(data
+        ? {
+            key: diagnosticKey,
+            status: data.consistencyRatio === null ? "notApplicable" : "result",
+            data,
+            message: "",
+          }
+        : {
+            key: diagnosticKey,
             status: "error",
             data: null,
-            message: "The consistency check took too long. You can continue without it.",
+            message: CHECK_UNAVAILABLE_MESSAGE,
           });
-          return;
-        }
-        const data = response?.success
-          ? validateAHPDiagnosticResponse(response.data, criteria)
-          : null;
-        setStoredState(data
-          ? {
-              key: fingerprint,
-              status: data.consistencyRatio === null
-                ? "notApplicable"
-                : "result",
-              data,
-              message: "",
-            }
-          : {
-              key: fingerprint,
-              status: "error",
-              data: null,
-              message: timedOut
-                ? "The consistency check took too long. You can continue without it."
-                : "Consistency could not be checked right now. You can continue without it.",
-            });
-      } catch (error) {
-        if (!active || requestSequence.current !== sequence || error?.name === "AbortError" && !timedOut) return;
-        setStoredState({
-          key: fingerprint,
-          status: "error",
-          data: null,
-          message: timedOut
-            ? "The consistency check took too long. You can continue without it."
-            : "Consistency could not be checked right now. You can continue without it.",
-        });
-      } finally {
-        clearTimeout(timeoutTimer);
+    } catch {
+      if (!isCurrentRequest()) return;
+      setStoredState({
+        key: diagnosticKey,
+        status: "error",
+        data: null,
+        message: CHECK_UNAVAILABLE_MESSAGE,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+      if (activeRequest.current?.controller === controller) {
+        activeRequest.current = null;
       }
-    }, AHP_DIAGNOSTIC_DEBOUNCE_MS);
+    }
+  }, [abortActiveRequest, criteria, diagnosticContext, evaluation, diagnosticKey, inputState.status]);
 
-    return () => {
-      active = false;
-      clearTimeout(debounceTimer);
-      clearTimeout(timeoutTimer);
-      controller.abort();
-    };
-  }, [criteria, evaluation, fingerprint, preflightStatus]);
-
-  const state = storedState.key === fingerprint
+  const state = storedState.key === diagnosticKey
     ? storedState
-    : preflight;
-  return { ...state, diagnosticKey: fingerprint };
+    : inputState;
+
+  return {
+    ...state,
+    diagnosticKey,
+    checkConsistency,
+  };
 };
