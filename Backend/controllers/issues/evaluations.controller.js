@@ -1,5 +1,6 @@
 import { computeIssueEvaluationStage } from "../../modules/issues/computation/index.js";
 import {
+  diagnoseIssueCriteriaWeighting as diagnoseIssueCriteriaWeightingModule,
   getIssueEvaluationPayload,
   saveIssueEvaluationDraftWorkflow,
   submitIssueEvaluationWorkflow,
@@ -63,4 +64,18 @@ export const computeEvaluationStage = async (req, res) => {
     currentStage: result.currentStage,
     result: result.result,
   });
+};
+
+export const diagnoseIssueCriteriaWeighting = async (req, res) => {
+  const diagnostic = await diagnoseIssueCriteriaWeightingModule({
+    issueId: req.params.id,
+    userId: req.uid,
+    payload: req.body?.payload,
+  });
+
+  return sendSuccess(
+    res,
+    "AHP consistency diagnostic completed successfully",
+    diagnostic
+  );
 };

@@ -5,7 +5,10 @@ export {
   removeExpressionDomain,
   updateExpressionDomain,
 } from "./issues/expressionDomains.controller.js";
-export { createIssue } from "./issues/creation.controller.js";
+export {
+  createIssue,
+  diagnoseCreatorCriteriaWeighting,
+} from "./issues/creation.controller.js";
 export {
   editExperts,
   getAllActiveIssues,
@@ -33,6 +36,7 @@ export {
 } from "./issues/scenarios.controller.js";
 export {
   computeEvaluationStage,
+  diagnoseIssueCriteriaWeighting,
   getIssueEvaluationByStage,
   saveIssueEvaluationByStage,
   submitIssueEvaluationByStage,

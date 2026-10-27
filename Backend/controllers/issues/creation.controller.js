@@ -1,4 +1,7 @@
-import { createIssueWorkflow } from "../../modules/issues/creation/index.js";
+import {
+  createIssueWorkflow,
+  diagnoseCreatorCriteriaWeighting as diagnoseCreatorCriteriaWeightingModule,
+} from "../../modules/issues/creation/index.js";
 import { sendSuccess } from "../../utils/common/responses.js";
 
 export const createIssue = async (req, res) => {
@@ -15,4 +18,17 @@ export const createIssue = async (req, res) => {
         201
       ),
   });
+};
+
+export const diagnoseCreatorCriteriaWeighting = async (req, res) => {
+  const diagnostic = await diagnoseCreatorCriteriaWeightingModule({
+    userId: req.uid,
+    input: req.body,
+  });
+
+  return sendSuccess(
+    res,
+    "AHP consistency diagnostic completed successfully",
+    diagnostic
+  );
 };

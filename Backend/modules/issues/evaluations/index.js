@@ -11,3 +11,4 @@ export {
 } from "./submitIssueEvaluationWorkflow.js";
 
 export { buildDecisionContext } from "./buildDecisionContext.js";
+export { diagnoseIssueCriteriaWeighting } from "./diagnoseIssueCriteriaWeighting.js";

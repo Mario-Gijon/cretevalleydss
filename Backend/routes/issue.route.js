@@ -4,6 +4,7 @@ import { asyncHandler } from "../middlewares/asyncHandler.js";
 
 import {
   createIssue,
+  diagnoseCreatorCriteriaWeighting,
   modelsInfo,
   getAllUsers,
   getAllActiveIssues,
@@ -23,6 +24,7 @@ import {
   getIssueEvaluationByStage,
   submitIssueEvaluationByStage,
   computeEvaluationStage,
+  diagnoseIssueCriteriaWeighting,
   createExpressionDomain,
   getExpressionsDomain,
   removeExpressionDomain,
@@ -38,6 +40,11 @@ import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
 
 router.use(requireToken);
+
+router.post(
+  "/criteria-weighting/diagnostics",
+  asyncHandler(diagnoseCreatorCriteriaWeighting)
+);
 
 router.get("/models", asyncHandler(modelsInfo));
 
@@ -90,6 +97,10 @@ router.delete(
 router.post("/:id/evaluations/:stage/send", asyncHandler(saveIssueEvaluationByStage));
 router.post("/:id/evaluations/:stage/submit", asyncHandler(submitIssueEvaluationByStage));
 router.post("/:id/evaluations/:stage/compute", asyncHandler(computeEvaluationStage));
+router.post(
+  "/:id/evaluations/criteriaWeighting/diagnostics",
+  asyncHandler(diagnoseIssueCriteriaWeighting)
+);
 router.get("/:id/evaluations/:stage", asyncHandler(getIssueEvaluationByStage));
 
 router
