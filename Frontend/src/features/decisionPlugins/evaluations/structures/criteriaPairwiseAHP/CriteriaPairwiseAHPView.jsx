@@ -104,9 +104,7 @@ const CriteriaPairwiseAHPView = ({
     }
     return selectedTriad
       ? resolveReviewCandidatePairs(data, { selectedTriad })
-      : resolveReviewCandidatePairs({
-          recommendations: Array.isArray(data.recommendations) ? data.recommendations.slice(0, 1) : [],
-        });
+      : new Set();
   }, [diagnosticState?.data, diagnosticState?.status, selectedTriad]);
   const submitWarning = diagnosticState?.status === "result" &&
       typeof diagnosticState.data?.consistencyRatio === "number" &&

@@ -1,105 +1,73 @@
 import { describe, expect, it } from "vitest";
 
 import { explainDiagnosticTriad, formatAHPDiagnosticRatio } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/explainDiagnosticTriad.js";
-import { resolveRepresentativeRecommendations } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/resolveRepresentativeRecommendations.js";
 import { isReviewCandidatePair, resolveReviewCandidatePairs } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/resolveReviewCandidatePairs.js";
 
+const makeTriad = (firstToSecond, secondToThird, firstToThird) => ({
+  criteria: [
+    { id: "quality", name: "Quality" },
+    { id: "cost", name: "Cost" },
+    { id: "sustainability", name: "Sustainability" },
+  ],
+  comparisons: [
+    { fromCriterionId: "quality", toCriterionId: "cost", value: firstToSecond },
+    { fromCriterionId: "cost", toCriterionId: "sustainability", value: secondToThird },
+    { fromCriterionId: "quality", toCriterionId: "sustainability", value: firstToThird },
+  ],
+  impliedRatio: firstToSecond * secondToThird,
+  directRatio: firstToThird,
+});
+
 describe("AHP diagnostic presentation operations", () => {
-  it("narrates reciprocal judgments in the correct direction using criterion IDs", () => {
-    const result = explainDiagnosticTriad({
-      criteria: [
-        { id: "quality", name: "Quality" },
-        { id: "cost", name: "Cost" },
-        { id: "safety", name: "Safety" },
-      ],
-      comparisons: [
-        { fromCriterionId: "quality", toCriterionId: "cost", value: 1 / 3 },
-        { fromCriterionId: "cost", toCriterionId: "safety", value: 3 },
-        { fromCriterionId: "quality", toCriterionId: "safety", value: 1 / 3 },
-      ],
-      impliedRatio: 1,
-      directRatio: 1 / 3,
-      cycleRatio: 3,
-    });
+  it("describes a real preference-direction contradiction without naming a wrong judgment", () => {
+    const result = explainDiagnosticTriad(makeTriad(5, 4, 1 / 3));
 
+    expect(result).toEqual({
+      type: "direction",
+      text: "You rated Quality as more important than Cost, and Cost as more important than Sustainability, but also Sustainability as more important than Quality.",
+    });
+    expect(result.text).not.toMatch(/wrong|should change|correct/i);
+  });
+
+  it("explains intensity mismatch with values when all three judgments point in the same direction", () => {
+    const result = explainDiagnosticTriad(makeTriad(3, 2, 4));
+
+    expect(result.type).toBe("intensity");
     expect(result.text).toBe(
-      "You rated Cost as more important than Quality, and Cost as more important than Safety. " +
-      "Taken together, those answers suggest Quality and Safety should be equally important. " +
-      "However, you rated Safety as more important than Quality. There is a substantial mismatch between these views. " +
-      "This does not mean any one answer is wrong.",
+      "You rated Quality as 3 times as important as Cost, and Cost as 2 times as important as Sustainability. " +
+      "Together, those comparisons imply Quality is 6 times as important as Sustainability, while you rated Quality as 4 times as important as Sustainability.",
     );
-    expect(result.strongContradiction).toBe(true);
   });
 
-  it("explains equal comparisons in plain language", () => {
-    const result = explainDiagnosticTriad({
-      criteria: [
-        { id: "quality", name: "Quality" },
-        { id: "cost", name: "Cost" },
-        { id: "safety", name: "Safety" },
-      ],
-      comparisons: [
-        { fromCriterionId: "quality", toCriterionId: "cost", value: 1 },
-        { fromCriterionId: "cost", toCriterionId: "safety", value: 2 },
-        { fromCriterionId: "quality", toCriterionId: "safety", value: 1 / 3 },
-      ],
-      impliedRatio: 2,
-      directRatio: 1 / 3,
-      cycleRatio: 6,
-    });
+  it("describes an implied equality and a direct preference without inventing an opposing direction", () => {
+    const result = explainDiagnosticTriad(makeTriad(1 / 3, 3, 1 / 3));
 
-    expect(result.text).toContain("You rated Quality and Cost as equally important");
-    expect(result.text).toContain("Taken together, those answers suggest Quality should be more important than Safety");
-    expect(result.text).toContain("However, you rated Safety as more important than Quality");
+    expect(result.type).toBe("intensity");
+    expect(result.text).toContain("Together, those comparisons imply Quality and Sustainability are equally important");
+    expect(result.text).toContain("while you rated Sustainability as 3 times as important as Quality");
   });
 
-  it("describes an out-of-scale implied preference without presenting it as a selectable choice", () => {
-    const result = explainDiagnosticTriad({
-      criteria: [
-        { id: "a", name: "A" },
-        { id: "b", name: "B" },
-        { id: "c", name: "C" },
-      ],
-      comparisons: [
-        { fromCriterionId: "a", toCriterionId: "b", value: 9 },
-        { fromCriterionId: "b", toCriterionId: "c", value: 9 },
-        { fromCriterionId: "a", toCriterionId: "c", value: 1 },
-      ],
-      impliedRatio: 81,
-      directRatio: 1,
-      cycleRatio: 81,
-    });
+  it("describes reciprocal intensities in natural language", () => {
+    const result = explainDiagnosticTriad(makeTriad(1 / 3, 1 / 2, 1 / 4));
 
-    expect(result.text).toContain("A would need to be far more important than C—beyond the available comparison scale");
-    expect(result.text).not.toContain("81 times");
-    expect(result.text).not.toContain("cycle");
-    expect(result.outsideSaatyScale).toBe(true);
-    expect(result.strongContradiction).toBe(true);
+    expect(result.type).toBe("intensity");
+    expect(result.text).toContain("Cost as 3 times as important as Quality");
+    expect(result.text).toContain("Sustainability as 2 times as important as Cost");
+    expect(result.text).toContain("Sustainability is 6 times as important as Quality");
+    expect(result.text).toContain("Sustainability as 4 times as important as Quality");
+  });
+
+  it("keeps numerical detail concise for a large intensity mismatch", () => {
+    const result = explainDiagnosticTriad(makeTriad(9, 9, 1));
+
+    expect(result.type).toBe("intensity");
+    expect(result.text).toContain("Quality is 81 times as important as Sustainability");
+    expect(result.text).toContain("Quality and Sustainability as equally important");
+    expect(result.text).not.toMatch(/cycle|discrepancy|scale|simulation/i);
     expect(formatAHPDiagnosticRatio(1 / 9)).toBe("1/9");
   });
 
-  it("explains a preference in the reverse orientation when the combined ratio is below one", () => {
-    const result = explainDiagnosticTriad({
-      criteria: [
-        { id: "quality", name: "Quality" },
-        { id: "cost", name: "Cost" },
-        { id: "safety", name: "Safety" },
-      ],
-      comparisons: [
-        { fromCriterionId: "quality", toCriterionId: "cost", value: 1 / 3 },
-        { fromCriterionId: "cost", toCriterionId: "safety", value: 1 / 2 },
-        { fromCriterionId: "quality", toCriterionId: "safety", value: 3 },
-      ],
-      impliedRatio: 1 / 6,
-      directRatio: 3,
-      cycleRatio: 1 / 18,
-    });
-
-    expect(result.text).toContain("Taken together, those answers suggest Safety should be more important than Quality");
-    expect(result.text).toContain("However, you rated Quality as more important than Safety");
-  });
-
-  it("highlights both orientations by criterion IDs, and leaves diagonal pairs out", () => {
+  it("highlights both cell orientations by criterion IDs, and leaves diagonal pairs out", () => {
     const pairs = resolveReviewCandidatePairs({
       candidateComparisons: [{ criterionId: "quality", comparedCriterionId: "cost" }],
       recommendations: [{ comparison: { criterionId: "safety", comparedCriterionId: "quality" } }],
@@ -113,7 +81,7 @@ describe("AHP diagnostic presentation operations", () => {
     expect(isReviewCandidatePair(pairs, "unrelated", "pair")).toBe(false);
   });
 
-  it("highlights only the selected contradiction and all three of its pairs", () => {
+  it("highlights only the selected inconsistency and all three of its pairs", () => {
     const selectedTriad = {
       comparisons: [
         { fromCriterionId: "quality", toCriterionId: "cost", value: 2 },
@@ -134,14 +102,5 @@ describe("AHP diagnostic presentation operations", () => {
     expect(isReviewCandidatePair(pairs, "quality", "safety")).toBe(true);
     expect(isReviewCandidatePair(pairs, "quality", "delivery")).toBe(false);
     expect(isReviewCandidatePair(pairs, "quality", "quality")).toBe(false);
-  });
-
-  it("keeps one DMS-provided recommendation per criterion pair in response order", () => {
-    const first = { comparison: { criterionId: "quality", comparedCriterionId: "cost" }, suggestedValue: 2 };
-    const duplicateReverse = { comparison: { criterionId: "cost", comparedCriterionId: "quality" }, suggestedValue: 3 };
-    const secondPair = { comparison: { criterionId: "safety", comparedCriterionId: "quality" }, suggestedValue: 4 };
-
-    expect(resolveRepresentativeRecommendations([first, duplicateReverse, secondPair])).toEqual([first, secondPair]);
-    expect(resolveRepresentativeRecommendations([first])).toEqual([first]);
   });
 });
