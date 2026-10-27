@@ -37,7 +37,7 @@ const python = process.env.DECISION_MODELS_PYTHON?.trim();
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const decisionModelsServiceRoot = resolve(repositoryRoot, "DecisionModelsService");
 const topsisSortScript = [
-  "import json, sys",
+  "import json, sys, numpy as np",
   "from schemas.model_requests import GenericModelExecutionRequest",
   "from models.topsis_sort_2016.executor import _input, execute_topsis_sort_2016",
   "payload = GenericModelExecutionRequest.model_validate(json.load(sys.stdin))",
@@ -45,7 +45,11 @@ const topsisSortScript = [
   "response = execute_topsis_sort_2016(payload)",
   "if hasattr(response, 'body'):",
   "    response = json.loads(response.body)",
-  "print(json.dumps({'prepared': prepared, 'response': response}))",
+  "def json_default(value):",
+  "    if isinstance(value, np.ndarray): return value.tolist()",
+  "    if isinstance(value, np.generic): return value.item()",
+  "    raise TypeError(f'Object of type {type(value).__name__} is not JSON serializable')",
+  "print(json.dumps({'prepared': prepared, 'response': response}, default=json_default))",
 ].join("\n");
 
 const executeDecisionModel = (payload) => {
@@ -328,7 +332,7 @@ describe("Backend to DecisionModelsService TOPSIS-Sort 2016 contract integration
       resultStructureKey: "sorting",
       resultStructureVersion: 1,
       capability: "resultsAnalysis",
-    })).toBe(false);
+    })).toBe(true);
 
     const {
       issue,
