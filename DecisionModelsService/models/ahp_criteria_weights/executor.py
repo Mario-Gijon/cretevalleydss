@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from schemas.model_requests import GenericModelExecutionRequest
 from services.criteria_weights_consensus.mcc_weights import solve_mcc_weights
 from services.model_executors.responses import error_response, success_response
+from .diagnostics import diagnose_ahp_consistency
 from .run import run_ahp_criteria_weights
 
 
@@ -88,3 +89,22 @@ def execute_ahp_criteria_weights(
             f"Error executing AHP criteria weights: {error}",
             code="INTERNAL_ERROR",
         )
+
+
+def diagnose_ahp_criteria_weights(
+    payload: GenericModelExecutionRequest,
+) -> dict[str, Any]:
+    """Adapt the generic request contract to the read-only one-expert AHP diagnostic."""
+
+    context, evaluations = _normalize_request(payload)
+    if len(evaluations) != 1:
+        raise ValueError(
+            "AHP consistency diagnosis requires exactly one expert evaluation"
+        )
+
+    result = diagnose_ahp_consistency(context=context, evaluation=evaluations[0])
+    result["criteria"] = [
+        {"id": criterion["id"], "name": criterion["name"]}
+        for criterion in context["criteria"]
+    ]
+    return result

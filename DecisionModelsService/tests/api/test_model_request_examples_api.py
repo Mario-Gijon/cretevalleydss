@@ -160,9 +160,9 @@ def test_registered_model_request_examples_execute_via_api(
         pytest.skip("No request example provided for this model.")
 
     endpoint_path = model.api_endpoint_path
-    if _get_model_key(model) == "topsis_sort_2016":
-        # Exercise this numpy-backed handler with direct ASGI transport; the
-        # synchronous TestClient portal stalls on this request in our harness.
+    if _get_model_key(model) in {"topsis_sort_2016", "ahp_criteria_weights"}:
+        # Exercise these numpy-backed handlers with direct ASGI transport; the
+        # synchronous TestClient portal stalls on these requests in our harness.
         response = asyncio.run(
             _post_example_asgi(api_app, endpoint_path, request_example["value"])
         )

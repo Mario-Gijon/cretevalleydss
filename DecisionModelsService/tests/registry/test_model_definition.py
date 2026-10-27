@@ -36,6 +36,16 @@ def test_valid_issue_model_definition():
     assert definition.issue_execution_authorized is False
     assert definition.result_structure_key == "ranking"
     assert definition.result_structure_version == 1
+    assert definition.diagnostic_handler is None
+
+
+def test_model_definition_accepts_optional_callable_diagnostic_handler():
+    def handler(_payload):
+        return {"status": "ok"}
+
+    definition = _build_definition(diagnostic_handler=handler)
+
+    assert definition.diagnostic_handler is handler
 
 
 def test_issue_execution_authorization_is_explicit_model_metadata():
@@ -144,6 +154,7 @@ def test_valid_criteria_weighting_definition_with_expert_side_support():
     ("overrides", "message_fragment"),
     [
         ({"implementation_status": "draft"}, "invalid implementation_status"),
+        ({"diagnostic_handler": "not-callable"}, "diagnostic_handler.*callable"),
         ({"issue_execution_authorized": "yes"}, "requires boolean issue_execution_authorized"),
         ({"model_kind": "ranking"}, "requires model_kind"),
         ({"evaluation_structure_key": ""}, "non-empty evaluation_structure_key"),

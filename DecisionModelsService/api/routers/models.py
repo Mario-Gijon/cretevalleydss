@@ -1,12 +1,14 @@
 from inspect import Parameter, Signature, isawaitable
 
 from fastapi import APIRouter, Body
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from registry.model_definition import ModelDefinition
 from registry.model_registry import (
+    get_model_definition_by_api_model_key,
     get_model_definition_by_endpoint_path,
     get_model_definitions,
 )
@@ -75,6 +77,25 @@ async def _execute_model_definition(
     return result
 
 
+def _diagnostic_error(
+    *,
+    status_code: int,
+    code: str,
+    message: str,
+    field: str | None,
+    details: object = None,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "success": False,
+            "message": message,
+            "data": None,
+            "error": {"code": code, "field": field, "details": details},
+        },
+    )
+
+
 def _create_explicit_model_endpoint(model: ModelDefinition):
     async def execute_registered_model(raw_payload):
         return await _execute_model_definition(model, raw_payload)
@@ -114,6 +135,85 @@ def _register_explicit_model_routes() -> None:
 
 
 _register_explicit_model_routes()
+
+
+@router.post(
+    "/diagnostics/{api_model_key}",
+    response_model=ModelExecutionResponse,
+    include_in_schema=False,
+    summary="Diagnose consistency for a registered model",
+    description=(
+        "Runs the optional read-only diagnostic capability registered by a ready "
+        "model. This internal endpoint does not execute the model handler or persist "
+        "results."
+    ),
+    responses={
+        404: {
+            "description": (
+                "The model is unknown, not ready, or has no diagnostic capability."
+            )
+        },
+        422: {
+            "description": "The diagnostic request or model-specific input is invalid."
+        },
+        500: {"description": "The diagnostic capability failed unexpectedly."},
+    },
+    tags=["Decision Model Diagnostics"],
+)
+async def diagnose_registered_model(
+    api_model_key: str,
+    raw_payload: dict = Body(...),
+):
+    model = get_model_definition_by_api_model_key(api_model_key)
+    if model is None or model.implementation_status != "ready":
+        return _diagnostic_error(
+            status_code=404,
+            code="MODEL_NOT_FOUND",
+            message="Published model not found.",
+            field="api_model_key",
+            details={"apiModelKey": api_model_key},
+        )
+
+    if model.diagnostic_handler is None:
+        return _diagnostic_error(
+            status_code=404,
+            code="DIAGNOSTIC_NOT_SUPPORTED",
+            message="The requested model does not provide a diagnostic capability.",
+            field="api_model_key",
+            details={"apiModelKey": api_model_key},
+        )
+
+    try:
+        payload = model.request_model.model_validate(raw_payload)
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors()) from exc
+
+    try:
+        result = model.diagnostic_handler(payload)
+        if isawaitable(result):
+            result = await result
+    except ValueError as exc:
+        return _diagnostic_error(
+            status_code=422,
+            code="DIAGNOSTIC_INPUT_INVALID",
+            message="The diagnostic input is invalid.",
+            field="request",
+            details={"reason": str(exc)},
+        )
+    except Exception:
+        return _diagnostic_error(
+            status_code=500,
+            code="DIAGNOSTIC_EXECUTION_ERROR",
+            message="The diagnostic capability could not be completed.",
+            field=None,
+        )
+
+    return {
+        "success": True,
+        "message": f"{model.display_name} diagnostic completed successfully.",
+        "data": jsonable_encoder(result),
+        "error": None,
+    }
 
 
 @router.post(

@@ -112,4 +112,19 @@ def get_model_definition_by_endpoint_path(endpoint_path: str) -> ModelDefinition
     return None
 
 
-__all__ = ["get_model_definition_by_endpoint_path", "get_model_definitions"]
+def get_model_definition_by_api_model_key(api_model_key: str) -> ModelDefinition | None:
+    if not isinstance(api_model_key, str) or not api_model_key:
+        return None
+
+    for definition in get_model_definitions(strict=False):
+        if definition.api_model_key == api_model_key:
+            return definition
+
+    return None
+
+
+__all__ = [
+    "get_model_definition_by_api_model_key",
+    "get_model_definition_by_endpoint_path",
+    "get_model_definitions",
+]

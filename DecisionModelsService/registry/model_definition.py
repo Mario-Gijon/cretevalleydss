@@ -53,9 +53,18 @@ class ModelDefinition:
 
     supported_expression_domains: list[dict[str, Any]] = field(default_factory=list)
     parameters: list[dict[str, Any]] = field(default_factory=list)
+    diagnostic_handler: Callable[[Any], Any] | None = None
 
     def __post_init__(self) -> None:
         """Valida el contrato interno mínimo de metadata."""
+
+        if self.diagnostic_handler is not None and not callable(
+            self.diagnostic_handler
+        ):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires diagnostic_handler "
+                "to be callable when provided."
+            )
 
         if self.implementation_status not in {"ready", "scaffold"}:
             raise ValueError(

@@ -8,6 +8,7 @@ from models.herrera_viedma_crp.definition import MODEL_DEFINITION as HERRERA_VIE
 from registry import model_registry
 from registry.model_registry import (
     _iter_candidate_model_dirs,
+    get_model_definition_by_api_model_key,
     get_model_definition_by_endpoint_path,
     get_model_definitions,
 )
@@ -101,6 +102,51 @@ MODEL_DEFINITION = ModelDefinition(
     assert len(definitions) == 1
     assert definitions[0].api_model_key == "alpha"
     assert definitions[0].api_endpoint_path == "/alpha"
+
+
+def test_model_registry_resolves_diagnostic_capability_from_dynamic_definition(
+    temp_models_root,
+):
+    _write_temp_model(
+        temp_models_root.parent,
+        "dynamic_diagnostic",
+        """
+from registry.model_definition import ModelDefinition
+from schemas.model_requests import GenericModelExecutionRequest
+
+
+def handler(_payload):
+    return {"success": True, "message": "ok", "data": None, "error": None}
+
+
+def diagnostic_handler(payload):
+    return {"diagnosed": payload.modelParameters.get("token")}
+
+
+MODEL_DEFINITION = ModelDefinition(
+    api_model_key="dynamic_diagnostic",
+    api_endpoint_path="/dynamic_diagnostic",
+    request_model=GenericModelExecutionRequest,
+    handler=handler,
+    display_name="Dynamic diagnostic",
+    small_description="Small",
+    extended_description="Extended",
+    evaluation_structure_key="alternativeCriteriaMatrix",
+    diagnostic_handler=diagnostic_handler,
+)
+""".strip()
+        + "\n",
+    )
+
+    definition = get_model_definition_by_api_model_key("dynamic_diagnostic")
+
+    assert definition is not None
+    assert definition.api_model_key == "dynamic_diagnostic"
+    assert definition.diagnostic_handler is not None
+    assert definition.diagnostic_handler(
+        definition.request_model.model_validate({"modelParameters": {"token": "kept"}})
+    ) == {"diagnosed": "kept"}
+    assert get_model_definition_by_api_model_key("../dynamic_diagnostic") is None
 
 
 def test_missing_model_definition_raises_in_strict_mode(temp_models_root):

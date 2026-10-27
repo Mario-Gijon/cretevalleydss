@@ -2,7 +2,8 @@
 
 AHP_CRITERIA_WEIGHTS_REQUEST_EXAMPLES = {
     "two_criteria": {
-        "label": "Two criteria",
+        "summary": "Two criteria",
+        "description": "AHP request with one complete comparison and one expert.",
         "value": {
             "modelParameters": {},
             "evaluations": [
@@ -31,8 +32,9 @@ AHP_CRITERIA_WEIGHTS_REQUEST_EXAMPLES = {
 }
 
 AHP_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES = {
-    "two_criteria": {
-        "label": "Two criteria",
+    "success": {
+        "summary": "Successful execution",
+        "description": "Successful AHP execution for the two-criteria request.",
         "value": {
             "success": True,
             "message": "AHP criteria weights executed successfully",
@@ -46,13 +48,18 @@ AHP_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES = {
                         "expert-1": {"quality": 0.75, "cost": 0.25}
                     },
                     "expertDiagnosticsByExpert": {
-                        "expert-1": {"consistencyRatio": None, "consistencyStatus": "not_applicable"}
+                        "expert-1": {
+                            "consistencyRatio": None,
+                            "consistencyStatus": "not_applicable",
+                        }
                     },
-                    "aggregation": {"method": "singleExpert", "singleExpertKey": "expert-1"},
+                    "aggregation": {
+                        "method": "singleExpert",
+                        "singleExpertKey": "expert-1",
+                    },
                 },
                 "rawOutput": {"priorityMethod": "principalEigenvector"},
             },
-            "error": None,
         },
     }
 }

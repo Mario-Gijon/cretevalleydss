@@ -2,7 +2,11 @@
 
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
-from .executor import execute_ahp_criteria_weights
+from .executor import diagnose_ahp_criteria_weights, execute_ahp_criteria_weights
+from .examples import (
+    AHP_CRITERIA_WEIGHTS_REQUEST_EXAMPLES,
+    AHP_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES,
+)
 
 
 MODEL_DEFINITION = ModelDefinition(
@@ -10,6 +14,7 @@ MODEL_DEFINITION = ModelDefinition(
     api_endpoint_path="/ahp_criteria_weights",
     request_model=GenericModelExecutionRequest,
     handler=execute_ahp_criteria_weights,
+    diagnostic_handler=diagnose_ahp_criteria_weights,
     display_name="AHP Criteria Weights",
     small_description="Derives criterion priorities from pairwise Saaty comparisons.",
     extended_description=(
@@ -19,6 +24,8 @@ MODEL_DEFINITION = ModelDefinition(
         "weights, and consistency diagnostics remain available for traceability."
     ),
     implementation_status="ready",
+    request_examples=AHP_CRITERIA_WEIGHTS_REQUEST_EXAMPLES,
+    response_examples=AHP_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES,
     model_kind="criteriaWeighting",
     requires_homogeneous_expression_domains=False,
     evaluation_structure_key="criteriaPairwiseAHP",
