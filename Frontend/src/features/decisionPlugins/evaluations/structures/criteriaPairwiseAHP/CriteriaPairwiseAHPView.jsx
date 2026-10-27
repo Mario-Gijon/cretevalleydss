@@ -151,7 +151,7 @@ const CriteriaPairwiseAHPView = ({
         </Typography>
         {currentEvaluation ? (
           <Typography variant="caption" sx={criteriaPairwiseAHPViewSx.caption}>
-            0.5 is neutral. Values above 0.5 favour the row criterion.
+            1 indicates equal importance. Values greater than 1 favour the row criterion; fractions favour the column criterion.
           </Typography>
         ) : null}
       </Box>

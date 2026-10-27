@@ -36,17 +36,26 @@ export const saatyValueToNormalizedPreference = (value) => {
   return value / (1 + value);
 };
 
-export const SAATY_NORMALIZED_PREFERENCE_OPTIONS = Object.freeze(
-  SAATY_SCALE_VALUES.map((saatyValue) => Object.freeze({
-    saatyValue,
-    normalizedValue: formatNormalizedPreferenceOption(saatyValue),
-  }))
-);
-
 export const getSaatyScaleValue = (value) => {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return SAATY_SCALE_VALUES.find((allowed) => Math.abs(allowed - value) <= 1e-12) ?? null;
 };
+
+export const formatSaatyPreferenceLabel = (value) => {
+  const saatyValue = getSaatyScaleValue(value);
+  if (saatyValue === null) return "";
+  if (saatyValue === 1) return "1 — Neutral";
+  if (saatyValue < 1) return `1/${Math.round(1 / saatyValue)}`;
+  return String(saatyValue);
+};
+
+export const SAATY_NORMALIZED_PREFERENCE_OPTIONS = Object.freeze(
+  SAATY_SCALE_VALUES.map((saatyValue) => Object.freeze({
+    saatyValue,
+    normalizedValue: formatNormalizedPreferenceOption(saatyValue),
+    label: formatSaatyPreferenceLabel(saatyValue),
+  }))
+);
 
 export const getSaatyNormalizedPreferenceOption = (value) => {
   const saatyValue = getSaatyScaleValue(value);

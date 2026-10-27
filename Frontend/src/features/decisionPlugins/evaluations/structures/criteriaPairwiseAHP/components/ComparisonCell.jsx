@@ -17,7 +17,7 @@ const ComparisonCell = ({
   if (diagonal) {
     return (
       <Box sx={cellSx.diagonal} aria-label="Neutral self-comparison">
-        Neutral
+        1 — Neutral
       </Box>
     );
   }
@@ -72,7 +72,7 @@ const ComparisonCell = ({
           >
             {SAATY_NORMALIZED_PREFERENCE_OPTIONS.map((option) => (
               <MenuItem key={option.saatyValue} value={option.normalizedValue}>
-                {option.normalizedValue}
+                {option.label}
               </MenuItem>
             ))}
           </TextField>

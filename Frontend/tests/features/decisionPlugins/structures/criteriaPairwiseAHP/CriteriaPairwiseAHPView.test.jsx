@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import CriteriaPairwiseAHPView from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/CriteriaPairwiseAHPView.jsx";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
-import { SAATY_NORMALIZED_PREFERENCE_OPTIONS } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/saatyPreference.js";
 
 const decisionContext = {
   leafCriteria: [
@@ -30,12 +29,12 @@ const renderView = (props = {}) =>
     />
   );
 
-const choosePreference = (rowCriterion, columnCriterion, normalizedValue) => {
+const choosePreference = (rowCriterion, columnCriterion, label) => {
   const select = screen.getByRole("combobox", {
     name: `Compare ${rowCriterion} with ${columnCriterion}`,
   });
   fireEvent.mouseDown(select, { button: 0 });
-  fireEvent.click(screen.getByRole("option", { name: normalizedValue, exact: true }));
+  fireEvent.click(screen.getByRole("option", { name: label, exact: true }));
   return select;
 };
 
@@ -46,8 +45,9 @@ describe("CriteriaPairwiseAHPView", () => {
     expect(screen.getByRole("grid")).toBeInTheDocument();
     expect(screen.getByText("0 of 3 comparisons complete")).toBeInTheDocument();
     expect(screen.getAllByRole("combobox")).toHaveLength(6);
-    expect(screen.getByText("0.5 is neutral. Values above 0.5 favour the row criterion.")).toBeInTheDocument();
+    expect(screen.getByText("1 indicates equal importance. Values greater than 1 favour the row criterion; fractions favour the column criterion.")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);
+    expect(screen.getAllByLabelText("Neutral self-comparison")[0]).toHaveTextContent("1 — Neutral");
     expect(screen.getByRole("combobox", { name: "Compare Quality with Cost" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Compare Quality with Delivery" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Compare Cost with Delivery" })).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe("CriteriaPairwiseAHPView", () => {
     expect(container.querySelectorAll(".pairwise-grid-cell")).toHaveLength(6);
   });
 
-  it("offers exactly the 17 normalized Saaty preferences in each off-diagonal Select", () => {
+  it("offers exactly the 17 original Saaty ratios as Select labels", () => {
     renderView({ evaluation: { comparisons: [] } });
 
     const select = screen.getByRole("combobox", { name: "Compare Quality with Cost" });
@@ -63,7 +63,7 @@ describe("CriteriaPairwiseAHPView", () => {
 
     expect(screen.getAllByRole("option")).toHaveLength(17);
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(
-      SAATY_NORMALIZED_PREFERENCE_OPTIONS.map(({ normalizedValue }) => normalizedValue)
+      ["1/9", "1/8", "1/7", "1/6", "1/5", "1/4", "1/3", "1/2", "1 — Neutral", "2", "3", "4", "5", "6", "7", "8", "9"]
     );
   });
 
@@ -71,7 +71,7 @@ describe("CriteriaPairwiseAHPView", () => {
     const setEvaluation = vi.fn();
     renderView({ evaluation: { comparisons: [] }, setEvaluation });
 
-    choosePreference("Quality", "Cost", "0.750");
+    choosePreference("Quality", "Cost", "3");
 
     expect(setEvaluation).toHaveBeenCalledWith({
       comparisons: [
@@ -80,7 +80,7 @@ describe("CriteriaPairwiseAHPView", () => {
     });
   });
 
-  it("updates the opposite cell as a normalized reciprocal and keeps the diagonal neutral", () => {
+  it("displays the opposite Saaty ratio and keeps the diagonal neutral", () => {
     const setEvaluation = vi.fn();
     const props = {
       decisionContext,
@@ -91,7 +91,7 @@ describe("CriteriaPairwiseAHPView", () => {
     };
     const { rerender } = renderWithProviders(<CriteriaPairwiseAHPView {...props} />);
 
-    choosePreference("Quality", "Cost", "0.750");
+    choosePreference("Quality", "Cost", "3");
 
     const updatedEvaluation = {
       comparisons: [
@@ -101,9 +101,9 @@ describe("CriteriaPairwiseAHPView", () => {
     expect(setEvaluation).toHaveBeenCalledWith(updatedEvaluation);
     rerender(<CriteriaPairwiseAHPView {...props} evaluation={updatedEvaluation} />);
 
-    expect(screen.getByRole("combobox", { name: "Compare Cost with Quality" })).toHaveTextContent("0.250");
+    expect(screen.getByRole("combobox", { name: "Compare Cost with Quality" })).toHaveTextContent("1/3");
     expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);
-    expect(screen.getAllByLabelText("Neutral self-comparison")[0]).toHaveTextContent("Neutral");
+    expect(screen.getAllByLabelText("Neutral self-comparison")[0]).toHaveTextContent("1 — Neutral");
   });
 
   it("persists a reverse-direction edit once and updates the forward direction", () => {
@@ -117,9 +117,9 @@ describe("CriteriaPairwiseAHPView", () => {
     };
     const { rerender } = renderWithProviders(<CriteriaPairwiseAHPView {...props} />);
     const reverseInput = screen.getByRole("combobox", { name: "Compare Cost with Quality" });
-    expect(reverseInput).toHaveTextContent("0.250");
+    expect(reverseInput).toHaveTextContent("1/3");
 
-    choosePreference("Cost", "Quality", "0.667");
+    choosePreference("Cost", "Quality", "2");
 
     const updatedEvaluation = {
       comparisons: [
@@ -129,8 +129,8 @@ describe("CriteriaPairwiseAHPView", () => {
     expect(setEvaluation).toHaveBeenCalledWith(updatedEvaluation);
     rerender(<CriteriaPairwiseAHPView {...props} evaluation={updatedEvaluation} />);
     expect(screen.getAllByRole("combobox")).toHaveLength(6);
-    expect(screen.getByRole("combobox", { name: "Compare Cost with Quality" })).toHaveTextContent("0.667");
-    expect(screen.getByRole("combobox", { name: "Compare Quality with Cost" })).toHaveTextContent("0.333");
+    expect(screen.getByRole("combobox", { name: "Compare Cost with Quality" })).toHaveTextContent("2");
+    expect(screen.getByRole("combobox", { name: "Compare Quality with Cost" })).toHaveTextContent("1/2");
     expect(updatedEvaluation.comparisons).toHaveLength(1);
   });
 

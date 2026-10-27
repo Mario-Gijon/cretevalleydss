@@ -45,6 +45,9 @@ describe("criteriaPairwiseAHP payload operations", () => {
     expect(SAATY_NORMALIZED_PREFERENCE_OPTIONS.map(({ normalizedValue }) => normalizedValue)).toEqual(
       SAATY_SCALE_VALUES.map((value) => formatNormalizedPreferenceOption(value))
     );
+    expect(SAATY_NORMALIZED_PREFERENCE_OPTIONS.map(({ label }) => label)).toEqual(
+      ["1/9", "1/8", "1/7", "1/6", "1/5", "1/4", "1/3", "1/2", "1 — Neutral", "2", "3", "4", "5", "6", "7", "8", "9"]
+    );
     expect(saatyValueToNormalizedPreference(3)).toBe(0.75);
     expect(saatyValueToNormalizedPreference(1 / 3)).toBe(0.25);
     expect(formatNormalizedPreferenceOption(3)).toBe("0.750");
