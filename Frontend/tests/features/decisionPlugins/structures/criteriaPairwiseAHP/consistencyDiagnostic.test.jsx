@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCreatorDiagnostic = vi.hoisted(() => vi.fn());
@@ -176,8 +176,8 @@ describe("manual AHP consistency check", () => {
       evaluation: consistentEvaluation,
       signal: expect.any(AbortSignal),
     }));
-    expect(screen.getByText("Consistent")).toBeInTheDocument();
-    expect(screen.getByText("CR 0.0000")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are consistent. No major contradictions were found.")).toBeInTheDocument();
+    expect(screen.getByText(/CR 0\.0000 · recommended threshold 0\.1000/)).toBeInTheDocument();
   });
 
   it("shows CR not applicable with fewer than three criteria without a button or request", () => {
@@ -187,12 +187,13 @@ describe("manual AHP consistency check", () => {
       evaluation: { comparisons: [{ criterionId: "quality", comparedCriterionId: "cost", value: 3 }] },
     });
 
-    expect(screen.getByText("CR not applicable.")).toBeInTheDocument();
+    expect(screen.getByText("CR is not applicable with fewer than three criteria.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Check CR" })).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
   });
 
-  it("shows high-CR explanations, recommendations and both highlights only after checking", async () => {
+  it("shows a plain-language diagnosis and DMS suggestions only after checking", async () => {
+    vi.useRealTimers();
     const setEvaluation = vi.fn();
     const onConsistencyWarningChange = vi.fn();
     mockCreatorDiagnostic.mockResolvedValue({
@@ -207,6 +208,8 @@ describe("manual AHP consistency check", () => {
           ],
           impliedRatio: 81,
           directRatio: 1,
+          cycleRatio: 81,
+          multiplicativeDiscrepancy: Math.log(81),
           candidateComparisons: [
             { criterionId: "quality", comparedCriterionId: "cost" },
           ],
@@ -214,14 +217,32 @@ describe("manual AHP consistency check", () => {
         candidateComparisons: [
           { criterionId: "quality", comparedCriterionId: "cost" },
         ],
-        recommendations: [{
-          comparison: { criterionId: "quality", comparedCriterionId: "cost" },
-          currentValue: 9,
-          suggestedValue: 1 / 9,
-          originalCR: 0.24,
-          counterfactualCR: 0.08,
-          improvement: 0.16,
-        }],
+        recommendations: [
+          {
+            comparison: { criterionId: "quality", comparedCriterionId: "cost" },
+            currentValue: 9,
+            suggestedValue: 1 / 9,
+            originalCR: 0.24,
+            counterfactualCR: 0.08,
+            improvement: 0.16,
+          },
+          {
+            comparison: { criterionId: "cost", comparedCriterionId: "quality" },
+            currentValue: 9,
+            suggestedValue: 3,
+            originalCR: 0.24,
+            counterfactualCR: 0.1,
+            improvement: 0.14,
+          },
+          {
+            comparison: { criterionId: "cost", comparedCriterionId: "sustainability" },
+            currentValue: 9,
+            suggestedValue: 7,
+            originalCR: 0.24,
+            counterfactualCR: 0.12,
+            improvement: 0.12,
+          },
+        ],
       }),
     });
 
@@ -230,21 +251,36 @@ describe("manual AHP consistency check", () => {
       setEvaluation,
       onConsistencyWarningChange,
     });
-    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are not very consistent.")).not.toBeInTheDocument();
     expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(0);
 
     await clickCheckCR();
 
-    expect(screen.getByText("Review consistency")).toBeInTheDocument();
-    expect(screen.getByText("CR 0.2400")).toBeInTheDocument();
-    expect(screen.getByText(/Quality was judged 9 times more important than Cost/)).toBeInTheDocument();
-    expect(screen.getByText(/implied relationship is outside Saaty/)).toBeInTheDocument();
-    expect(screen.getByText(/Quality vs Cost: 9 → 1\/9/)).toBeInTheDocument();
-    expect(screen.getByText(/CR 0.2400 → 0.0800/)).toBeInTheDocument();
-    expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(2);
+    expect(screen.getByText("Your comparisons are not very consistent.")).toBeInTheDocument();
+    expect(screen.getByText(/CR 0\.2400 · recommended threshold 0\.1000/)).toBeInTheDocument();
+    expect(screen.getByText(/Some of your judgments seem to contradict each other/)).toBeInTheDocument();
+    expect(screen.getByText("Why does this happen?")).toBeInTheDocument();
+    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent(
+      "You rated Quality as more important than Cost, and Cost as more important than Sustainability.",
+    );
+    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("beyond the available comparison scale");
+    expect(screen.getByText("What can I do?")).toBeInTheDocument();
+    expect(screen.getByText(/consistency ratio would decrease from 0\.2400 to 0\.0800/)).toBeInTheDocument();
+    expect(screen.getByText(/It would still be above 0\.1000/)).toBeInTheDocument();
+    expect(screen.getAllByTestId("ahp-diagnostic-recommendation")).toHaveLength(2);
+    within(screen.getAllByTestId("ahp-diagnostic-recommendation")[0])
+      .getByText(/This would reverse a strong preference/);
+    expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(6);
+    expect(screen.getByTestId("ahp-diagnostic-triad")).not.toHaveTextContent(/cycles|implied relationship|mathematical simulations/i);
+    expect(screen.getByRole("button", { name: "Advanced details" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText(/CI 0\.0500 · λmax 3\.1000/)).not.toBeVisible();
     expect(setEvaluation).not.toHaveBeenCalled();
-    expect(screen.getByText(/nothing is changed automatically/)).toBeInTheDocument();
+    expect(screen.getByText(/You do not have to change any answer; nothing is changed automatically/)).toBeInTheDocument();
     expect(onConsistencyWarningChange).toHaveBeenLastCalledWith(expect.stringContaining("0.2400"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Advanced details" }));
+    expect(screen.getByText(/CI 0\.0500 · λmax 3\.1000/)).toBeVisible();
+    expect(screen.getAllByTestId("ahp-advanced-recommendation")).toHaveLength(3);
 
     rerender(
       <CriteriaPairwiseAHPView
@@ -257,12 +293,96 @@ describe("manual AHP consistency check", () => {
         onConsistencyWarningChange={onConsistencyWarningChange}
       />,
     );
-    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are not very consistent.")).not.toBeInTheDocument();
     expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
     expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(0);
     expect(onConsistencyWarningChange).toHaveBeenLastCalledWith(null);
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
-  });
+  }, 10000);
+
+  it("shows only the first contradiction and changes reciprocal cell highlights when another is selected", async () => {
+    vi.useRealTimers();
+    const fourCriteria = [
+      { id: "quality", name: "Quality" },
+      { id: "cost", name: "Cost" },
+      { id: "sustainability", name: "Sustainability" },
+      { id: "delivery", name: "Delivery" },
+    ];
+    const fourCriterionEvaluation = {
+      comparisons: [
+        { criterionId: "quality", comparedCriterionId: "cost", value: 2 },
+        { criterionId: "quality", comparedCriterionId: "sustainability", value: 3 },
+        { criterionId: "quality", comparedCriterionId: "delivery", value: 4 },
+        { criterionId: "cost", comparedCriterionId: "sustainability", value: 2 },
+        { criterionId: "cost", comparedCriterionId: "delivery", value: 2 },
+        { criterionId: "sustainability", comparedCriterionId: "delivery", value: 2 },
+      ],
+    };
+    const firstTriad = {
+      criteria: fourCriteria.slice(0, 3),
+      comparisons: [
+        { fromCriterionId: "quality", toCriterionId: "cost", value: 9 },
+        { fromCriterionId: "cost", toCriterionId: "sustainability", value: 9 },
+        { fromCriterionId: "quality", toCriterionId: "sustainability", value: 1 },
+      ],
+      impliedRatio: 81,
+      directRatio: 1,
+      cycleRatio: 81,
+      multiplicativeDiscrepancy: Math.log(81),
+    };
+    const secondTriad = {
+      criteria: [fourCriteria[0], fourCriteria[1], fourCriteria[3]],
+      comparisons: [
+        { fromCriterionId: "quality", toCriterionId: "cost", value: 1 / 3 },
+        { fromCriterionId: "cost", toCriterionId: "delivery", value: 1 / 5 },
+        { fromCriterionId: "quality", toCriterionId: "delivery", value: 3 },
+      ],
+      impliedRatio: 1 / 15,
+      directRatio: 3,
+      cycleRatio: 1 / 45,
+      multiplicativeDiscrepancy: Math.log(45),
+    };
+    mockCreatorDiagnostic.mockResolvedValue({
+      success: true,
+      data: diagnostic(0.35, {
+        criteria: fourCriteria,
+        triads: [firstTriad, secondTriad],
+      }),
+    });
+    const { container } = renderView({
+      decisionContext: { leafCriteria: fourCriteria },
+      evaluation: fourCriterionEvaluation,
+    });
+
+    await clickCheckCR();
+    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Quality as more important than Cost");
+
+    const highlightedLabels = () => [
+      ...container.querySelectorAll('[data-review-candidate="true"] [role="combobox"]'),
+    ].map((input) => input.getAttribute("aria-label")).sort();
+    expect(highlightedLabels()).toEqual([
+      "Compare Cost with Quality",
+      "Compare Cost with Sustainability",
+      "Compare Quality with Cost",
+      "Compare Quality with Sustainability",
+      "Compare Sustainability with Cost",
+      "Compare Sustainability with Quality",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "See other comparisons to review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review comparisons involving Quality · Cost · Delivery" }));
+
+    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Cost as more important than Quality");
+    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Delivery as more important than Cost");
+    expect(highlightedLabels()).toEqual([
+      "Compare Cost with Delivery",
+      "Compare Cost with Quality",
+      "Compare Delivery with Cost",
+      "Compare Delivery with Quality",
+      "Compare Quality with Cost",
+      "Compare Quality with Delivery",
+    ]);
+  }, 10000);
 
   it("uses the expert endpoint and hides manual checks in readonly mode", async () => {
     mockExpertDiagnostic.mockResolvedValue({ success: true, data: diagnostic(0) });
@@ -279,7 +399,7 @@ describe("manual AHP consistency check", () => {
       evaluation: consistentEvaluation,
       signal: expect.any(AbortSignal),
     }));
-    expect(screen.getByText("Consistent")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are consistent. No major contradictions were found.")).toBeInTheDocument();
 
     expertView.unmount();
     renderView({ ...expertProps, readOnly: true });
@@ -314,7 +434,7 @@ describe("manual AHP consistency check", () => {
       />,
     );
     expect(firstSignal.aborted).toBe(true);
-    expect(screen.queryByText("Consistent")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are consistent. No major contradictions were found.")).not.toBeInTheDocument();
     expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
 
@@ -322,7 +442,7 @@ describe("manual AHP consistency check", () => {
       resolveFirst({ success: true, data: diagnostic(0.9) });
       await Promise.resolve();
     });
-    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are not very consistent.")).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
 
     rerender(
@@ -336,12 +456,12 @@ describe("manual AHP consistency check", () => {
       />,
     );
     expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
-    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are not very consistent.")).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
 
     await clickCheckCR();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
-    expect(screen.getByText("Consistent")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are consistent. No major contradictions were found.")).toBeInTheDocument();
   });
 
   it("aborts and ignores a response from an old model or criteria context", async () => {
@@ -398,7 +518,7 @@ describe("manual AHP consistency check", () => {
       resolveFirst({ success: true, data: diagnostic(0.9) });
       await Promise.resolve();
     });
-    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are not very consistent.")).not.toBeInTheDocument();
 
     await clickCheckCR();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
@@ -406,7 +526,7 @@ describe("manual AHP consistency check", () => {
       criteriaWeightingModelId: "abcdefabcdefabcdefabcdef",
       criteria: changedCriteria,
     });
-    expect(screen.getByText("Consistent")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are consistent. No major contradictions were found.")).toBeInTheDocument();
   });
 
   it("invalidates an expert diagnostic when the active Issue changes", async () => {
@@ -441,13 +561,13 @@ describe("manual AHP consistency check", () => {
       resolveFirst({ success: true, data: diagnostic(0.9) });
       await Promise.resolve();
     });
-    expect(screen.queryByText("Review consistency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are not very consistent.")).not.toBeInTheDocument();
     expect(mockExpertDiagnostic).toHaveBeenCalledTimes(1);
 
     await clickCheckCR();
     expect(mockExpertDiagnostic).toHaveBeenCalledTimes(2);
     expect(mockExpertDiagnostic.mock.calls[1][0]).toMatchObject({ issueId: "issue-23" });
-    expect(screen.getByText("Consistent")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are consistent. No major contradictions were found.")).toBeInTheDocument();
   });
 
   it("allows retry after an unavailable service response", async () => {
@@ -462,7 +582,7 @@ describe("manual AHP consistency check", () => {
 
     await clickCheckCR();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
-    expect(screen.getByText("Consistent")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are consistent. No major contradictions were found.")).toBeInTheDocument();
   });
 
   it("reports timeout and cancels an active request on unmount", async () => {

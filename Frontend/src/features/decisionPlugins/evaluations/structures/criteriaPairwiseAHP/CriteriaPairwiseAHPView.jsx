@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Alert, Box, Stack, Typography, useTheme } from "@mui/material";
 
@@ -86,6 +86,13 @@ const CriteriaPairwiseAHPView = ({
     diagnosticContext,
     readOnly,
   });
+  const [triadSelection, setTriadSelection] = useState({ diagnosticKey: null, index: 0 });
+  const triads = Array.isArray(diagnosticState?.data?.triads) ? diagnosticState.data.triads : [];
+  const requestedTriadIndex = triadSelection.diagnosticKey === diagnosticState?.diagnosticKey
+    ? triadSelection.index
+    : 0;
+  const selectedTriadIndex = requestedTriadIndex < triads.length ? requestedTriadIndex : 0;
+  const selectedTriad = triads[selectedTriadIndex] || null;
   const reviewCandidates = useMemo(() => {
     const data = diagnosticState?.data;
     if (
@@ -95,8 +102,12 @@ const CriteriaPairwiseAHPView = ({
     ) {
       return new Set();
     }
-    return resolveReviewCandidatePairs(data);
-  }, [diagnosticState]);
+    return selectedTriad
+      ? resolveReviewCandidatePairs(data, { selectedTriad })
+      : resolveReviewCandidatePairs({
+          recommendations: Array.isArray(data.recommendations) ? data.recommendations.slice(0, 1) : [],
+        });
+  }, [diagnosticState?.data, diagnosticState?.status, selectedTriad]);
   const submitWarning = diagnosticState?.status === "result" &&
       typeof diagnosticState.data?.consistencyRatio === "number" &&
       diagnosticState.data.consistencyRatio > diagnosticState.data.consistencyThreshold
@@ -235,6 +246,12 @@ const CriteriaPairwiseAHPView = ({
         <AHPConsistencyDiagnostic
           state={diagnosticState}
           onCheck={diagnosticState.checkConsistency}
+          selectedTriad={selectedTriad}
+          selectedTriadIndex={selectedTriadIndex}
+          onSelectTriad={(index) => setTriadSelection({
+            diagnosticKey: diagnosticState.diagnosticKey,
+            index,
+          })}
         />
       ) : null}
     </Stack>
