@@ -3,10 +3,9 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  Alert,
+  Box,
   Button,
   CircularProgress,
-  Paper,
   Stack,
   Typography,
 } from "@mui/material";
@@ -16,28 +15,35 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 
 import { explainDiagnosticTriad } from "../operations/explainDiagnosticTriad.js";
+import { formatNaturalList } from "./formatNaturalList.js";
 
 const formatCR = (value) =>
   typeof value === "number" && Number.isFinite(value) ? value.toFixed(4) : "—";
 
-const containerSx = {
-  minWidth: 0,
-  p: { xs: 1.15, sm: 1.5 },
-  borderColor: "rgba(255,255,255,0.11)",
-  borderRadius: 1.5,
-  bgcolor: "rgba(255,255,255,0.018)",
-};
-
-const quietAccordionSx = {
+const minimalAccordionSx = {
   bgcolor: "transparent",
   boxShadow: "none",
-  borderTop: "1px solid",
-  borderColor: "divider",
+  border: 0,
+  borderRadius: 0,
   "&::before": { display: "none" },
   "&.Mui-expanded": { my: 0 },
-  "& .MuiAccordionSummary-root": { minHeight: 38, px: 0 },
-  "& .MuiAccordionSummary-content": { my: 0.75 },
-  "& .MuiAccordionDetails-root": { px: 0, pt: 0.25, pb: 0.75 },
+  "& .MuiAccordionSummary-root": {
+    minHeight: 40,
+    px: 1,
+    py: 0.35,
+    borderRadius: 1,
+    bgcolor: "transparent",
+    "&:hover": { bgcolor: "transparent" },
+    "&.Mui-focusVisible": { bgcolor: "action.focus" },
+  },
+  "& .MuiAccordionSummary-content": { my: 0.5 },
+  "& .MuiAccordionDetails-root": {
+    px: 1,
+    pt: 0.25,
+    pb: 0.75,
+    bgcolor: "transparent",
+  },
+  "& .MuiAccordion-region": { bgcolor: "transparent" },
 };
 
 const AHPConsistencyDiagnostic = ({
@@ -62,39 +68,31 @@ const AHPConsistencyDiagnostic = ({
   const triads = Array.isArray(data?.triads) ? data.triads : [];
   const activeTriad = selectedTriad || triads[0] || null;
   const activeExplanation = activeTriad ? explainDiagnosticTriad(activeTriad) : null;
+  const notApplicable = state.status === "notApplicable";
 
   return (
-    <Paper variant="outlined" sx={containerSx} data-testid="ahp-consistency-diagnostic">
-      <Stack spacing={1.1}>
-        <Stack direction="row" alignItems="center" spacing={0.8}>
-          <InfoOutlinedIcon fontSize="small" color="info" />
-          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-            AHP Consistency
-          </Typography>
-        </Stack>
-
-        {state.status === "notApplicable" ? (
-          <Typography variant="body2" color="text.secondary" role="status">
-            CR is not applicable with fewer than three criteria.
-          </Typography>
-        ) : (
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            alignItems={{ xs: "stretch", sm: "center" }}
-            justifyContent="space-between"
-            spacing={0.8}
-          >
-            <Typography variant="body2" color="text.secondary" role="status">
-              {state.status === "incomplete"
-                ? "Complete all pairwise comparisons to check consistency."
-                : state.status === "ready"
-                  ? "Consistency has not been checked for the current comparisons."
-                  : state.status === "error"
-                    ? "Consistency check unavailable. Please try again."
-                    : state.status === "checking"
-                      ? "Checking your comparisons…"
-                      : ""}
+    <Box
+      data-testid="ahp-consistency-diagnostic"
+      sx={{ minWidth: 0, pt: 0.35, pb: 0.25 }}
+    >
+      <Stack spacing={1.15}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
+          data-testid="ahp-consistency-diagnostic-header"
+        >
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
+            <InfoOutlinedIcon fontSize="small" color="info" />
+            <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+              AHP Consistency
             </Typography>
+          </Stack>
+
+          {!notApplicable ? (
             <Button
               variant="outlined"
               color="secondary"
@@ -104,36 +102,64 @@ const AHPConsistencyDiagnostic = ({
                 ? <CircularProgress size={14} color="inherit" thickness={5} />
                 : undefined}
               onClick={onCheck}
-              sx={{ alignSelf: { xs: "flex-start", sm: "center" }, flexShrink: 0 }}
+              sx={{ ml: "auto", flexShrink: 0 }}
             >
-              {state.status === "checking" ? "Checking..." : "Check CR"}
+              {state.status === "checking" ? "Checking..." : "Check Consistency"}
             </Button>
-          </Stack>
-        )}
+          ) : null}
+        </Stack>
+
+        {notApplicable ? (
+          <Typography variant="body2" color="text.secondary" role="status">
+            CR is not applicable with fewer than three criteria.
+          </Typography>
+        ) : null}
+
+        {!hasResult && !notApplicable ? (
+          <Typography variant="body2" color="text.secondary" role="status">
+            {state.status === "incomplete"
+              ? "Complete all pairwise comparisons to check consistency."
+              : state.status === "ready"
+                ? "Consistency has not been checked for the current comparisons."
+                : state.status === "error"
+                  ? "Consistency check unavailable. Please try again."
+                  : state.status === "checking"
+                    ? "Checking your comparisons…"
+                    : ""}
+          </Typography>
+        ) : null}
 
         {hasResult ? (
           <>
-            <Alert
-              severity={isInconsistent ? "warning" : "success"}
-              icon={isInconsistent
-                ? <WarningAmberOutlinedIcon fontSize="inherit" />
-                : <CheckCircleOutlineIcon fontSize="inherit" />}
-              sx={{ py: 0.2, alignItems: "center", "& .MuiAlert-message": { py: 0.25, width: "100%" } }}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+              spacing={0.65}
+              useFlexGap
+              flexWrap="wrap"
+              role="status"
+              data-testid="ahp-consistency-result"
             >
-              <Stack spacing={0.25}>
-                <Typography variant="body1" sx={{ fontWeight: 750 }}>
-                  {isInconsistent ? "Some comparisons don't match." : "Your comparisons are consistent."}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
+              <Stack direction="row" alignItems="center" spacing={0.7} sx={{ minWidth: 0 }}>
+                {isInconsistent
+                  ? <WarningAmberOutlinedIcon sx={{ color: "warning.main", fontSize: 19 }} />
+                  : <CheckCircleOutlineIcon sx={{ color: "success.main", fontSize: 19 }} />}
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
                   {isInconsistent
-                    ? `CR ${formatCR(data.consistencyRatio)} · recommended threshold ${formatCR(data.consistencyThreshold)}`
-                    : `CR ${formatCR(data.consistencyRatio)}`}
+                    ? "Some comparisons don't match."
+                    : "Your comparisons are sufficiently consistent."}
                 </Typography>
               </Stack>
-            </Alert>
+              <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: "auto" } }}>
+                {isInconsistent
+                  ? `CR ${formatCR(data.consistencyRatio)} · recommended threshold ${formatCR(data.consistencyThreshold)}`
+                  : `CR ${formatCR(data.consistencyRatio)}`}
+              </Typography>
+            </Stack>
 
             {isInconsistent ? (
-              <Stack spacing={0.75}>
+              <Stack spacing={0.65}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 750 }}>
                   Where is the inconsistency?
                 </Typography>
@@ -146,7 +172,7 @@ const AHPConsistencyDiagnostic = ({
                     expanded={otherInconsistenciesOpen}
                     onChange={(_, expanded) => setOtherInconsistenciesOpen(expanded)}
                     disableGutters
-                    sx={quietAccordionSx}
+                    sx={minimalAccordionSx}
                   >
                     <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
                       <Typography variant="body2" sx={{ fontWeight: 650 }}>
@@ -154,19 +180,37 @@ const AHPConsistencyDiagnostic = ({
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails>
-                      <Stack spacing={0.35}>
+                      <Stack spacing={0.15}>
                         {triads.map((triad, index) => {
                           if (index === selectedTriadIndex) return null;
                           const triadCriteria = Array.isArray(triad?.criteria) ? triad.criteria : [];
-                          const label = triadCriteria.map((criterion) => criterion.name).join(" · ");
+                          const label = formatNaturalList(triadCriteria.map((criterion) => criterion.name));
                           return (
                             <Button
                               key={triadCriteria.map((criterion) => criterion.id).join(":") || index}
                               variant="text"
                               color="inherit"
-                              onClick={() => onSelectTriad?.(index)}
+                              onClick={() => {
+                                onSelectTriad?.(index);
+                                setOtherInconsistenciesOpen(false);
+                              }}
                               aria-label={`View inconsistency involving ${label}`}
-                              sx={{ justifyContent: "flex-start", textAlign: "left", py: 0.7, px: 1, color: "text.secondary" }}
+                              sx={{
+                                justifyContent: "flex-start",
+                                textAlign: "left",
+                                width: "100%",
+                                minHeight: 38,
+                                py: 0.65,
+                                px: 1,
+                                borderRadius: 1,
+                                color: "text.secondary",
+                                textTransform: "none",
+                                transition: (theme) => theme.transitions.create("background-color"),
+                                "&:hover": {
+                                  bgcolor: "action.hover",
+                                  color: "text.primary",
+                                },
+                              }}
                             >
                               <Typography variant="body2">{label}</Typography>
                             </Button>
@@ -185,7 +229,7 @@ const AHPConsistencyDiagnostic = ({
           </>
         ) : null}
       </Stack>
-    </Paper>
+    </Box>
   );
 };
 

@@ -89,7 +89,7 @@ const clickCheckCR = async (page, requestPathSuffix) => {
     response.request().method() === "POST" &&
     new URL(response.url()).pathname.endsWith(requestPathSuffix),
   );
-  await page.getByRole("button", { name: "Check CR", exact: true }).click();
+  await page.getByRole("button", { name: "Check Consistency", exact: true }).click();
   const response = await responsePromise;
   expect(response.ok()).toBe(true);
   return response;
@@ -123,7 +123,7 @@ const completeAHPEvaluation = async (page, {
   expect(consistencyRequests).toHaveLength(requestsBeforeEvaluation + 1);
   await expect(diagnostic).toContainText(expectReview
     ? "Some comparisons don't match."
-    : "Your comparisons are consistent.");
+    : "Your comparisons are sufficiently consistent.");
   await page.screenshot({ path: test.info().outputPath("ahp-criteria-matrix-evaluation-desktop.png"), fullPage: true });
   if (expectReview) {
     await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 8);
@@ -232,7 +232,7 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   await clickCheckCR(page, "/api/issues/criteria-weighting/diagnostics");
   expect(diagnostics.consistencyRequests).toHaveLength(1);
   await expect(creatorDiagnostic).toContainText("CR 0.0000");
-  await expect(creatorDiagnostic).toContainText("Your comparisons are consistent.");
+  await expect(creatorDiagnostic).toContainText("Your comparisons are sufficiently consistent.");
   await page.screenshot({ path: test.info().outputPath("ahp-diagnostic-creator-consistent.png"), fullPage: true });
   await selectSaatyComparison(page, "AHP Quality", "AHP Cost", 9);
   await selectSaatyComparison(page, "AHP Quality", longReliabilityCriterion, 1);
@@ -374,7 +374,7 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   expect(diagnostics.consistencyRequests).toHaveLength(2);
   await clickCheckCR(page, "/evaluations/criteriaWeighting/diagnostics");
   expect(diagnostics.consistencyRequests).toHaveLength(3);
-  await expect(expertDiagnostic).toContainText("Your comparisons are consistent.");
+  await expect(expertDiagnostic).toContainText("Your comparisons are sufficiently consistent.");
   await page.screenshot({ path: test.info().outputPath("ahp-diagnostic-expert-consistent.png"), fullPage: true });
 
   await page.keyboard.press("Escape");
@@ -392,7 +392,7 @@ test("AHP TOPSIS-Sort: real multi-expert weighting is persisted and consumed by 
   expect(diagnostics.consistencyRequests).toHaveLength(3);
   await clickCheckCR(page, "/evaluations/criteriaWeighting/diagnostics");
   expect(diagnostics.consistencyRequests).toHaveLength(4);
-  await expect(expertDiagnostic).toContainText("Your comparisons are consistent.");
+  await expect(expertDiagnostic).toContainText("Your comparisons are sufficiently consistent.");
 
   await submitEvaluation(page);
   await expect(page.getByRole("heading", { name: issueName, exact: true })).toBeVisible();

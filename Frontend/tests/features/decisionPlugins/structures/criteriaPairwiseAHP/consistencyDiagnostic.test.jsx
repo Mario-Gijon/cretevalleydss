@@ -85,7 +85,7 @@ const renderView = (props = {}) => renderWithProviders(
 
 const clickCheckCR = async () => {
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Check CR" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check Consistency" }));
     await Promise.resolve();
   });
 };
@@ -117,7 +117,7 @@ describe("manual AHP consistency check", () => {
     const { rerender } = renderView({ evaluation: incompleteEvaluation, setEvaluation });
 
     expect(screen.getByText("Complete all pairwise comparisons to check consistency.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Check CR" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Check Consistency" })).toBeDisabled();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
 
     rerender(
@@ -131,7 +131,7 @@ describe("manual AHP consistency check", () => {
       />,
     );
     expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Check CR" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Check Consistency" })).toBeEnabled();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
 
     await choosePreference("Quality", "Cost", "4");
@@ -162,11 +162,20 @@ describe("manual AHP consistency check", () => {
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
   }, 10000);
 
-  it("checks a complete creator matrix only after Check CR and displays an acceptable CR", async () => {
+  it("checks a complete creator matrix only after Check Consistency and displays an acceptable CR", async () => {
     mockCreatorDiagnostic.mockResolvedValue({ success: true, data: diagnostic(0) });
-    renderView({ evaluation: consistentEvaluation });
+    const { container } = renderView({ evaluation: consistentEvaluation });
 
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
+    const diagnosticRoot = screen.getByTestId("ahp-consistency-diagnostic");
+    const header = screen.getByTestId("ahp-consistency-diagnostic-header");
+    expect(getComputedStyle(header).display).toBe("flex");
+    expect(getComputedStyle(header).justifyContent).toBe("space-between");
+    expect(getComputedStyle(header).alignItems).toBe("center");
+    expect(getComputedStyle(header).flexWrap).toBe("wrap");
+    expect(header).toContainElement(screen.getByRole("button", { name: "Check Consistency" }));
+    expect(diagnosticRoot.querySelector(".MuiPaper-root")).toBeNull();
+    expect(diagnosticRoot.querySelector(".MuiAlert-root")).toBeNull();
     await clickCheckCR();
 
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
@@ -176,9 +185,21 @@ describe("manual AHP consistency check", () => {
       evaluation: consistentEvaluation,
       signal: expect.any(AbortSignal),
     }));
-    expect(screen.getByText("Your comparisons are consistent.")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
     expect(screen.getByText("CR 0.0000")).toBeInTheDocument();
     expect(screen.queryByText(/recommended threshold/)).not.toBeInTheDocument();
+    expect(container.querySelector(".MuiAlert-root")).toBeNull();
+  });
+
+  it("treats a CR exactly at the recommended threshold as sufficiently consistent", async () => {
+    mockCreatorDiagnostic.mockResolvedValue({ success: true, data: diagnostic(0.1) });
+    renderView();
+
+    await clickCheckCR();
+
+    expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
+    expect(screen.getByText("CR 0.1000")).toBeInTheDocument();
+    expect(screen.queryByText("Some comparisons don't match.")).not.toBeInTheDocument();
   });
 
   it("shows CR not applicable with fewer than three criteria without a button or request", () => {
@@ -189,7 +210,7 @@ describe("manual AHP consistency check", () => {
     });
 
     expect(screen.getByText("CR is not applicable with fewer than three criteria.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Check CR" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Check Consistency" })).not.toBeInTheDocument();
     expect(mockCreatorDiagnostic).not.toHaveBeenCalled();
   });
 
@@ -361,11 +382,17 @@ describe("manual AHP consistency check", () => {
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "View other inconsistencies" }));
-    fireEvent.click(screen.getByRole("button", { name: "View inconsistency involving Quality · Cost · Delivery" }));
+    const accordion = container.querySelector(".MuiAccordion-root");
+    const details = container.querySelector(".MuiAccordionDetails-root");
+    expect(getComputedStyle(accordion).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    expect(getComputedStyle(accordion).borderTopWidth).toBe("0px");
+    expect(getComputedStyle(details).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    fireEvent.click(screen.getByRole("button", { name: "View inconsistency involving Quality, Cost and Delivery" }));
 
     expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Cost as more important than Quality");
     expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Delivery as more important than Cost");
     expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Quality as more important than Delivery");
+    expect(screen.getByRole("button", { name: "View other inconsistencies" })).toHaveAttribute("aria-expanded", "false");
     expect(highlightedLabels()).toEqual([
       "Compare Cost with Delivery",
       "Compare Cost with Quality",
@@ -391,11 +418,11 @@ describe("manual AHP consistency check", () => {
       evaluation: consistentEvaluation,
       signal: expect.any(AbortSignal),
     }));
-    expect(screen.getByText("Your comparisons are consistent.")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
 
     expertView.unmount();
     renderView({ ...expertProps, readOnly: true });
-    expect(screen.queryByRole("button", { name: "Check CR" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Check Consistency" })).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahp-consistency-diagnostic")).not.toBeInTheDocument();
     expect(mockExpertDiagnostic).toHaveBeenCalledTimes(1);
   });
@@ -426,7 +453,7 @@ describe("manual AHP consistency check", () => {
       />,
     );
     expect(firstSignal.aborted).toBe(true);
-    expect(screen.queryByText("Your comparisons are consistent.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your comparisons are sufficiently consistent.")).not.toBeInTheDocument();
     expect(screen.getByText("Consistency has not been checked for the current comparisons.")).toBeInTheDocument();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
 
@@ -453,7 +480,7 @@ describe("manual AHP consistency check", () => {
 
     await clickCheckCR();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
-    expect(screen.getByText("Your comparisons are consistent.")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
   });
 
   it("aborts and ignores a response from an old model or criteria context", async () => {
@@ -518,7 +545,7 @@ describe("manual AHP consistency check", () => {
       criteriaWeightingModelId: "abcdefabcdefabcdefabcdef",
       criteria: changedCriteria,
     });
-    expect(screen.getByText("Your comparisons are consistent.")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
   });
 
   it("invalidates an expert diagnostic when the active Issue changes", async () => {
@@ -559,7 +586,7 @@ describe("manual AHP consistency check", () => {
     await clickCheckCR();
     expect(mockExpertDiagnostic).toHaveBeenCalledTimes(2);
     expect(mockExpertDiagnostic.mock.calls[1][0]).toMatchObject({ issueId: "issue-23" });
-    expect(screen.getByText("Your comparisons are consistent.")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
   });
 
   it("allows retry after an unavailable service response", async () => {
@@ -570,11 +597,11 @@ describe("manual AHP consistency check", () => {
 
     await clickCheckCR();
     expect(screen.getByText("Consistency check unavailable. Please try again.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Check CR" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Check Consistency" })).toBeEnabled();
 
     await clickCheckCR();
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(2);
-    expect(screen.getByText("Your comparisons are consistent.")).toBeInTheDocument();
+    expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
   });
 
   it("reports timeout and cancels an active request on unmount", async () => {
