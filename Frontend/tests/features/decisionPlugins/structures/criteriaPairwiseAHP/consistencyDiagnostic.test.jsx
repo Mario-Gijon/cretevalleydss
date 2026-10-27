@@ -186,7 +186,7 @@ describe("manual AHP consistency check", () => {
       signal: expect.any(AbortSignal),
     }));
     expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
-    expect(screen.getByText("CR 0.0000")).toBeInTheDocument();
+    expect(screen.getByText("CR 0.000")).toBeInTheDocument();
     expect(screen.queryByText(/recommended threshold/)).not.toBeInTheDocument();
     expect(container.querySelector(".MuiAlert-root")).toBeNull();
   });
@@ -198,8 +198,25 @@ describe("manual AHP consistency check", () => {
     await clickCheckCR();
 
     expect(screen.getByText("Your comparisons are sufficiently consistent.")).toBeInTheDocument();
-    expect(screen.getByText("CR 0.1000")).toBeInTheDocument();
+    expect(screen.getByText("CR 0.100")).toBeInTheDocument();
     expect(screen.queryByText("Some comparisons don't match.")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [0.1004, "0.1004"],
+    [0.10001, "0.10001"],
+  ])("shows enough CR precision near the threshold (%s)", async (consistencyRatio, displayedRatio) => {
+    mockCreatorDiagnostic.mockResolvedValue({
+      success: true,
+      data: diagnostic(consistencyRatio),
+    });
+    renderView();
+
+    await clickCheckCR();
+
+    expect(screen.getByTestId("ahp-consistency-result")).toHaveTextContent(
+      `CR ${displayedRatio} · recommended threshold 0.10`,
+    );
   });
 
   it("shows CR not applicable with fewer than three criteria without a button or request", () => {
@@ -279,7 +296,7 @@ describe("manual AHP consistency check", () => {
     await clickCheckCR();
 
     expect(screen.getByText("Some comparisons don't match.")).toBeInTheDocument();
-    expect(screen.getByText(/CR 0\.2400 · recommended threshold 0\.1000/)).toBeInTheDocument();
+    expect(screen.getByText(/CR 0\.240 · recommended threshold 0\.10/)).toBeInTheDocument();
     expect(screen.getByText("Where is the inconsistency?")).toBeInTheDocument();
     expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent(
       "You rated Quality as 9 times as important as Cost, and Cost as 9 times as important as Sustainability.",

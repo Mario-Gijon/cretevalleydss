@@ -17,8 +17,19 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { explainDiagnosticTriad } from "../operations/explainDiagnosticTriad.js";
 import { formatNaturalList } from "./formatNaturalList.js";
 
-const formatCR = (value) =>
-  typeof value === "number" && Number.isFinite(value) ? value.toFixed(4) : "—";
+const formatCR = (value, decimalPlaces = 3) =>
+  typeof value === "number" && Number.isFinite(value) ? value.toFixed(decimalPlaces) : "—";
+
+const formatCRAboveThreshold = (value, threshold) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+
+  let decimalPlaces = 3;
+  while (decimalPlaces < 20 && value.toFixed(decimalPlaces) === threshold.toFixed(decimalPlaces)) {
+    decimalPlaces += 1;
+  }
+
+  return value.toFixed(decimalPlaces);
+};
 
 const minimalAccordionSx = {
   bgcolor: "transparent",
@@ -153,7 +164,7 @@ const AHPConsistencyDiagnostic = ({
               </Stack>
               <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: "auto" } }}>
                 {isInconsistent
-                  ? `CR ${formatCR(data.consistencyRatio)} · recommended threshold ${formatCR(data.consistencyThreshold)}`
+                  ? `CR ${formatCRAboveThreshold(data.consistencyRatio, data.consistencyThreshold)} · recommended threshold ${formatCR(data.consistencyThreshold, 2)}`
                   : `CR ${formatCR(data.consistencyRatio)}`}
               </Typography>
             </Stack>
