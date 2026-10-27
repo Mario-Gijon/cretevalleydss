@@ -1,5 +1,6 @@
 import { authFetch } from "../utils/authFetch";
 import { API, jsonRequest, requestJson } from "./httpRequest.service.js";
+export { diagnoseCreatorAHPConsistency } from "./ahpConsistencyDiagnostic.service.js";
 
 /**
  * Normaliza el id de un issue recibido como string o como objeto.

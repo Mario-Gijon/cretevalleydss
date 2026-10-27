@@ -785,6 +785,11 @@ export const CriteriaWeightingPanel = ({
           criteriaWeightingEvaluation !== null ? (
             <SelectedCriteriaWeightingView
               decisionContext={criteriaWeightingDecisionContext}
+              diagnosticContext={selectedCriteriaWeightingStructureEntry?.buildDiagnosticContext?.({
+                mode: "creator",
+                model: selectedApiCriteriaWeightingModel,
+                parameters: safeConfig?.criteriaWeightingParameters,
+              }) || null}
               evaluation={criteriaWeightingEvaluation}
               setEvaluation={(nextEvaluation) =>
                 updateConfig(

@@ -1,5 +1,6 @@
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import { Alert } from "@mui/material";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 
@@ -16,6 +17,7 @@ const AlternativeEvaluationSubmitDialog = ({
   open,
   onClose,
   onSubmit,
+  warningMessage = null,
 }) => {
   return (
     <ConfirmationDialog
@@ -49,7 +51,9 @@ const AlternativeEvaluationSubmitDialog = ({
       ]}
       maxWidth="xs"
       fullWidth
-    />
+    >
+      {warningMessage ? <Alert severity="warning">{warningMessage}</Alert> : null}
+    </ConfirmationDialog>
   );
 };
 

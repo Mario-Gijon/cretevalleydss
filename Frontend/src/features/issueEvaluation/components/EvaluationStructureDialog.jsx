@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Box, Button } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
@@ -66,13 +66,15 @@ const EvaluationStructureDialog = ({
   const [collectiveEvaluation, setCollectiveEvaluation] = useState(null);
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
+  const [submitDiagnosticWarning, setSubmitDiagnosticWarning] = useState(null);
   const issueId = String(issue?.id ?? issue?._id ?? "").trim() || null;
   const evaluationLoading =
     loading || (isOpen === true && evaluation === null && !loadError);
 
-  const setEvaluation = (nextEvaluation) => {
+  const setEvaluation = useCallback((nextEvaluation) => {
+    setSubmitDiagnosticWarning(null);
     setEvaluationState(requireCompleteEvaluationObject(nextEvaluation));
-  };
+  }, []);
 
   useEffect(() => {
     if (!isOpen || !issueId) return;
@@ -84,6 +86,7 @@ const EvaluationStructureDialog = ({
       setInitialSnapshot(null);
       setCollectiveEvaluation(null);
       setShowCollective(false);
+      setSubmitDiagnosticWarning(null);
       setLoadError("");
       try {
         const {
@@ -230,6 +233,11 @@ const EvaluationStructureDialog = ({
       setEvaluation,
       collectiveEvaluation: visibleCollectiveEvaluation,
       readOnly: false,
+      diagnosticContext: structureEntry.buildDiagnosticContext?.({
+        mode: "expert",
+        issue,
+      }) || null,
+      onConsistencyWarningChange: setSubmitDiagnosticWarning,
     };
 
     return <View {...viewProps} />;
@@ -289,6 +297,7 @@ const EvaluationStructureDialog = ({
         open={openSubmitDialog}
         onClose={() => setOpenSubmitDialog(false)}
         onSubmit={handleSubmit}
+        warningMessage={submitDiagnosticWarning}
       />
     </>
   );

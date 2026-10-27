@@ -47,6 +47,9 @@ const MockEvaluationView = (props) => {
       <button onClick={() => props.setEvaluation({ changed: true })}>
         mark-dirty
       </button>
+      <button onClick={() => props.onConsistencyWarningChange?.("AHP CR is above the review threshold. You can still submit.")}>
+        report-consistency-warning
+      </button>
     </div>
   );
 };
@@ -123,10 +126,11 @@ vi.mock(
 vi.mock(
   "../../../src/features/issueEvaluation/components/AlternativeEvaluationSubmitDialog.jsx",
   () => ({
-    default: ({ open, onClose, onSubmit }) =>
+    default: ({ open, onClose, onSubmit, warningMessage }) =>
       open ? (
         <div>
           <div>Submit evaluations?</div>
+          {warningMessage ? <div role="alert">{warningMessage}</div> : null}
           <button onClick={() => onClose?.()}>Cancel</button>
           <button onClick={() => onSubmit?.()}>Submit</button>
         </div>
@@ -439,6 +443,54 @@ describe("EvaluationStructureDialog", () => {
       expect(fetchActiveIssues).toHaveBeenCalledTimes(1);
       expect(setOpenIssueDialog).toHaveBeenCalledWith(false);
       expect(setIsOpen).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("passes an optional view warning to the generic submit confirmation without blocking submission", async () => {
+    mockSubmitIssueEvaluationPayload.mockResolvedValue({ success: true, message: "Submitted." });
+    const buildDiagnosticContext = vi.fn(({ mode, issue }) => ({
+      mode,
+      issueId: issue?.id,
+    }));
+    mockGetEvaluationStructureEntryForStage.mockReturnValue({
+      key: "criteriaPairwiseAHP",
+      stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+      View: MockEvaluationView,
+      buildDiagnosticContext,
+    });
+
+    renderDialog({
+      stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+      structureKey: "criteriaPairwiseAHP",
+    });
+    await waitFor(() => expect(mockViewState.lastProps).not.toBeNull());
+
+    expect(buildDiagnosticContext).toHaveBeenCalledWith({
+      mode: "expert",
+      issue: evaluationIssueFixture,
+    });
+    expect(mockViewState.lastProps.diagnosticContext).toEqual({
+      mode: "expert",
+      issueId: "issue-eval-1",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "report-consistency-warning" }));
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("AHP CR is above the review threshold");
+    expect(screen.getAllByRole("button", { name: "Submit" })[1]).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "mark-dirty" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole("button", { name: "Submit" })[1]);
+    await waitFor(() => {
+      expect(mockSubmitIssueEvaluationPayload).toHaveBeenCalledWith(
+        "issue-eval-1",
+        EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        { changed: true },
+      );
     });
   });
 

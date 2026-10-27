@@ -10,4 +10,21 @@ export const criteriaPairwiseAHPStructure = Object.freeze({
   View: CriteriaPairwiseAHPView,
   buildInitialEvaluation,
   isCollectiveEvaluationUsable,
+  buildDiagnosticContext: ({ mode, issue, model, parameters } = {}) => {
+    if (mode === "creator") {
+      return {
+        mode,
+        criteriaWeightingModelId: model?._id ?? model?.id ?? null,
+        criteriaWeightingModelKey: model?.apiModelKey ?? null,
+        criteriaWeightingParameters: parameters ?? {},
+      };
+    }
+    if (mode === "expert") {
+      return {
+        mode,
+        issueId: issue?.id ?? issue?._id ?? null,
+      };
+    }
+    return null;
+  },
 });

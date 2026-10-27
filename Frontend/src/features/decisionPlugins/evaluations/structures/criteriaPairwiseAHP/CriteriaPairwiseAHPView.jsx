@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Alert, Box, Stack, Typography, useTheme } from "@mui/material";
 
@@ -10,10 +10,13 @@ import {
 import { buildPairwiseMatrixSx } from "../alternativePairwiseByCriterion/styles/PairwiseMatrix.styles.js";
 import ComparisonCell from "./components/ComparisonCell";
 import CollectiveAHPResult from "./components/CollectiveAHPResult";
+import AHPConsistencyDiagnostic from "./components/AHPConsistencyDiagnostic";
 import { expectedComparisonCount, validateEvaluation } from "./operations/validateEvaluation";
 import { getOrientedComparisonValue, updateComparison } from "./operations/updateComparison";
 import { resolveCollective } from "./operations/resolveCollective";
 import { resolveCriteria } from "./operations/resolveCriteria";
+import { resolveReviewCandidatePairs, isReviewCandidatePair } from "./operations/resolveReviewCandidatePairs.js";
+import { useAHPConsistencyDiagnostic } from "./hooks/useAHPConsistencyDiagnostic.js";
 import {
   criteriaPairwiseAHPViewSx,
 } from "./styles/CriteriaPairwiseAHPView.styles";
@@ -26,6 +29,8 @@ const CriteriaPairwiseAHPView = ({
   setEvaluation,
   collectiveEvaluation,
   readOnly,
+  diagnosticContext,
+  onConsistencyWarningChange,
 }) => {
   const theme = useTheme();
   const criteriaResolution = useMemo(() => {
@@ -74,6 +79,34 @@ const CriteriaPairwiseAHPView = ({
     }
   }, [criteriaResolution.criteria, decisionContext, evaluation, collectiveResolution.payload, readOnly]);
 
+  const currentEvaluation = evaluationResolution.payload;
+  const diagnosticState = useAHPConsistencyDiagnostic({
+    criteria,
+    evaluation: currentEvaluation,
+    diagnosticContext,
+    readOnly,
+  });
+  const reviewCandidates = useMemo(() => {
+    const data = diagnosticState?.data;
+    if (
+      diagnosticState?.status !== "result" ||
+      typeof data?.consistencyRatio !== "number" ||
+      data.consistencyRatio <= data.consistencyThreshold
+    ) {
+      return new Set();
+    }
+    return resolveReviewCandidatePairs(data);
+  }, [diagnosticState]);
+  const submitWarning = diagnosticState?.status === "result" &&
+      typeof diagnosticState.data?.consistencyRatio === "number" &&
+      diagnosticState.data.consistencyRatio > diagnosticState.data.consistencyThreshold
+    ? `Your AHP comparisons have a consistency ratio of ${diagnosticState.data.consistencyRatio.toFixed(4)}, above the recommended ${diagnosticState.data.consistencyThreshold.toFixed(4)} threshold. You can still submit.`
+    : null;
+
+  useEffect(() => {
+    onConsistencyWarningChange?.(submitWarning);
+  }, [onConsistencyWarningChange, submitWarning]);
+
   if (criteriaResolution.message) {
     return <Alert severity="error">{criteriaResolution.message}</Alert>;
   }
@@ -84,7 +117,6 @@ const CriteriaPairwiseAHPView = ({
     return <Alert severity="error">{evaluationResolution.message}</Alert>;
   }
 
-  const currentEvaluation = evaluationResolution.payload;
   const permitEdit = readOnly !== true;
   const totalComparisons = expectedComparisonCount(criteria.length);
   const completedComparisons = currentEvaluation?.comparisons.length ?? 0;
@@ -122,6 +154,14 @@ const CriteriaPairwiseAHPView = ({
             value={value}
             diagonal={diagonal}
             permitEdit={permitEdit}
+            reviewCandidate={
+              !diagonal &&
+              isReviewCandidatePair(
+                reviewCandidates,
+                rowCriterion.id,
+                columnCriterion.id,
+              )
+            }
             onChange={(nextValue) => {
               const nextEvaluation = updateComparison({
                 evaluation: currentEvaluation,
@@ -188,6 +228,9 @@ const CriteriaPairwiseAHPView = ({
           })}
         />
       </Box> : null}
+      {!readOnly && diagnosticContext?.mode ? (
+        <AHPConsistencyDiagnostic state={diagnosticState} />
+      ) : null}
     </Stack>
   );
 };

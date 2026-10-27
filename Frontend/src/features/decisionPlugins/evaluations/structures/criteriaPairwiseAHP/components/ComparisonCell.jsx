@@ -13,6 +13,7 @@ const ComparisonCell = ({
   diagonal,
   permitEdit,
   onChange,
+  reviewCandidate = false,
 }) => {
   if (diagonal) {
     return (
@@ -46,6 +47,15 @@ const ComparisonCell = ({
         <Box
           sx={{
             ...cellSx.inputBoundary,
+            ...(reviewCandidate ? {
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "warning.main",
+                borderWidth: 1.5,
+              },
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "warning.light",
+              },
+            } : {}),
             "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": {
               borderColor: "error.main",
             },
@@ -53,6 +63,8 @@ const ComparisonCell = ({
           onMouseDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
           onKeyDown={handleKeyDown}
+          data-review-candidate={reviewCandidate ? "true" : undefined}
+          title={reviewCandidate ? "Part of a comparison cycle suggested for review; this does not identify it as incorrect." : undefined}
         >
           <TextField
             select

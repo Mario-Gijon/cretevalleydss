@@ -4,6 +4,7 @@ import {
   submitIssueEvaluation,
 } from "../../../services/issue.service";
 import { isPlainObject } from "../../../utils/common/objects";
+export { diagnoseExpertAHPConsistency } from "../../../services/ahpConsistencyDiagnostic.service.js";
 
 export const normalizeIssueEvaluationResponse = (response) => {
   const data = response?.data;
