@@ -43,7 +43,7 @@ describe("CriteriaPairwiseAHPView", () => {
     const { container } = renderView({ evaluation: { comparisons: [] } });
 
     expect(screen.getByRole("grid")).toBeInTheDocument();
-    expect(screen.getByText("0 of 3 comparisons complete")).toBeInTheDocument();
+    expect(screen.queryByText(/comparisons complete/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole("combobox")).toHaveLength(6);
     expect(screen.getByText("1 indicates equal importance. Values greater than 1 favour the row criterion; fractions favour the column criterion.")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Neutral self-comparison")).toHaveLength(3);

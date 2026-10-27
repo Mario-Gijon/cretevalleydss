@@ -11,7 +11,7 @@ import { buildPairwiseMatrixSx } from "../alternativePairwiseByCriterion/styles/
 import ComparisonCell from "./components/ComparisonCell";
 import CollectiveAHPResult from "./components/CollectiveAHPResult";
 import AHPConsistencyDiagnostic from "./components/AHPConsistencyDiagnostic";
-import { expectedComparisonCount, validateEvaluation } from "./operations/validateEvaluation";
+import { validateEvaluation } from "./operations/validateEvaluation";
 import { getOrientedComparisonValue, updateComparison } from "./operations/updateComparison";
 import { resolveCollective } from "./operations/resolveCollective";
 import { resolveCriteria } from "./operations/resolveCriteria";
@@ -122,8 +122,6 @@ const CriteriaPairwiseAHPView = ({
   }
 
   const permitEdit = readOnly !== true;
-  const totalComparisons = expectedComparisonCount(criteria.length);
-  const completedComparisons = currentEvaluation?.comparisons.length ?? 0;
   const rows = currentEvaluation ? criteria.map((criterion) => ({
     id: criterion.id,
     criterionLabel: criterion.name,
@@ -202,13 +200,11 @@ const CriteriaPairwiseAHPView = ({
           </Typography>
         ) : null}
       </Box>
-      {currentEvaluation ? <Stack direction="row" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap">
+      {currentEvaluation && criteria.length === 1 ? (
         <Typography variant="caption" sx={criteriaPairwiseAHPViewSx.status} role="status">
-          {criteria.length === 1
-            ? "One criterion · no pairwise comparisons needed"
-            : `${completedComparisons} of ${totalComparisons} comparisons complete`}
+          One criterion · no pairwise comparisons needed
         </Typography>
-      </Stack> : null}
+      ) : null}
       {currentEvaluation ? <Box sx={criteriaPairwiseAHPViewSx.matrixViewport}>
         <DataGrid
           autoHeight
