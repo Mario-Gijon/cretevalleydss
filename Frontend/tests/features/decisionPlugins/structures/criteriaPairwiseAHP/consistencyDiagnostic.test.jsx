@@ -15,6 +15,7 @@ vi.mock("../../../../../src/features/issueEvaluation/services/issueEvaluation.se
 }));
 
 import CriteriaPairwiseAHPView from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/CriteriaPairwiseAHPView.jsx";
+import { explainDiagnosticTriad } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/operations/explainDiagnosticTriad.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const criteria = [
@@ -329,7 +330,7 @@ describe("manual AHP consistency check", () => {
     expect(mockCreatorDiagnostic).toHaveBeenCalledTimes(1);
   }, 10000);
 
-  it("shows only the first contradiction and changes reciprocal cell highlights when another is selected", async () => {
+  it("lists other inconsistency explanations without changing the primary highlighted triad", async () => {
     vi.useRealTimers();
     const fourCriteria = [
       { id: "quality", name: "Quality" },
@@ -371,11 +372,23 @@ describe("manual AHP consistency check", () => {
       cycleRatio: 1 / 45,
       multiplicativeDiscrepancy: Math.log(45),
     };
+    const thirdTriad = {
+      criteria: fourCriteria.slice(1),
+      comparisons: [
+        { fromCriterionId: "cost", toCriterionId: "sustainability", value: 3 },
+        { fromCriterionId: "sustainability", toCriterionId: "delivery", value: 2 },
+        { fromCriterionId: "cost", toCriterionId: "delivery", value: 1 },
+      ],
+      impliedRatio: 6,
+      directRatio: 1,
+      cycleRatio: 6,
+      multiplicativeDiscrepancy: Math.log(6),
+    };
     mockCreatorDiagnostic.mockResolvedValue({
       success: true,
       data: diagnostic(0.35, {
         criteria: fourCriteria,
-        triads: [firstTriad, secondTriad],
+        triads: [firstTriad, secondTriad, thirdTriad],
       }),
     });
     const { container } = renderView({
@@ -404,19 +417,20 @@ describe("manual AHP consistency check", () => {
     expect(getComputedStyle(accordion).backgroundColor).toBe("rgba(0, 0, 0, 0)");
     expect(getComputedStyle(accordion).borderTopWidth).toBe("0px");
     expect(getComputedStyle(details).backgroundColor).toBe("rgba(0, 0, 0, 0)");
-    fireEvent.click(screen.getByRole("button", { name: "View inconsistency involving Quality, Cost and Delivery" }));
-
-    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Cost as more important than Quality");
-    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Delivery as more important than Cost");
-    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent("Quality as more important than Delivery");
-    expect(screen.getByRole("button", { name: "View other inconsistencies" })).toHaveAttribute("aria-expanded", "false");
+    expect(details.querySelectorAll("button")).toHaveLength(0);
+    expect(details.querySelectorAll("p")).toHaveLength(2);
+    expect(details).toHaveTextContent(explainDiagnosticTriad(secondTriad).text);
+    expect(details).toHaveTextContent(explainDiagnosticTriad(thirdTriad).text);
+    expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent(
+      explainDiagnosticTriad(firstTriad).text,
+    );
     expect(highlightedLabels()).toEqual([
-      "Compare Cost with Delivery",
       "Compare Cost with Quality",
-      "Compare Delivery with Cost",
-      "Compare Delivery with Quality",
+      "Compare Cost with Sustainability",
       "Compare Quality with Cost",
-      "Compare Quality with Delivery",
+      "Compare Quality with Sustainability",
+      "Compare Sustainability with Cost",
+      "Compare Sustainability with Quality",
     ]);
   }, 10000);
 

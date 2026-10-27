@@ -15,7 +15,6 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 
 import { explainDiagnosticTriad } from "../operations/explainDiagnosticTriad.js";
-import { formatNaturalList } from "./formatNaturalList.js";
 
 const formatCR = (value, decimalPlaces = 3) =>
   typeof value === "number" && Number.isFinite(value) ? value.toFixed(decimalPlaces) : "—";
@@ -60,9 +59,6 @@ const minimalAccordionSx = {
 const AHPConsistencyDiagnostic = ({
   state,
   onCheck,
-  selectedTriad,
-  selectedTriadIndex = 0,
-  onSelectTriad,
 }) => {
   const [otherInconsistenciesOpen, setOtherInconsistenciesOpen] = useState(false);
   const statusKey = `${state?.diagnosticKey ?? ""}:${state?.status}:${state?.data?.consistencyRatio ?? ""}`;
@@ -77,7 +73,7 @@ const AHPConsistencyDiagnostic = ({
   const hasResult = state.status === "result" && data;
   const isInconsistent = hasResult && data.consistencyRatio > data.consistencyThreshold;
   const triads = Array.isArray(data?.triads) ? data.triads : [];
-  const activeTriad = selectedTriad || triads[0] || null;
+  const activeTriad = triads[0] || null;
   const activeExplanation = activeTriad ? explainDiagnosticTriad(activeTriad) : null;
   const notApplicable = state.status === "notApplicable";
 
@@ -191,40 +187,21 @@ const AHPConsistencyDiagnostic = ({
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails>
-                      <Stack spacing={0.15}>
-                        {triads.map((triad, index) => {
-                          if (index === selectedTriadIndex) return null;
+                      <Stack spacing={0.75}>
+                        {triads.slice(1).map((triad, index) => {
                           const triadCriteria = Array.isArray(triad?.criteria) ? triad.criteria : [];
-                          const label = formatNaturalList(triadCriteria.map((criterion) => criterion.name));
+                          const explanation = explainDiagnosticTriad(triad)?.text;
+                          if (!explanation) return null;
                           return (
-                            <Button
+                            <Typography
                               key={triadCriteria.map((criterion) => criterion.id).join(":") || index}
-                              variant="text"
-                              color="inherit"
-                              onClick={() => {
-                                onSelectTriad?.(index);
-                                setOtherInconsistenciesOpen(false);
-                              }}
-                              aria-label={`View inconsistency involving ${label}`}
-                              sx={{
-                                justifyContent: "flex-start",
-                                textAlign: "left",
-                                width: "100%",
-                                minHeight: 38,
-                                py: 0.65,
-                                px: 1,
-                                borderRadius: 1,
-                                color: "text.secondary",
-                                textTransform: "none",
-                                transition: (theme) => theme.transitions.create("background-color"),
-                                "&:hover": {
-                                  bgcolor: "action.hover",
-                                  color: "text.primary",
-                                },
-                              }}
+                              component="p"
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ m: 0, px: 0.75, py: 0.5 }}
                             >
-                              <Typography variant="body2">{label}</Typography>
-                            </Button>
+                              {explanation}
+                            </Typography>
                           );
                         })}
                       </Stack>
