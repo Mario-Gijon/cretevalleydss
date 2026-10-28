@@ -30,6 +30,8 @@ import {
   serializePreviousStageResultForExecution,
 } from "../stageResults/stageResultContract.js";
 import { resolveResultStructureParameterContextsOrThrow } from "../../decisionPlugins/modelParameters/resolveResultStructureParameterContexts.js";
+import { AHPSORT_I_API_MODEL_KEY, validateAHPSortIExecutionEvaluationsOrThrow } from "../modelExecution/validateAHPSortIExecutionEvaluations.js";
+import { getStageExpertIds } from "../stageResults/stageResultContract.js";
 
 const requireParticipationExpertOrThrow = ({ issueId, participation }) => {
   const expert = participation.expert;
@@ -199,6 +201,39 @@ const resolveScenarioParticipations = ({
   });
 };
 
+export const buildAHPSortScenarioParticipationsOrThrow = ({
+  issue,
+  latestAlternativeResult,
+  completedEvaluations,
+  phase,
+}) => {
+  const historicalExpertIds = getStageExpertIds(latestAlternativeResult);
+  if (!historicalExpertIds.length) {
+    throw createBadRequestError(
+      "This historical result has no persisted expert roster, so AHPSort I scenario evaluation coverage cannot be verified.",
+      {
+        code: "AHPSORT_I_SCENARIO_ROSTER_UNVERIFIABLE",
+        field: "stageResult.inputSnapshot.expertIds",
+        details: {
+          issueId: toIdString(issue._id),
+          stageResultId: toIdString(latestAlternativeResult._id),
+          phase,
+        },
+      }
+    );
+  }
+
+  const evaluationByExpertId = new Map(
+    completedEvaluations.map((evaluation) => [
+      toIdString(evaluation?.expert?._id || evaluation?.expert),
+      evaluation,
+    ])
+  );
+  return historicalExpertIds.map((expertId) => ({
+    expert: evaluationByExpertId.get(expertId)?.expert || { _id: expertId },
+  }));
+};
+
 export const buildScenarioExecutionContext = async ({
   issueId,
   userId,
@@ -217,6 +252,8 @@ export const buildScenarioExecutionContext = async ({
 
   const targetModel = await getTargetScenarioModelOrThrow({ targetModelId });
   const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(targetModel);
+  const isAHPSortScenario =
+    targetRuntimeSnapshot.targetApiModelKey === AHPSORT_I_API_MODEL_KEY;
   const { latestAlternativeResult, phase: evaluationPhase } =
     await resolveAlternativeResultOrThrow({ issue, phase });
 
@@ -226,7 +263,7 @@ export const buildScenarioExecutionContext = async ({
         issue: issue._id,
         stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
         consensusPhase: evaluationPhase,
-        completed: true,
+        ...(isAHPSortScenario ? {} : { completed: true }),
       })
         .populate("expert", "email name")
         .lean(),
@@ -326,17 +363,25 @@ export const buildScenarioExecutionContext = async ({
       targetModel.supportedExpressionDomains,
   });
 
-  const scenarioParticipations = resolveScenarioParticipations({
-    latestAlternativeResult,
-    completedEvaluations,
-    issueId: toIdString(issue._id),
-  });
+  const scenarioParticipations = isAHPSortScenario
+    ? buildAHPSortScenarioParticipationsOrThrow({
+        issue,
+        latestAlternativeResult,
+        completedEvaluations,
+        phase: evaluationPhase,
+      })
+    : resolveScenarioParticipations({
+        latestAlternativeResult,
+        completedEvaluations,
+        issueId: toIdString(issue._id),
+      });
 
   validateEvaluationCoverageOrThrow({
     issue,
     phase: evaluationPhase,
     acceptedParticipations: scenarioParticipations,
     completedEvaluations,
+    requireExactCoverage: isAHPSortScenario,
   });
 
   const { normalizedParams, weightsUsed } =
@@ -430,7 +475,10 @@ export const buildScenarioExecutionContext = async ({
       payload: evaluation.payload,
     };
 
-    if (weightsByExpertId instanceof Map) {
+    if (
+      targetRuntimeSnapshot.targetApiModelKey !== AHPSORT_I_API_MODEL_KEY &&
+      weightsByExpertId instanceof Map
+    ) {
       payload.weight = weightsByExpertId.get(expertId);
     }
 
@@ -463,6 +511,12 @@ export const buildScenarioExecutionContext = async ({
     evaluations: evaluationPayloads,
     context: scenarioExecutionContext,
   };
+
+  validateAHPSortIExecutionEvaluationsOrThrow({
+    apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
+    evaluations: evaluationPayloads,
+    modelParameters: normalizedParams,
+  });
 
   const usedDomainTypes = new Set(
     issueDomainSnapshots.map((domainSnapshot) =>

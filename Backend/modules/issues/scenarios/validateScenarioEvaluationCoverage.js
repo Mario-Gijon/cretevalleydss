@@ -1,16 +1,29 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { getAcceptedExpertsMissingCompletedEvaluations } from "../shared/evaluationCoverage.js";
+import {
+  assertExactEvaluationCoverageOrThrow,
+  getAcceptedExpertsMissingCompletedEvaluations,
+} from "../shared/evaluationCoverage.js";
 
 export const validateEvaluationCoverageOrThrow = ({
   issue,
   phase,
   acceptedParticipations,
   completedEvaluations,
+  requireExactCoverage = false,
 }) => {
   if (acceptedParticipations.length === 0) {
     throw createBadRequestError("No accepted experts found", {
       field: "participations",
+    });
+  }
+
+  if (requireExactCoverage) {
+    return assertExactEvaluationCoverageOrThrow({
+      acceptedParticipations,
+      completedEvaluations,
+      issueId: toIdString(issue._id),
+      phase,
     });
   }
 

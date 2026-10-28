@@ -193,10 +193,11 @@ describe("loadCreateIssueActorsAndModel", () => {
     expect(result.resultStructureVersion).toBe(1);
   });
 
-  it("rejects multiple AHPSort I experts before issue creation proceeds", async () => {
+  it.each([2, 3, 4])("creates AHPSort I with %s experts when an explicit group policy is configured", async (expertCount) => {
     const owner = await createConfirmedUser({ email: "ahpsorti-owner@example.com" });
-    const firstExpert = await createConfirmedUser({ email: "ahpsorti-first@example.com" });
-    const secondExpert = await createConfirmedUser({ email: "ahpsorti-second@example.com" });
+    const experts = await Promise.all(Array.from({ length: expertCount }, (_, index) =>
+      createConfirmedUser({ email: `ahpsorti-${expertCount}-${index}@example.com` })
+    ));
     const model = await createIssueModel({
       name: "AHPSort I",
       apiModelKey: "ahp_sort_i",
@@ -207,11 +208,94 @@ describe("loadCreateIssueActorsAndModel", () => {
       supportsConsensus: false,
       supportsConsensusSimulation: false,
       usesCriteriaWeights: true,
+      parameters: [
+        {
+          key: "ahpSortGroup",
+          name: "Group tie policy",
+          parameterStructureKey: "ahpSortGroup",
+          required: false,
+        },
+      ],
     });
     const issueInfo = buildCreateIssueInfo({
       selectedModelId: model._id,
       globalDomainId: new mongoose.Types.ObjectId(),
-      addedExperts: [firstExpert.email, secondExpert.email],
+      addedExperts: experts.map(({ email }) => email),
+    });
+    issueInfo.paramValues.ahpSortGroup = { tiePolicy: "pessimistic" };
+
+    const loaded = await loadCreateIssueActorsAndModel({
+      ownerUserId: owner._id,
+      selectedModelId: model._id,
+      paramValues: issueInfo.paramValues,
+      criteriaNodes: issueInfo.criteria,
+      alternatives: issueInfo.alternatives.map((alternative) => ({
+        id: null,
+        name: alternative.name,
+      })),
+      uniqueExpertEmails: issueInfo.addedExperts,
+    });
+
+    expect(loaded.expertByEmail.size).toBe(expertCount);
+    expect(loaded.normalizedModelParameters).toEqual({
+      ahpSortGroup: { tiePolicy: "pessimistic" },
+    });
+  });
+
+  it("keeps one-expert AHPSort I creation compatible without a group policy", async () => {
+    const owner = await createConfirmedUser({ email: "ahpsorti-owner-single@example.com" });
+    const expert = await createConfirmedUser({ email: "ahpsorti-single@example.com" });
+    const model = await createIssueModel({
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      supportsConsensus: false,
+      supportsConsensusSimulation: false,
+      usesCriteriaWeights: true,
+      parameters: [{ key: "ahpSortGroup", name: "Group tie policy", parameterStructureKey: "ahpSortGroup", required: false }],
+    });
+    const issueInfo = buildCreateIssueInfo({
+      selectedModelId: model._id,
+      globalDomainId: new mongoose.Types.ObjectId(),
+      addedExperts: [expert.email],
+    });
+
+    await expect(loadCreateIssueActorsAndModel({
+      ownerUserId: owner._id,
+      selectedModelId: model._id,
+      paramValues: issueInfo.paramValues,
+      criteriaNodes: issueInfo.criteria,
+      alternatives: issueInfo.alternatives.map((alternative) => ({
+        id: null,
+        name: alternative.name,
+      })),
+      uniqueExpertEmails: [expert.email],
+    })).resolves.toMatchObject({ apiModelKey: "ahp_sort_i" });
+  });
+
+  it("fails closed when multi-expert AHPSort I has no registered group parameter", async () => {
+    const owner = await createConfirmedUser({ email: "ahpsorti-owner-no-policy@example.com" });
+    const experts = await Promise.all([
+      createConfirmedUser({ email: "ahpsorti-no-policy-1@example.com" }),
+      createConfirmedUser({ email: "ahpsorti-no-policy-2@example.com" }),
+    ]);
+    const model = await createIssueModel({
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      supportsConsensus: false,
+      supportsConsensusSimulation: false,
+      usesCriteriaWeights: true,
+      parameters: [],
+    });
+    const issueInfo = buildCreateIssueInfo({
+      selectedModelId: model._id,
+      globalDomainId: new mongoose.Types.ObjectId(),
+      addedExperts: experts.map(({ email }) => email),
     });
 
     await expect(loadCreateIssueActorsAndModel({
@@ -225,23 +309,9 @@ describe("loadCreateIssueActorsAndModel", () => {
       })),
       uniqueExpertEmails: issueInfo.addedExperts,
     })).rejects.toMatchObject({
-      statusCode: 400,
-      code: "AHPSORT_I_SINGLE_EXPERT_REQUIRED",
-      field: "addedExperts",
-      details: { expectedExpertCount: 1, receivedExpertCount: 2 },
+      code: "AHPSORT_I_GROUP_PARAMETER_NOT_CONFIGURED",
+      field: "paramValues.ahpSortGroup",
     });
-
-    await expect(loadCreateIssueActorsAndModel({
-      ownerUserId: owner._id,
-      selectedModelId: model._id,
-      paramValues: issueInfo.paramValues,
-      criteriaNodes: issueInfo.criteria,
-      alternatives: issueInfo.alternatives.map((alternative) => ({
-        id: null,
-        name: alternative.name,
-      })),
-      uniqueExpertEmails: [firstExpert.email],
-    })).resolves.toMatchObject({ apiModelKey: "ahp_sort_i" });
   });
 
   it("rejects a missing selected model", async () => {

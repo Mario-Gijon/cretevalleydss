@@ -20,6 +20,11 @@ export const getStageExpertWeights = (stageResult) =>
     ? stageResult.inputSnapshot.expertWeights
     : [];
 
+export const getStageExpertIds = (stageResult) =>
+  Array.isArray(stageResult?.inputSnapshot?.expertIds)
+    ? stageResult.inputSnapshot.expertIds.map(toIdString).filter(Boolean)
+    : [];
+
 /**
  * Keeps the established DecisionModelsService previous-stage input shape
  * independent from IssueStageResult's persistence layout.

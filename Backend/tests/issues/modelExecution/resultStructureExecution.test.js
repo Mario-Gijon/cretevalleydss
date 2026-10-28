@@ -260,50 +260,66 @@ describe("result structure selection in model execution", () => {
     expect(httpClient.post).not.toHaveBeenCalled();
   });
 
-  it.each([0, 2])(
-    "rejects AHPSort I with %s completed evaluations before building or sending a request",
-    async (evaluationCount) => {
-      const model = makeUsableIssueModel({
-        apiModelKey: "ahp_sort_i",
-        apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
-        evaluationStructureKey: "ahpSortAlternativeProfiles",
-        resultStructureKey: "sorting",
-        resultStructureVersion: 1,
-        usesCriteriaWeights: true,
-      });
-      const evaluations = Array.from({ length: evaluationCount }, (_, index) => ({
-        expert: {
-          _id: `expert-${index + 1}`,
-          name: `Expert ${index + 1}`,
-          email: `expert-${index + 1}@example.test`,
-        },
-        payload: {
-          alternativeProfileComparisons: [],
-          profileComparisons: [],
-        },
-      }));
-      const httpClient = { post: vi.fn() };
+  it("rejects AHPSort I with no completed evaluations before building or sending a request", async () => {
+    const model = makeUsableIssueModel({
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      usesCriteriaWeights: true,
+    });
+    const httpClient = { post: vi.fn() };
 
-      await expect(executeAlternativeEvaluationModel({
-        issue: makeIssueUsingModel(model),
-        structureKey: "ahpSortAlternativeProfiles",
-        evaluations,
-        phase: 0,
-        httpClient,
-      })).rejects.toMatchObject({
-        code: "AHPSORT_I_SINGLE_EXPERT_EVALUATION_REQUIRED",
-        field: "evaluations",
-        details: {
-          expectedEvaluationCount: 1,
-          receivedEvaluationCount: evaluationCount,
-        },
-      });
+    await expect(executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(model),
+      structureKey: "ahpSortAlternativeProfiles",
+      evaluations: [],
+      phase: 0,
+      httpClient,
+    })).rejects.toMatchObject({
+      code: "AHPSORT_I_EXPERT_EVALUATION_REQUIRED",
+      field: "evaluations",
+      details: {
+        minimumEvaluationCount: 1,
+        receivedEvaluationCount: 0,
+      },
+    });
 
-      expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
-      expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
-      expect(httpClient.post).not.toHaveBeenCalled();
-    }
-  );
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing AHPSort I evaluation arrays before building or sending a request", async () => {
+    const model = makeUsableIssueModel({
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      usesCriteriaWeights: true,
+    });
+    const httpClient = { post: vi.fn() };
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(model),
+      structureKey: "ahpSortAlternativeProfiles",
+      phase: 0,
+      httpClient,
+    })).rejects.toMatchObject({
+      code: "AHPSORT_I_EXPERT_EVALUATION_REQUIRED",
+      field: "evaluations",
+      details: {
+        minimumEvaluationCount: 1,
+        receivedEvaluationCount: null,
+      },
+    });
+
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
 
   it("allows one AHPSort I evaluation through the Backend request boundary", async () => {
     const categories = [
@@ -389,7 +405,64 @@ describe("result structure selection in model execution", () => {
     expect(result.standardResult.diagnostics.profileMode).toBe("limiting");
   });
 
-  it("rejects multi-expert AHPSort I scenario replays before sending a request", async () => {
+  it("allows a multi-expert AHPSort I request only with an explicit valid group policy", async () => {
+    const categories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "high", label: "High", order: 1 },
+    ];
+    const model = makeUsableIssueModel({
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      usesCriteriaWeights: true,
+    });
+    const modelParameters = { ahpSortGroup: { tiePolicy: "optimistic" } };
+    const evaluations = ["expert-1", "expert-2", "expert-3", "expert-4"].map(
+      (id) => ({
+        expert: { _id: id, name: id, email: `${id}@example.test` },
+        payload: { alternativeProfileComparisons: [], profileComparisons: [] },
+      })
+    );
+    executionState.buildIssueModelRequestPayload.mockResolvedValue({
+      context: { alternatives: [{ id: "alternative-1" }] },
+      evaluations: evaluations.map(({ expert, payload }) => ({
+        expert: { id: expert._id, name: expert.name, email: expert.email },
+        payload,
+      })),
+      modelParameters,
+    });
+    executionState.buildIssueResultStructureContextOrThrow.mockResolvedValue({
+      authorizedCategories: categories,
+    });
+    executionState.executeTrackedDecisionModelRequest.mockImplementation(
+      async ({ normalize }) => ({
+        result: await normalize({
+          categories,
+          categoryOrderSemantics: "lower-order-is-less-preferred",
+          assignments: [{ alternativeId: "alternative-1", categoryId: "low" }],
+          diagnostics: { aggregationMethod: "unweighted_plurality_vote" },
+        }),
+        attempt: { _id: "ahpsort-group-attempt" },
+      })
+    );
+
+    await executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(model, { modelParameters }),
+      structureKey: "ahpSortAlternativeProfiles",
+      evaluations,
+      phase: 0,
+      httpClient: { post: vi.fn() },
+    });
+
+    expect(executionState.buildIssueModelRequestPayload).toHaveBeenCalledWith(
+      expect.objectContaining({ evaluations })
+    );
+    expect(executionState.executeTrackedDecisionModelRequest).toHaveBeenCalledOnce();
+  });
+
+  it("rejects multi-expert AHPSort I scenario replays without a group policy before sending a request", async () => {
     const httpClient = { post: vi.fn() };
     const targetRuntimeSnapshot = {
       issueExecutionAuthorized: true,
@@ -402,8 +475,8 @@ describe("result structure selection in model execution", () => {
     const requestPayload = {
       context: { alternatives: [{ id: "alternative-1" }] },
       evaluations: [
-        { expert: { id: "expert-1" }, payload: {} },
-        { expert: { id: "expert-2" }, payload: {} },
+        { expert: { id: "expert-1" }, payload: { alternativeProfileComparisons: [], profileComparisons: [] } },
+        { expert: { id: "expert-2" }, payload: { alternativeProfileComparisons: [], profileComparisons: [] } },
       ],
     };
 
@@ -412,16 +485,70 @@ describe("result structure selection in model execution", () => {
       targetRuntimeSnapshot,
       httpClient,
     })).rejects.toMatchObject({
-      code: "AHPSORT_I_SINGLE_EXPERT_EVALUATION_REQUIRED",
-      field: "evaluations",
-      details: {
-        expectedEvaluationCount: 1,
-        receivedEvaluationCount: 2,
-      },
+      code: "AHPSORT_I_GROUP_POLICY_REQUIRED",
+      field: "modelParameters.ahpSortGroup",
     });
 
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
     expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
+  it("allows an AHPSort I scenario replay with an explicit group policy and without expert weights", async () => {
+    const categories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "high", label: "High", order: 1 },
+    ];
+    const targetRuntimeSnapshot = {
+      issueExecutionAuthorized: true,
+      targetApiModelKey: "ahp_sort_i",
+      targetApiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      targetEvaluationStructureKey: "ahpSortAlternativeProfiles",
+      targetResultStructureKey: "sorting",
+      targetResultStructureVersion: 1,
+    };
+    const requestPayload = {
+      modelParameters: { ahpSortGroup: { tiePolicy: "pessimistic" } },
+      context: { alternatives: [{ id: "alternative-1" }] },
+      evaluations: ["expert-1", "expert-2"].map((id) => ({
+        expert: { id, name: id, email: `${id}@example.test` },
+        payload: { alternativeProfileComparisons: [], profileComparisons: [] },
+      })),
+    };
+    executionState.executeTrackedDecisionModelRequest.mockImplementation(
+      async ({ normalize }) => ({
+        result: await normalize({
+          categories,
+          categoryOrderSemantics: "lower-order-is-less-preferred",
+          assignments: [{ alternativeId: "alternative-1", categoryId: "low" }],
+          diagnostics: {
+            aggregationMethod: "unweighted_plurality_vote",
+            groupTiePolicy: "pessimistic",
+          },
+        }),
+        attempt: { _id: "ahpsort-scenario-attempt" },
+      })
+    );
+
+    const result = await executeScenarioModel({
+      requestPayload,
+      targetRuntimeSnapshot,
+      resultStructureContext: { authorizedCategories: categories },
+      decisionModelsServiceBaseUrl: "http://decision-models.test",
+      httpClient: { post: vi.fn() },
+      executionAttemptInput: {},
+    });
+
+    expect(executionState.executeTrackedDecisionModelRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ requestPayload })
+    );
+    expect(requestPayload.evaluations).toHaveLength(2);
+    expect(requestPayload.evaluations.map((evaluation) => Object.keys(evaluation).sort())).toEqual(
+      Array.from({ length: 2 }, () => ["expert", "payload"])
+    );
+    expect(result.standardResult.diagnostics).toEqual({
+      aggregationMethod: "unweighted_plurality_vote",
+      groupTiePolicy: "pessimistic",
+    });
   });
 
   it("blocks unauthorized Decision Plugins in issue and scenario execution before dispatch", async () => {

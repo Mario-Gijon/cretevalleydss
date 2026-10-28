@@ -24,7 +24,10 @@ import {
   writeIssueEvent,
 } from "../events/index.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { AHPSORT_I_API_MODEL_KEY } from "../modelExecution/validateAHPSortIExecutionEvaluations.js";
+import {
+  AHPSORT_I_API_MODEL_KEY,
+  validateAHPSortIGroupPolicyOrThrow,
+} from "../modelExecution/validateAHPSortIExecutionEvaluations.js";
 
 const buildWeightsByExpertId = (participations) =>
   Object.fromEntries(
@@ -149,19 +152,26 @@ export const editIssueExperts = async ({
 
   if (
     context.issue.model?.apiModelKey === AHPSORT_I_API_MODEL_KEY &&
-    finalExpertEmails.length !== 1
+    finalExpertEmails.length > 1
   ) {
-    throw createBadRequestError(
-      "AHPSort I supports exactly one expert participant. Remove additional experts before continuing.",
-      {
-        code: "AHPSORT_I_SINGLE_EXPERT_REQUIRED",
-        field: "expertsToAdd",
-        details: {
-          expectedExpertCount: 1,
-          receivedExpertCount: finalExpertEmails.length,
-        },
-      }
+    const hasGroupPolicyDefinition = (context.issue.model?.parameters || []).some(
+      (parameter) => parameter?.key === "ahpSortGroup" &&
+        parameter?.parameterStructureKey === "ahpSortGroup"
     );
+    if (!hasGroupPolicyDefinition) {
+      throw createBadRequestError(
+        "Multi-expert AHPSort I requires the ahpSortGroup model parameter; this model definition is not yet configured for group execution.",
+        {
+          code: "AHPSORT_I_GROUP_PARAMETER_NOT_CONFIGURED",
+          field: "expertsToAdd",
+          details: { receivedExpertCount: finalExpertEmails.length },
+        }
+      );
+    }
+    validateAHPSortIGroupPolicyOrThrow({
+      evaluationCount: finalExpertEmails.length,
+      modelParameters: context.issue.modelParameters,
+    });
   }
 
   const expertSetChanged =

@@ -50,6 +50,7 @@ export const executeScenarioModel = async ({
   validateAHPSortIExecutionEvaluationsOrThrow({
     apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
     evaluations: requestPayload?.evaluations,
+    modelParameters: requestPayload?.modelParameters,
   });
 
   const tracked = await executeTrackedDecisionModelRequest({

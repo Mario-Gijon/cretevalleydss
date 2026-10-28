@@ -23,6 +23,7 @@ import {
 } from "../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { buildIssueModelExecutionResult } from "../../modules/issues/modelExecution/buildIssueModelExecutionResult.js";
 import { buildIssueModelRequestPayload } from "../../modules/issues/modelExecution/buildIssueModelRequestPayload.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../modules/modelParameters/validateAndNormalizeModelParameters.js";
 import { serializePhaseResults } from "../../modules/issues/finished/finishedPayload/serializers/serializePhaseResults.js";
 import { unwrapModelApiResponse } from "../../services/modelApi/modelResponse.js";
 import { setupMongoDbTestHooks } from "../setup/database.js";
@@ -89,7 +90,10 @@ const remapEvaluationIds = (payload, { alternativeIdBySourceId, criterionIdBySou
   })),
 });
 
-const buildBackendRequestFromDmsExample = async (exampleKey) => {
+const buildBackendRequestFromDmsExample = async (
+  exampleKey,
+  { groupTiePolicy = null, expertCount = 1 } = {}
+) => {
   const source = structuredClone(dmsExamples[exampleKey]);
   const alternatives = source.context.alternatives.map((alternative, index) => ({
     ...alternative,
@@ -126,8 +130,29 @@ const buildBackendRequestFromDmsExample = async (exampleKey) => {
   if (normalizedProfiles.error) {
     throw new Error(`DMS fixture has invalid AHPSort I profiles: ${normalizedProfiles.error}`);
   }
+  let normalizedGroupParameters = {};
+  if (groupTiePolicy !== null) {
+    normalizedGroupParameters = validateAndNormalizeModelParametersOrThrow({
+      model: {
+        name: "AHPSort I test manifest definition",
+        parameters: [
+          { key: "orderedCategories", parameterStructureKey: "orderedCategories", required: true },
+          { key: "ahpSortProfiles", parameterStructureKey: "ahpSortProfiles", required: true },
+          { key: "ahpSortGroup", parameterStructureKey: "ahpSortGroup", required: false },
+        ],
+      },
+      paramValues: {
+        orderedCategories,
+        ahpSortProfiles: normalizedProfiles.value,
+        ahpSortGroup: { tiePolicy: groupTiePolicy },
+      },
+      criteriaNodes: criteria,
+      alternatives,
+    });
+  }
   const modelParameters = {
     ...source.modelParameters,
+    ...normalizedGroupParameters,
     orderedCategories,
     ahpSortProfiles: normalizedProfiles.value,
     weights: Object.fromEntries(
@@ -140,6 +165,8 @@ const buildBackendRequestFromDmsExample = async (exampleKey) => {
   const issue = {
     _id: "ahp-sort-i-contract-issue",
     name: "AHPSort I Backend to DMS contract",
+    apiModelKey: "ahp_sort_i",
+    apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
     modelParameters,
     consensusThreshold: null,
     consensusMaxPhases: null,
@@ -177,17 +204,26 @@ const buildBackendRequestFromDmsExample = async (exampleKey) => {
       modelParameters,
     },
   });
+  const expertIds = Array.from({ length: expertCount }, () =>
+    new mongoose.Types.ObjectId().toString()
+  );
+  const evaluations = await Promise.all(Array.from({ length: expertCount }, async (_, index) => ({
+    expert: {
+      _id: expertIds[index],
+      name: index === 0 ? source.evaluations[0].expert.name : `Expert ${index + 1}`,
+      email: `ahpsort-expert-${index + 1}@example.test`,
+    },
+    payload: index === 0
+      ? persistedEvaluationPayload
+      : structuredClone(persistedEvaluationPayload),
+  })));
   const payload = await buildIssueModelRequestPayload({
     issue,
     structureKey: "ahpSortAlternativeProfiles",
-    evaluations: [{
-      expert: {
-        _id: "expert-mongo-1",
-        name: source.evaluations[0].expert.name,
-        email: "ahpsort-expert@example.test",
-      },
-      payload: persistedEvaluationPayload,
-    }],
+    evaluations,
+    expertWeightsByExpertId: expertCount > 1
+      ? new Map(evaluations.map(({ expert }) => [expert._id, 1 / expertCount]))
+      : null,
     phase: 0,
   });
 
@@ -415,6 +451,77 @@ describeWithPython("AHPSort I Backend → DMS → sorting@1 contract integration
       entityType: "stageResult",
       entityId: stageResult._id,
     });
+  });
+
+  it("validates and executes the Backend multi-expert contract through DMS and sorting@1 persistence", async () => {
+    const fixture = await buildBackendRequestFromDmsExample("limiting_profiles", {
+      groupTiePolicy: "pessimistic",
+      expertCount: 3,
+    });
+    const { issue, alternatives, categories, payload } = fixture;
+    const pythonResult = runDecisionModelsServiceAdapter(payload);
+    const response = pythonResult.response;
+    const expertIds = payload.evaluations.map(({ expert }) => expert.id);
+
+    expect(payload.context.structure).toEqual({
+      key: "ahpSortAlternativeProfiles",
+      stage: "alternativeEvaluation",
+    });
+    expect(payload.modelParameters.ahpSortGroup).toEqual({ tiePolicy: "pessimistic" });
+    expect(payload.evaluations).toHaveLength(3);
+    expect(payload.evaluations.map((evaluation) => Object.keys(evaluation).sort())).toEqual(
+      expertIds.map(() => ["expert", "payload"])
+    );
+    expect(payload.evaluations.map(({ expert }) => expert.id)).toEqual(expertIds);
+    expect(pythonResult.prepared.expertEvaluations.map(({ expertId }) => expertId)).toEqual(expertIds);
+    expect(response.success).toBe(true);
+    expect(response.data.diagnostics).toMatchObject({
+      aggregationMethod: "unweighted_plurality_vote",
+      groupTiePolicy: "pessimistic",
+    });
+    expect(Object.keys(response.data.diagnostics.individualResultsByExpertId).sort()).toEqual(expertIds);
+
+    const normalizedExecution = buildIssueModelExecutionResult({
+      issue: {
+        ...issue,
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+      },
+      message: response.message,
+      result: unwrapModelApiResponse({ status: 200, data: response }),
+      structureKey: "ahpSortAlternativeProfiles",
+      context: {
+        authorizedCategories: categories,
+        authorizedAlternativeIds: alternatives.map(({ _id }) => String(_id)),
+      },
+    });
+    const standardResult = normalizedExecution.standardResult;
+    expect(standardResult.assignments).toHaveLength(alternatives.length);
+    expect(standardResult.diagnostics.individualResultsByExpertId).toHaveProperty(expertIds[0]);
+
+    const stagePersistence = projectNormalizedResultOrThrow({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      result: standardResult,
+      target: "stagePersistence",
+    });
+    const stageResult = await IssueStageResult.create({
+      issue: new mongoose.Types.ObjectId(),
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      inputSnapshot: { expertIds, expertWeights: [] },
+      result: {
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        standardResult: stagePersistence,
+        modelExecution: normalizedExecution.modelExecution,
+        rawOutput: normalizedExecution.rawOutput,
+      },
+    });
+    const persisted = await IssueStageResult.findById(stageResult._id).lean();
+    expect(persisted.inputSnapshot.expertIds.map(String)).toEqual(expertIds);
+    expect(persisted.result.standardResult.diagnostics).toEqual(standardResult.diagnostics);
+    expect(persisted.result.standardResult).not.toHaveProperty("rankedAlternatives");
   });
 
   it("keeps malformed AHPSort profiles and comparisons as structured DMS errors", async () => {

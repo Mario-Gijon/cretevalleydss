@@ -63,6 +63,7 @@ describe("AHPSort I issue model request projection", () => {
     const issue = {
       _id: "issue-mongo-id",
       name: "AHPSort draft",
+      apiModelKey: "ahp_sort_i",
       modelParameters,
       consensusThreshold: null,
       consensusMaxPhases: null,
@@ -103,5 +104,67 @@ describe("AHPSort I issue model request projection", () => {
     });
     expect(request.context.criteria[0].id).toBe("criterion-mongo-id");
     expect(request.context.alternatives[0].id).toBe("alternative-mongo-id");
+  });
+
+  it("sends group policy once for multi-expert requests and never adds unsupported expert weights", async () => {
+    const issue = {
+      _id: "issue-mongo-id",
+      name: "AHPSort group draft",
+      apiModelKey: "ahp_sort_i",
+      modelParameters: {
+        ...modelParameters,
+        ahpSortGroup: { tiePolicy: "pessimistic" },
+      },
+    };
+    const evaluations = ["expert-1", "expert-2", "expert-3"].map((id) => ({
+      expert: { _id: id, name: id, email: `${id}@example.test` },
+      payload: {
+        alternativeProfileComparisons: [],
+        profileComparisons: [],
+      },
+      weight: 1 / 3,
+    }));
+
+    const request = await buildIssueModelRequestPayload({
+      issue,
+      structureKey: "ahpSortAlternativeProfiles",
+      evaluations,
+      phase: 0,
+      expertWeightsByExpertId: new Map(evaluations.map(({ expert }) => [expert._id, 1 / 3])),
+    });
+
+    expect(request.modelParameters.ahpSortGroup).toEqual({ tiePolicy: "pessimistic" });
+    expect(request.evaluations).toHaveLength(3);
+    expect(request.evaluations.map((evaluation) => Object.keys(evaluation).sort())).toEqual(
+      Array.from({ length: 3 }, () => ["expert", "payload"])
+    );
+    expect(request.evaluations.map(({ expert }) => expert.id)).toEqual([
+      "expert-1",
+      "expert-2",
+      "expert-3",
+    ]);
+  });
+
+  it("omits optional group policy from single-expert legacy requests", async () => {
+    const issue = {
+      _id: "issue-mongo-id",
+      name: "AHPSort single draft",
+      apiModelKey: "ahp_sort_i",
+      modelParameters: {
+        ...modelParameters,
+        ahpSortGroup: { tiePolicy: "optimistic" },
+      },
+    };
+    const request = await buildIssueModelRequestPayload({
+      issue,
+      structureKey: "ahpSortAlternativeProfiles",
+      evaluations: [{
+        expert: { _id: "expert-1", name: "Expert", email: "expert@example.test" },
+        payload: { alternativeProfileComparisons: [], profileComparisons: [] },
+      }],
+      phase: 0,
+    });
+
+    expect(request.modelParameters).not.toHaveProperty("ahpSortGroup");
   });
 });

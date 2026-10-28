@@ -17,6 +17,10 @@ const expertWeightSnapshotSchema = new Schema(
 
 const stageResultInputSnapshotSchema = new Schema(
   {
+    expertIds: {
+      type: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      default: undefined,
+    },
     expertWeights: {
       type: [expertWeightSnapshotSchema],
       default: [],

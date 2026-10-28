@@ -33,6 +33,8 @@ import { getOrderedLeafCriteriaDb } from "../shared/ordering.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 import { buildExpertWeightSnapshotOrThrow } from "../shared/expertWeights.js";
+import { assertExactEvaluationCoverageOrThrow } from "../shared/evaluationCoverage.js";
+import { AHPSORT_I_API_MODEL_KEY } from "../modelExecution/validateAHPSortIExecutionEvaluations.js";
 import {
   createIssueEventOperationMetadata,
   ISSUE_EVENT_TYPES,
@@ -51,6 +53,8 @@ import { projectNormalizedResultOrThrow } from "../../decisionPlugins/resultStru
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
+
+const getIssueApiModelKey = (issue) => issue?.apiModelKey || issue?.model?.apiModelKey;
 
 const validateComputeStageOrThrow = (stage) => {
   if (!EVALUATION_STAGE_VALUES.includes(stage)) {
@@ -212,17 +216,61 @@ const loadParticipationsForCompute = async ({ issueId, stage }) => {
 };
 
 const loadEvaluationsForCompute = async ({
+  issue,
   issueId,
   stage,
   consensusPhase,
   participations,
+  structure,
+  requireExactExpertCoverage = false,
 }) => {
-  const evaluations = await IssueEvaluation.find({
+  const query = {
     issue: issueId,
     stage,
     consensusPhase,
-    completed: true,
-  }).populate("expert", "name email");
+  };
+  if (!requireExactExpertCoverage) query.completed = true;
+  const evaluations = await IssueEvaluation.find(query).populate("expert", "name email");
+
+  if (requireExactExpertCoverage) {
+    assertExactEvaluationCoverageOrThrow({
+      acceptedParticipations: participations,
+      completedEvaluations: evaluations,
+      issueId: toIdString(issueId),
+      phase: consensusPhase,
+    });
+    const decisionContext = await buildDecisionContext({
+      issue,
+      structure,
+      stage,
+      consensusPhase,
+    });
+    for (const evaluation of evaluations) {
+      try {
+        await structure.save({
+          mode: "submit",
+          payload: evaluation.payload,
+          decisionContext,
+        });
+      } catch (error) {
+        throw createBadRequestError(
+          "A completed AHPSort I evaluation is incomplete or invalid for the current issue configuration.",
+          {
+            code: "AHPSORT_I_EVALUATION_PAYLOAD_INVALID",
+            field: "evaluations",
+            details: {
+              issueId: toIdString(issueId),
+              phase: consensusPhase,
+              expertId: toIdString(evaluation?.expert?._id || evaluation?.expert),
+              causeCode: error?.code || null,
+              causeField: error?.field || null,
+            },
+          }
+        );
+      }
+    }
+    return evaluations;
+  }
 
   const expectedExperts = new Set(
     participations.map((participation) => toIdString(participation.expert))
@@ -613,6 +661,7 @@ const saveStageResult = async ({
   lifecycleMetadata = null,
   consensusPhase = issue.consensusPhase,
   expertWeights = [],
+  evaluations = [],
   executionAttempt = null,
   session = null,
 }) => {
@@ -673,7 +722,18 @@ const saveStageResult = async ({
     },
     {
       $set: {
-        inputSnapshot: { expertWeights },
+        inputSnapshot: {
+          ...(getIssueApiModelKey(issue) === AHPSORT_I_API_MODEL_KEY
+            ? {
+                expertIds: evaluations
+                  .map((evaluation) =>
+                    toIdString(evaluation?.expert?._id || evaluation?.expert)
+                  )
+                  .filter(Boolean),
+              }
+            : {}),
+          expertWeights,
+        },
         executionAttempt: executionAttempt?._id,
         result: {
           ...(resultStructureMetadata ?? {}),
@@ -1039,7 +1099,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
         // Simulated rounds deliberately own an independent short transaction.
         session: null,
         persist: async (roundSession) => {
-          const stageResult = await saveStageResult({ issue, stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, computeResult: lifecycleComputeResult, lifecycleMetadata, consensusPhase: currentPhase, expertWeights, executionAttempt: phaseComputeResult.executionAttempt, session: roundSession });
+          const stageResult = await saveStageResult({ issue, stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, computeResult: lifecycleComputeResult, lifecycleMetadata, consensusPhase: currentPhase, expertWeights, evaluations: currentEvaluations, executionAttempt: phaseComputeResult.executionAttempt, session: roundSession });
           committedStageResult = stageResult;
           const executionAttemptId = toIdString(phaseComputeResult.executionAttempt._id);
           await writeConsensusEvent({ issue, eventType: ISSUE_EVENT_TYPES.CONSENSUS_COMPUTED, phase: currentPhase, actorUser, occurredAt: phaseComputeResult.executionAttempt.completedAt, correlationId, details: { phase: currentPhase, consensusMeasure: lifecycleMetadata.consensusMeasure, threshold: lifecycleMetadata.threshold, maxPhases: lifecycleMetadata.maxPhases, consensusReached: lifecycleMetadata.consensusReached, maxPhasesReached: lifecycleMetadata.maxPhasesReached, finalizationReason: lifecycleMetadata.finalizationReason, nextConsensusPhase: lifecycleMetadata.nextConsensusPhase, stageResultId: toIdString(stageResult._id), executionAttemptId }, session: roundSession });
@@ -1075,7 +1135,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
     lastLifecycleMetadata = lifecycleMetadata;
     if (isFinal) break;
     currentPhase += 1;
-    currentEvaluations = await loadEvaluationsForCompute({ issueId: issue._id, stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, consensusPhase: currentPhase, participations: acceptedParticipations });
+    currentEvaluations = await loadEvaluationsForCompute({ issue, issueId: issue._id, stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION, consensusPhase: currentPhase, participations: acceptedParticipations, structure, requireExactExpertCoverage: getIssueApiModelKey(issue) === AHPSORT_I_API_MODEL_KEY });
   }
 
   if (issue.currentStage === ISSUE_STAGES.FINISHED && issue.active === false) {
@@ -1134,10 +1194,15 @@ export const computeIssueEvaluationStage = async ({
   });
 
   const evaluations = await loadEvaluationsForCompute({
+    issue,
     issueId: issue._id,
     stage,
     consensusPhase: issue.consensusPhase,
     participations,
+    structure,
+    requireExactExpertCoverage:
+      stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
+      getIssueApiModelKey(issue) === AHPSORT_I_API_MODEL_KEY,
   });
   const { snapshot: expertWeights, weightsByExpertId } =
     buildExpertWeightSnapshotOrThrow({
@@ -1208,6 +1273,7 @@ export const computeIssueEvaluationStage = async ({
           ),
           lifecycleMetadata: null,
           expertWeights,
+          evaluations,
           executionAttempt: computeResult.executionAttempt,
           session: persistSession,
         });
@@ -1278,6 +1344,7 @@ export const computeIssueEvaluationStage = async ({
         computeResult: lifecycleComputeResult,
         lifecycleMetadata,
         expertWeights,
+        evaluations,
         executionAttempt: computeResult.executionAttempt,
         session: persistSession,
       });

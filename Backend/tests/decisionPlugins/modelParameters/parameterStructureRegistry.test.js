@@ -42,6 +42,7 @@ describe("model parameter structure registry", () => {
     const orderedCategories = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("orderedCategories");
     const boundaryProfiles = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("boundaryProfiles");
     const ahpSortProfiles = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("ahpSortProfiles");
+    const ahpSortGroup = MODEL_PARAMETER_STRUCTURE_REGISTRY.get("ahpSortGroup");
 
     expect(numberGlobal).toMatchObject({
       key: "numberGlobal",
@@ -93,6 +94,11 @@ describe("model parameter structure registry", () => {
       parameterDependencies: [
         { key: "categories", parameterStructureKey: "orderedCategories" },
       ],
+    });
+    expect(ahpSortGroup).toMatchObject({
+      key: "ahpSortGroup",
+      validateAndNormalize: expect.any(Function),
+      validateDefinition: expect.any(Function),
     });
   });
 

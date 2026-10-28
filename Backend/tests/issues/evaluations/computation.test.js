@@ -257,8 +257,26 @@ const createAlternativeComputeFixture = async ({
     )
   );
   const issueModel = await createIssueModel({
+    ...(issueOverrides.apiModelKey
+      ? { apiModelKey: issueOverrides.apiModelKey }
+      : {}),
     evaluationStructureKey:
       issueOverrides.evaluationStructureKey ?? "alternativeCriteriaMatrix",
+    ...(issueOverrides.resultStructureKey
+      ? { resultStructureKey: issueOverrides.resultStructureKey }
+      : {}),
+    ...(issueOverrides.resultStructureVersion
+      ? { resultStructureVersion: issueOverrides.resultStructureVersion }
+      : {}),
+    ...(issueOverrides.modelParametersDefinition
+      ? { parameters: issueOverrides.modelParametersDefinition }
+      : {}),
+    ...(typeof issueOverrides.usesCriteriaWeights === "boolean"
+      ? { usesCriteriaWeights: issueOverrides.usesCriteriaWeights }
+      : {}),
+    ...(typeof issueOverrides.usesExpertWeights === "boolean"
+      ? { usesExpertWeights: issueOverrides.usesExpertWeights }
+      : {}),
     supportsConsensus: issueOverrides.supportsConsensus === true ||
       issueOverrides.isConsensus === true || issueOverrides.simulateConsensus === true,
     supportsConsensusSimulation: issueOverrides.simulateConsensus === true,
@@ -580,6 +598,260 @@ describe("computeIssueEvaluationStage guards", () => {
       code: "COMPLETED_EVALUATIONS_MISSING",
       field: "stage",
     });
+  });
+
+  it("rejects AHPSort I when any accepted expert evaluation is missing before calling DMS", async () => {
+    const { owner, issue, acceptedExperts } = await createAlternativeComputeFixture({
+      issueOverrides: {
+        apiModelKey: "ahp_sort_i",
+        evaluationStructureKey: "ahpSortAlternativeProfiles",
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        modelParameters: { ahpSortGroup: { tiePolicy: "optimistic" } },
+      },
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: acceptedExperts[0]._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      completed: true,
+      payload: { alternativeProfileComparisons: [], profileComparisons: [] },
+    });
+    const httpClient = createHttpClientMock();
+
+    await expect(computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    })).rejects.toMatchObject({
+      code: "AHPSORT_I_EVALUATION_COVERAGE_MISMATCH",
+      details: { missingExpertIds: [String(acceptedExperts[1]._id)] },
+    });
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
+  it("rejects AHPSort I foreign expert evaluations instead of silently excluding them", async () => {
+    const { owner, issue, acceptedExperts } = await createAlternativeComputeFixture({
+      issueOverrides: {
+        apiModelKey: "ahp_sort_i",
+        evaluationStructureKey: "ahpSortAlternativeProfiles",
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        modelParameters: { ahpSortGroup: { tiePolicy: "optimistic" } },
+      },
+    });
+    const foreignExpert = await createConfirmedUser({ email: "ahpsort-foreign@example.test" });
+    const payload = { alternativeProfileComparisons: [], profileComparisons: [] };
+    await createIssueEvaluationFixture({ issueId: issue._id, expertId: acceptedExperts[0]._id, stage: "alternativeEvaluation", consensusPhase: 0, completed: true, payload });
+    await createIssueEvaluationFixture({ issueId: issue._id, expertId: foreignExpert._id, stage: "alternativeEvaluation", consensusPhase: 0, completed: true, payload });
+    const httpClient = createHttpClientMock();
+
+    await expect(computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    })).rejects.toMatchObject({
+      code: "AHPSORT_I_EVALUATION_COVERAGE_MISMATCH",
+      details: {
+        missingExpertIds: [String(acceptedExperts[1]._id)],
+        unexpectedExpertIds: [String(foreignExpert._id)],
+      },
+    });
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
+  it("rejects incomplete AHPSort I evaluation records even if a completed record exists", async () => {
+    const { owner, issue, acceptedExperts } = await createAlternativeComputeFixture({
+      issueOverrides: {
+        apiModelKey: "ahp_sort_i",
+        evaluationStructureKey: "ahpSortAlternativeProfiles",
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        modelParameters: { ahpSortGroup: { tiePolicy: "optimistic" } },
+      },
+    });
+    const payload = { alternativeProfileComparisons: [], profileComparisons: [] };
+    await createIssueEvaluationFixture({ issueId: issue._id, expertId: acceptedExperts[0]._id, stage: "alternativeEvaluation", consensusPhase: 0, completed: true, payload });
+    await createIssueEvaluationFixture({ issueId: issue._id, expertId: acceptedExperts[1]._id, stage: "alternativeEvaluation", consensusPhase: 0, completed: false, payload });
+    const httpClient = createHttpClientMock();
+
+    await expect(computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    })).rejects.toMatchObject({
+      code: "AHPSORT_I_EVALUATION_COVERAGE_MISMATCH",
+      details: { incompleteExpertIds: [String(acceptedExperts[1]._id)] },
+    });
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
+  it("rejects incomplete AHPSort I comparison matrices before calling DMS", async () => {
+    const { owner, issue, acceptedExperts, leafCriteria } =
+      await createAlternativeComputeFixture({
+        issueOverrides: {
+          apiModelKey: "ahp_sort_i",
+          evaluationStructureKey: "ahpSortAlternativeProfiles",
+          resultStructureKey: "sorting",
+          resultStructureVersion: 1,
+          modelParameters: {
+            orderedCategories: [
+              { categoryId: "low", label: "Low", order: 0 },
+              { categoryId: "high", label: "High", order: 1 },
+            ],
+            ahpSortProfiles: {
+              mode: "limiting",
+              profiles: [{
+                profileId: "low-high",
+                lowerCategoryId: "low",
+                upperCategoryId: "high",
+              }],
+            },
+            ahpSortGroup: { tiePolicy: "optimistic" },
+            weights: {},
+          },
+        },
+      });
+    issue.modelParameters.weights = { [String(leafCriteria[0]._id)]: 1 };
+    await issue.save();
+    for (const expert of acceptedExperts) {
+      await createIssueEvaluationFixture({
+        issueId: issue._id,
+        expertId: expert._id,
+        stage: "alternativeEvaluation",
+        consensusPhase: 0,
+        completed: true,
+        payload: { alternativeProfileComparisons: [], profileComparisons: [] },
+      });
+    }
+    const httpClient = createHttpClientMock();
+
+    await expect(computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    })).rejects.toMatchObject({
+      code: "AHPSORT_I_EVALUATION_PAYLOAD_INVALID",
+      field: "evaluations",
+    });
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
+  it("sends every accepted AHPSort I evaluation without expert weights and persists the applied roster", async () => {
+    const categories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "high", label: "High", order: 1 },
+    ];
+    const modelParametersDefinition = [
+      { key: "orderedCategories", name: "Categories", parameterStructureKey: "orderedCategories", required: true },
+      { key: "ahpSortProfiles", name: "Classification profiles", parameterStructureKey: "ahpSortProfiles", required: true },
+      { key: "ahpSortGroup", name: "Group tie policy", parameterStructureKey: "ahpSortGroup", required: false },
+    ];
+    const { owner, issue, acceptedExperts, alternatives, leafCriteria } =
+      await createAlternativeComputeFixture({
+        issueOverrides: {
+          apiModelKey: "ahp_sort_i",
+          evaluationStructureKey: "ahpSortAlternativeProfiles",
+          resultStructureKey: "sorting",
+          resultStructureVersion: 1,
+          usesCriteriaWeights: true,
+          modelParametersDefinition,
+          modelParameters: {
+            orderedCategories: categories,
+            ahpSortProfiles: {
+              mode: "limiting",
+              profiles: [{
+                profileId: "low-high",
+                lowerCategoryId: "low",
+                upperCategoryId: "high",
+              }],
+            },
+            ahpSortGroup: { tiePolicy: "pessimistic" },
+            weights: {},
+          },
+        },
+      });
+    const criterionId = String(leafCriteria[0]._id);
+    issue.modelParameters.weights = { [criterionId]: 1 };
+    await issue.save();
+    await writeIssueStateSnapshot({
+      issue,
+      snapshotType: "creation",
+      occurredAt: new Date(),
+      correlationId: "ahpsort-group-compute-creation",
+    });
+
+    for (const expert of acceptedExperts) {
+      await createIssueEvaluationFixture({
+        issueId: issue._id,
+        expertId: expert._id,
+        stage: "alternativeEvaluation",
+        consensusPhase: 0,
+        completed: true,
+        payload: {
+          alternativeProfileComparisons: alternatives.map((alternative, index) => ({
+            alternativeId: String(alternative._id),
+            criterionId,
+            profileId: "low-high",
+            alternativeToProfile: index === 0 ? 3 : 1 / 3,
+          })),
+          profileComparisons: [],
+        },
+      });
+    }
+    const response = buildModelSuccessResponse({
+      categories,
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      assignments: alternatives.map((alternative, index) => ({
+        alternativeId: String(alternative._id),
+        categoryId: index === 0 ? "high" : "low",
+      })),
+      diagnostics: {
+        aggregationMethod: "unweighted_plurality_vote",
+        groupTiePolicy: "pessimistic",
+        individualResultsByExpertId: Object.fromEntries(
+          acceptedExperts.map((expert) => [String(expert._id), { status: "classified" }])
+        ),
+      },
+    });
+    const httpClient = createHttpClientMock(response);
+
+    const result = await computeIssueEvaluationStage({
+      issueId: issue._id,
+      userId: owner._id,
+      stage: "alternativeEvaluation",
+      httpClient,
+      decisionModelsServiceBaseUrl: MODELS_BASE_URL,
+    });
+
+    const [, requestPayload] = httpClient.post.mock.calls[0];
+    const persistedStageResult = await IssueStageResult.findOne({
+      issue: issue._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+    }).lean();
+    const expectedExpertIds = acceptedExperts.map((expert) => String(expert._id)).sort();
+    expect(requestPayload.modelParameters.ahpSortGroup).toEqual({ tiePolicy: "pessimistic" });
+    expect(requestPayload.evaluations).toHaveLength(acceptedExperts.length);
+    expect(requestPayload.evaluations.map((evaluation) => Object.keys(evaluation).sort())).toEqual(
+      Array.from({ length: acceptedExperts.length }, () => ["expert", "payload"])
+    );
+    expect(requestPayload.evaluations.map(({ expert }) => expert.id).sort()).toEqual(expectedExpertIds);
+    expect(result.result.diagnostics).toMatchObject({
+      aggregationMethod: "unweighted_plurality_vote",
+      groupTiePolicy: "pessimistic",
+    });
+    expect(persistedStageResult.inputSnapshot.expertIds.map(String).sort()).toEqual(expectedExpertIds);
+    expect(persistedStageResult.result.standardResult.diagnostics).toEqual(result.result.diagnostics);
   });
 });
 

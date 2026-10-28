@@ -2,6 +2,7 @@ import { getOrderedAlternativeAndCriterionNames } from "../evaluations/evaluatio
 import { toIdString } from "../../../utils/common/ids.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { normalizeEvaluationsPayload } from "./normalizeEvaluationsPayload.js";
+import { AHPSORT_I_API_MODEL_KEY } from "./validateAHPSortIExecutionEvaluations.js";
 
 export const buildIssueModelRequestPayload = async ({
   issue,
@@ -13,9 +14,24 @@ export const buildIssueModelRequestPayload = async ({
   const { alternatives, criteria } =
     await getOrderedAlternativeAndCriterionNames({ issue });
 
+  const apiModelKey = issue.apiModelKey || issue.model?.apiModelKey;
+  const isAHPSortI = apiModelKey === AHPSORT_I_API_MODEL_KEY;
+  let modelParameters = issue.modelParameters;
+  if (
+    isAHPSortI && evaluations.length === 1 &&
+    Object.hasOwn(modelParameters || {}, "ahpSortGroup")
+  ) {
+    modelParameters = { ...modelParameters };
+    delete modelParameters.ahpSortGroup;
+  }
+
   return {
-    modelParameters: issue.modelParameters,
-    evaluations: normalizeEvaluationsPayload(evaluations, expertWeightsByExpertId),
+    modelParameters,
+    evaluations: normalizeEvaluationsPayload(
+      evaluations,
+      isAHPSortI ? null : expertWeightsByExpertId,
+      { includeExpertWeights: !isAHPSortI }
+    ),
     context: {
       issue: {
         id: toIdString(issue._id),

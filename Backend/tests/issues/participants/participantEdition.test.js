@@ -160,7 +160,7 @@ describe("editIssueExperts", () => {
     expect(exitLog.history[0].timestamp).toBeTruthy();
   });
 
-  it("prevents an AHPSort I issue from adding a second participant while the first invitation is pending", async () => {
+  it("fails closed when editing participants before the AHPSort I group policy is available", async () => {
     const owner = await createConfirmedUser({ email: "ahpsorti-owner@example.com" });
     const firstExpert = await createConfirmedUser({ email: "ahpsorti-first@example.com" });
     const secondExpert = await createConfirmedUser({ email: "ahpsorti-second@example.com" });
@@ -190,13 +190,51 @@ describe("editIssueExperts", () => {
       expertsToRemove: [],
     })).rejects.toMatchObject({
       statusCode: 400,
-      code: "AHPSORT_I_SINGLE_EXPERT_REQUIRED",
-      details: { expectedExpertCount: 1, receivedExpertCount: 2 },
+      code: "AHPSORT_I_GROUP_PARAMETER_NOT_CONFIGURED",
     });
 
     expect(await Participation.countDocuments({ issue: issue._id })).toBe(1);
     expect(await Participation.findOne({ issue: issue._id, expert: firstExpert._id })).toMatchObject({ invitationStatus: "pending" });
     expect(await Participation.findOne({ issue: issue._id, expert: secondExpert._id })).toBeNull();
+  });
+
+  it("allows adding an AHPSort I expert when the persisted group policy is valid", async () => {
+    const owner = await createConfirmedUser({ email: "ahpsorti-group-owner@example.com" });
+    const firstExpert = await createConfirmedUser({ email: "ahpsorti-group-first@example.com" });
+    const secondExpert = await createConfirmedUser({ email: "ahpsorti-group-second@example.com" });
+    const model = await createIssueModel({
+      apiModelKey: "ahp_sort_i",
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      parameters: [{ key: "ahpSortGroup", name: "Group tie policy", parameterStructureKey: "ahpSortGroup", required: false }],
+    });
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      modelId: model._id,
+      currentStage: "alternativeEvaluation",
+      modelParameters: { ahpSortGroup: { tiePolicy: "optimistic" } },
+    });
+    await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Quality"] });
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: firstExpert._id,
+      invitationStatus: "accepted",
+      evaluationCompleted: false,
+    });
+
+    await expect(editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [secondExpert.email],
+      expertsToRemove: [],
+    })).resolves.toMatchObject({
+      invitationEmailsToSend: [{ expertEmail: secondExpert.email }],
+    });
+
+    expect(await Participation.countDocuments({ issue: issue._id })).toBe(2);
+    expect(await Participation.findOne({ issue: issue._id, expert: firstExpert._id })).toMatchObject({ invitationStatus: "accepted" });
+    expect(await Participation.findOne({ issue: issue._id, expert: secondExpert._id })).toMatchObject({ invitationStatus: "pending" });
   });
 
   it("adding an already participating expert is idempotent", async () => {

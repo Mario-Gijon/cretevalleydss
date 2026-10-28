@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getStageExpertWeights,
+  getStageExpertIds,
   getStageStandardResult,
   serializePreviousStageResultForExecution,
 } from "../../../modules/issues/stageResults/stageResultContract.js";
@@ -13,7 +14,10 @@ describe("IssueStageResult contract adapter", () => {
       issue: "issue-1",
       stage: "alternativeEvaluation",
       consensusPhase: 2,
-      inputSnapshot: { expertWeights: [{ expert: "expert-1", weight: 0.75 }] },
+      inputSnapshot: {
+        expertIds: ["expert-1", "expert-2"],
+        expertWeights: [{ expert: "expert-1", weight: 0.75 }],
+      },
       result: {
         standardResult: {
           consensusMeasure: 0.9,
@@ -30,6 +34,7 @@ describe("IssueStageResult contract adapter", () => {
     expect(getStageExpertWeights(stageResult)).toEqual(
       stageResult.inputSnapshot.expertWeights
     );
+    expect(getStageExpertIds(stageResult)).toEqual(["expert-1", "expert-2"]);
     expect(serializePreviousStageResultForExecution(stageResult)).toEqual({
       _id: "stage-result-1",
       issue: "issue-1",

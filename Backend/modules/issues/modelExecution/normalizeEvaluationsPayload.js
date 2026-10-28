@@ -2,7 +2,8 @@ import { toIdString } from "../../../utils/common/ids.js";
 
 export const normalizeEvaluationsPayload = (
   evaluations,
-  expertWeightsByExpertId = null
+  expertWeightsByExpertId = null,
+  { includeExpertWeights = true } = {}
 ) =>
   evaluations.map((evaluation) => {
     const expertId = toIdString(evaluation.expert._id || evaluation.expert);
@@ -15,7 +16,7 @@ export const normalizeEvaluationsPayload = (
       payload: evaluation.payload,
     };
 
-    if (expertWeightsByExpertId instanceof Map) {
+    if (includeExpertWeights && expertWeightsByExpertId instanceof Map) {
       payload.weight = expertWeightsByExpertId.get(expertId);
     }
 

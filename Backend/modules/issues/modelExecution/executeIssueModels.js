@@ -105,6 +105,7 @@ export const executeAlternativeEvaluationModel = async ({
   validateAHPSortIExecutionEvaluationsOrThrow({
     apiModelKey: modelRuntime.apiModelKey,
     evaluations,
+    modelParameters: issue.modelParameters,
   });
 
   const requestPayload = await buildIssueModelRequestPayload({
