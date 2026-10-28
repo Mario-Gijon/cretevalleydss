@@ -245,16 +245,27 @@ def test_ready_issue_model_definitions_explicitly_authorize_models_individually(
     sorting_model = next(
         model for model in issue_models if model.api_model_key == "topsis_sort_2016"
     )
+    ahp_sort_model = next(
+        model for model in issue_models if model.api_model_key == "ahp_sort_i"
+    )
 
     assert ready_models
     assert all(model.issue_execution_authorized is True for model in ready_models)
     assert sorting_model.implementation_status == "ready"
     assert sorting_model.issue_execution_authorized is True
     sorting_models = [
-        model for model in issue_models if model.result_structure_key == "sorting"
+        model
+        for model in issue_models
+        if model.result_structure_key == "sorting"
+        and model.implementation_status == "ready"
     ]
     assert sorting_models == [sorting_model]
     assert all(model.issue_execution_authorized is True for model in sorting_models)
+    assert ahp_sort_model.implementation_status == "scaffold"
+    assert ahp_sort_model.issue_execution_authorized is False
+    ahp_sort_manifest = _build_manifest_entry(ahp_sort_model)
+    assert ahp_sort_manifest["publicUsable"] is False
+    assert ahp_sort_manifest["issueExecutionAuthorized"] is False
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-"""Pure AHPSort I core for binary and multiple limiting-profile cases."""
+"""AHPSort I core and scaffold Decision Plugin integration."""
 
 from .run import (
     AHPSortICentralProfileOrderError,
