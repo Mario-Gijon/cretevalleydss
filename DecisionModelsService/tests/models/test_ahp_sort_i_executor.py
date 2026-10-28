@@ -274,7 +274,9 @@ def test_request_and_response_examples_are_valid_and_match_execution(
         assert result["data"]["diagnostics"]["tiePolicy"] == "optimistic"
 
 
-def test_model_is_discovered_as_scaffold_and_not_exposed_for_issue_execution():
+def test_model_remains_scaffold_outside_the_isolated_e2e_stack(monkeypatch):
+    for key in ("NODE_ENV", "E2E_ISOLATED_STACK", "E2E_MONGO_HOST", "E2E_MONGODB_DB_NAME"):
+        monkeypatch.delenv(key, raising=False)
     definitions = {model.api_model_key: model for model in get_model_definitions()}
     definition = definitions["ahp_sort_i"]
     manifest = _build_manifest_entry(definition)

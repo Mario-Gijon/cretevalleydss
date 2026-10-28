@@ -442,6 +442,10 @@ export const buildScenarioExecutionContext = async ({
       id: toIdString(issue._id),
       name: issue.name,
     },
+    structure: {
+      key: targetRuntimeSnapshot.targetEvaluationStructureKey,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    },
     alternatives: alternatives.map((alternative) => ({
       id: toIdString(alternative._id),
       name: alternative.name,

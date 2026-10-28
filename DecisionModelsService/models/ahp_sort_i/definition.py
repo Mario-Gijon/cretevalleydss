@@ -1,10 +1,25 @@
 """Decision Plugin metadata for AHPSort I."""
 
+import os
+
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
 
 from .examples import AHPSORT_I_REQUEST_EXAMPLES, AHPSORT_I_RESPONSE_EXAMPLES
 from .executor import execute_ahp_sort_i
+
+
+def _is_isolated_e2e_stack() -> bool:
+    """Expose the in-progress plugin only inside the dedicated E2E stack."""
+    return (
+        os.environ.get("NODE_ENV") == "e2e"
+        and os.environ.get("E2E_ISOLATED_STACK") == "true"
+        and os.environ.get("E2E_MONGO_HOST") == "mongo-e2e"
+        and os.environ.get("E2E_MONGODB_DB_NAME") == "cretevalley_e2e"
+    )
+
+
+_E2E_ACTIVATED = _is_isolated_e2e_stack()
 
 
 MODEL_DEFINITION = ModelDefinition(
@@ -50,20 +65,26 @@ MODEL_DEFINITION = ModelDefinition(
     response_examples=AHPSORT_I_RESPONSE_EXAMPLES,
     more_info_url="https://doi.org/10.1080/00207543.2012.657966",
     model_kind="issue",
-    implementation_status="scaffold",
+    implementation_status="ready" if _E2E_ACTIVATED else "scaffold",
     requires_homogeneous_expression_domains=False,
     evaluation_structure_key="ahpSortAlternativeProfiles",
     result_structure_key="sorting",
     result_structure_version=1,
     supports_consensus=False,
     supports_consensus_simulation=False,
-    issue_execution_authorized=False,
+    issue_execution_authorized=_E2E_ACTIVATED,
     is_multi_criteria=True,
     uses_criteria_weights=True,
     uses_expert_weights=False,
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=False,
-    supported_expression_domains=[],
+    # The shared Issue creation flow requires a domain snapshot for every leaf
+    # criterion. AHPSort I judgments themselves remain on the Saaty scale; the
+    # numeric domain is retained as generic Issue metadata only.
+    supported_expression_domains=[
+        {"typeKey": "numericContinuous"},
+        {"typeKey": "numericDiscrete"},
+    ],
     parameters=[
         {
             "key": "orderedCategories",
