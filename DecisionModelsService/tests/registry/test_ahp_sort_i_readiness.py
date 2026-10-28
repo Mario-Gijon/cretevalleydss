@@ -32,6 +32,9 @@ def test_ahp_sort_i_is_ready_and_authorized_only_in_the_isolated_e2e_stack(monke
     assert manifest["issueExecutionAuthorized"] is True
     assert manifest["supportsConsensus"] is False
     assert manifest["supportsConsensusSimulation"] is False
+    assert "ahpSortGroup" not in {
+        parameter["key"] for parameter in definition.parameters
+    }
     assert {item["typeKey"] for item in manifest["supportedExpressionDomains"]} == {
         "numericContinuous",
         "numericDiscrete",

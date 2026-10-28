@@ -252,7 +252,7 @@ def test_executor_handles_three_central_categories_and_distinct_criterion_weight
     assert assignment["classification"]["tieDetected"] is False
 
 
-def test_multiple_expert_evaluations_are_rejected_without_selecting_or_aggregating():
+def test_multiple_expert_evaluations_are_all_executed_and_aggregated():
     request_data = deepcopy(
         AHPSORT_I_REQUEST_EXAMPLES["limiting_profiles"]["value"]
     )
@@ -262,13 +262,23 @@ def test_multiple_expert_evaluations_are_rejected_without_selecting_or_aggregati
         "alternativeToProfile"
     ] = 7
     request_data["evaluations"].append(second_evaluation)
+    request_data["modelParameters"]["ahpSortGroup"] = {"tiePolicy": "optimistic"}
     response = _json_response(
         execute_ahp_sort_i(GenericModelExecutionRequest.model_validate(request_data))
     )
 
-    assert response["success"] is False
-    assert response["error"]["code"] == "MULTI_EXPERT_NOT_SUPPORTED"
-    assert response["error"]["details"] == {"receivedEvaluationCount": 2}
+    assert response["success"] is True
+    result = response["data"]
+    assert result["diagnostics"]["aggregationMethod"] == "unweighted_plurality_vote"
+    assert result["diagnostics"]["groupTiePolicy"] == "optimistic"
+    assert set(result["diagnostics"]["individualResultsByExpertId"]) == {
+        "expert-1",
+        "expert-2",
+    }
+    assert set(result["diagnostics"]["resultsByAlternativeId"]) == {
+        "supplier-low",
+        "supplier-high",
+    }
 
 
 def test_missing_evaluation_and_malformed_profiles_return_validation_errors():

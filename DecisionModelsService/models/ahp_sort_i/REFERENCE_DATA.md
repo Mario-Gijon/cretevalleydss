@@ -221,3 +221,64 @@ local matrix may contain at most 15 entities (the alternative plus at most 14
 central profiles/categories); larger inputs are rejected rather than being
 assigned an unsupported random index. Central profiles are not limiting
 profiles, and this phase adds neither AHPSort II nor fuzzy judgments.
+
+## Phase 7B: group assignment by expert classifications
+
+The adapter can receive one complete evaluation for each submitted expert.
+It runs the same individual AHPSort I path for every expert, using the shared
+criteria weights, ordered categories, and configured limiting or central
+profiles. Only the resulting category for each alternative is aggregated.
+The adapter does not average or combine pairwise judgments, priorities, or
+expert weights, and it does not run a consensus process. `supports_consensus`
+and `supports_consensus_simulation` therefore remain false.
+
+This follows the GAHPSort sequence described by López and Ishizaka (2017):
+decision makers solve the sorting problem individually before the group class
+assignment is derived. Labella, Ishizaka, and Martínez (2021, Section 2.1)
+describe unanimity, simple majority, and equal-count ties, with optimistic and
+pessimistic views selecting the best or worst tied class. Their paper adds a
+consensus process later; this implementation uses the pre-consensus group
+assignment only.
+
+The DSS implementation makes one explicit generalization for more than two
+ordered categories: it selects a unique modal category even when that
+plurality is not an absolute majority (for example, 2–1–1–1 across four
+categories). The cited papers' description of simple majority is not treated
+as proof that they specify this multi-category plurality case. The unique-mode
+rule is an implementation policy for this phase. If multiple categories share
+the highest vote count, the required
+`modelParameters.ahpSortGroup.tiePolicy` chooses the most preferred tied
+category (`optimistic`) or the least preferred tied category (`pessimistic`).
+This is distinct from `ahpSortProfiles.tiePolicy`, which only resolves equal
+distances to central profiles within each expert's individual AHPSort I
+calculation.
+
+The group input keeps `evaluations` as one record per expert, with a stable
+`expert.id` and complete `alternativeProfileComparisons` and
+`profileComparisons`. Each record is validated and run; duplicate expert IDs,
+unknown or duplicate comparison IDs, incomplete matrices, invalid Saaty
+values, and invalid profile ordering fail the entire request. Criteria,
+alternatives, weights, categories, and profiles remain shared request-level
+data. A single expert needs no `ahpSortGroup` policy and retains the existing
+`sorting@1` response and diagnostics unchanged.
+
+For multiple experts, `sorting@1` keeps its existing top-level keys. The
+collective assignments are selected by unweighted category votes. Diagnostics
+include `aggregationMethod: unweighted_plurality_vote`, the group tie policy,
+votes and status per alternative, every expert's category per alternative,
+and the full individual AHPSort I diagnostics (including priorities and
+consistency evidence). No ranks, vote probabilities, or consensus claims are
+added. The `ahpSortGroup` request parameter is currently a DMS request
+contract only; it is deliberately not declared as a public manifest parameter
+until Backend and Frontend can configure it.
+
+Scientific references:
+
+- López, C. & Ishizaka, A. (2017), *GAHPSort: a new group multi-criteria
+  decision method for sorting a large number of the cloud-based ERP solutions*,
+  Computers in Industry 92–93, 12–25. Author postprint:
+  https://researchportal.port.ac.uk/files/7335650/GAHPSort_Computers_in_industry_Final_postprint.pdf
+- Labella, A., Ishizaka, A. & Martínez, L. (2021), *Consensual Group-AHPSort:
+  Applying consensus to GAHPSort in sustainable development and industrial
+  engineering*, Section 2.1, Computers & Industrial Engineering 152, 107013:
+  https://ruja.ujaen.es/server/api/core/bitstreams/8e61495c-7d06-4b12-b975-88aaf493a49c/content

@@ -56,7 +56,10 @@ MODEL_DEFINITION = ModelDefinition(
             "Retains per-criterion AHP consistency diagnostics.",
         ],
         "limitations": [
-            "Multi-expert aggregation of alternative/profile judgments is not supported yet.",
+            (
+                "Multi-expert classification uses unweighted category voting "
+                "and does not modify judgments to reach consensus."
+            ),
             "The existing AHP Random Index table supports local matrices up to 15 entities.",
             "AHPSort I is distinct from AHPSort II and TOPSIS-Sort.",
         ],
