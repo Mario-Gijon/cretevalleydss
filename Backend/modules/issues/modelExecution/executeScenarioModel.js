@@ -6,6 +6,7 @@ import {
   normalizeResultStructureOrThrow,
 } from "../../decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { validateAHPSortIExecutionEvaluationsOrThrow } from "./validateAHPSortIExecutionEvaluations.js";
 
 export const executeScenarioModel = async ({
   requestPayload,
@@ -46,6 +47,11 @@ export const executeScenarioModel = async ({
       { field: "targetModelId" }
     );
   }
+  validateAHPSortIExecutionEvaluationsOrThrow({
+    apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
+    evaluations: requestPayload?.evaluations,
+  });
+
   const tracked = await executeTrackedDecisionModelRequest({
     attemptInput: executionAttemptInput,
     apiEndpointPath: targetRuntimeSnapshot.targetApiEndpoint.path,

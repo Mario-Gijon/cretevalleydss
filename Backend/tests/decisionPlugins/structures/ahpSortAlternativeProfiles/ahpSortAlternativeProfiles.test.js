@@ -275,7 +275,59 @@ describe("ahpSortAlternativeProfiles evaluation structure", () => {
     });
   });
 
-  it.each([1.5, 0, -1, 10, "", Infinity, NaN])(
+  it("canonicalizes tolerated numeric strings to exact Saaty values without changing orientation", async () => {
+    const result = await save({
+      payload: {
+        alternativeProfileComparisons: [
+          {
+            alternativeId: "alternative-a",
+            criterionId: "criterion-quality",
+            profileId: "center-low",
+            alternativeToProfile: " 0.3333333333333 ",
+          },
+          {
+            alternativeId: "alternative-b",
+            criterionId: "criterion-cost",
+            profileId: "center-high",
+            alternativeToProfile: "3.0000000000005",
+          },
+        ],
+        profileComparisons: [
+          {
+            criterionId: "criterion-quality",
+            firstProfileId: "center-high",
+            secondProfileId: "center-low",
+            firstToSecond: "0.3333333333333",
+          },
+        ],
+      },
+    });
+
+    expect(result.alternativeProfileComparisons).toEqual([
+      {
+        alternativeId: "alternative-a",
+        criterionId: "criterion-quality",
+        profileId: "center-low",
+        alternativeToProfile: 1 / 3,
+      },
+      {
+        alternativeId: "alternative-b",
+        criterionId: "criterion-cost",
+        profileId: "center-high",
+        alternativeToProfile: 3,
+      },
+    ]);
+    expect(result.profileComparisons).toEqual([
+      {
+        criterionId: "criterion-quality",
+        firstProfileId: "center-high",
+        secondProfileId: "center-low",
+        firstToSecond: 1 / 3,
+      },
+    ]);
+  });
+
+  it.each([1.5, 0, -1, 10, "", "1/3", "0.3333333", Infinity, NaN])(
     "rejects a comparison outside Saaty's 17 values: %s",
     async (value) => {
       const payload = fullPayload();

@@ -274,6 +274,43 @@ describe("loadCreateIssueActorsAndModel", () => {
     });
   });
 
+  it("keeps scaffold AHPSort I blocked from public Issue creation", async () => {
+    const owner = await createConfirmedUser();
+    const expert = await createConfirmedUser({ email: "ahpsort-expert@example.com" });
+    const model = await createIssueModel({
+      name: "AHPSort I scaffold",
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      implementationStatus: "scaffold",
+      publicUsable: false,
+      issueExecutionAuthorized: false,
+      usesCriteriaWeights: true,
+    });
+
+    await expect(loadCreateIssueActorsAndModel({
+      ownerUserId: owner._id,
+      selectedModelId: model._id,
+      paramValues: {},
+      criteriaNodes: buildCreateIssueInfo({
+        selectedModelId: model._id,
+        globalDomainId: new mongoose.Types.ObjectId(),
+      }).criteria,
+      alternatives: [
+        { id: null, name: "Alternative A" },
+        { id: null, name: "Alternative B" },
+      ],
+      uniqueExpertEmails: [expert.email],
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      code: "ISSUE_MODEL_NOT_USABLE",
+      field: "selectedModelId",
+      message: "Selected model is not ready for issue execution",
+    });
+  });
+
   it.each([
     { implementationStatus: "scaffold", publicUsable: true },
     { implementationStatus: "ready", publicUsable: false },

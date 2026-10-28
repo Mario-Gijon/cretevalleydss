@@ -229,6 +229,201 @@ describe("result structure selection in model execution", () => {
     expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
   });
 
+  it("keeps scaffold AHPSort I from reaching DecisionModelsService even with a historical Issue", async () => {
+    const httpClient = { post: vi.fn() };
+    const scaffoldAHPSortModel = makeUsableIssueModel({
+      _id: "ahpsort-scaffold-model",
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      implementationStatus: "scaffold",
+      publicUsable: false,
+      issueExecutionAuthorized: false,
+      usesCriteriaWeights: true,
+    });
+
+    await expect(executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(scaffoldAHPSortModel),
+      structureKey: "ahpSortAlternativeProfiles",
+      evaluations: [{ payload: { alternativeProfileComparisons: [], profileComparisons: [] } }],
+      phase: 0,
+      httpClient,
+    })).rejects.toMatchObject({
+      code: "ISSUE_MODEL_NOT_USABLE",
+      field: "resultStructureKey",
+    });
+
+    expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 2])(
+    "rejects AHPSort I with %s completed evaluations before building or sending a request",
+    async (evaluationCount) => {
+      const model = makeUsableIssueModel({
+        apiModelKey: "ahp_sort_i",
+        apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+        evaluationStructureKey: "ahpSortAlternativeProfiles",
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        usesCriteriaWeights: true,
+      });
+      const evaluations = Array.from({ length: evaluationCount }, (_, index) => ({
+        expert: {
+          _id: `expert-${index + 1}`,
+          name: `Expert ${index + 1}`,
+          email: `expert-${index + 1}@example.test`,
+        },
+        payload: {
+          alternativeProfileComparisons: [],
+          profileComparisons: [],
+        },
+      }));
+      const httpClient = { post: vi.fn() };
+
+      await expect(executeAlternativeEvaluationModel({
+        issue: makeIssueUsingModel(model),
+        structureKey: "ahpSortAlternativeProfiles",
+        evaluations,
+        phase: 0,
+        httpClient,
+      })).rejects.toMatchObject({
+        code: "AHPSORT_I_SINGLE_EXPERT_EVALUATION_REQUIRED",
+        field: "evaluations",
+        details: {
+          expectedEvaluationCount: 1,
+          receivedEvaluationCount: evaluationCount,
+        },
+      });
+
+      expect(executionState.buildIssueModelRequestPayload).not.toHaveBeenCalled();
+      expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+      expect(httpClient.post).not.toHaveBeenCalled();
+    }
+  );
+
+  it("allows one AHPSort I evaluation through the Backend request boundary", async () => {
+    const categories = [
+      { categoryId: "low", label: "Low", order: 0 },
+      { categoryId: "high", label: "High", order: 1 },
+    ];
+    const model = makeUsableIssueModel({
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      usesCriteriaWeights: true,
+    });
+    const modelParameters = {
+      orderedCategories: categories,
+      ahpSortProfiles: {
+        mode: "limiting",
+        profiles: [
+          {
+            profileId: "low-high",
+            lowerCategoryId: "low",
+            upperCategoryId: "high",
+          },
+        ],
+      },
+      weights: { "criterion-1": 1 },
+    };
+    const evaluation = {
+      expert: {
+        _id: "expert-1",
+        name: "Expert One",
+        email: "expert-1@example.test",
+      },
+      payload: {
+        alternativeProfileComparisons: [
+          {
+            alternativeId: "alternative-1",
+            criterionId: "criterion-1",
+            profileId: "low-high",
+            alternativeToProfile: 3,
+          },
+        ],
+        profileComparisons: [],
+      },
+    };
+    executionState.buildIssueModelRequestPayload.mockResolvedValue({
+      context: { alternatives: [{ id: "alternative-1" }] },
+      evaluations: [evaluation],
+      modelParameters,
+    });
+    executionState.buildIssueResultStructureContextOrThrow.mockResolvedValue({
+      authorizedCategories: categories,
+    });
+    executionState.executeTrackedDecisionModelRequest.mockImplementation(
+      async ({ normalize }) => ({
+        result: await normalize({
+          categories,
+          categoryOrderSemantics: "lower-order-is-less-preferred",
+          assignments: [
+            { alternativeId: "alternative-1", categoryId: "high" },
+          ],
+          diagnostics: { modelKey: "ahp_sort_i", profileMode: "limiting" },
+        }),
+        attempt: { _id: "ahpsort-attempt-1" },
+      })
+    );
+
+    const result = await executeAlternativeEvaluationModel({
+      issue: makeIssueUsingModel(model),
+      structureKey: "ahpSortAlternativeProfiles",
+      evaluations: [evaluation],
+      phase: 0,
+      httpClient: { post: vi.fn() },
+    });
+
+    expect(executionState.buildIssueModelRequestPayload).toHaveBeenCalledWith(
+      expect.objectContaining({ evaluations: [evaluation] })
+    );
+    expect(result.standardResult.assignments).toEqual([
+      { alternativeId: "alternative-1", categoryId: "high" },
+    ]);
+    expect(result.standardResult.diagnostics.profileMode).toBe("limiting");
+  });
+
+  it("rejects multi-expert AHPSort I scenario replays before sending a request", async () => {
+    const httpClient = { post: vi.fn() };
+    const targetRuntimeSnapshot = {
+      issueExecutionAuthorized: true,
+      targetApiModelKey: "ahp_sort_i",
+      targetApiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      targetEvaluationStructureKey: "ahpSortAlternativeProfiles",
+      targetResultStructureKey: "sorting",
+      targetResultStructureVersion: 1,
+    };
+    const requestPayload = {
+      context: { alternatives: [{ id: "alternative-1" }] },
+      evaluations: [
+        { expert: { id: "expert-1" }, payload: {} },
+        { expert: { id: "expert-2" }, payload: {} },
+      ],
+    };
+
+    await expect(executeScenarioModel({
+      requestPayload,
+      targetRuntimeSnapshot,
+      httpClient,
+    })).rejects.toMatchObject({
+      code: "AHPSORT_I_SINGLE_EXPERT_EVALUATION_REQUIRED",
+      field: "evaluations",
+      details: {
+        expectedEvaluationCount: 1,
+        receivedEvaluationCount: 2,
+      },
+    });
+
+    expect(executionState.executeTrackedDecisionModelRequest).not.toHaveBeenCalled();
+    expect(httpClient.post).not.toHaveBeenCalled();
+  });
+
   it("blocks unauthorized Decision Plugins in issue and scenario execution before dispatch", async () => {
     const httpClient = { post: vi.fn() };
     const unauthorizedModel = makeUsableIssueModel({

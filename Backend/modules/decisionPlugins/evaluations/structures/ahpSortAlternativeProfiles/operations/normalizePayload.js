@@ -30,19 +30,20 @@ const normalizeSaatyValue = ({ value, field }) => {
     typeof value === "string" && value.trim() !== ""
       ? Number(value.trim())
       : value;
-  if (
-    typeof numericValue !== "number" ||
-    !Number.isFinite(numericValue) ||
-    !SAATY_SCALE.some(
-      (allowedValue) => Math.abs(numericValue - allowedValue) <= SAATY_TOLERANCE
-    )
-  ) {
+  const canonicalValue =
+    typeof numericValue === "number" && Number.isFinite(numericValue)
+      ? SAATY_SCALE.find(
+          (allowedValue) =>
+            Math.abs(numericValue - allowedValue) <= SAATY_TOLERANCE
+        )
+      : undefined;
+  if (canonicalValue === undefined) {
     throw createBadRequestError(
       "Comparison must use one of Saaty's 17 fundamental scale values",
       { field }
     );
   }
-  return numericValue;
+  return canonicalValue;
 };
 
 const requireExactFields = ({ row, expectedFields, field }) => {

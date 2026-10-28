@@ -10,6 +10,7 @@ import { createBadRequestError } from "../../../utils/common/errors.js";
 import { buildIssueResultStructureContextOrThrow } from "./buildIssueResultStructureContext.js";
 import { assertPopulatedIssueModelUsableOrThrow } from "../issueModelUsability.js";
 import { validateIssueModelRuntimeConfigOrThrow } from "../creation/validateIssueModelRuntime.js";
+import { validateAHPSortIExecutionEvaluationsOrThrow } from "./validateAHPSortIExecutionEvaluations.js";
 
 const normalizeRuntimeKey = (value) =>
   typeof value === "string" ? value.trim().replace(/^\/+|\/+$/g, "") : "";
@@ -100,6 +101,10 @@ export const executeAlternativeEvaluationModel = async ({
     issue,
     model,
     runtime: modelRuntime,
+  });
+  validateAHPSortIExecutionEvaluationsOrThrow({
+    apiModelKey: modelRuntime.apiModelKey,
+    evaluations,
   });
 
   const requestPayload = await buildIssueModelRequestPayload({
