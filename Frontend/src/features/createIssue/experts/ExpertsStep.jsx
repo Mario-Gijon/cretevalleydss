@@ -46,6 +46,10 @@ import {
 } from "../logic/createIssueExpertWeights";
 import { SelectedExpertsPanelContent } from "./components/SelectedExpertsPanelContent.jsx";
 import {
+  AHPSORT_I_SINGLE_EXPERT_MESSAGE,
+  requiresSingleCreateIssueExpert,
+} from "../logic/createIssueExpertConstraints.js";
+import {
   buildExpertWeightInputValues,
   commitExpertWeightInputValue,
   haveExpertWeightInputsChanged,
@@ -240,6 +244,7 @@ export const ExpertsStep = ({
   }, [addedExperts, expertWeightInputs, expertWeights, usesExpertWeights]);
 
   const selectedCount = Array.isArray(addedExperts) ? addedExperts.length : 0;
+  const requiresSingleExpert = requiresSingleCreateIssueExpert(selectedModel);
   const equalWeightsActive = useMemo(
     () =>
       usesExpertWeights &&
@@ -292,6 +297,19 @@ export const ExpertsStep = ({
           </Stack>
         </Stack>
       </Stack>
+
+      {requiresSingleExpert ? (
+        <Typography
+          variant="caption"
+          role={selectedCount > 1 ? "alert" : undefined}
+          sx={{
+            color: selectedCount > 1 ? "warning.main" : "text.secondary",
+            fontWeight: selectedCount > 1 ? 800 : 600,
+          }}
+        >
+          {AHPSORT_I_SINGLE_EXPERT_MESSAGE}
+        </Typography>
+      ) : null}
 
       <Stack spacing={1.4}>
         <TextField

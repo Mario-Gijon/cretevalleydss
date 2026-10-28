@@ -160,6 +160,45 @@ describe("editIssueExperts", () => {
     expect(exitLog.history[0].timestamp).toBeTruthy();
   });
 
+  it("prevents an AHPSort I issue from adding a second participant while the first invitation is pending", async () => {
+    const owner = await createConfirmedUser({ email: "ahpsorti-owner@example.com" });
+    const firstExpert = await createConfirmedUser({ email: "ahpsorti-first@example.com" });
+    const secondExpert = await createConfirmedUser({ email: "ahpsorti-second@example.com" });
+    const model = await createIssueModel({
+      apiModelKey: "ahp_sort_i",
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+    });
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      modelId: model._id,
+      currentStage: "alternativeEvaluation",
+    });
+    await createIssueCriteriaFixture({ issueId: issue._id, leafNames: ["Quality"] });
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: firstExpert._id,
+      invitationStatus: "pending",
+      evaluationCompleted: false,
+    });
+
+    await expect(editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [secondExpert.email],
+      expertsToRemove: [],
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      code: "AHPSORT_I_SINGLE_EXPERT_REQUIRED",
+      details: { expectedExpertCount: 1, receivedExpertCount: 2 },
+    });
+
+    expect(await Participation.countDocuments({ issue: issue._id })).toBe(1);
+    expect(await Participation.findOne({ issue: issue._id, expert: firstExpert._id })).toMatchObject({ invitationStatus: "pending" });
+    expect(await Participation.findOne({ issue: issue._id, expert: secondExpert._id })).toBeNull();
+  });
+
   it("adding an already participating expert is idempotent", async () => {
     const owner = await createConfirmedUser({
       email: "owner@example.com",

@@ -24,6 +24,7 @@ import {
   writeIssueEvent,
 } from "../events/index.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { AHPSORT_I_API_MODEL_KEY } from "../modelExecution/validateAHPSortIExecutionEvaluations.js";
 
 const buildWeightsByExpertId = (participations) =>
   Object.fromEntries(
@@ -144,6 +145,23 @@ export const editIssueExperts = async ({
     throw createBadRequestError("An issue must have at least one expert.", {
       field: "expertsToRemove",
     });
+  }
+
+  if (
+    context.issue.model?.apiModelKey === AHPSORT_I_API_MODEL_KEY &&
+    finalExpertEmails.length !== 1
+  ) {
+    throw createBadRequestError(
+      "AHPSort I supports exactly one expert participant. Remove additional experts before continuing.",
+      {
+        code: "AHPSORT_I_SINGLE_EXPERT_REQUIRED",
+        field: "expertsToAdd",
+        details: {
+          expectedExpertCount: 1,
+          receivedExpertCount: finalExpertEmails.length,
+        },
+      }
+    );
   }
 
   const expertSetChanged =

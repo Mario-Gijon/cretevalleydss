@@ -200,6 +200,20 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(evidence.alternativesById["alt-a"].status).toBe("available");
     expect(evidence.alternativesById["alt-a"].explanation).toContain("within the 1e-12 comparison tolerance");
     expect(evidence.alternativesById["alt-a"].explanation).toContain("ties go to the more preferred category");
+    expect(equalData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
+
+    const overlapping = limitingExecution({
+      priority: 0.50000000000075,
+      profilePriorities: { "boundary-lm": 0.5, "boundary-mh": 0.5000000000015 },
+      assignedCategoryId: "high-id",
+    });
+    const overlappingData = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: overlapping });
+    const overlappingEvidence = overlappingData.result.ahpSortI.alternativesById["alt-a"];
+    expect(overlappingEvidence.status).toBe("available");
+    expect(overlappingEvidence.category.id).toBe("high-id");
+    expect(overlappingEvidence.explanation).toContain("Medium / High limiting profile");
+    expect(overlappingEvidence.explanation).not.toContain("Low / Medium limiting profile");
+    expect(overlappingData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
   });
 
   it("shows persisted priorities, weights, contributions, local consistency, and matrices only after opening details", () => {
@@ -223,6 +237,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const optimistic = renderSelected(centralExecution());
     expect(screen.getByText(/equally close to the Low and High centers/)).toBeInTheDocument();
     expect(screen.getByText(/optimistic tie policy selected High, the more preferred category/)).toBeInTheDocument();
+    expect(optimistic.data.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(true);
 
     const pessimisticExecution = centralExecution({ policy: "pessimistic" });
     const result = optimistic.data.result;

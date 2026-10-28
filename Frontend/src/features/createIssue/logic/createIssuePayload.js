@@ -20,6 +20,10 @@ import {
 } from "./createIssueExpertWeights";
 import { resolveCriteriaWeightingLevel } from "./createIssueCriteriaWeightingModes";
 import { normalizeCreateIssueAlternatives } from "./createIssueAlternativeIds";
+import {
+  AHPSORT_I_SINGLE_EXPERT_MESSAGE,
+  requiresSingleCreateIssueExpert,
+} from "./createIssueExpertConstraints.js";
 
 const CRITERIA_WEIGHTING_REQUEST_FIELDS = Object.freeze([
   "mode",
@@ -99,6 +103,13 @@ export const buildCreateIssueRequestPayload = ({
     return {
       ok: false,
       errorMessage: "You must select at least one expert before creating the issue.",
+    };
+  }
+
+  if (requiresSingleCreateIssueExpert(selectedModel) && normalizedExperts.length !== 1) {
+    return {
+      ok: false,
+      errorMessage: AHPSORT_I_SINGLE_EXPERT_MESSAGE,
     };
   }
 

@@ -193,6 +193,57 @@ describe("loadCreateIssueActorsAndModel", () => {
     expect(result.resultStructureVersion).toBe(1);
   });
 
+  it("rejects multiple AHPSort I experts before issue creation proceeds", async () => {
+    const owner = await createConfirmedUser({ email: "ahpsorti-owner@example.com" });
+    const firstExpert = await createConfirmedUser({ email: "ahpsorti-first@example.com" });
+    const secondExpert = await createConfirmedUser({ email: "ahpsorti-second@example.com" });
+    const model = await createIssueModel({
+      name: "AHPSort I",
+      apiModelKey: "ahp_sort_i",
+      apiEndpoint: { method: "POST", path: "/ahp_sort_i" },
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      supportsConsensus: false,
+      supportsConsensusSimulation: false,
+      usesCriteriaWeights: true,
+    });
+    const issueInfo = buildCreateIssueInfo({
+      selectedModelId: model._id,
+      globalDomainId: new mongoose.Types.ObjectId(),
+      addedExperts: [firstExpert.email, secondExpert.email],
+    });
+
+    await expect(loadCreateIssueActorsAndModel({
+      ownerUserId: owner._id,
+      selectedModelId: model._id,
+      paramValues: issueInfo.paramValues,
+      criteriaNodes: issueInfo.criteria,
+      alternatives: issueInfo.alternatives.map((alternative) => ({
+        id: null,
+        name: alternative.name,
+      })),
+      uniqueExpertEmails: issueInfo.addedExperts,
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      code: "AHPSORT_I_SINGLE_EXPERT_REQUIRED",
+      field: "addedExperts",
+      details: { expectedExpertCount: 1, receivedExpertCount: 2 },
+    });
+
+    await expect(loadCreateIssueActorsAndModel({
+      ownerUserId: owner._id,
+      selectedModelId: model._id,
+      paramValues: issueInfo.paramValues,
+      criteriaNodes: issueInfo.criteria,
+      alternatives: issueInfo.alternatives.map((alternative) => ({
+        id: null,
+        name: alternative.name,
+      })),
+      uniqueExpertEmails: [firstExpert.email],
+    })).resolves.toMatchObject({ apiModelKey: "ahp_sort_i" });
+  });
+
   it("rejects a missing selected model", async () => {
     const owner = await createConfirmedUser();
     const expert = await createConfirmedUser({

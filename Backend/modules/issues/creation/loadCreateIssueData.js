@@ -6,6 +6,7 @@ import {
   validateIssueModelRuntimeConfigOrThrow,
 } from "./validateIssueModelRuntime.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
+import { AHPSORT_I_API_MODEL_KEY } from "../modelExecution/validateAHPSortIExecutionEvaluations.js";
 import {
   createBadRequestError,
   createNotFoundError,
@@ -71,6 +72,20 @@ export const loadCreateIssueActorsAndModel = async ({
     isMultiCriteria,
     requiresHomogeneousExpressionDomains,
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
+
+  if (apiModelKey === AHPSORT_I_API_MODEL_KEY && normalizedExpertEmails.length !== 1) {
+    throw createBadRequestError(
+      "AHPSort I requires exactly one expert. Remove additional experts before creating the issue.",
+      {
+        code: "AHPSORT_I_SINGLE_EXPERT_REQUIRED",
+        field: "addedExperts",
+        details: {
+          expectedExpertCount: 1,
+          receivedExpertCount: normalizedExpertEmails.length,
+        },
+      }
+    );
+  }
 
   const sanitizedParamValues = stripCriteriaWeightParameterValues(paramValues);
   const availableContextKeys = new Set(availableValidationContextKeys);

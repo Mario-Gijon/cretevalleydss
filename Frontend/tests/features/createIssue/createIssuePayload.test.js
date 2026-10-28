@@ -84,6 +84,43 @@ describe("createIssuePayload", () => {
     },
   ];
 
+  it("requires exactly one expert for AHPSort I without changing other models", () => {
+    const ahpSortIModel = {
+      ...basicCreateIssueModelFixture,
+      apiModelKey: "ahp_sort_i",
+    };
+    const withTwoExperts = buildCreateIssueRequestPayload(buildPayloadInput({
+      selectedModel: ahpSortIModel,
+      allData: {
+        selectedModel: ahpSortIModel,
+        addedExperts: ["expert1@example.com", "expert2@example.com"],
+      },
+    }));
+
+    expect(withTwoExperts).toEqual({
+      ok: false,
+      errorMessage: "AHPSort I requires exactly one expert. Remove additional experts before creating the issue.",
+    });
+
+    const withOneExpert = buildCreateIssueRequestPayload(buildPayloadInput({
+      selectedModel: ahpSortIModel,
+      allData: {
+        selectedModel: ahpSortIModel,
+        addedExperts: ["expert1@example.com"],
+      },
+    }));
+    expect(withOneExpert.ok).toBe(true);
+
+    const otherModel = buildCreateIssueRequestPayload(buildPayloadInput({
+      selectedModel: basicCreateIssueModelFixture,
+      allData: {
+        selectedModel: basicCreateIssueModelFixture,
+        addedExperts: ["expert1@example.com", "expert2@example.com"],
+      },
+    }));
+    expect(otherModel.ok).toBe(true);
+  });
+
   it("builds the expected payload for a valid create-issue request", () => {
     const result = buildCreateIssueRequestPayload(buildPayloadInput());
 

@@ -275,12 +275,20 @@ const joinNatural = (items) => items.length < 2 ? (items[0] || "") : items.lengt
 
 const buildLimitingExplanation = ({ alternativeName, category, categories, profiles, profilePriorities, priority }) => {
   const assignedIndex = categories.findIndex((entry) => entry.id === category.id);
-  const matchedBoundary = profiles.find((profile) => Math.abs(priority - profilePriorities[profile.id]) <= PROFILE_TOLERANCE);
-  if (matchedBoundary) {
+  const matchedBoundaries = profiles.filter((profile) => Math.abs(priority - profilePriorities[profile.id]) <= PROFILE_TOLERANCE);
+  const assignedBoundary = matchedBoundaries.filter((profile) => profile.upper.id === category.id);
+  if (assignedBoundary.length === 1) {
+    const matchedBoundary = assignedBoundary[0];
     const preferredCategory = categories[matchedBoundary.upper.order];
     return {
       tie: true,
       text: `${alternativeName} was assigned to ${preferredCategory.label} because its AHP priority (${formatPriority(priority)}) is within the 1e-12 comparison tolerance of the ${matchedBoundary.label} limiting profile (${formatPriority(profilePriorities[matchedBoundary.id])}); ties go to the more preferred category.`,
+    };
+  }
+  if (matchedBoundaries.length > 1) {
+    return {
+      tie: true,
+      text: `${alternativeName} was assigned to ${category.label} under the ordered limiting-profile rule. Its saved priority is within the comparison tolerance of multiple profiles, so no single profile is identified as decisive.`,
     };
   }
   if (assignedIndex === 0) {
@@ -490,7 +498,9 @@ export const buildAHPSortIFindings = (result) => {
   if (!result?.available) return [];
   const findings = [];
   const evidence = result.ahpSortI;
-  const ties = Object.values(evidence?.alternativesById || {}).filter((entry) => entry.status === "available" && entry.tieDetected);
+  const ties = Object.values(evidence?.alternativesById || {}).filter((entry) =>
+    entry.status === "available" && entry.profileMode === "central" && entry.tieDetected,
+  );
   if (ties.length) {
     const names = ties.slice(0, 3).map((entry) => entry.alternative.name);
     if (ties.length > 3) names.push("others");
