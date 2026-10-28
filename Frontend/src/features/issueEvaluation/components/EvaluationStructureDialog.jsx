@@ -70,6 +70,23 @@ const EvaluationStructureDialog = ({
   const issueId = String(issue?.id ?? issue?._id ?? "").trim() || null;
   const evaluationLoading =
     loading || (isOpen === true && evaluation === null && !loadError);
+  const submitValidation = useMemo(() => {
+    if (
+      typeof structureEntry?.validateForSubmit !== "function" ||
+      evaluation === null
+    ) {
+      return null;
+    }
+
+    try {
+      return structureEntry.validateForSubmit({ decisionContext, evaluation });
+    } catch (error) {
+      return {
+        valid: false,
+        message: error instanceof Error ? error.message : "Evaluation is incomplete.",
+      };
+    }
+  }, [decisionContext, evaluation, structureEntry]);
 
   const setEvaluation = useCallback((nextEvaluation) => {
     setSubmitDiagnosticWarning(null);
@@ -273,7 +290,12 @@ const EvaluationStructureDialog = ({
               color="success"
               onClick={handleOpenSubmit}
               startIcon={<PublishOutlinedIcon />}
-              disabled={evaluationLoading || evaluation === null}
+              disabled={
+                evaluationLoading ||
+                evaluation === null ||
+                submitValidation?.valid === false
+              }
+              title={submitValidation?.valid === false ? submitValidation.message : undefined}
             >
               Submit
             </Button>

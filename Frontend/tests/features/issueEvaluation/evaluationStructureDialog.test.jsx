@@ -139,7 +139,11 @@ vi.mock(
 );
 
 import EvaluationStructureDialog from "../../../src/features/issueEvaluation/components/EvaluationStructureDialog.jsx";
-import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations";
+import {
+  EVALUATION_STAGES,
+  getEvaluationStructureEntry,
+} from "../../../src/features/decisionPlugins/evaluations";
+import { buildEmptyAHPSortAlternativeProfilesEvaluation } from "../../../src/features/decisionPlugins/evaluations/structures/ahpSortAlternativeProfiles/operations/evaluationPayload.js";
 import {
   evaluationIssueFixture,
   evaluationIssueWithUnderscoreIdFixture,
@@ -490,6 +494,91 @@ describe("EvaluationStructureDialog", () => {
         "issue-eval-1",
         EVALUATION_STAGES.CRITERIA_WEIGHTING,
         { changed: true },
+      );
+    });
+  });
+
+  it("uses an evaluation structure's optional submit validator to keep incomplete submissions disabled", async () => {
+    const validateForSubmit = vi.fn(() => ({
+      valid: false,
+      message: "Three comparisons are still missing.",
+    }));
+    mockGetEvaluationStructureEntryForStage.mockReturnValue({
+      key: "ahpSortAlternativeProfiles",
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      View: MockEvaluationView,
+      validateForSubmit,
+    });
+
+    renderDialog({ structureKey: "ahpSortAlternativeProfiles" });
+    await waitFor(() => expect(mockViewState.lastProps).not.toBeNull());
+
+    expect(validateForSubmit).toHaveBeenCalledWith({
+      decisionContext: evaluationResponseFixture.data.decisionContext,
+      evaluation: evaluationResponseFixture.data.payload,
+    });
+    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+  });
+
+  it("edits and submits AHPSort I through the generic evaluation dialog using the exact payload contract", async () => {
+    const user = userEvent.setup();
+    const decisionContext = {
+      issue: { id: "issue-eval-1", name: "Budget Planning" },
+      structure: { key: "ahpSortAlternativeProfiles", stage: "alternativeEvaluation" },
+      alternatives: [{ id: "alternative-a", name: "Option A" }],
+      leafCriteria: [{ id: "criterion-quality", name: "Quality" }],
+      modelParameters: {
+        orderedCategories: [
+          { categoryId: "category-low", label: "Low", order: 0 },
+          { categoryId: "category-high", label: "High", order: 1 },
+        ],
+        ahpSortProfiles: {
+          mode: "limiting",
+          profiles: [{
+            profileId: "boundary-low-high",
+            lowerCategoryId: "category-low",
+            upperCategoryId: "category-high",
+          }],
+        },
+      },
+    };
+    const emptyEvaluation = buildEmptyAHPSortAlternativeProfilesEvaluation();
+    const structure = getEvaluationStructureEntry("ahpSortAlternativeProfiles");
+    mockGetEvaluationStructureEntryForStage.mockReturnValue(structure);
+    mockFetchIssueEvaluation.mockResolvedValue({
+      decisionContext,
+      evaluation: emptyEvaluation,
+      collectiveEvaluation: null,
+    });
+    mockSubmitIssueEvaluationPayload.mockResolvedValue({ success: true, message: "Submitted." });
+
+    renderDialog({ structureKey: "ahpSortAlternativeProfiles" });
+    await screen.findByText("0 of 1 comparisons complete");
+    const submitButton = screen.getByRole("button", { name: "Submit" });
+    expect(submitButton).toBeDisabled();
+
+    await user.click(screen.getByRole("combobox", {
+      name: "Compare Option A with Low → High for Quality",
+    }));
+    await user.click(screen.getByRole("option", { name: "3" }));
+    expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    await screen.findByText("Submit evaluations?");
+    await user.click(screen.getAllByRole("button", { name: "Submit" })[1]);
+    await waitFor(() => {
+      expect(mockSubmitIssueEvaluationPayload).toHaveBeenCalledWith(
+        "issue-eval-1",
+        EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        {
+          alternativeProfileComparisons: [{
+            alternativeId: "alternative-a",
+            criterionId: "criterion-quality",
+            profileId: "boundary-low-high",
+            alternativeToProfile: 3,
+          }],
+          profileComparisons: [],
+        },
       );
     });
   });

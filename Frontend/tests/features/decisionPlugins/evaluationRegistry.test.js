@@ -48,9 +48,12 @@ describe("evaluation Decision Plugin public registry", () => {
     });
   });
 
-  it("exposes creator initialization only for the reusable BWM structure", () => {
+  it("exposes initial evaluation builders only for structures that require initialization", () => {
     expect(
       EVALUATION_STRUCTURE_REGISTRY.bestWorstCriteria.buildInitialEvaluation
+    ).toBeTypeOf("function");
+    expect(
+      EVALUATION_STRUCTURE_REGISTRY.ahpSortAlternativeProfiles.buildInitialEvaluation
     ).toBeTypeOf("function");
     expect(
       EVALUATION_STRUCTURE_REGISTRY.manualCriteriaWeights
