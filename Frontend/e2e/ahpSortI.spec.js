@@ -18,6 +18,17 @@ const chooseSaatyValue = async (page, accessibleName, value) => {
   await expect(select).toHaveText(saatyLabel(value));
 };
 
+const expectNoHorizontalOverflow = async (page) => {
+  await page.evaluate(() => new Promise((resolve) => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+  }));
+  const dimensions = await page.evaluate(() => ({
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+  }));
+  expect(dimensions.documentWidth, JSON.stringify(dimensions)).toBeLessThanOrEqual(dimensions.viewportWidth);
+};
+
 const logout = async (page) => {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.getByRole("button", { name: "Open options" }).click();
@@ -96,6 +107,7 @@ const createIssue = async (page, { mode, issueName, alternatives }) => {
   await page.screenshot({ path: test.info().outputPath(`ahpsort-i-${mode}-create-desktop.png`), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole("button", { name: profileModeLabel, exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: test.info().outputPath(`ahpsort-i-${mode}-create-mobile.png`), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
 
@@ -234,6 +246,7 @@ const resolveAndAssert = async (page, { mode, issueName, alternatives, expectedC
   await page.screenshot({ path: test.info().outputPath(`ahpsort-i-${mode}-finished-desktop.png`), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(finishedDialog.getByRole("list", { name: "Final sorting by category" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: test.info().outputPath(`ahpsort-i-${mode}-finished-mobile.png`), fullPage: true });
 
   if (mode === "limiting") {
@@ -379,6 +392,7 @@ const enterEvaluationOnOpen = async (page, args) => {
   await page.screenshot({ path: test.info().outputPath(`ahpsort-i-${mode}-evaluation-desktop.png`), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole("combobox", { name: `Compare ${alternatives[0]} with ${mode === "limiting" ? "Low → Medium" : "Low center"} for Quality`, exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: test.info().outputPath(`ahpsort-i-${mode}-evaluation-mobile.png`), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole("button", { name: "Submit", exact: true }).click();

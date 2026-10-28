@@ -11,11 +11,11 @@ const naturalList = (items) => items.length < 2 ? (items[0] || "") : items.lengt
   : `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
 
 const MatrixDetails = ({ criterion }) => (
-  <Box component="details" sx={{ mt: 0.55, minWidth: 0 }}>
+  <Box component="details" sx={{ mt: 0.55, width: "100%", maxWidth: "100%", minWidth: 0 }}>
     <Box component="summary" sx={{ cursor: "pointer", color: "secondary.light", fontSize: "0.8rem", width: "fit-content" }}>
       Pairwise matrix for {criterion.name}
     </Box>
-    <TableContainer sx={{ mt: 0.6, maxWidth: "100%", overflowX: "auto" }}>
+    <TableContainer sx={{ mt: 0.6, width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "auto" }}>
       <Table size="small" aria-label={`Pairwise matrix for ${criterion.name}`} sx={{ minWidth: 360, "& th, & td": { borderColor: (theme) => alpha(theme.palette.divider, 0.45), px: 1, py: 0.55, whiteSpace: "nowrap" } }}>
         <TableHead>
           <TableRow>
@@ -43,7 +43,7 @@ const MatrixDetails = ({ criterion }) => (
 );
 
 const CriterionEvidence = ({ criteria }) => (
-  <TableContainer sx={{ mt: 0.8, maxWidth: "100%", overflowX: "auto" }}>
+  <TableContainer sx={{ mt: 0.8, width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "auto" }}>
     <Table size="small" aria-label="AHP evidence by criterion" sx={{ minWidth: 680, "& th, & td": { borderColor: (theme) => alpha(theme.palette.divider, 0.45), px: 1, py: 0.65, verticalAlign: "top" } }}>
       <TableHead>
         <TableRow>
@@ -125,7 +125,7 @@ const AHPSortIAlternativeEvidence = ({ evidence, showUnavailableMessage = true }
   const profileLabel = evidence.profileMode === "limiting" ? "Limiting profiles" : "Central profiles";
 
   return (
-    <Box data-testid="ahp-sort-i-alternative-evidence" sx={{ mt: 0.4, minWidth: 0 }}>
+    <Box data-testid="ahp-sort-i-alternative-evidence" sx={{ mt: 0.4, width: "100%", maxWidth: "100%", minWidth: 0 }}>
       <Typography variant="caption" data-testid="ahp-sort-i-assignment-explanation" sx={{ display: "block", color: "text.secondary", lineHeight: 1.45, overflowWrap: "anywhere" }}>
         {evidence.explanation}
       </Typography>
