@@ -1,5 +1,13 @@
-"""AHPSort I core, currently implemented for one limiting profile and two classes."""
+"""Pure AHPSort I core for binary and multiple limiting-profile cases."""
 
-from .run import run_ahp_sort_i
+from .run import (
+    AHPSortIProfileOrderError,
+    run_ahp_sort_i,
+    run_ahp_sort_i_multiple_profiles,
+)
 
-__all__ = ["run_ahp_sort_i"]
+__all__ = [
+    "AHPSortIProfileOrderError",
+    "run_ahp_sort_i",
+    "run_ahp_sort_i_multiple_profiles",
+]

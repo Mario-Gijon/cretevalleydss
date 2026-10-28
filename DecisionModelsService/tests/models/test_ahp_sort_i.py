@@ -6,7 +6,14 @@ import numpy as np
 import pytest
 
 from models.ahp_criteria_weights.run import run_ahp_criteria_weights
-from models.ahp_sort_i.run import run_ahp_sort_i
+from models.ahp_sort_i.run import (
+    AHPSortIProfileOrderError,
+    _assign_category_from_ordered_profiles,
+    _solve_local_pairwise_matrix,
+    _validate_profile_order,
+    run_ahp_sort_i,
+    run_ahp_sort_i_multiple_profiles,
+)
 
 
 def _input(
@@ -451,3 +458,446 @@ def test_table_five_global_column_has_documented_arithmetic_discrepancies() -> N
         for name, value in actual_profile.items()
         if abs(value - ISHIZAKA_2012_TABLE5_PROFILE_GLOBAL[name]) <= 0.0005
     } == set("ABCL")
+
+
+def _multiple_profile_input(
+    *,
+    alternatives: list[dict] | None = None,
+    categories: list[dict] | None = None,
+    profiles: list[dict] | None = None,
+    alternative_profile_values: dict[str, tuple[float, ...]] | None = None,
+    profile_ratio: float = 1 / 2,
+    profile_comparisons: list[dict] | None = None,
+    criteria: list[dict] | None = None,
+    weights: dict | None = None,
+) -> dict:
+    criteria = criteria or [{"id": "quality", "name": "Quality"}]
+    alternatives = alternatives or [{"id": "supplier-a", "name": "Supplier A"}]
+    categories = categories or [
+        {"id": "low", "name": "Low"},
+        {"id": "medium", "name": "Medium"},
+        {"id": "high", "name": "High"},
+    ]
+    profiles = profiles or [
+        {
+            "profileId": "boundary-low-medium",
+            "lowerCategoryId": "low",
+            "upperCategoryId": "medium",
+        },
+        {
+            "profileId": "boundary-medium-high",
+            "lowerCategoryId": "medium",
+            "upperCategoryId": "high",
+        },
+    ]
+    alternative_profile_values = alternative_profile_values or {
+        alternatives[0]["id"]: (1, 1 / 2)
+    }
+    comparisons = [
+        {
+            "alternativeId": alternative["id"],
+            "criterionId": criterion["id"],
+            "profileId": profile["profileId"],
+            "alternativeToProfile": alternative_profile_values[alternative["id"]][profile_index],
+        }
+        for alternative in alternatives
+        for criterion in criteria
+        for profile_index, profile in enumerate(profiles)
+    ]
+    if profile_comparisons is None:
+        profile_comparisons = [
+            {
+                "criterionId": criterion["id"],
+                "firstProfileId": profiles[0]["profileId"],
+                "secondProfileId": profiles[1]["profileId"],
+                "firstToSecond": profile_ratio,
+            }
+            for criterion in criteria
+        ] if len(profiles) == 2 else []
+    weights = weights or {criterion["id"]: 1 / len(criteria) for criterion in criteria}
+    return {
+        "criteria": criteria,
+        "categories": categories,
+        "alternatives": alternatives,
+        "limiting_profiles": profiles,
+        "criterion_weights_by_id": weights,
+        "comparisons": comparisons,
+        "profile_comparisons": profile_comparisons,
+    }
+
+
+def _run_multiple_profiles(data: dict) -> dict:
+    return run_ahp_sort_i_multiple_profiles(**data)
+
+
+def _multiple_profile_assignment(data: dict, alternative_id: str = "supplier-a") -> dict:
+    return _run_multiple_profiles(data)["resultsByAlternative"][alternative_id]
+
+
+def test_three_category_case_builds_a_complete_reciprocal_matrix_and_known_vector() -> None:
+    # This input is deliberately solved directly: its known vector is the
+    # requested 3x3 AHP example. Its profile order is not a valid category order.
+    matrix = [[1, 2, 6], [1 / 2, 1, 3], [1 / 6, 1 / 3, 1]]
+    priorities, diagnostics = _solve_local_pairwise_matrix(matrix)
+
+    assert priorities == pytest.approx([0.6, 0.3, 0.1], abs=1e-12)
+    assert diagnostics["lambdaMax"] == pytest.approx(3.0, abs=1e-12)
+    assert diagnostics["consistencyIndex"] == pytest.approx(0.0, abs=1e-12)
+    assert diagnostics["randomIndex"] == 0.58
+    assert diagnostics["consistencyRatio"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_three_category_result_exposes_complete_reciprocal_matrix_and_local_consistency() -> None:
+    data = _multiple_profile_input(alternative_profile_values={"supplier-a": (1, 1 / 2)})
+    result = _run_multiple_profiles(data)
+    local = result["resultsByAlternative"]["supplier-a"]["localPrioritiesByCriterion"]["quality"]
+    matrix = np.asarray(local["pairwiseMatrix"])
+
+    np.testing.assert_allclose(matrix, [[1, 1, 1 / 2], [1, 1, 1 / 2], [2, 2, 1]])
+    np.testing.assert_allclose(matrix * matrix.T, np.ones((3, 3)))
+    assert np.diag(matrix) == pytest.approx([1, 1, 1])
+    assert local["alternative"] == pytest.approx(0.25)
+    assert local["profilesById"] == pytest.approx(
+        {"boundary-low-medium": 0.25, "boundary-medium-high": 0.5}
+    )
+    assert local["consistency"]["consistencyRatio"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_four_categories_accept_three_profiles_and_order_profiles_by_category_ids() -> None:
+    categories = [
+        {"id": "c0", "name": "Very Low"},
+        {"id": "c1", "name": "Low"},
+        {"id": "c2", "name": "Medium"},
+        {"id": "c3", "name": "High"},
+    ]
+    profiles = [
+        {"profileId": "p2", "lowerCategoryId": "c2", "upperCategoryId": "c3"},
+        {"profileId": "p0", "lowerCategoryId": "c0", "upperCategoryId": "c1"},
+        {"profileId": "p1", "lowerCategoryId": "c1", "upperCategoryId": "c2"},
+    ]
+    data = _multiple_profile_input(
+        categories=categories,
+        profiles=profiles,
+        alternative_profile_values={"supplier-a": (1 / 8, 1 / 2, 1 / 4)},
+        profile_comparisons=[
+            {"criterionId": "quality", "firstProfileId": "p0", "secondProfileId": "p1", "firstToSecond": 1 / 2},
+            {"criterionId": "quality", "firstProfileId": "p1", "secondProfileId": "p2", "firstToSecond": 1 / 2},
+            {"criterionId": "quality", "firstProfileId": "p0", "secondProfileId": "p2", "firstToSecond": 1 / 4},
+        ],
+    )
+
+    result = _run_multiple_profiles(data)
+
+    assert [item["profileId"] for item in result["limitingProfiles"]] == ["p0", "p1", "p2"]
+    assert result["resultsByAlternative"]["supplier-a"]["categoryId"] == "c0"
+
+
+@pytest.mark.parametrize(
+    ("values", "expected_category"),
+    [
+        ((1 / 2, 1 / 4), "low"),
+        ((1, 1 / 2), "medium"),  # Exact tie at lower boundary goes upward.
+        ((2, 1), "high"),  # Exact tie at upper boundary goes upward.
+        ((1, 1), "medium"),
+    ],
+)
+def test_assignment_uses_each_ordered_boundary_and_equalities_go_up(
+    values: tuple[float, ...], expected_category: str
+) -> None:
+    data = _multiple_profile_input(alternative_profile_values={"supplier-a": values})
+    assert _multiple_profile_assignment(data)["categoryId"] == expected_category
+
+
+def test_strictly_middle_alternative_is_assigned_to_middle_category() -> None:
+    data = _multiple_profile_input(
+        alternative_profile_values={"supplier-a": (1, 1)},
+        profile_ratio=1 / 2,
+    )
+    assignment = _multiple_profile_assignment(data)
+    profiles = assignment["profileGlobalPrioritiesById"]
+
+    assert profiles["boundary-low-medium"] < assignment["globalPriority"]
+    assert assignment["globalPriority"] < profiles["boundary-medium-high"]
+    assert assignment["categoryId"] == "medium"
+
+
+def test_profile_profile_judgments_are_reused_but_local_vectors_are_recalculated_per_alternative() -> None:
+    alternatives = [
+        {"id": "a", "name": "A"},
+        {"id": "b", "name": "B"},
+    ]
+    data = _multiple_profile_input(
+        alternatives=alternatives,
+        alternative_profile_values={"a": (1, 1 / 2), "b": (2, 1)},
+    )
+    result = _run_multiple_profiles(data)
+    a_local = result["resultsByAlternative"]["a"]["localPrioritiesByCriterion"]["quality"]
+    b_local = result["resultsByAlternative"]["b"]["localPrioritiesByCriterion"]["quality"]
+
+    assert a_local["pairwiseMatrix"][1][2] == b_local["pairwiseMatrix"][1][2] == 1 / 2
+    assert a_local["profilesById"] != b_local["profilesById"]
+    assert a_local["profilesById"] == pytest.approx(
+        {"boundary-low-medium": 0.25, "boundary-medium-high": 0.5}
+    )
+    assert b_local["profilesById"] == pytest.approx(
+        {"boundary-low-medium": 0.2, "boundary-medium-high": 0.4}
+    )
+
+
+@pytest.mark.parametrize(
+    ("profile_ratio", "expected_reason"),
+    [(2, "inverted"), (1, "coincident")],
+)
+def test_inverted_or_coincident_profiles_raise_traceable_error(
+    profile_ratio: float, expected_reason: str
+) -> None:
+    data = _multiple_profile_input(
+        alternative_profile_values={"supplier-a": (1, profile_ratio)},
+        profile_ratio=profile_ratio,
+    )
+    with pytest.raises(AHPSortIProfileOrderError) as error:
+        _run_multiple_profiles(data)
+
+    assert error.value.code == "ahpsort_i_profile_order_invalid"
+    assert error.value.alternative_id == "supplier-a"
+    assert error.value.profile_ids == ["boundary-low-medium", "boundary-medium-high"]
+    assert error.value.as_dict()["alternativeId"] == "supplier-a"
+    assert error.value.as_dict()["profilePrioritiesById"] == {
+        "boundary-low-medium": error.value.lower_priority,
+        "boundary-medium-high": error.value.upper_priority,
+    }
+    if expected_reason == "inverted":
+        assert error.value.lower_priority > error.value.upper_priority
+    else:
+        assert error.value.lower_priority == pytest.approx(error.value.upper_priority, abs=1e-12)
+
+
+def test_profile_order_tolerance_rejects_a_positive_but_numerically_indistinguishable_gap() -> None:
+    profiles = [
+        {"profileId": "lower", "lowerCategoryId": "low", "upperCategoryId": "medium"},
+        {"profileId": "upper", "lowerCategoryId": "medium", "upperCategoryId": "high"},
+    ]
+    with pytest.raises(AHPSortIProfileOrderError) as error:
+        _validate_profile_order(
+            alternative_id="supplier-a",
+            profiles=profiles,
+            profile_priorities={"lower": 0.4, "upper": 0.4 + 5e-13},
+        )
+    assert error.value.profile_ids == ["lower", "upper"]
+
+
+def test_classification_tie_tolerance_prevents_float_noise_from_changing_equality_side() -> None:
+    categories = [
+        {"id": "low", "name": "Low"},
+        {"id": "medium", "name": "Medium"},
+        {"id": "high", "name": "High"},
+    ]
+    profiles = [
+        {"profileId": "p1", "lowerCategoryId": "low", "upperCategoryId": "medium"},
+        {"profileId": "p2", "lowerCategoryId": "medium", "upperCategoryId": "high"},
+    ]
+    priorities = {"p1": 0.25, "p2": 0.5}
+
+    within_tie_tolerance = _assign_category_from_ordered_profiles(
+        alternative_priority=0.25 - 5e-13,
+        profile_priorities=priorities,
+        profiles=profiles,
+        categories=categories,
+    )
+    distinctly_below_boundary = _assign_category_from_ordered_profiles(
+        alternative_priority=0.25 - 2e-12,
+        profile_priorities=priorities,
+        profiles=profiles,
+        categories=categories,
+    )
+
+    assert within_tie_tolerance["id"] == "medium"
+    assert distinctly_below_boundary["id"] == "low"
+
+
+def test_high_consistency_ratio_is_reported_without_blocking_assignment() -> None:
+    data = _multiple_profile_input(alternative_profile_values={"supplier-a": (9, 1 / 9)})
+    result = _run_multiple_profiles(data)
+    assignment = result["resultsByAlternative"]["supplier-a"]
+    consistency = assignment["localPrioritiesByCriterion"]["quality"]["consistency"]
+
+    assert consistency["consistencyRatio"] > 0.10
+    assert consistency["lambdaMax"] > 3
+    assert assignment["categoryId"] in {"low", "medium", "high"}
+
+
+def test_records_and_alternatives_are_order_independent_and_profile_reciprocity_is_generated() -> None:
+    data = _multiple_profile_input(
+        alternatives=[{"id": "a", "name": "A"}, {"id": "b", "name": "B"}],
+        alternative_profile_values={"a": (1, 1 / 2), "b": (2, 1)},
+    )
+    reversed_data = deepcopy(data)
+    reversed_data["limiting_profiles"].reverse()
+    reversed_data["comparisons"].reverse()
+    reversed_data["profile_comparisons"] = [
+        {
+            "criterionId": "quality",
+            "firstProfileId": "boundary-medium-high",
+            "secondProfileId": "boundary-low-medium",
+            "firstToSecond": 2,
+        }
+    ]
+    reversed_data["alternatives"].reverse()
+
+    first = _run_multiple_profiles(data)["resultsByAlternative"]
+    second = _run_multiple_profiles(reversed_data)["resultsByAlternative"]
+
+    assert first == second
+    matrix = first["a"]["localPrioritiesByCriterion"]["quality"]["pairwiseMatrix"]
+    assert matrix[1][2] == 1 / 2
+    assert matrix[2][1] == 2
+    assert matrix[1][2] * matrix[2][1] == pytest.approx(1.0)
+
+
+def test_multiple_profile_one_boundary_matches_phase_1a_priorities_and_assignments() -> None:
+    binary_data = _ishizaka_2012_case()
+    binary_result = _run(binary_data)
+    generalized_data = {
+        "criteria": binary_data["criteria"],
+        "categories": binary_data["categories"],
+        "alternatives": binary_data["alternatives"],
+        "limiting_profiles": [
+            {
+                "profileId": binary_data["limiting_profile"]["id"],
+                "lowerCategoryId": binary_data["categories"][0]["id"],
+                "upperCategoryId": binary_data["categories"][1]["id"],
+            }
+        ],
+        "criterion_weights_by_id": binary_data["criterion_weights_by_id"],
+        "comparisons": binary_data["comparisons"],
+        "profile_comparisons": [],
+    }
+    generalized_result = _run_multiple_profiles(generalized_data)
+
+    assert generalized_result["criterionWeightsById"] == binary_result["criterionWeightsById"]
+    assert generalized_result["categories"] == binary_result["categories"]
+    assert generalized_result["resultsByAlternative"].keys() == binary_result[
+        "resultsByAlternative"
+    ].keys()
+    for alternative_id, binary in binary_result["resultsByAlternative"].items():
+        generalized = generalized_result["resultsByAlternative"][alternative_id]
+        assert generalized["categoryId"] == binary["categoryId"]
+        assert generalized["weightsByCriterion"] == binary["weightsByCriterion"]
+        assert generalized["globalPriority"] == binary["globalPriority"]
+        assert generalized["profileGlobalPrioritiesById"]["pqq-minimum"] == binary[
+            "profileGlobalPriority"
+        ]
+        assert sum(generalized["profileGlobalPrioritiesById"].values()) + generalized[
+            "globalPriority"
+        ] == pytest.approx(1.0)
+        assert generalized["weightedContributionsByCriterion"] == {
+            criterion_id: {
+                "alternative": contributions["alternative"],
+                "profilesById": {"pqq-minimum": contributions["profile"]},
+            }
+            for criterion_id, contributions in binary[
+                "weightedContributionsByCriterion"
+            ].items()
+        }
+        for criterion_id, binary_local in binary["localPrioritiesByCriterion"].items():
+            generalized_local = generalized["localPrioritiesByCriterion"][criterion_id]
+            assert generalized_local["pairwiseMatrix"] == binary_local["pairwiseMatrix"]
+            assert generalized_local["alternativeToProfileJudgments"]["pqq-minimum"] == binary_local[
+                "alternativeToProfileJudgment"
+            ]
+            assert generalized_local["alternative"] == binary_local["alternative"]
+            assert generalized_local["profilesById"]["pqq-minimum"] == binary_local["profile"]
+            assert generalized_local["consistency"]["consistencyRatio"] is None
+
+
+def test_multiple_criteria_weights_are_aggregated_by_id_and_every_matrix_is_retained() -> None:
+    criteria = [{"id": "quality", "name": "Quality"}, {"id": "cost", "name": "Cost"}]
+    data = _multiple_profile_input(
+        criteria=criteria,
+        weights={"quality": 0.75, "cost": 0.25},
+        alternative_profile_values={"supplier-a": (1, 1 / 2)},
+        profile_comparisons=[
+            {"criterionId": "quality", "firstProfileId": "boundary-low-medium", "secondProfileId": "boundary-medium-high", "firstToSecond": 1 / 2},
+            {"criterionId": "cost", "firstProfileId": "boundary-low-medium", "secondProfileId": "boundary-medium-high", "firstToSecond": 1 / 2},
+        ],
+    )
+    # The helper's comparison generation uses the same profile judgments for
+    # each criterion and has one alternative, so both maps are keyed by ID.
+    assignment = _multiple_profile_assignment(data)
+
+    assert assignment["weightsByCriterion"] == {"quality": 0.75, "cost": 0.25}
+    assert set(assignment["localPrioritiesByCriterion"]) == {"quality", "cost"}
+    assert set(assignment["weightedContributionsByCriterion"]) == {"quality", "cost"}
+    assert assignment["globalPriority"] == pytest.approx(0.25)
+    assert assignment["profileGlobalPrioritiesById"] == pytest.approx(
+        {"boundary-low-medium": 0.25, "boundary-medium-high": 0.5}
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda data: data["comparisons"].pop(), "comparisons are incomplete"),
+        (lambda data: data["comparisons"].append(data["comparisons"][0].copy()), "duplicates"),
+        (lambda data: data["comparisons"][0].update(profileId="unknown"), "unknown"),
+        (lambda data: data["comparisons"][0].update(alternativeToProfile=1.5), "Saaty"),
+        (lambda data: data["profile_comparisons"].clear(), "profile_comparisons are incomplete"),
+        (lambda data: data["profile_comparisons"][0].update(firstProfileId="unknown"), "unknown"),
+        (lambda data: data["profile_comparisons"][0].update(firstToSecond=1.5), "Saaty"),
+        (lambda data: data["limiting_profiles"].pop(), "incomplete"),
+        (lambda data: data["limiting_profiles"][0].update(upperCategoryId="high"), "consecutive"),
+        (lambda data: data.update(criterion_weights_by_id={"quality": 0.9}), "normalized"),
+    ],
+)
+def test_rejects_invalid_ids_missing_comparisons_and_invalid_configuration(mutate, message: str) -> None:
+    data = _multiple_profile_input()
+    mutate(data)
+    with pytest.raises(ValueError, match=message):
+        _run_multiple_profiles(data)
+
+
+def test_rejects_duplicate_unordered_profile_judgment_even_if_orientation_is_reversed() -> None:
+    data = _multiple_profile_input()
+    data["profile_comparisons"].append(
+        {
+            "criterionId": "quality",
+            "firstProfileId": "boundary-medium-high",
+            "secondProfileId": "boundary-low-medium",
+            "firstToSecond": 2,
+        }
+    )
+    with pytest.raises(ValueError, match="duplicates an unordered"):
+        _run_multiple_profiles(data)
+
+
+def test_rejects_duplicate_alternative_profile_ids_and_category_boundary_ids() -> None:
+    duplicate_alternative = _multiple_profile_input(
+        alternatives=[{"id": "a", "name": "A"}, {"id": "a", "name": "Duplicate"}],
+        alternative_profile_values={"a": (1, 1 / 2)},
+    )
+    with pytest.raises(ValueError, match="duplicate id"):
+        _run_multiple_profiles(duplicate_alternative)
+
+    duplicate_profile_id = _multiple_profile_input()
+    duplicate_profile_id["limiting_profiles"][1]["profileId"] = "boundary-low-medium"
+    with pytest.raises(ValueError, match="duplicate profileId"):
+        _run_multiple_profiles(duplicate_profile_id)
+
+    duplicate_boundary = _multiple_profile_input()
+    duplicate_boundary["limiting_profiles"][1] = {
+        "profileId": "another-profile",
+        "lowerCategoryId": "low",
+        "upperCategoryId": "medium",
+    }
+    with pytest.raises(ValueError, match="duplicates category boundary"):
+        _run_multiple_profiles(duplicate_boundary)
+
+
+def test_weighted_profile_priorities_and_alternative_priority_are_not_rounded() -> None:
+    data = _multiple_profile_input(alternative_profile_values={"supplier-a": (1, 1 / 2)})
+    assignment = _multiple_profile_assignment(data)
+    local = assignment["localPrioritiesByCriterion"]["quality"]
+
+    assert assignment["globalPriority"] == local["alternative"]
+    assert assignment["profileGlobalPrioritiesById"] == local["profilesById"]
+    assert all(isinstance(value, float) for value in assignment["profileGlobalPrioritiesById"].values())

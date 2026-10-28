@@ -1,6 +1,6 @@
-# AHPSort I, supplier pre-qualification reference case
+# AHPSort I, supplier pre-qualification reference case and mathematics
 
-This implementation reproduces the binary, single-limiting-profile supplier
+The Phase 1A implementation reproduces the binary, single-limiting-profile supplier
 example in Ishizaka, Pearman and Nemery (2012), *AHPSort: an AHP-based method
 for sorting problems*, International Journal of Production Research,
 https://doi.org/10.1080/00207543.2012.657966.
@@ -100,5 +100,71 @@ when its global priority is greater than or equal to the profile's; otherwise
 it is assigned to the lower category, following the limiting-profile rule in
 the article.
 
-The implementation does not add AHPSort II, central profiles, multiple
-limiting profiles, or expert aggregation.
+Phase 1A remains the binary, single-profile implementation. Phase 1B.1 adds
+multiple consecutive limiting profiles to the pure AHPSort I core. Neither
+phase adds AHPSort II, central profiles, fuzzy judgments, or expert aggregation.
+
+## Phase 1B.1: multiple consecutive limiting profiles
+
+For categories supplied in DSS preference order (least to most preferred),
+the core requires one limiting profile for each adjacent category pair. Each
+profile is identified by `profileId`, `lowerCategoryId`, and
+`upperCategoryId`. The implementation validates that the profiles cover each
+adjacent boundary exactly once, then orders them by the category IDs. Request
+array order is not used to infer boundary meaning.
+
+For each alternative `k` and criterion `j`, the local matrix has dimension
+`n × n`, where `n` is the number of categories and therefore one more than the
+number of profiles. Its entities are the alternative followed by all profiles
+in boundary order. The diagonal is 1. Alternative/profile judgments are
+specific to the alternative. Profile/profile judgments are stored once per
+criterion and unordered profile pair, with the record's `firstToSecond` ratio
+preserving its stated orientation. The reciprocal entries are generated
+automatically. The shared profile judgments are placed into each alternative's
+matrix, and that complete matrix is solved anew for each alternative and
+criterion; profile priorities are not treated as fixed global thresholds.
+This is the classical full pairwise-comparison construction used by AHPSort I;
+the later FAHPSort paper's section 2.2 is used only as an explicit description
+of that classical construction, without adopting any fuzzy extension. Category
+assignment follows the AHPSort limiting-profile rule while translating its
+oppositely ordered categories into the DSS's least-to-most preference order.
+
+For matrices with at least three entities, AHPSort I calls the existing AHP
+principal-eigenvector and consistency implementation. Its normalized positive
+principal right eigenvector supplies the alternative and profile local
+priorities. The returned local diagnostics retain `lambdaMax`, CI, the existing
+Saaty RI, and CR. A high CR is reported but does not block classification. The
+existing AHP RI table currently supports local matrices up to dimension 15;
+larger matrices are rejected with a clear validation error rather than using an
+invented RI value. With a single profile, the generalized path uses the exact
+Phase 1A 2×2 formula, and CR remains not applicable as before.
+
+Each local priority is aggregated with the normalized criterion weight by ID:
+
+`P_k = Σ_j w_j p_{kj0}` and `T_{ki} = Σ_j w_j p_{kji}`.
+
+For every alternative, the conceptually ordered profile priorities must be
+strictly increasing from the lower to the higher boundary. The core does not
+sort them by calculated priority. If an adjacent pair is inverted or differs
+by no more than the explicit absolute `1e-12` profile-order tolerance, the
+entire call raises `AHPSortIProfileOrderError`. The error carries a stable code,
+the alternative ID, both affected profile IDs, and their unrounded global
+priorities. This is an explicit Crete Valley DSS execution-integrity policy,
+not a rule attributed to the AHPSort authors and independent of CR.
+
+Classification uses the unrounded binary64 global priorities and the ordered
+intervals. It does not apply display rounding. A separate explicit absolute
+`1e-12` classification tie tolerance absorbs eigenvector/aggregation noise:
+values within that distance of a boundary are treated as equality and assigned
+to the more preferred adjacent category. Values distinctly below a boundary
+remain below it. Tests cover exact equality and values on either side of this
+tolerance.
+
+The generalized internal entry point is
+`run_ahp_sort_i_multiple_profiles`. Its inputs are `categories`,
+`limiting_profiles`, `comparisons` (alternative/profile),
+`profile_comparisons`, and `criterion_weights_by_id`, all linked by IDs. The
+original `run_ahp_sort_i` binary entry point and its Phase 1A return structure
+remain unchanged. The generalized result retains each full local matrix,
+unrounded local/global priorities, per-criterion weighted contributions, and
+per-matrix consistency diagnostics for traceability.
