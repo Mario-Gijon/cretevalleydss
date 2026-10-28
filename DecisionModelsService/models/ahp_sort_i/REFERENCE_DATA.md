@@ -168,3 +168,56 @@ original `run_ahp_sort_i` binary entry point and its Phase 1A return structure
 remain unchanged. The generalized result retains each full local matrix,
 unrounded local/global priorities, per-criterion weighted contributions, and
 per-matrix consistency diagnostics for traceability.
+
+## Phase 1B.2: central profiles
+
+AHPSort I also describes central profiles: one representative profile for
+each category, rather than one limiting profile between each adjacent pair.
+For each alternative `k` and criterion `j`, a full reciprocal AHP matrix
+contains the alternative and all category centers. Alternative/center
+judgments are specific to that alternative; center/center judgments are
+specified once per criterion and reused. The complete matrix is solved anew
+for every alternative and criterion, so each center receives a local
+priority in that context. Local alternative and center priorities are
+aggregated with criterion weights by criterion ID, following the same
+weighted-priority calculation used by AHPSort I. The existing AHP solver
+provides the principal right eigenvector and retains `lambdaMax`, CI, RI and
+CR diagnostics. A high CR is reported and does not itself block assignment.
+
+The paper presents the classes from most to least preferred. Here, categories
+and central profiles are ordered from least to most preferred, and
+the input must contain exactly one uniquely identified center for each
+category. Calculated global center priorities must be strictly increasing in
+that configured order for every alternative. The core does not reorder
+centers to fit the results: an inversion or a difference no greater than the
+explicit absolute `1e-12` order tolerance raises
+`AHPSortICentralProfileOrderError`, including the alternative ID, both center
+IDs and their unrounded global priorities. This is a Crete Valley DSS
+integrity policy, not a rule attributed to the paper.
+
+Assignment selects the center with the smallest absolute global-priority
+distance, `abs(P_k - M_i)`. The original article's prose and Figure 3 describe
+assignment to the nearest central profile, but Equation (6) as printed
+(preprint page 7; PDF page 7) gives the interval `cp2 ≤ pk < cp1` together
+with `(cp1 - pk) < (cp2 - pk)`. In that interval the left difference is
+positive and the right difference is non-positive, so the printed strict
+inequality cannot hold. The implementation therefore follows the stated
+nearest-center rule using absolute distances; this is an explicit
+interpretation of the paper, not a claim that the printed equation says
+`abs`.
+
+When two or more centers are tied for nearest distance within the explicit
+absolute `1e-12` distance tolerance, the caller must provide `tie_policy`:
+`optimistic` selects the more preferred tied category and `pessimistic`
+selects the less preferred one. The policy is required even when a particular
+input does not produce a tie. The result records the chosen center, all
+center distances, whether a tie was detected, the tied center IDs and the
+policy used. Distances and priorities are kept at full calculated precision;
+the tolerance is only for grouping numerical ties, not display rounding.
+
+This core path is separate from the Phase 1B.1 limiting-profile path and does
+not alter either prior entry point. As with the existing Saaty RI table, the
+local matrix may contain at most 15 entities (the alternative plus at most 14
+central profiles/categories); larger inputs are rejected rather than being
+assigned an unsupported random index. Central profiles are not limiting
+profiles, and this phase adds neither AHPSort II nor fuzzy judgments.

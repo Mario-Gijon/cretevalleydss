@@ -26,6 +26,7 @@ SAATY_VALUES = frozenset(
 WEIGHT_SUM_TOLERANCE = 1e-12
 PROFILE_ORDER_TOLERANCE = 1e-12
 CLASSIFICATION_TIE_TOLERANCE = 1e-12
+CENTRAL_PROFILE_DISTANCE_TOLERANCE = 1e-12
 
 
 class AHPSortIProfileOrderError(ValueError):
@@ -69,6 +70,12 @@ class AHPSortIProfileOrderError(ValueError):
                 self.upper_profile_id: self.upper_priority,
             },
         }
+
+
+class AHPSortICentralProfileOrderError(AHPSortIProfileOrderError):
+    """Central profiles do not follow the configured category preference order."""
+
+    code = "ahpsort_i_central_profile_order_invalid"
 
 
 def _non_empty_string(value: Any) -> str | None:
@@ -376,6 +383,50 @@ def _normalize_limiting_profiles(
     return normalized
 
 
+def _normalize_central_profiles(
+    profiles: Any, categories: list[dict[str, str]]
+) -> list[dict[str, str]]:
+    if len(categories) < 2:
+        raise ValueError("AHPSort I central profiles require at least two ordered categories")
+    if not isinstance(profiles, list):
+        raise ValueError("central_profiles must be a list")
+
+    category_index = {category["id"]: index for index, category in enumerate(categories)}
+    normalized: list[dict[str, str]] = []
+    seen_profile_ids: set[str] = set()
+    seen_category_ids: set[str] = set()
+    for index, profile in enumerate(profiles):
+        field = f"central_profiles[{index}]"
+        if not isinstance(profile, dict):
+            raise ValueError(f"{field} must be an object")
+        profile_id = _non_empty_string(profile.get("profileId"))
+        category_id = _non_empty_string(profile.get("categoryId"))
+        if profile_id is None or category_id is None:
+            raise ValueError(f"{field} must have non-empty profileId and categoryId")
+        if profile_id in seen_profile_ids:
+            raise ValueError(f"central_profiles contains duplicate profileId '{profile_id}'")
+        if category_id not in category_index:
+            raise ValueError(f"{field} references an unknown categoryId")
+        if category_id in seen_category_ids:
+            raise ValueError(f"central_profiles contains duplicate categoryId '{category_id}'")
+        seen_profile_ids.add(profile_id)
+        seen_category_ids.add(category_id)
+        normalized.append({"profileId": profile_id, "categoryId": category_id})
+
+    expected_category_ids = set(category_index)
+    missing_categories = expected_category_ids - seen_category_ids
+    if missing_categories:
+        raise ValueError(
+            "central_profiles must contain exactly one profile per category "
+            f"(missing category ids={sorted(missing_categories)})"
+        )
+    if len(normalized) != len(categories):
+        raise ValueError("central_profiles must contain exactly one profile per category")
+
+    normalized.sort(key=lambda item: category_index[item["categoryId"]])
+    return normalized
+
+
 def _normalize_multiple_profile_comparisons(
     comparisons: Any,
     *,
@@ -600,8 +651,40 @@ def _assign_category_from_ordered_profiles(
     return categories[-1]
 
 
+def _select_nearest_central_profile(
+    *,
+    alternative_priority: float,
+    profile_priorities: dict[str, float],
+    profiles: list[dict[str, str]],
+    tie_policy: str,
+) -> dict[str, Any]:
+    distances = {
+        profile["profileId"]: abs(alternative_priority - profile_priorities[profile["profileId"]])
+        for profile in profiles
+    }
+    minimum_distance = min(distances.values())
+    tied_profiles = [
+        profile
+        for profile in profiles
+        if distances[profile["profileId"]] - minimum_distance
+        <= CENTRAL_PROFILE_DISTANCE_TOLERANCE
+    ]
+    selected = tied_profiles[-1] if tie_policy == "optimistic" else tied_profiles[0]
+    return {
+        "selectedProfile": selected,
+        "selectedDistance": distances[selected["profileId"]],
+        "distancesByProfileId": distances,
+        "tieDetected": len(tied_profiles) > 1,
+        "tiedProfileIds": [profile["profileId"] for profile in tied_profiles],
+    }
+
+
 def _validate_profile_order(
-    *, alternative_id: str, profiles: list[dict[str, str]], profile_priorities: dict[str, float]
+    *,
+    alternative_id: str,
+    profiles: list[dict[str, str]],
+    profile_priorities: dict[str, float],
+    error_type: type[AHPSortIProfileOrderError] = AHPSortIProfileOrderError,
 ) -> None:
     for boundary_index in range(len(profiles) - 1):
         lower_profile = profiles[boundary_index]
@@ -609,7 +692,7 @@ def _validate_profile_order(
         lower_priority = profile_priorities[lower_profile["profileId"]]
         upper_priority = profile_priorities[upper_profile["profileId"]]
         if upper_priority - lower_priority <= PROFILE_ORDER_TOLERANCE:
-            raise AHPSortIProfileOrderError(
+            raise error_type(
                 alternative_id=alternative_id,
                 lower_profile_id=lower_profile["profileId"],
                 upper_profile_id=upper_profile["profileId"],
@@ -751,5 +834,151 @@ def run_ahp_sort_i_multiple_profiles(
         "categories": normalized_categories,
         "limitingProfiles": normalized_profiles,
         "criterionWeightsById": weights,
+        "resultsByAlternative": results_by_alternative,
+    }
+
+
+def run_ahp_sort_i_central_profiles(
+    *,
+    criteria: Any,
+    categories: Any,
+    alternatives: Any,
+    central_profiles: Any,
+    criterion_weights_by_id: Any,
+    comparisons: Any,
+    profile_comparisons: Any,
+    tie_policy: Any,
+) -> dict[str, Any]:
+    """Classify alternatives by their nearest AHPSort I central profile.
+
+    The required ``tie_policy`` is either ``"optimistic"`` (choose the more
+    preferred category) or ``"pessimistic"`` (choose the less preferred
+    category). Pairwise judgments, local matrices, criterion weights, and AHP
+    diagnostics use the same internal conventions as the limiting-profile
+    core, while central profiles have their own category-based contract.
+    """
+
+    if not isinstance(tie_policy, str) or tie_policy not in {"optimistic", "pessimistic"}:
+        raise ValueError("tie_policy must be exactly 'optimistic' or 'pessimistic'")
+
+    normalized_criteria = _normalize_entities(criteria, field="criteria")
+    normalized_categories = _normalize_entities(categories, field="categories")
+    normalized_alternatives = _normalize_entities(alternatives, field="alternatives")
+    normalized_profiles = _normalize_central_profiles(central_profiles, normalized_categories)
+    if len(normalized_profiles) + 1 > MAX_SUPPORTED_LOCAL_MATRIX_SIZE:
+        raise ValueError(
+            "AHPSort I central-profile matrices are supported up to "
+            f"{MAX_SUPPORTED_LOCAL_MATRIX_SIZE} elements by the existing Saaty RI table "
+            f"({MAX_SUPPORTED_LOCAL_MATRIX_SIZE - 1} central profiles/categories)"
+        )
+
+    weights = _normalize_weights(criterion_weights_by_id, normalized_criteria)
+    alternative_judgments = _normalize_multiple_profile_comparisons(
+        comparisons,
+        criteria=normalized_criteria,
+        alternatives=normalized_alternatives,
+        profile_ids={profile["profileId"] for profile in normalized_profiles},
+    )
+    profile_judgments = _normalize_profile_comparisons(
+        profile_comparisons,
+        criteria=normalized_criteria,
+        profiles=normalized_profiles,
+    )
+
+    results_by_alternative: dict[str, dict[str, Any]] = {}
+    for alternative in normalized_alternatives:
+        alternative_id = alternative["id"]
+        local_priorities_by_criterion: dict[str, dict[str, Any]] = {}
+        weighted_contributions_by_criterion: dict[str, dict[str, Any]] = {}
+        alternative_contributions: list[float] = []
+        profile_contributions = {profile["profileId"]: [] for profile in normalized_profiles}
+
+        for criterion in normalized_criteria:
+            criterion_id = criterion["id"]
+            matrix = _build_multiple_profile_matrix(
+                alternative_id=alternative_id,
+                criterion_id=criterion_id,
+                profiles=normalized_profiles,
+                alternative_judgments=alternative_judgments,
+                profile_judgments=profile_judgments,
+            )
+            priorities, diagnostics = _solve_local_pairwise_matrix(matrix)
+            local_profiles = {
+                profile["profileId"]: priorities[index + 1]
+                for index, profile in enumerate(normalized_profiles)
+            }
+            weight = weights[criterion_id]
+            local_priorities_by_criterion[criterion_id] = {
+                "pairwiseMatrix": matrix,
+                "entityOrder": [
+                    {"entityType": "alternative", "alternativeId": alternative_id},
+                    *[
+                        {"entityType": "centralProfile", "profileId": profile["profileId"]}
+                        for profile in normalized_profiles
+                    ],
+                ],
+                "alternativeToCentralProfileJudgments": {
+                    profile["profileId"]: alternative_judgments[
+                        (alternative_id, criterion_id, profile["profileId"])
+                    ]
+                    for profile in normalized_profiles
+                },
+                "alternative": priorities[0],
+                "centralProfilesById": local_profiles,
+                "consistency": diagnostics,
+            }
+            weighted_contributions_by_criterion[criterion_id] = {
+                "alternative": weight * priorities[0],
+                "centralProfilesById": {
+                    profile_id: weight * priority
+                    for profile_id, priority in local_profiles.items()
+                },
+            }
+            alternative_contributions.append(weight * priorities[0])
+            for profile_id, priority in local_profiles.items():
+                profile_contributions[profile_id].append(weight * priority)
+
+        alternative_priority = math.fsum(alternative_contributions)
+        profile_priorities = {
+            profile["profileId"]: math.fsum(profile_contributions[profile["profileId"]])
+            for profile in normalized_profiles
+        }
+        _validate_profile_order(
+            alternative_id=alternative_id,
+            profiles=normalized_profiles,
+            profile_priorities=profile_priorities,
+            error_type=AHPSortICentralProfileOrderError,
+        )
+
+        nearest = _select_nearest_central_profile(
+            alternative_priority=alternative_priority,
+            profile_priorities=profile_priorities,
+            profiles=normalized_profiles,
+            tie_policy=tie_policy,
+        )
+        selected_profile = nearest["selectedProfile"]
+        results_by_alternative[alternative_id] = {
+            "alternativeId": alternative_id,
+            "categoryId": selected_profile["categoryId"],
+            "globalPriority": alternative_priority,
+            "centralProfilePrioritiesById": profile_priorities,
+            "localPrioritiesByCriterion": local_priorities_by_criterion,
+            "weightsByCriterion": dict(weights),
+            "weightedContributionsByCriterion": weighted_contributions_by_criterion,
+            "selectedCenterProfileId": selected_profile["profileId"],
+            "distanceToSelectedCenter": nearest["selectedDistance"],
+            "centerDistancesByProfileId": nearest["distancesByProfileId"],
+            "tiePolicy": tie_policy,
+            "tieDetected": nearest["tieDetected"],
+            "tiedCenterProfileIds": nearest["tiedProfileIds"],
+            "assignmentRule": "nearest_central_profile_with_explicit_tie_policy",
+        }
+
+    return {
+        "criteria": normalized_criteria,
+        "categories": normalized_categories,
+        "centralProfiles": normalized_profiles,
+        "criterionWeightsById": weights,
+        "tiePolicy": tie_policy,
         "resultsByAlternative": results_by_alternative,
     }
