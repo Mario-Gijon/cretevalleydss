@@ -52,6 +52,16 @@ describe("evaluation structure registry", () => {
     });
   });
 
+  it("discovers AHPSort I as an alternative-evaluation structure with criterion remapping", () => {
+    expect(EVALUATION_STRUCTURE_REGISTRY.ahpSortAlternativeProfiles).toMatchObject({
+      key: "ahpSortAlternativeProfiles",
+      stage: "alternativeEvaluation",
+      get: expect.any(Function),
+      save: expect.any(Function),
+      remapCriterionIds: expect.any(Function),
+    });
+  });
+
   it("registers legacy and explicitly ready structures but omits scaffold structures", async () => {
     const root = createTemporaryStructuresRoot();
     writeEvaluationStructure({ root, folderName: "legacy" });

@@ -17,7 +17,34 @@ setupMongoDbTestHooks();
 const createIssue = async () => {
   const owner = await createConfirmedUser();
   const model = await createIssueModel({ name: "Snapshot V1", supportsConsensus: true, supportsConsensusSimulation: true, smallDescription: "V1", parameters: [{ key: "alpha", name: "Alpha", parameterStructureKey: "number", required: false }] });
-  return createIssueFixture({ ownerId: owner._id, createdBy: owner._id, modelId: model._id, currentStage: "alternativeEvaluation", isConsensus: true, supportsConsensus: true, consensusMaxPhases: 3, consensusThreshold: 0.8, modelParameters: { alpha: 1 } });
+  return createIssueFixture({
+    ownerId: owner._id,
+    createdBy: owner._id,
+    modelId: model._id,
+    currentStage: "alternativeEvaluation",
+    isConsensus: true,
+    supportsConsensus: true,
+    consensusMaxPhases: 3,
+    consensusThreshold: 0.8,
+    modelParameters: {
+      alpha: 1,
+      orderedCategories: [
+        { categoryId: "low", label: "Low", order: 0 },
+        { categoryId: "high", label: "High", order: 1 },
+      ],
+      ahpSortProfiles: {
+        mode: "limiting",
+        profiles: [
+          {
+            profileId: "low-high",
+            lowerCategoryId: "low",
+            upperCategoryId: "high",
+          },
+        ],
+      },
+      weights: { "criterion-id": 1 },
+    },
+  });
 };
 const write = (issue, snapshotType, consensusPhase = 0, session = null) => writeIssueStateSnapshot({ issue, snapshotType, consensusPhase, occurredAt: new Date(), correlationId: new mongoose.Types.ObjectId().toString(), session });
 
@@ -38,6 +65,54 @@ describe("IssueStateSnapshot", () => {
     await write(issue, "consensusPhaseStart", 1);
     await expect(write(issue, "consensusPhaseStart", 0)).rejects.toMatchObject({ code: 11000 });
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(3);
+  });
+
+  it("preserves AHPSort I profile parameters and evaluation payloads in Issue snapshots", async () => {
+    const issue = await createIssue();
+    const payload = {
+      alternativeProfileComparisons: [
+        {
+          alternativeId: "alternative-id",
+          criterionId: "criterion-id",
+          profileId: "low-high",
+          alternativeToProfile: 3,
+        },
+      ],
+      profileComparisons: [],
+    };
+    await IssueEvaluation.create({
+      issue: issue._id,
+      expert: new mongoose.Types.ObjectId(),
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      payload,
+      completed: false,
+    });
+
+    const snapshot = await buildIssueStateSnapshot({
+      issue,
+      snapshotType: "creation",
+    });
+
+    expect(snapshot.issue.effectiveModelParameters).toMatchObject({
+      orderedCategories: [
+        { categoryId: "low", label: "Low", order: 0 },
+        { categoryId: "high", label: "High", order: 1 },
+      ],
+      ahpSortProfiles: {
+        mode: "limiting",
+        profiles: [
+          {
+            profileId: "low-high",
+            lowerCategoryId: "low",
+            upperCategoryId: "high",
+          },
+        ],
+      },
+      weights: { "criterion-id": 1 },
+    });
+    expect(snapshot.evaluations).toHaveLength(1);
+    expect(snapshot.evaluations[0].payload).toEqual(payload);
   });
 
   it("requires the immutable creation anchor before a phase snapshot", async () => {
@@ -83,7 +158,6 @@ describe("IssueStateSnapshot", () => {
 
   it("orders every queried source canonically regardless of insertion order", async () => {
     const issue = await createIssue();
-    const owner = await createConfirmedUser({ email: "ordering-owner@example.com" });
     const expertA = await createConfirmedUser({ email: "ordering-a@example.com" });
     const expertB = await createConfirmedUser({ email: "ordering-b@example.com" });
     const ids = () => [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()].sort((left, right) => String(left).localeCompare(String(right)));
