@@ -25,11 +25,15 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
       key: "base", type: "base", label: "Base", model: payload?.models?.base || null,
       configuration: payload?.configuration || null, sourcePhase: basePhase?.phase ?? null,
       phaseResults: basePhaseResults, standardizedOutput: basePhase?.standardizedOutput ?? null,
+      requestSnapshot: basePhase?.requestSnapshot ?? null,
       resultStructureKey: basePhase?.resultStructureKey,
       resultStructureVersion: basePhase?.resultStructureVersion,
       consensusMeasure: basePhase?.consensusMeasure ?? null,
       modelSpecificOutput: basePhase?.modelSpecificOutput ?? null, rawOutput: basePhase?.rawOutput ?? null,
-      modelParameters: payload?.models?.base?.effectiveParameters ?? payload?.models?.base?.configuredParameters ?? {},
+      modelParameters: basePhase?.requestSnapshot?.modelParameters
+        ?? payload?.models?.base?.effectiveParameters
+        ?? payload?.models?.base?.configuredParameters
+        ?? {},
       scenario: null,
     };
   }

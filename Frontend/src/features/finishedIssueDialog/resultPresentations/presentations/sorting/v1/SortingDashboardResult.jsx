@@ -7,6 +7,7 @@ import {
   topsisSortCategorySx,
   topsisSortResultGridSx,
 } from "./sortingResultGrid.styles.js";
+import AHPSortIAlternativeEvidence from "./AHPSortIAlternativeEvidence.jsx";
 
 const isValidCloseness = (value) => typeof value === "number"
   && Number.isFinite(value)
@@ -198,34 +199,58 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
   </Box>
 );
 
-const StandardSortingDashboardResult = ({ result, theme }) => (
-  <Box role="list" aria-label="Final sorting by category" sx={sortingResultGridSx}>
-    {result.categories.map((category) => (
-      <Box
-        key={category.id}
-        role="listitem"
-        aria-label={`${category.label}: ${category.alternatives.length} ${category.alternatives.length === 1 ? "alternative" : "alternatives"}`}
-        sx={{ minWidth: 0, p: { xs: 1.15, sm: 1.35 }, borderRadius: 2, border: "1px solid rgba(85, 199, 216, 0.18)", bgcolor: alpha(theme.palette.common.white, 0.025) }}
-      >
-        <CategoryHeader category={category} theme={theme} />
-        {category.alternatives.length ? (
-          <Stack component="ul" spacing={0.65} sx={{ listStyle: "none", p: 0, m: 0 }}>
-            {category.alternatives.map((alternative) => (
-              <Stack component="li" key={alternative.id} direction="row" spacing={0.8} alignItems="flex-start" sx={{ minWidth: 0 }}>
-                <Box aria-hidden="true" sx={{ width: 5, height: 5, flex: "0 0 5px", mt: "7px", borderRadius: "50%", bgcolor: "secondary.light" }} />
-                <Typography variant="body2" title={alternative.name} sx={{ minWidth: 0, overflowWrap: "anywhere", lineHeight: 1.45 }}>
-                  {alternative.name}
-                </Typography>
+const StandardSortingDashboardResult = ({ result, theme }) => {
+  const isAHPSortI = result.displayMode === "ahp-sort-i";
+  const evidenceUnavailable = isAHPSortI && result.ahpSortI?.status !== "available";
+  return (
+    <>
+      <Box role="list" aria-label="Final sorting by category" sx={sortingResultGridSx}>
+        {result.categories.map((category) => (
+          <Box
+            key={category.id}
+            role="listitem"
+            aria-label={`${category.label}: ${category.alternatives.length} ${category.alternatives.length === 1 ? "alternative" : "alternatives"}`}
+            sx={{ minWidth: 0, p: { xs: 1.15, sm: 1.35 }, borderRadius: 2, border: "1px solid rgba(85, 199, 216, 0.18)", bgcolor: alpha(theme.palette.common.white, 0.025) }}
+          >
+            <CategoryHeader category={category} theme={theme} />
+            {category.alternatives.length ? (
+              <Stack component="ul" spacing={0.65} sx={{ listStyle: "none", p: 0, m: 0 }}>
+                {category.alternatives.map((alternative) => {
+                  const ahpEvidence = isAHPSortI
+                    ? result.ahpSortI?.alternativesById?.[alternative.id]
+                    : null;
+                  return (
+                    <Stack component="li" key={alternative.id} direction="row" spacing={0.8} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                      <Box aria-hidden="true" sx={{ width: 5, height: 5, flex: "0 0 5px", mt: "7px", borderRadius: "50%", bgcolor: "secondary.light" }} />
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="body2" title={alternative.name} sx={{ minWidth: 0, overflowWrap: "anywhere", lineHeight: 1.45 }}>
+                          {alternative.name}
+                        </Typography>
+                        {ahpEvidence && <AHPSortIAlternativeEvidence evidence={ahpEvidence} showUnavailableMessage={!evidenceUnavailable} />}
+                      </Box>
+                    </Stack>
+                  );
+                })}
               </Stack>
-            ))}
-          </Stack>
-        ) : (
-          <Typography variant="body2" color="text.secondary">No alternatives assigned.</Typography>
-        )}
+            ) : (
+              <Typography variant="body2" color="text.secondary">No alternatives assigned.</Typography>
+            )}
+          </Box>
+        ))}
       </Box>
-    ))}
-  </Box>
-);
+      {evidenceUnavailable && result.ahpSortI?.unavailableReason && (
+        <Typography
+          variant="caption"
+          role={result.ahpSortI.status === "integrity_warning" ? "alert" : "note"}
+          data-testid={`ahp-sort-i-${result.ahpSortI.status}`}
+          sx={{ display: "block", mt: 0.75, color: result.ahpSortI.status === "integrity_warning" ? "warning.light" : "text.secondary", lineHeight: 1.45 }}
+        >
+          {result.ahpSortI.unavailableReason}
+        </Typography>
+      )}
+    </>
+  );
+};
 
 const SortingDashboardResult = ({ result }) => {
   const theme = useTheme();

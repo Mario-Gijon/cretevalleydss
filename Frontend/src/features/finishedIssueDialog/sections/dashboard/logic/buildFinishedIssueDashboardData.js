@@ -10,7 +10,11 @@ export const buildDashboardData = ({ payload, selectedExecution }) => {
   const resolution = resolveResultPresentation(execution);
   const modelName = execution.model?.name || canonicalPayload.models?.base?.name || "—";
   const normalized = resolution.presentation
-    ? resolution.presentation.normalizeDashboardResult({ execution, alternatives: canonicalPayload.alternatives })
+    ? resolution.presentation.normalizeDashboardResult({
+      execution,
+      alternatives: canonicalPayload.alternatives,
+      criteria: canonicalPayload.criteria,
+    })
     : { available: false, unavailableReason: resolution.unavailableReason };
 
   return {

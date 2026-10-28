@@ -6,6 +6,11 @@ import {
   buildTopsisSort2016Findings,
   isTopsisSort2016Execution,
 } from "../../../modelFindings/topsis_sort_2016.js";
+import {
+  buildAHPSortIEvidence,
+  buildAHPSortIFindings,
+  isAHPSortIExecution,
+} from "../../../modelFindings/ahp_sort_i.js";
 
 const ORDER_SEMANTICS = "lower-order-is-less-preferred";
 const asArray = (value) => Array.isArray(value) ? value : [];
@@ -13,7 +18,7 @@ const nonEmptyString = (value) => typeof value === "string" && value.trim() ? va
 
 const unavailable = (reason) => ({ available: false, unavailableReason: reason, categories: [], assignmentCount: 0 });
 
-const normalizeSortingDashboardResult = ({ execution, alternatives }) => {
+const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) => {
   const output = execution?.standardizedOutput;
   if (!output || typeof output !== "object") return unavailable("The stored sorting result is unavailable.");
   if (output.categoryOrderSemantics !== ORDER_SEMANTICS) {
@@ -65,6 +70,7 @@ const normalizeSortingDashboardResult = ({ execution, alternatives }) => {
 
   categories.sort((left, right) => right.order - left.order);
   const topsisSort = isTopsisSort2016Execution(execution);
+  const ahpSortI = isAHPSortIExecution(execution);
   if (topsisSort) {
     const closenessByAlternativeId = execution?.standardizedOutput?.diagnostics?.closeness_by_alternative_id;
     const categoryIntervals = buildTopsisSortCategoryIntervals({ categories, assignmentCount: assignedIds.size }, execution);
@@ -83,12 +89,23 @@ const normalizeSortingDashboardResult = ({ execution, alternatives }) => {
         });
     }
   }
-  return { available: true, unavailableReason: null, categories, assignmentCount: assignedIds.size, displayMode: topsisSort ? "topsis-sort" : "standard" };
+  const normalized = {
+    available: true,
+    unavailableReason: null,
+    categories,
+    assignmentCount: assignedIds.size,
+    displayMode: topsisSort ? "topsis-sort" : ahpSortI ? "ahp-sort-i" : "standard",
+  };
+  if (ahpSortI) {
+    normalized.ahpSortI = buildAHPSortIEvidence({ result: normalized, execution, criteria });
+  }
+  return normalized;
 };
 
 const buildSortingFindings = (result, execution) => {
   if (!result.available) return [];
   if (isTopsisSort2016Execution(execution)) return buildTopsisSort2016Findings(result, execution);
+  if (isAHPSortIExecution(execution)) return buildAHPSortIFindings(result);
 
   const categories = result.categories;
   const assignmentCount = result.assignmentCount;
@@ -120,7 +137,7 @@ const sortingV1ResultPresentation = Object.freeze({
   DashboardResultComponent: SortingDashboardResult,
   ResultHeaderIconComponent: CategoryRoundedIcon,
   FinishedIssueCardSummaryComponent: SortingFinishedIssueCardSummary,
-  normalizeDashboardResult: normalizeSortingDashboardResult,
+  normalizeDashboardResult: ({ execution, alternatives, criteria }) => normalizeSortingDashboardResult({ execution, alternatives, criteria }),
   buildDashboardFindings: buildSortingFindings,
 });
 
