@@ -256,7 +256,8 @@ ISHIZAKA_2012_PUBLISHED_LOCAL_PRIORITIES = {
     "G": [0.833, 0.75, 0.5, 0.833, 0.833],
     "H": [0.125, 0.9, 0.5, 0.9, 0.9],
     "I": [0.2, 0.125, 0.8, 0.167, 0.167],
-    "J": [0.1, 0.1, 0.5, 0.5, 0.5],
+    # Table 5 prints 0.125 for Flexibility; Appendix 1's marked 9 yields 0.100.
+    "J": [0.1, 0.125, 0.5, 0.5, 0.5],
     "K": [0.111, 0.1, 0.5, 0.167, 0.167],
     "L": [0.1, 0.1, 0.1, 0.1, 0.1],
 }
@@ -351,7 +352,7 @@ def _ishizaka_2012_case() -> dict:
     }
 
 
-def test_ishizaka_2012_supplier_case_uses_original_inputs_and_matches_local_table_values() -> None:
+def test_ishizaka_2012_supplier_case_matches_published_local_values_except_j_flexibility() -> None:
     result = _run(_ishizaka_2012_case())
     results = result["resultsByAlternative"]
 
@@ -362,11 +363,16 @@ def test_ishizaka_2012_supplier_case_uses_original_inputs_and_matches_local_tabl
     for supplier_name, expected_local_priorities in ISHIZAKA_2012_PUBLISHED_LOCAL_PRIORITIES.items():
         supplier_id = f"supplier-{supplier_name.lower()}"
         assignment = results[supplier_id]
-        actual_local_priorities = [
-            assignment["localPrioritiesByCriterion"][criterion["id"]]["alternative"]
-            for criterion in result["criteria"]
-        ]
-        assert actual_local_priorities == pytest.approx(expected_local_priorities, abs=0.0005)
+        for criterion, expected_priority in zip(
+            result["criteria"], expected_local_priorities, strict=True
+        ):
+            actual_priority = assignment["localPrioritiesByCriterion"][criterion["id"]][
+                "alternative"
+            ]
+            if supplier_name == "J" and criterion["name"] == "Flexibility":
+                # This one source conflict is asserted explicitly below.
+                continue
+            assert actual_priority == pytest.approx(expected_priority, abs=0.0005)
         expected_alternative_global = sum(
             result["criterionWeightsById"][criterion["id"]]
             * assignment["localPrioritiesByCriterion"][criterion["id"]]["alternative"]
@@ -387,6 +393,22 @@ def test_ishizaka_2012_supplier_case_uses_original_inputs_and_matches_local_tabl
     }
     assert {name for name, category in actual_categories.items() if category == "accepted"} == set("ABCDEFG")
     assert {name for name, category in actual_categories.items() if category == "rejected"} == set("HIJKL")
+
+
+def test_supplier_j_flexibility_preserves_appendix_judgment_and_documents_table_5_conflict() -> None:
+    result = _run(_ishizaka_2012_case())
+    flexibility = result["resultsByAlternative"]["supplier-j"]["localPrioritiesByCriterion"][
+        "flexibility"
+    ]
+    published_priority = ISHIZAKA_2012_PUBLISHED_LOCAL_PRIORITIES["J"][1]
+
+    assert ISHIZAKA_2012_SUPPLIER_JUDGMENTS["J"][1] == 1 / 9
+    assert flexibility["alternativeToProfileJudgment"] == 1 / 9
+    assert flexibility["alternative"] == pytest.approx((1 / 9) / (1 + 1 / 9))
+    assert flexibility["alternative"] == pytest.approx(0.100)
+    assert published_priority == 0.125
+    assert published_priority / (1 - published_priority) == pytest.approx(1 / 7)
+    assert abs(flexibility["alternative"] - published_priority) > 0.0005
 
 
 def test_table_five_global_column_has_documented_arithmetic_discrepancies() -> None:

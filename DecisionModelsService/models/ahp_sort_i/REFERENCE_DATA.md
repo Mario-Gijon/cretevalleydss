@@ -26,18 +26,44 @@ https://pure.port.ac.uk/ws/files/169321/AHPSort_Final.pdf
   ISHIZAKA_2012_SUPPLIER_JUDGMENTS in
   DecisionModelsService/tests/models/test_ahp_sort_i.py.
 - Table 5 (journal page 4776) prints each local priority and both global
-  priorities to three decimal places. The regression compares all printed
-  local priorities with absolute tolerance 0.0005, half a unit in the last
-  printed decimal place. It calculates the global values from the original
+  priorities to three decimal places. The regression compares the local values
+  that agree with the source to absolute tolerance 0.0005, half a unit in the
+  last printed decimal place. The Supplier J / Flexibility source conflict is
+  asserted independently. Global values are calculated from the original
   integer or reciprocal Saaty judgments and unrounded weights, never from
   rounded values printed in Tables 4 or 5.
 
+## Supplier J / Flexibility local-priority discrepancy
+
+The source gives two different values for this cell:
+
+- Appendix 1 (journal page 4783), under **Flexibility**, shades 9 on the
+  limiting-profile side of neutral 1 for Supplier J. This is an alternative to
+  profile judgment of 1/9.
+- Table 5 (journal page 4776), Supplier J's **Flexibility** local priority,
+  prints 0.125.
+
+Following the Appendix 1 input, the reciprocal 2 × 2 AHP comparison matrix is
+`[[1, 1/9], [9, 1]]`. Its normalized principal eigenvector gives the supplier
+local priority `(1/9) / (1 + 1/9) = 0.100` (and profile priority 0.900). The
+published 0.125 instead corresponds to a judgment of 1/7, since
+`0.125 / (1 - 0.125) = 1/7`. The Appendix selection is retained as algorithm
+input; the Table 5 expected value is recorded as printed so the test exposes,
+rather than hides, this discrepancy. The other 59 local-priority entries
+match Table 5 to its printed precision.
+
+The Appendix 1 selections for all twelve suppliers were visually checked across
+all five criterion tables (journal pages 4783–4784). Apart from the separate
+Table 5 local-priority conflict above, no other transcription difference was
+found.
+
 ## Table 5 global-total discrepancy
 
-The twelve local priority rows agree with the reciprocal 2 × 2 eigenvectors
-to the printed precision. The global totals in Table 5 do not, for eight of
-the twelve suppliers, equal the weighted sum of those local priorities using
-the Table 4 criterion weights. For example:
+Apart from Supplier J's Flexibility cell documented above, the local
+priorities agree with the reciprocal 2 × 2 eigenvectors to the printed
+precision. Separately, the global totals in Table 5 do not, for eight of the
+twelve suppliers, equal the weighted sum of those local priorities using the
+Table 4 criterion weights. For example:
 
 | Supplier | AHPSort I weighted alternative priority | Table 5 alternative priority |
 | --- | ---: | ---: |
@@ -58,7 +84,7 @@ sufficient; the conflict is internal to the published global totals and
 equations. The implementation follows the stated weighted aggregation
 equations and does not invent alternative weights or judgments to force a
 match. The category assignments still reproduce all twelve published
-accepted/rejected outcomes.
+accepted/rejected outcomes: A–G are accepted, and H–L are rejected.
 
 ## AHPSort I binary calculation
 
@@ -67,8 +93,9 @@ AHP matrix is [[1, a], [1/a, 1]]. Its principal eigenvalue is 2, and its
 normalized principal right eigenvector is [a / (1 + a), 1 / (1 + a)]. These
 are the supplier and profile local priorities. Each side's global priority is
 the sum of its local priorities multiplied by the corresponding criterion
-weight. Since the weights sum to one and each local pair sums to one, the two
-global priorities sum to one. The supplier is assigned to the upper category
+weight, as in the article's weighted-aggregation equations (3) and (4). Since
+the weights sum to one and each local pair sums to one, the two global
+priorities sum to one. The supplier is assigned to the upper category
 when its global priority is greater than or equal to the profile's; otherwise
 it is assigned to the lower category, following the limiting-profile rule in
 the article.
