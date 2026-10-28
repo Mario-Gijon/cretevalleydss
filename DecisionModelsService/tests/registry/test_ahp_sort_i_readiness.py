@@ -1,3 +1,6 @@
+import pytest
+
+from models.ahp_sort_i.definition import _is_isolated_e2e_stack
 from registry.model_registry import get_model_definition_by_endpoint_path
 from services.model_manifest_service import build_model_manifest
 
@@ -43,3 +46,30 @@ def test_ahp_sort_i_stays_scaffold_if_isolation_database_does_not_match(monkeypa
     assert definition is not None
     assert definition.implementation_status == "scaffold"
     assert definition.issue_execution_authorized is False
+
+
+@pytest.mark.parametrize(
+    ("key", "invalid_value"),
+    [
+        ("NODE_ENV", "development"),
+        ("E2E_ISOLATED_STACK", "false"),
+        ("E2E_MONGO_HOST", "mongo"),
+        ("E2E_MONGODB_DB_NAME", "cretevalley_dev"),
+    ],
+)
+def test_each_isolated_stack_guard_is_required(monkeypatch, key, invalid_value):
+    _set_isolated_e2e_environment(monkeypatch)
+    monkeypatch.setenv(key, invalid_value)
+
+    assert _is_isolated_e2e_stack() is False
+
+
+@pytest.mark.parametrize(
+    "missing_key",
+    ["NODE_ENV", "E2E_ISOLATED_STACK", "E2E_MONGO_HOST", "E2E_MONGODB_DB_NAME"],
+)
+def test_each_isolated_stack_guard_must_be_present(monkeypatch, missing_key):
+    _set_isolated_e2e_environment(monkeypatch)
+    monkeypatch.delenv(missing_key)
+
+    assert _is_isolated_e2e_stack() is False

@@ -320,6 +320,70 @@ const resolveAndAssert = async (page, { mode, issueName, alternatives, expectedC
         .getByText(name, { exact: true }).first()).toBeVisible();
     }
     await page.screenshot({ path: test.info().outputPath("ahpsort-i-limiting-scenario-summary.png"), fullPage: true });
+  } else if (mode === "central") {
+    const baseModelParameters = payload.models.base.configuredParameters;
+    const scenarioName = "AHPSort I central pessimistic snapshot scenario";
+    const scenarioResponse = await page.context().request.post(
+      `http://localhost:5001/api/issues/${payload.issue.id}/scenarios`,
+      {
+        headers: { Authorization: authorizationHeader },
+        data: {
+          scenarioName,
+          scenarioDescription: "Replays the persisted central-profile judgments with the pessimistic tie policy.",
+          targetModelId: payload.models.base.id,
+          paramOverrides: {
+            ...baseModelParameters,
+            weights: payload.criteria.finalWeights.byCriterionId,
+            ahpSortProfiles: {
+              ...baseModelParameters.ahpSortProfiles,
+              tiePolicy: "pessimistic",
+            },
+          },
+        },
+      },
+    );
+    const scenarioBody = await scenarioResponse.json();
+    expect(scenarioResponse.status(), scenarioBody.message || JSON.stringify(scenarioBody)).toBe(201);
+
+    const refreshedResponse = await page.context().request.get(
+      `http://localhost:5001/api/issues/finished/${payload.issue.id}`,
+      { headers: { Authorization: authorizationHeader } },
+    );
+    expect(refreshedResponse.ok()).toBe(true);
+    const refreshedPayload = (await refreshedResponse.json()).data;
+    const scenario = refreshedPayload.scenarios.find(({ id }) => id === scenarioBody.data.scenarioId);
+    expect(scenario).toBeTruthy();
+    const scenarioPhase = scenario.phaseResults.find(({ phase }) => phase === 0);
+    expect(scenarioPhase.requestSnapshot.context.structure).toEqual({
+      key: "ahpSortAlternativeProfiles",
+      stage: "alternativeEvaluation",
+    });
+    expect(scenarioPhase.requestSnapshot.modelParameters.ahpSortProfiles).toMatchObject({
+      mode: "central",
+      tiePolicy: "pessimistic",
+      profiles: baseModelParameters.ahpSortProfiles.profiles,
+    });
+    expect(scenarioPhase.requestSnapshot.evaluations).toHaveLength(1);
+    const scenarioDiagnostics = scenarioPhase.standardizedOutput.diagnostics;
+    expect(scenarioDiagnostics.tiePolicy).toBe("pessimistic");
+    const tiedAlternativeId = payload.alternatives.find(({ name }) => name === "Central Tie").id;
+    const tiedClassification = scenarioDiagnostics.resultsByAlternativeId[tiedAlternativeId].classification;
+    expect(tiedClassification).toMatchObject({
+      tieDetected: true,
+      tiePolicy: "pessimistic",
+      selectedCenterProfileId: baseModelParameters.ahpSortProfiles.profiles[0].profileId,
+    });
+    expect(tiedClassification.tiedCenterProfileIds).toHaveLength(2);
+    const scenarioCategoryById = new Map(scenarioPhase.standardizedOutput.categories.map(({ categoryId, label }) => [categoryId, label]));
+    const scenarioAlternativeById = new Map(refreshedPayload.alternatives.map(({ id, name }) => [id, name]));
+    const scenarioAssignments = Object.fromEntries(scenarioPhase.standardizedOutput.assignments.map(({ alternativeId, categoryId }) => [
+      scenarioAlternativeById.get(alternativeId), scenarioCategoryById.get(categoryId),
+    ]));
+    expect(scenarioAssignments).toEqual({
+      "Central Low": "Low",
+      "Central High": "High",
+      "Central Tie": "Low",
+    });
   }
 };
 

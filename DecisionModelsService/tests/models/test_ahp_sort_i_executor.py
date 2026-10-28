@@ -164,6 +164,94 @@ def test_central_tie_policy_is_applied_and_high_cr_remains_non_blocking(
     assert response["success"] is True
 
 
+def test_executor_handles_three_central_categories_and_distinct_criterion_weights():
+    request_data = deepcopy(
+        AHPSORT_I_REQUEST_EXAMPLES["central_profiles_with_tie"]["value"]
+    )
+    categories = [
+        {"categoryId": "low", "label": "Low", "order": 0},
+        {"categoryId": "middle", "label": "Middle", "order": 1},
+        {"categoryId": "high", "label": "High", "order": 2},
+    ]
+    profiles = [
+        {"profileId": "center-low", "categoryId": "low"},
+        {"profileId": "center-middle", "categoryId": "middle"},
+        {"profileId": "center-high", "categoryId": "high"},
+    ]
+    request_data["context"]["criteria"] = [
+        {"id": "quality", "name": "Quality"},
+        {"id": "safety", "name": "Safety"},
+    ]
+    request_data["modelParameters"].update(
+        weights={"quality": 0.7, "safety": 0.3},
+        orderedCategories=categories,
+        ahpSortProfiles={
+            "mode": "central",
+            "profiles": profiles,
+            "tiePolicy": "optimistic",
+        },
+    )
+    alternative_to_profiles = {
+        "quality": {"center-low": 2, "center-middle": 1, "center-high": 1 / 2},
+        "safety": {"center-low": 3, "center-middle": 1, "center-high": 1 / 3},
+    }
+    profile_ratios = {
+        "quality": {
+            ("center-low", "center-middle"): 1 / 2,
+            ("center-low", "center-high"): 1 / 4,
+            ("center-middle", "center-high"): 1 / 2,
+        },
+        "safety": {
+            ("center-low", "center-middle"): 1 / 3,
+            ("center-low", "center-high"): 1 / 9,
+            ("center-middle", "center-high"): 1 / 3,
+        },
+    }
+    alternative_id = request_data["context"]["alternatives"][0]["id"]
+    request_data["evaluations"][0]["payload"] = {
+        "alternativeProfileComparisons": [
+            {
+                "alternativeId": alternative_id,
+                "criterionId": criterion_id,
+                "profileId": profile_id,
+                "alternativeToProfile": value,
+            }
+            for criterion_id, judgments in alternative_to_profiles.items()
+            for profile_id, value in judgments.items()
+        ],
+        "profileComparisons": [
+            {
+                "criterionId": criterion_id,
+                "firstProfileId": first_id,
+                "secondProfileId": second_id,
+                "firstToSecond": value,
+            }
+            for criterion_id, judgments in profile_ratios.items()
+            for (first_id, second_id), value in judgments.items()
+        ],
+    }
+
+    response = _json_response(
+        execute_ahp_sort_i(GenericModelExecutionRequest.model_validate(request_data))
+    )
+
+    assert response["success"] is True
+    result = response["data"]
+    assert result["categories"] == categories
+    assert result["diagnostics"]["tiePolicy"] == "optimistic"
+    assignment = result["diagnostics"]["resultsByAlternativeId"][alternative_id]
+    assert result["assignments"] == [
+        {"alternativeId": alternative_id, "categoryId": "middle"}
+    ]
+    assert assignment["weightsByCriterion"] == {"quality": 0.7, "safety": 0.3}
+    assert assignment["globalPriority"] == pytest.approx(61 / 288)
+    assert assignment["profileGlobalPrioritiesById"] == pytest.approx(
+        {"center-low": 139 / 1440, "center-middle": 61 / 288, "center-high": 691 / 1440}
+    )
+    assert assignment["classification"]["selectedCenterProfileId"] == "center-middle"
+    assert assignment["classification"]["tieDetected"] is False
+
+
 def test_multiple_expert_evaluations_are_rejected_without_selecting_or_aggregating():
     request_data = deepcopy(
         AHPSORT_I_REQUEST_EXAMPLES["limiting_profiles"]["value"]
