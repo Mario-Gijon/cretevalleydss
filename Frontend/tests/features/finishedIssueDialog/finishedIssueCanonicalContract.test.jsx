@@ -53,6 +53,31 @@ describe("Finished Issue canonical contract", () => {
     });
   });
 
+  it("resolves AHPSort I expert names from the execution roster and the scenario's saved snapshot", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const basePhase = payload.phaseResults.find((result) => result.stage === "alternativeEvaluation" && result.phase === 0);
+    basePhase.expertIds = ["expert-2", "expert-1"];
+    payload.participantHistory = {
+      records: [
+        { expert: { id: "expert-1", name: "Avery" } },
+        { expert: { id: "expert-2", name: "Morgan" } },
+        { expert: { id: "expert-current-only", name: "Current participant" } },
+      ],
+    };
+    const base = selectFinishedIssueExecution(payload, "base", 0);
+    expect(base.expertRoster).toEqual([
+      { id: "expert-2", name: "Morgan" },
+      { id: "expert-1", name: "Avery" },
+    ]);
+
+    const scenarioPhase = payload.scenarios[0].phaseResults.find((result) => result.phase === 0);
+    scenarioPhase.requestSnapshot = {
+      evaluations: [{ expert: { id: "expert-1", name: "Scenario Avery" } }],
+    };
+    const scenario = selectFinishedIssueExecution(payload, "scenario-ok", 0);
+    expect(scenario.expertRoster).toEqual([{ id: "expert-1", name: "Scenario Avery" }]);
+  });
+
   it("keeps overview, evaluations and consensus canonical while results follow execution", () => {
     const payload = buildFinishedIssuePayloadFixture();
     const base = selectFinishedIssueExecution(payload, "base");

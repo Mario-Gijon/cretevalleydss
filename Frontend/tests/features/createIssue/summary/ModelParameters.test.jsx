@@ -13,6 +13,12 @@ const selectedModel = {
   ],
 };
 
+const ahpSortGroupModel = {
+  parameters: [
+    { key: "ahpSortGroup", label: "Group classification", parameterStructureKey: "ahpSortGroup", required: false },
+  ],
+};
+
 const criteria = [{
   id: "quality-id",
   name: "Quality",
@@ -63,7 +69,38 @@ const Harness = ({ validationAttempted = false, initialParamValues = initialValu
   );
 };
 
+const GroupPolicyHarness = () => {
+  const [paramValues, setParamValues] = useState({ ahpSortGroup: { tiePolicy: "optimistic" } });
+  const [defaultModelParams, setDefaultModelParams] = useState(false);
+  return (
+    <>
+      <ModelParameters
+        selectedModel={ahpSortGroupModel}
+        allData={{ criteria, alternatives: [], addedExperts: ["expert-1", "expert-2"] }}
+        paramValues={paramValues}
+        setParamValues={setParamValues}
+        defaultModelParams={defaultModelParams}
+        setDefaultModelParams={setDefaultModelParams}
+        handleDefaultChange={() => setDefaultModelParams(false)}
+      />
+      <output data-testid="group-parameter-values">{JSON.stringify(paramValues)}</output>
+    </>
+  );
+};
+
 describe("Create Issue model parameter dependency reconciliation", () => {
+  it("omits a cleared group policy from the parameter values", async () => {
+    const user = userEvent.setup();
+    render(<GroupPolicyHarness />);
+    const select = screen.getByRole("combobox", { name: "Equal-vote preference" });
+    expect(screen.getByTestId("group-parameter-values")).toHaveTextContent('{"ahpSortGroup":{"tiePolicy":"optimistic"}}');
+
+    await user.click(select);
+    await user.click(await screen.findByRole("option", { name: "Not set" }));
+
+    expect(screen.getByTestId("group-parameter-values")).toHaveTextContent("{}");
+  });
+
   it("shows required classification-reference errors only after Create validation is attempted", async () => {
     const user = userEvent.setup();
     const incompleteValues = {

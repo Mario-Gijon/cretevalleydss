@@ -199,6 +199,112 @@ const TopsisSortDashboardResult = ({ result, theme }) => (
   </Box>
 );
 
+const groupOutcomeText = (classification) => {
+  const category = classification?.category?.label || "the assigned category";
+  const participants = classification?.participantCount || 0;
+  if (!classification?.voteValid) return "The saved category is shown; vote details need review.";
+  if (classification.aggregationStatus === "unanimous") {
+    return `All ${participants} experts assigned this alternative to ${category}.`;
+  }
+  if (classification.aggregationStatus === "tied_plurality") {
+    const tiedLabels = classification.tiedCategoryLabels;
+    const tied = tiedLabels.length < 2
+      ? tiedLabels[0] || "Categories"
+      : `${tiedLabels.slice(0, -1).join(", ")} and ${tiedLabels.at(-1)}`;
+    const preference = classification.tiePolicy === "optimistic" ? "more preferred" : "less preferred";
+    return `${tied} tied with the most votes among ${participants} experts. The ${preference} category, ${category}, was selected.`;
+  }
+  const selectedVote = classification.votes.find((vote) => vote.label === category)?.count ?? 0;
+  if (classification.isAbsoluteMajority) {
+    return `${category} received an absolute majority: ${selectedVote} of ${participants} votes.`;
+  }
+  return `${category} received the most votes (plurality): ${selectedVote} of ${participants}. No category had an absolute majority.`;
+};
+
+const AHPSortIGroupDashboardResult = ({ result, theme }) => {
+  const evidence = result.ahpSortIGroup;
+  return (
+    <>
+      <Box role="list" aria-label="Final sorting by category" data-testid="ahpsort-i-group-category-list" sx={sortingResultGridSx}>
+        {result.categories.map((category) => (
+          <Box
+            key={category.id}
+            component="section"
+            role="listitem"
+            aria-label={`${category.label}: ${category.alternatives.length} ${category.alternatives.length === 1 ? "alternative" : "alternatives"}`}
+            data-testid="ahpsort-i-group-category"
+            sx={{ minWidth: 0, p: { xs: 1.1, sm: 1.3 }, borderRadius: 2, border: `1px solid ${alpha(theme.palette.secondary.light, 0.18)}`, bgcolor: alpha(theme.palette.common.white, 0.025) }}
+          >
+            <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, mb: 0.75, minWidth: 0 }}>
+              <Typography variant="subtitle1" title={category.label} sx={{ minWidth: 0, fontWeight: 700, overflowWrap: "anywhere" }}>{category.label}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+                {category.alternatives.length} {category.alternatives.length === 1 ? "alternative" : "alternatives"}
+              </Typography>
+            </Box>
+            {category.alternatives.length ? (
+              <Stack component="ul" spacing={1} sx={{ listStyle: "none", p: 0, m: 0, minWidth: 0 }}>
+                {category.alternatives.map((alternative) => {
+                  const classification = evidence?.alternativesById?.[alternative.id];
+                  return (
+                    <Box component="li" key={alternative.id} data-testid="ahpsort-i-group-alternative" sx={{ minWidth: 0, py: 0.55, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.35)}`, "&:last-of-type": { borderBottom: 0 } }}>
+                      <Typography variant="body2" title={alternative.name} sx={{ fontWeight: 650, overflowWrap: "anywhere" }}>{alternative.name}</Typography>
+                      {classification?.voteValid ? (
+                        <>
+                          <Typography variant="caption" data-testid="ahpsort-i-group-votes" sx={{ display: "block", mt: 0.3, color: "text.secondary", overflowWrap: "anywhere", fontVariantNumeric: "tabular-nums" }}>
+                            {classification.votes.map(({ label, count }) => `${label}: ${count}`).join(" · ")}
+                          </Typography>
+                          <Typography variant="caption" sx={{ display: "block", color: "text.secondary", lineHeight: 1.45 }}>
+                            {groupOutcomeText(classification)}
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography variant="caption" role="note" sx={{ display: "block", mt: 0.3, color: "warning.light", lineHeight: 1.45 }}>
+                          {groupOutcomeText(classification)}
+                        </Typography>
+                      )}
+                      <Box component="details" data-testid="ahpsort-i-individual-classifications" sx={{ mt: 0.5, minWidth: 0, "& > summary": { width: "fit-content", maxWidth: "100%", cursor: "pointer", color: "secondary.light", fontSize: "0.8rem", overflowWrap: "anywhere" } }}>
+                        <Box component="summary">Individual expert classifications</Box>
+                        <Stack spacing={1} sx={{ pt: 0.7, minWidth: 0 }}>
+                          {(classification?.individualClassifications || []).map((individual) => (
+                            <Box key={individual.id} data-testid="ahpsort-i-individual-classification" sx={{ minWidth: 0, pl: 0.9, borderLeft: `1px solid ${alpha(theme.palette.secondary.light, 0.3)}` }}>
+                              <Typography variant="caption" component="div" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
+                                {individual.name} · {individual.category?.label || "Classification unavailable"}
+                              </Typography>
+                              {individual.evidence ? (
+                                <AHPSortIAlternativeEvidence evidence={individual.evidence} />
+                              ) : (
+                                <Typography variant="caption" color="text.secondary" component="div">
+                                  Individual AHP evidence is unavailable for this classification.
+                                </Typography>
+                              )}
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">No alternatives assigned.</Typography>
+            )}
+          </Box>
+        ))}
+      </Box>
+      {evidence?.status !== "available" && evidence?.unavailableReason ? (
+        <Typography
+          variant="caption"
+          role="alert"
+          data-testid="ahpsort-i-group-integrity-warning"
+          sx={{ display: "block", mt: 0.75, color: "warning.light", lineHeight: 1.45 }}
+        >
+          {evidence.unavailableReason}
+        </Typography>
+      ) : null}
+    </>
+  );
+};
+
 const StandardSortingDashboardResult = ({ result, theme }) => {
   const isAHPSortI = result.displayMode === "ahp-sort-i";
   const evidenceUnavailable = isAHPSortI && result.ahpSortI?.status !== "available";
@@ -256,6 +362,8 @@ const SortingDashboardResult = ({ result }) => {
   const theme = useTheme();
   return result.displayMode === "topsis-sort"
     ? <TopsisSortDashboardResult result={result} theme={theme} />
+    : result.displayMode === "ahp-sort-i-group"
+      ? <AHPSortIGroupDashboardResult result={result} theme={theme} />
     : <StandardSortingDashboardResult result={result} theme={theme} />;
 };
 

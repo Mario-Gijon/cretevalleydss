@@ -32,9 +32,22 @@ def test_ahp_sort_i_is_ready_and_authorized_only_in_the_isolated_e2e_stack(monke
     assert manifest["issueExecutionAuthorized"] is True
     assert manifest["supportsConsensus"] is False
     assert manifest["supportsConsensusSimulation"] is False
-    assert "ahpSortGroup" not in {
-        parameter["key"] for parameter in definition.parameters
+    group_parameter = next(
+        parameter
+        for parameter in definition.parameters
+        if parameter["key"] == "ahpSortGroup"
+    )
+    assert group_parameter == {
+        "key": "ahpSortGroup",
+        "label": "Group classification",
+        "parameterStructureKey": "ahpSortGroup",
+        "required": False,
+        "description": (
+            "Choose the group tie-breaking policy when multiple "
+            "experts classify an alternative into equally voted categories."
+        ),
     }
+    assert "default" not in group_parameter
     assert {item["typeKey"] for item in manifest["supportedExpressionDomains"]} == {
         "numericContinuous",
         "numericDiscrete",

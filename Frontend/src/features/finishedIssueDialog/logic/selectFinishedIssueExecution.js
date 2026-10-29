@@ -1,5 +1,6 @@
 const asArray = (value) => (Array.isArray(value) ? value : []);
 const nonEmpty = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
 export const selectAlternativePhaseResults = (payload) => asArray(payload?.phaseResults)
   .filter((result) => result?.stage === "alternativeEvaluation" && Number.isInteger(result?.phase) && result.phase >= 0)
@@ -13,6 +14,33 @@ const selectScenarioPhaseResults = (scenario) => {
 
 const selectPhase = (phaseResults, selectedPhase) =>
   phaseResults.find((result) => result.phase === selectedPhase) || phaseResults.at(-1) || null;
+
+const participantIdentitiesById = (payload) => new Map(
+  asArray(payload?.participantHistory?.records).flatMap((record) => {
+    const id = nonEmpty(record?.expert?.id);
+    return id ? [[id, record.expert]] : [];
+  })
+);
+
+const resolveExpertRoster = ({ payload, phaseResult, requestSnapshot = null }) => {
+  const snapshotExperts = asArray(requestSnapshot?.context?.experts);
+  const snapshotEvaluations = asArray(requestSnapshot?.evaluations);
+  const persistedIds = Array.isArray(phaseResult?.expertIds) ? phaseResult.expertIds : null;
+  const hasScenarioSnapshot = isRecord(requestSnapshot);
+  const snapshotRoster = snapshotExperts.length
+    ? snapshotExperts
+    : snapshotEvaluations.map((evaluation) => evaluation?.expert).filter(Boolean);
+  const roster = hasScenarioSnapshot
+    ? snapshotRoster.map((expert) => ({ id: nonEmpty(expert?.id), name: nonEmpty(expert?.name) }))
+    : persistedIds?.map((id) => ({ id: nonEmpty(id), name: null })) ?? null;
+  if (!roster) return null;
+
+  const identities = participantIdentitiesById(payload);
+  return roster.map((expert) => ({
+    id: expert.id,
+    name: expert.name || nonEmpty(identities.get(expert.id)?.name),
+  }));
+};
 
 export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "base", selectedPhase = null) => {
   const basePhaseResults = selectAlternativePhaseResults(payload);
@@ -30,6 +58,7 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
       resultStructureVersion: basePhase?.resultStructureVersion,
       consensusMeasure: basePhase?.consensusMeasure ?? null,
       modelSpecificOutput: basePhase?.modelSpecificOutput ?? null, rawOutput: basePhase?.rawOutput ?? null,
+      expertRoster: resolveExpertRoster({ payload, phaseResult: basePhase }),
       modelParameters: basePhase?.requestSnapshot?.modelParameters
         ?? payload?.models?.base?.effectiveParameters
         ?? payload?.models?.base?.configuredParameters
@@ -50,7 +79,9 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
     resultStructureVersion: phaseResult?.resultStructureVersion,
     consensusMeasure: phaseResult?.consensusMeasure ?? null,
     modelSpecificOutput: phaseResult?.modelSpecificOutput ?? null, rawOutput: phaseResult?.rawOutput ?? null,
-    modelParameters: phaseResult?.requestSnapshot?.modelParameters ?? {}, scenario,
+    modelParameters: phaseResult?.requestSnapshot?.modelParameters ?? {},
+    expertRoster: resolveExpertRoster({ payload, phaseResult, requestSnapshot: phaseResult?.requestSnapshot }),
+    scenario,
   };
 };
 

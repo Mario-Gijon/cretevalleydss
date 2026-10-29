@@ -50,10 +50,11 @@ export const ModelParameters = ({
         alternatives: Array.isArray(allData?.alternatives) ? allData.alternatives : [],
         parameterDefinitions: Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [],
         parameterValues: paramValues,
+        selectedExpertCount: Array.isArray(allData?.addedExperts) ? allData.addedExperts.length : 0,
         expressionDomainConfig,
         expressionDomains: [...globalDomains, ...expressionDomains],
       }),
-    [allData?.alternatives, allData?.criteria, expressionDomainConfig, expressionDomains, globalDomains, leafCriteria, paramValues, selectedModel]
+    [allData?.addedExperts, allData?.alternatives, allData?.criteria, expressionDomainConfig, expressionDomains, globalDomains, leafCriteria, paramValues, selectedModel]
   );
   const parameterErrors = useMemo(
     () => validateModelParameterValues({
@@ -75,6 +76,7 @@ export const ModelParameters = ({
       leafCriteria,
       parameterDefinitions: renderableNormalParameters,
       parameterValues: defaultValues,
+      selectedExpertCount: parameterContext.selectedExpertCount,
       criterionDomainsById: parameterContext.criterionDomainsById,
     }),
     [defaultValues, leafCriteria, parameterContext, renderableNormalParameters]
@@ -117,7 +119,9 @@ export const ModelParameters = ({
 
   const updateParameterValue = (parameter, nextValue) => {
     setParamValues((previous) => {
-      const next = { ...previous, [parameter.key]: nextValue };
+      const next = { ...previous };
+      if (nextValue === undefined) delete next[parameter.key];
+      else next[parameter.key] = nextValue;
       const previousContext = buildParameterContext({
         ...parameterContext,
         parameterValues: previous,

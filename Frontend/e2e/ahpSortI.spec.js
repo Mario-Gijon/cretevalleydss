@@ -75,7 +75,7 @@ const createIssue = async (page, { mode, issueName, alternatives }) => {
   await expect(expertRow).toBeVisible();
   await expertRow.getByRole("button", { name: "Add expert" }).click();
   await expect(page.getByText("1 selected", { exact: true })).toBeVisible();
-  await expect(page.getByText("AHPSort I requires exactly one expert.", { exact: false })).toBeVisible();
+  await expect(page.getByText("AHPSort I requires exactly one expert.", { exact: false })).toHaveCount(0);
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
   const domainSelect = page.getByRole("combobox", { name: /^Domain\b/ });
@@ -121,6 +121,7 @@ const createIssue = async (page, { mode, issueName, alternatives }) => {
   const requestBody = createResponse.request().postDataJSON();
   const createPayload = requestBody.issueInfo;
   expect(createPayload.addedExperts).toEqual([issueExpertUser.email]);
+  expect(createPayload.paramValues).not.toHaveProperty("ahpSortGroup");
   expect(createPayload.isConsensus).toBe(false);
   expect(createPayload.simulateConsensus).toBe(false);
   expect(createPayload.paramValues.orderedCategories.map(({ label }) => label)).toEqual(categoryLabels);

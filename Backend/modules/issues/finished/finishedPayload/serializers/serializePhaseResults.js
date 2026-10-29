@@ -6,6 +6,7 @@ import {
   toRequiredId,
 } from "./serializers.shared.js";
 import {
+  getStageExpertIds,
   getStageExpertWeights,
   getStageStandardResult,
 } from "../../../stageResults/stageResultContract.js";
@@ -132,6 +133,9 @@ export const serializePhaseResults = ({
       stage: result.stage,
       phase: result.consensusPhase,
       ...(resultStructureMetadata ?? {}),
+      ...(result.stage === "alternativeEvaluation" && Array.isArray(result.inputSnapshot?.expertIds)
+        ? { expertIds: getStageExpertIds(result) }
+        : {}),
       expertWeightSnapshot: getStageExpertWeights(result)
         .map((entry) => ({
           expertId: toNullableId(entry.expert),

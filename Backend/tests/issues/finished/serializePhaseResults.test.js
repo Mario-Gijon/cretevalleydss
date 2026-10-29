@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import { buildResultStructureRegistry } from "../../../modules/decisionPlugins/resultStructures/resultStructureRegistry.js";
 import { serializePhaseResults } from "../../../modules/issues/finished/finishedPayload/serializers/serializePhaseResults.js";
 
-const serialize = (entry) => serializePhaseResults({
+const serialize = (entry, expertIds = undefined) => serializePhaseResults({
   alternatives: [{ id: "alternative-1", name: "Alternative A" }],
   phaseResults: [{
     _id: "phase-result-1",
     stage: "alternativeEvaluation",
     consensusPhase: 0,
-    inputSnapshot: { expertWeights: [] },
+    inputSnapshot: { expertWeights: [], ...(expertIds ? { expertIds } : {}) },
     result: {
       standardResult: {
         rankedAlternatives: [entry],
@@ -24,6 +24,17 @@ const serialize = (entry) => serializePhaseResults({
 })[0];
 
 describe("Finished Issue phase-result ranking serialization", () => {
+  it("exposes only the persisted AHPSort I execution roster for group result validation", () => {
+    const phaseResult = serialize({
+      alternativeId: "alternative-1",
+      name: "Alternative A",
+      score: 0.8,
+      rank: 1,
+    }, ["expert-b", "expert-a"]);
+    expect(phaseResult.expertIds).toEqual(["expert-b", "expert-a"]);
+    expect(phaseResult).not.toHaveProperty("expertWeights");
+  });
+
   it("preserves a canonical optional classification id", () => {
     expect(serialize({
       alternativeId: "alternative-1",

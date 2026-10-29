@@ -494,9 +494,293 @@ export const buildAHPSortIEvidence = ({ result, execution, criteria } = {}) => {
   };
 };
 
+const hasExactStringKeys = (record, expected) => isRecord(record) && hasExactKeys(record, expected);
+const stableExpertReference = (index) => `Expert ${index + 1}`;
+
+const buildIndividualGroupEvidence = ({ result, execution, criteria, categories, alternatives, individualResults }) => {
+  const alternativesById = Object.fromEntries(alternatives.map((alternative) => [alternative.id, null]));
+  const evidenceByExpertId = {};
+  const issues = [];
+  const expectedAlternativeIds = alternatives.map(({ id }) => id);
+
+  for (const expertId of Object.keys(individualResults).sort()) {
+    const expertDiagnostics = individualResults[expertId];
+    if (
+      !isRecord(expertDiagnostics) ||
+      expertDiagnostics.modelKey !== AHP_SORT_I_API_MODEL_KEY ||
+      !hasExactStringKeys(expertDiagnostics.resultsByAlternativeId, expectedAlternativeIds)
+    ) {
+      issues.push("Some individual expert classifications are incomplete.");
+      continue;
+    }
+
+    const categoriesById = new Map(categories.map((category) => [category.id, category]));
+    const individualCategories = categories.map((category) => ({ ...category, alternatives: [] }));
+    const individualCategoryByAlternative = new Map();
+    let valid = true;
+    for (const alternative of alternatives) {
+      const assignment = expertDiagnostics.resultsByAlternativeId[alternative.id];
+      const category = categoriesById.get(assignment?.categoryId);
+      if (!category) {
+        valid = false;
+        break;
+      }
+      individualCategoryByAlternative.set(alternative.id, category.id);
+      individualCategories.find((entry) => entry.id === category.id).alternatives.push(alternative);
+    }
+    if (!valid) {
+      issues.push("An expert classification refers to a category that is not configured.");
+      continue;
+    }
+
+    const individualExecution = {
+      ...execution,
+      standardizedOutput: {
+        ...execution.standardizedOutput,
+        diagnostics: expertDiagnostics,
+      },
+    };
+    const individualResult = {
+      ...result,
+      categories: individualCategories,
+      assignmentCount: alternatives.length,
+    };
+    const evidence = buildAHPSortIEvidence({
+      result: individualResult,
+      execution: individualExecution,
+      criteria,
+    });
+    if (!evidence || evidence.status !== "available") {
+      issues.push("Some individual AHPSort I evidence does not match its expert classification.");
+    }
+    evidenceByExpertId[expertId] = {
+      evidence,
+      categoryByAlternativeId: Object.fromEntries(individualCategoryByAlternative),
+    };
+    for (const alternative of alternatives) {
+      alternativesById[alternative.id] ??= {};
+      alternativesById[alternative.id][expertId] = evidence?.alternativesById?.[alternative.id] ?? null;
+    }
+  }
+
+  return { alternativesById, evidenceByExpertId, issues };
+};
+
+/**
+ * Validate and present persisted GAHPSort group diagnostics without changing
+ * sorting assignments or deriving replacement votes. Individual evidence is
+ * checked against each expert's own stored category.
+ */
+export const buildAHPSortIGroupEvidence = ({ result, execution, criteria } = {}) => {
+  if (!isAHPSortIExecution(execution)) return null;
+  const diagnostics = execution?.standardizedOutput?.diagnostics;
+  const isGroupCandidate = diagnostics?.aggregationMethod === "unweighted_plurality_vote" ||
+    isRecord(diagnostics?.individualResultsByExpertId) ||
+    (Array.isArray(execution?.expertRoster) && execution.expertRoster.length > 1) ||
+    isRecord(resolveModelParameters(execution)?.ahpSortGroup) ||
+    Object.values(isRecord(diagnostics?.resultsByAlternativeId) ? diagnostics.resultsByAlternativeId : {})
+      .some((entry) => isRecord(entry?.votesByCategoryId) || isRecord(entry?.classificationsByExpertId));
+  if (!isGroupCandidate) return null;
+
+  const alternatives = result?.categories?.flatMap((category) => category.alternatives) || [];
+  const categories = asArray(result?.categories).map(({ id, label, order }) => ({ id, label, order }))
+    .sort((left, right) => left.order - right.order);
+  const categoryIds = categories.map(({ id }) => id);
+  const alternativeIds = alternatives.map(({ id }) => id);
+  const individualResults = diagnostics?.individualResultsByExpertId;
+  const expertIds = isRecord(individualResults) ? Object.keys(individualResults).sort() : [];
+  const messages = [];
+  const addIssue = (message) => { if (!messages.includes(message)) messages.push(message); };
+  const parameters = resolveModelParameters(execution);
+
+  if (diagnostics?.modelKey !== AHP_SORT_I_API_MODEL_KEY) addIssue("The saved group diagnostics do not match AHPSort I.");
+  const groupMethodValid = diagnostics?.aggregationMethod === "unweighted_plurality_vote";
+  if (!groupMethodValid) addIssue("The saved group voting method is unavailable or unsupported.");
+  if (diagnostics?.profileMode !== "limiting" && diagnostics?.profileMode !== "central") addIssue("The saved AHPSort I profile method is unavailable.");
+  if (diagnostics?.profileMode !== parameters?.ahpSortProfiles?.mode) addIssue("The saved profile method does not match this execution's configuration.");
+  if (!storedCategoriesMatchSnapshot(categories, parameters)) addIssue("The saved categories do not match this classification.");
+  if (diagnostics?.profileMode === "central" && diagnostics?.profileTiePolicy !== parameters?.ahpSortProfiles?.tiePolicy) {
+    addIssue("The saved equal-distance preference does not match this execution's diagnostics.");
+  }
+  if (
+    !isRecord(parameters?.ahpSortGroup) ||
+    Object.keys(parameters.ahpSortGroup).length !== 1 ||
+    parameters.ahpSortGroup.tiePolicy !== diagnostics?.groupTiePolicy
+  ) {
+    addIssue("The saved group tie preference does not match this execution's diagnostics.");
+  }
+  if (!isRecord(individualResults) || expertIds.length < 2) addIssue("Complete individual expert classifications are not available.");
+  if (expertIds.some((id) => !nonEmptyString(id)) || new Set(expertIds).size !== expertIds.length) {
+    addIssue("The saved individual classifications contain invalid expert identifiers.");
+  }
+  const groupPolicyValid = diagnostics?.groupTiePolicy === "optimistic" || diagnostics?.groupTiePolicy === "pessimistic";
+  if (!groupPolicyValid) addIssue("The saved group tie preference is unavailable.");
+
+  const roster = execution?.expertRoster;
+  let rosterUsable = Array.isArray(roster) && roster.length > 0 &&
+    roster.every((expert) => nonEmptyString(expert?.id)) &&
+    new Set(roster.map((expert) => expert.id)).size === roster.length;
+  if (!rosterUsable) {
+    addIssue("The saved expert roster is unavailable, so historical participation cannot be fully verified.");
+  } else if (expertIds.length !== roster.length || expertIds.some((id) => !roster.some((expert) => expert.id === id))) {
+    addIssue("The saved individual classifications do not match the experts recorded for this execution.");
+    rosterUsable = false;
+  }
+
+  const experts = expertIds.map((id, index) => {
+    const rosterEntry = rosterUsable ? roster.find((entry) => entry.id === id) : null;
+    return {
+      id,
+      name: nonEmptyString(rosterEntry?.name) || stableExpertReference(index),
+    };
+  });
+  const individualEvidence = isRecord(individualResults)
+    ? buildIndividualGroupEvidence({ result, execution, criteria, categories, alternatives, individualResults })
+    : { alternativesById: {}, evidenceByExpertId: {}, issues: [] };
+  individualEvidence.issues.forEach(addIssue);
+
+  const collectiveDiagnostics = diagnostics?.resultsByAlternativeId;
+  if (!hasExactStringKeys(collectiveDiagnostics, alternativeIds)) addIssue("The saved group vote diagnostics do not cover every alternative.");
+
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const alternativesById = {};
+  for (const alternative of alternatives) {
+    const assignment = assignmentFor(result, alternative.id);
+    const vote = collectiveDiagnostics?.[alternative.id];
+    const classifications = vote?.classificationsByExpertId;
+    const voteCounts = vote?.votesByCategoryId;
+    let voteValid = groupMethodValid && groupPolicyValid && diagnostics?.modelKey === AHP_SORT_I_API_MODEL_KEY && Boolean(assignment) &&
+      nonEmptyString(vote?.categoryId) === assignment?.category.id &&
+      nonEmptyString(vote?.selectedCategoryId) === assignment?.category.id &&
+      hasExactStringKeys(classifications, expertIds) &&
+      hasExactStringKeys(voteCounts, categoryIds);
+
+    let expectedCounts = null;
+    let tiedCategoryIds = [];
+    let selectedByRule = null;
+    let maxCount = 0;
+    if (voteValid) {
+      expectedCounts = Object.fromEntries(categoryIds.map((id) => [id, 0]));
+      for (const id of expertIds) {
+        const classifiedCategoryId = classifications[id];
+        const individualCategoryId = individualResults?.[id]?.resultsByAlternativeId?.[alternative.id]?.categoryId;
+        if (!categoriesById.has(classifiedCategoryId) || classifiedCategoryId !== individualCategoryId) {
+          voteValid = false;
+          break;
+        }
+        expectedCounts[classifiedCategoryId] += 1;
+      }
+      if (voteValid) {
+        voteValid = categoryIds.every((id) => Number.isInteger(voteCounts[id]) && voteCounts[id] >= 0 && voteCounts[id] === expectedCounts[id]) &&
+          Object.values(voteCounts).reduce((sum, count) => sum + count, 0) === expertIds.length;
+      }
+      if (voteValid) {
+        maxCount = Math.max(...categoryIds.map((id) => voteCounts[id]));
+        tiedCategoryIds = categories.filter((category) => voteCounts[category.id] === maxCount).map(({ id }) => id);
+        selectedByRule = tiedCategoryIds.length > 1
+          ? tiedCategoryIds.at(-1 * (diagnostics.groupTiePolicy === "optimistic" ? 1 : tiedCategoryIds.length))
+          : tiedCategoryIds[0];
+        const expectedStatus = maxCount === expertIds.length
+          ? "unanimous"
+          : tiedCategoryIds.length > 1
+            ? "tied_plurality"
+            : "unique_plurality";
+        const expectedTiePolicy = tiedCategoryIds.length > 1 ? diagnostics.groupTiePolicy : null;
+        const recordedTies = vote.tiedCategoryIds;
+        const expectedRecordedTies = tiedCategoryIds.length > 1 ? tiedCategoryIds : [];
+        voteValid = selectedByRule === assignment.category.id &&
+          vote.aggregationStatus === expectedStatus &&
+          vote.isUnanimous === (expectedStatus === "unanimous") &&
+          vote.isUniquePlurality === (tiedCategoryIds.length === 1) &&
+          vote.tieDetected === (tiedCategoryIds.length > 1) &&
+          Array.isArray(recordedTies) && recordedTies.length === expectedRecordedTies.length &&
+          recordedTies.every((id, index) => id === expectedRecordedTies[index]) &&
+          (expectedTiePolicy === null ? vote.tiePolicy === null : vote.tiePolicy === expectedTiePolicy);
+      }
+    }
+
+    if (!voteValid) addIssue(`The saved vote evidence for ${alternative.name} does not agree with its classification.`);
+    const countsForDisplay = voteValid
+      ? categories.map((category) => ({ id: category.id, label: category.label, count: voteCounts[category.id] }))
+      : null;
+    alternativesById[alternative.id] = {
+      alternativeName: alternative.name,
+      category: assignment?.category ?? null,
+      voteValid,
+      participantCount: expertIds.length,
+      votes: countsForDisplay,
+      aggregationStatus: voteValid ? vote.aggregationStatus : null,
+      isAbsoluteMajority: voteValid && tiedCategoryIds.length === 1 && maxCount > expertIds.length / 2,
+      tiedCategoryLabels: voteValid && tiedCategoryIds.length > 1
+        ? tiedCategoryIds.map((id) => categoriesById.get(id).label)
+        : [],
+      tiePolicy: voteValid && tiedCategoryIds.length > 1 ? diagnostics.groupTiePolicy : null,
+      individualClassifications: experts.map((expert) => ({
+        ...expert,
+        category: categoriesById.get(individualEvidence.alternativesById?.[alternative.id]?.[expert.id]?.category?.id ||
+          individualEvidence.evidenceByExpertId?.[expert.id]?.categoryByAlternativeId?.[alternative.id]) || null,
+        evidence: individualEvidence.alternativesById?.[alternative.id]?.[expert.id] || null,
+      })),
+    };
+  }
+
+  const evidenceStatus = messages.length ? "integrity_warning" : "available";
+  return {
+    profileMode: diagnostics?.profileMode || null,
+    aggregationMethod: diagnostics?.aggregationMethod || null,
+    groupTiePolicy: diagnostics?.groupTiePolicy || null,
+    status: evidenceStatus,
+    unavailableReason: messages.length ? messages.join(" ") : null,
+    expertCount: expertIds.length,
+    experts,
+    alternativesById,
+    individualEvidenceByExpertId: individualEvidence.evidenceByExpertId,
+  };
+};
+
 export const buildAHPSortIFindings = (result) => {
   if (!result?.available) return [];
   const findings = [];
+  const groupEvidence = result.ahpSortIGroup;
+  if (groupEvidence) {
+    const groupAlternatives = Object.values(groupEvidence.alternativesById || {});
+    const headlineFor = (entries) => {
+      const names = entries.map((entry) => entry.alternativeName).filter(Boolean);
+      return names.length > 3
+        ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} others`
+        : names.join(", ");
+    };
+    const unanimousCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "unanimous").length;
+    const majorityCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "unique_plurality" && entry.isAbsoluteMajority).length;
+    const pluralityCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "unique_plurality" && !entry.isAbsoluteMajority).length;
+    const tieCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "tied_plurality").length;
+    const differingCount = groupAlternatives.filter((entry) => entry?.individualClassifications?.map((item) => item.category?.id).filter(Boolean).filter((id, index, ids) => ids.indexOf(id) === index).length > 1).length;
+    const namesBy = (predicate) => groupAlternatives.filter((entry) => entry?.voteValid && predicate(entry));
+    if (unanimousCount) findings.push({ kind: "ahpsort_group_unanimous", title: "Unanimous classifications", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "unanimous")), text: "Every participating expert assigned these alternatives to the same category." });
+    if (majorityCount) findings.push({ kind: "ahpsort_group_majority", title: "Absolute majority", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "unique_plurality" && entry.isAbsoluteMajority)), text: "The selected category received more than half of the expert votes." });
+    if (pluralityCount) findings.push({ kind: "ahpsort_group_plurality", title: "Unique plurality", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "unique_plurality" && !entry.isAbsoluteMajority)), text: "The selected category received more votes than any other category, without an absolute majority." });
+    if (tieCount) findings.push({ kind: "ahpsort_group_tie", title: "Group vote tie-break", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "tied_plurality")), text: `The saved ${groupEvidence.groupTiePolicy} preference resolved ties between categories with the same maximum vote count.` });
+    if (differingCount) findings.push({ kind: "ahpsort_group_differences", title: "Different expert classifications", headline: headlineFor(groupAlternatives.filter((entry) => entry?.individualClassifications?.map((item) => item.category?.id).filter(Boolean).filter((id, index, ids) => ids.indexOf(id) === index).length > 1)), text: "Experts assigned these alternatives to different categories." });
+
+    const individualEntries = Object.values(groupEvidence.individualEvidenceByExpertId || {});
+    const individualAlternatives = individualEntries.flatMap((entry) => Object.values(entry?.evidence?.alternativesById || {}));
+    const individualTies = individualAlternatives.filter((entry) => entry.status === "available" && entry.profileMode === "central" && entry.tieDetected);
+    if (individualTies.length) findings.push({
+      kind: "ahp_profile_tie",
+      title: "Central-profile tie",
+      headline: `${individualTies.length} individual ${individualTies.length === 1 ? "classification" : "classifications"}`,
+      text: "The saved equal-distance preference was used for these individual classifications.",
+    });
+    const consistencyWarningCount = individualEntries.reduce((sum, entry) => sum + asArray(entry?.evidence?.consistencyWarnings).length, 0);
+    if (consistencyWarningCount) findings.push({
+      kind: "ahp_consistency",
+      title: "AHP consistency review",
+      headline: `${consistencyWarningCount} individual ${consistencyWarningCount === 1 ? "matrix" : "matrices"} above CR 0.10`,
+      text: "Reviewing the related judgments may be useful. This warning does not mean a classification is incorrect.",
+    });
+    return findings;
+  }
+
   const evidence = result.ahpSortI;
   const ties = Object.values(evidence?.alternativesById || {}).filter((entry) =>
     entry.status === "available" && entry.profileMode === "central" && entry.tieDetected,

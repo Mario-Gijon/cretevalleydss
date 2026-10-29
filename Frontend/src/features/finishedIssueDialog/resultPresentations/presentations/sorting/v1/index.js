@@ -7,6 +7,7 @@ import {
   isTopsisSort2016Execution,
 } from "../../../modelFindings/topsis_sort_2016.js";
 import {
+  buildAHPSortIGroupEvidence,
   buildAHPSortIEvidence,
   buildAHPSortIFindings,
   isAHPSortIExecution,
@@ -71,6 +72,9 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
   categories.sort((left, right) => right.order - left.order);
   const topsisSort = isTopsisSort2016Execution(execution);
   const ahpSortI = isAHPSortIExecution(execution);
+  const ahpSortIGroup = ahpSortI
+    ? buildAHPSortIGroupEvidence({ result: { categories, assignmentCount: assignedIds.size }, execution, criteria })
+    : null;
   if (topsisSort) {
     const closenessByAlternativeId = execution?.standardizedOutput?.diagnostics?.closeness_by_alternative_id;
     const categoryIntervals = buildTopsisSortCategoryIntervals({ categories, assignmentCount: assignedIds.size }, execution);
@@ -94,9 +98,11 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
     unavailableReason: null,
     categories,
     assignmentCount: assignedIds.size,
-    displayMode: topsisSort ? "topsis-sort" : ahpSortI ? "ahp-sort-i" : "standard",
+    displayMode: topsisSort ? "topsis-sort" : ahpSortIGroup ? "ahp-sort-i-group" : ahpSortI ? "ahp-sort-i" : "standard",
   };
-  if (ahpSortI) {
+  if (ahpSortIGroup) {
+    normalized.ahpSortIGroup = ahpSortIGroup;
+  } else if (ahpSortI) {
     normalized.ahpSortI = buildAHPSortIEvidence({ result: normalized, execution, criteria });
   }
   return normalized;

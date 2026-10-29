@@ -20,10 +20,6 @@ import {
 } from "./createIssueExpertWeights";
 import { resolveCriteriaWeightingLevel } from "./createIssueCriteriaWeightingModes";
 import { normalizeCreateIssueAlternatives } from "./createIssueAlternativeIds";
-import {
-  AHPSORT_I_SINGLE_EXPERT_MESSAGE,
-  requiresSingleCreateIssueExpert,
-} from "./createIssueExpertConstraints.js";
 
 const CRITERIA_WEIGHTING_REQUEST_FIELDS = Object.freeze([
   "mode",
@@ -106,13 +102,6 @@ export const buildCreateIssueRequestPayload = ({
     };
   }
 
-  if (requiresSingleCreateIssueExpert(selectedModel) && normalizedExperts.length !== 1) {
-    return {
-      ok: false,
-      errorMessage: AHPSORT_I_SINGLE_EXPERT_MESSAGE,
-    };
-  }
-
   const modelRequiresConsensus = selectedModel?.supportsConsensus === true;
 
   const { validDomainIdSet } = resolveExpressionDomainOptions(
@@ -152,6 +141,7 @@ export const buildCreateIssueRequestPayload = ({
     leafCriteria,
     parameterDefinitions: Array.isArray(selectedModel.parameters) ? selectedModel.parameters : [],
     parameterValues: paramValues,
+    selectedExpertCount: normalizedExperts.length,
     expressionDomainConfig,
     expressionDomains: [
       ...(Array.isArray(globalDomains) ? globalDomains : []),

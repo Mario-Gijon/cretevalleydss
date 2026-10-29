@@ -109,5 +109,15 @@ MODEL_DEFINITION = ModelDefinition(
                 "or consecutive category boundary represented by each profile."
             ),
         },
+        {
+            "key": "ahpSortGroup",
+            "label": "Group classification",
+            "parameterStructureKey": "ahpSortGroup",
+            "required": False,
+            "description": (
+                "Choose the group tie-breaking policy when multiple "
+                "experts classify an alternative into equally voted categories."
+            ),
+        },
     ],
 )

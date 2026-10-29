@@ -182,6 +182,7 @@ export const buildParameterContext = ({
   leafCriteria = [],
   parameterDefinitions = [],
   parameterValues = {},
+  selectedExpertCount = 0,
   criterionDomainsById = null,
   expressionDomainConfig = null,
   expressionDomains = [],
@@ -201,6 +202,9 @@ export const buildParameterContext = ({
     leafCriteria: normalizedLeafCriteria,
     parameterDefinitions: definitions,
     parameterValues: values,
+    selectedExpertCount: Number.isInteger(selectedExpertCount) && selectedExpertCount >= 0
+      ? selectedExpertCount
+      : 0,
     parameterValuesByStructureKey: buildParameterValuesByStructureKey(definitions, values),
     criterionDomainsById: buildCriterionDomainsById({
       leafCriteria: normalizedLeafCriteria,

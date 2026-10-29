@@ -84,32 +84,81 @@ describe("createIssuePayload", () => {
     },
   ];
 
-  it("requires exactly one expert for AHPSort I without changing other models", () => {
+  it("requires an explicit group vote policy only when AHPSort I has multiple experts", () => {
     const ahpSortIModel = {
       ...basicCreateIssueModelFixture,
       apiModelKey: "ahp_sort_i",
+      parameters: [
+        { key: "orderedCategories", parameterStructureKey: "orderedCategories", required: true },
+        { key: "ahpSortProfiles", parameterStructureKey: "ahpSortProfiles", required: true },
+        { key: "ahpSortGroup", label: "Group classification", parameterStructureKey: "ahpSortGroup", required: false },
+      ],
     };
-    const withTwoExperts = buildCreateIssueRequestPayload(buildPayloadInput({
+    const groupParamValues = {
+      orderedCategories: [
+        { categoryId: "low", label: "Low", order: 0 },
+        { categoryId: "high", label: "High", order: 1 },
+      ],
+      ahpSortProfiles: {
+        mode: "limiting",
+        profiles: [{ profileId: "low-high", lowerCategoryId: "low", upperCategoryId: "high" }],
+      },
+    };
+    const withTwoExpertsMissingPolicy = buildCreateIssueRequestPayload(buildPayloadInput({
       selectedModel: ahpSortIModel,
+      paramValues: groupParamValues,
+      allData: {
+        selectedModel: ahpSortIModel,
+        addedExperts: ["expert1@example.com", "expert2@example.com"],
+        paramValues: groupParamValues,
+      },
+    }));
+
+    expect(withTwoExpertsMissingPolicy).toMatchObject({
+      ok: false,
+      errorType: "modelParameter",
+      errorMessage: expect.stringContaining("Choose an equal-vote preference for group classification."),
+    });
+
+    const withOneExpertWithoutPolicy = buildCreateIssueRequestPayload(buildPayloadInput({
+      selectedModel: ahpSortIModel,
+      paramValues: groupParamValues,
+      allData: {
+        selectedModel: ahpSortIModel,
+        addedExperts: ["expert1@example.com"],
+        paramValues: groupParamValues,
+      },
+    }));
+    expect(withOneExpertWithoutPolicy.ok).toBe(true);
+    expect(withOneExpertWithoutPolicy.payload.paramValues).not.toHaveProperty("ahpSortGroup");
+
+    for (const selectedExpertCount of [2, 3, 4]) {
+      for (const tiePolicy of ["optimistic", "pessimistic"]) {
+        const experts = Array.from({ length: selectedExpertCount }, (_, index) => `expert${index + 1}@example.com`);
+        const withGroupPolicy = buildCreateIssueRequestPayload(buildPayloadInput({
+          selectedModel: ahpSortIModel,
+          paramValues: { ...groupParamValues, ahpSortGroup: { tiePolicy } },
+          allData: {
+            selectedModel: ahpSortIModel,
+            addedExperts: experts,
+            paramValues: { ...groupParamValues, ahpSortGroup: { tiePolicy } },
+          },
+        }));
+        expect(withGroupPolicy.ok).toBe(true);
+        expect(withGroupPolicy.payload.paramValues.ahpSortGroup).toEqual({ tiePolicy });
+        expect(withGroupPolicy.payload.addedExperts).toEqual(experts);
+      }
+    }
+
+    const invalidPolicy = buildCreateIssueRequestPayload(buildPayloadInput({
+      selectedModel: ahpSortIModel,
+      paramValues: { ...groupParamValues, ahpSortGroup: { tiePolicy: "average" } },
       allData: {
         selectedModel: ahpSortIModel,
         addedExperts: ["expert1@example.com", "expert2@example.com"],
       },
     }));
-
-    expect(withTwoExperts).toEqual({
-      ok: false,
-      errorMessage: "AHPSort I requires exactly one expert. Remove additional experts before creating the issue.",
-    });
-
-    const withOneExpert = buildCreateIssueRequestPayload(buildPayloadInput({
-      selectedModel: ahpSortIModel,
-      allData: {
-        selectedModel: ahpSortIModel,
-        addedExperts: ["expert1@example.com"],
-      },
-    }));
-    expect(withOneExpert.ok).toBe(true);
+    expect(invalidPolicy).toMatchObject({ ok: false, errorType: "modelParameter" });
 
     const otherModel = buildCreateIssueRequestPayload(buildPayloadInput({
       selectedModel: basicCreateIssueModelFixture,
