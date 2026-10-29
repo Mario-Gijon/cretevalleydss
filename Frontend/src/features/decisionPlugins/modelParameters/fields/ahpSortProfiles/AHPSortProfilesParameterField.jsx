@@ -1,10 +1,4 @@
-import { useState } from "react";
 import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   Stack,
   ToggleButton,
@@ -26,32 +20,21 @@ export const AHPSortProfilesParameterField = ({
   showValidation = false,
   parameterContext,
 }) => {
-  const [pendingMode, setPendingMode] = useState(null);
   const categories = getParameterValueByStructureKey(parameterContext, "orderedCategories");
   const orderedCategories = Array.isArray(categories) ? categories : [];
   const config = isPlainObject(value) ? value : {};
-  const profiles = Array.isArray(config.profiles) ? config.profiles : [];
   const mode = config.mode === "limiting" || config.mode === "central" ? config.mode : "";
   const showError = showValidation && Boolean(error);
 
   const setMode = (nextMode) => {
     onChange(createAHPSortProfilesForMode(nextMode, orderedCategories));
-    setPendingMode(null);
   };
 
   const requestModeChange = (_event, nextMode) => {
     if (!nextMode || disabled || nextMode === mode) return;
-    const hasExistingConfiguration = Boolean(
-      profiles.length || (isPlainObject(value) && Object.keys(value).length)
-    );
-    if (hasExistingConfiguration) {
-      setPendingMode(nextMode);
-      return;
-    }
     setMode(nextMode);
   };
 
-  const modeLabel = pendingMode === "central" ? "Central profiles" : "Limiting profiles";
   const description = mode === "limiting"
     ? "Compare alternatives with the boundaries between categories."
     : "Compare alternatives with a representative center for each category.";
@@ -98,27 +81,6 @@ export const AHPSortProfilesParameterField = ({
       ) : null}
       {showError && error ? (
         <Typography variant="caption" color="error.main" role="alert">{error}</Typography>
-      ) : null}
-
-      {pendingMode ? (
-        <Dialog
-          open
-          onClose={() => setPendingMode(null)}
-          aria-labelledby="ahpsort-mode-change-title"
-        >
-          <DialogTitle id="ahpsort-mode-change-title">Change profile method?</DialogTitle>
-          <DialogContent>
-            <Typography variant="body2">
-              Switching to {modeLabel} replaces the current profile associations. New profiles will receive new identifiers.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setPendingMode(null)}>Cancel</Button>
-            <Button color="secondary" variant="outlined" onClick={() => setMode(pendingMode)}>
-              Replace profiles
-            </Button>
-          </DialogActions>
-        </Dialog>
       ) : null}
     </Stack>
   );

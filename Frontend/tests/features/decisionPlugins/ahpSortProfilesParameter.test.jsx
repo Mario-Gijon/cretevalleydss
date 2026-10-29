@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ModelParameters from "../../../src/features/createIssue/summary/components/ModelParameters.jsx";
 import {
@@ -157,21 +157,17 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(validateAHPSortProfilesValue(profileParameter, { ...value, tiePolicy: "pessimistic" }, contextFor())).toBeNull();
   });
 
-  it("confirms method changes and creates fresh IDs for the new profile concept", async () => {
+  it("switches methods immediately and creates fresh IDs for changed profile associations", async () => {
     const user = userEvent.setup();
     render(<FieldHarness initialValue={limitingValue} />);
     await user.click(screen.getByRole("button", { name: "Central profiles" }));
 
-    expect(screen.getByRole("dialog", { name: "Change profile method?" })).toBeInTheDocument();
-    expect(JSON.parse(screen.getByTestId("ahpsort-value").textContent)).toEqual(limitingValue);
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(JSON.parse(screen.getByTestId("ahpsort-value").textContent)).toEqual(limitingValue);
-
-    await user.click(screen.getByRole("button", { name: "Central profiles" }));
-    await user.click(screen.getByRole("button", { name: "Replace profiles" }));
+    expect(screen.queryByRole("dialog", { name: "Change profile method?" })).not.toBeInTheDocument();
     const changed = JSON.parse(screen.getByTestId("ahpsort-value").textContent);
     expect(changed.mode).toBe("central");
     expect(changed.profiles).toHaveLength(categories.length);
+    expect(changed.profiles.map(({ categoryId }) => categoryId))
+      .toEqual(categories.map(({ categoryId }) => categoryId));
     expect(changed.profiles.map((profile) => profile.profileId))
       .not.toEqual(limitingValue.profiles.map((profile) => profile.profileId));
     expect(changed.profiles.every((profile) =>
@@ -180,8 +176,7 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(changed.tiePolicy).toBe("");
 
     await user.click(screen.getByRole("button", { name: "Limiting profiles" }));
-    expect(screen.getByRole("dialog", { name: "Change profile method?" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Replace profiles" }));
+    expect(screen.queryByRole("dialog", { name: "Change profile method?" })).not.toBeInTheDocument();
     const switchedBack = JSON.parse(screen.getByTestId("ahpsort-value").textContent);
     expect(switchedBack.mode).toBe("limiting");
     expect(switchedBack.profiles).toHaveLength(categories.length - 1);
@@ -198,7 +193,7 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(screen.queryByRole("combobox", { name: "Equal-distance preference" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Central profiles" }));
-    await user.click(screen.getByRole("button", { name: "Replace profiles" }));
+    expect(screen.queryByRole("dialog", { name: "Change profile method?" })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Equal-distance preference" })).toBeInTheDocument();
     expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("3 central profiles generated automatically.");
     let updated = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
@@ -206,7 +201,7 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(updated.ahpSortProfiles.profiles).toHaveLength(3);
 
     await user.click(screen.getByRole("button", { name: "Limiting profiles" }));
-    await user.click(screen.getByRole("button", { name: "Replace profiles" }));
+    expect(screen.queryByRole("dialog", { name: "Change profile method?" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Equal-distance preference" })).not.toBeInTheDocument();
     expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("2 boundary profiles generated automatically.");
     updated = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
@@ -277,9 +272,13 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(warnings).toContain("Changing categories will remove the central profile for Medium center.");
   });
 
-  it("uses the AHPSort parameter group and confirms a destructive category reorder before replacing boundaries", async () => {
+  it("preserves category-change confirmation and switches profile methods immediately after a reorder", async () => {
     const user = userEvent.setup();
-    const initialValues = { orderedCategories: categories, ahpSortProfiles: limitingValue };
+    const initialValues = {
+      orderedCategories: categories,
+      ahpSortProfiles: limitingValue,
+      ahpSortGroup: { tiePolicy: "pessimistic" },
+    };
     render(<ModelParametersHarness initialValues={initialValues} />);
 
     expect(screen.getByText("Profile method")).toBeInTheDocument();
@@ -292,6 +291,7 @@ describe("ahpSortProfiles model-parameter plugin", () => {
 
     await user.click(screen.getByRole("button", { name: "Apply change" }));
     const reconciled = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review this category change" })).not.toBeInTheDocument());
     expect(reconciled.orderedCategories.map(({ categoryId }) => categoryId))
       .toEqual(["category-low", "category-high", "category-medium"]);
     expect(reconciled.ahpSortProfiles.mode).toBe("limiting");
@@ -300,6 +300,34 @@ describe("ahpSortProfiles model-parameter plugin", () => {
       .not.toContain("boundary-low-medium");
     expect(reconciled.ahpSortProfiles.profiles.map(({ profileId }) => profileId))
       .not.toContain("boundary-medium-high");
+
+    const reorderedCategories = reconciled.orderedCategories;
+    await user.click(screen.getByRole("button", { name: "Central profiles" }));
+    let switched = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(switched.orderedCategories).toEqual(reorderedCategories);
+    expect(switched.ahpSortGroup).toEqual(initialValues.ahpSortGroup);
+    expect(switched.ahpSortProfiles.profiles.map(({ categoryId }) => categoryId))
+      .toEqual(reorderedCategories.map(({ categoryId }) => categoryId));
+    expect(screen.queryByRole("dialog", { name: "Change profile method?" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "Equal-distance preference" }));
+    await user.click(await screen.findByRole("option", { name: "More preferred category" }));
+    switched = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(validateAHPSortProfilesValue(
+      profileParameter,
+      switched.ahpSortProfiles,
+      contextFor(reorderedCategories),
+    )).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Limiting profiles" }));
+    switched = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(switched.orderedCategories).toEqual(reorderedCategories);
+    expect(switched.ahpSortGroup).toEqual(initialValues.ahpSortGroup);
+    expect(validateAHPSortProfilesValue(
+      profileParameter,
+      switched.ahpSortProfiles,
+      contextFor(reorderedCategories),
+    )).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Change profile method?" })).not.toBeInTheDocument();
   });
 
   it("adds profiles for newly added categories without replacing still-valid boundaries", async () => {
@@ -316,6 +344,21 @@ describe("ahpSortProfiles model-parameter plugin", () => {
       upperCategoryId: expect.any(String),
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    const addedCategories = reconciled.orderedCategories;
+    await user.click(screen.getByRole("button", { name: "Central profiles" }));
+    await user.click(screen.getByRole("combobox", { name: "Equal-distance preference" }));
+    await user.click(await screen.findByRole("option", { name: "Less preferred category" }));
+    await user.click(screen.getByRole("button", { name: "Limiting profiles" }));
+    const switchedBack = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(switchedBack.orderedCategories).toEqual(addedCategories);
+    expect(switchedBack.ahpSortProfiles.profiles).toHaveLength(addedCategories.length - 1);
+    expect(validateAHPSortProfilesValue(
+      profileParameter,
+      switchedBack.ahpSortProfiles,
+      contextFor(addedCategories),
+    )).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Change profile method?" })).not.toBeInTheDocument();
   });
 
   it("shows only the relevant tie preferences for one expert and multiple experts", async () => {
