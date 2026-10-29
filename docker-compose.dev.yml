@@ -60,6 +60,12 @@ services:
       context: .
       dockerfile: docker/decision-models-service/Dockerfile.dev
     working_dir: /app
+    # AHPSort I remains scaffolded in the usual dev stack unless both explicit
+    # opt-in values are provided for the development database.
+    environment:
+      - NODE_ENV=development
+      - AHPSORT_I_DEVELOPMENT_ENABLED=${AHPSORT_I_DEVELOPMENT_ENABLED:-false}
+      - AHPSORT_I_DEVELOPMENT_DATABASE_NAME=${AHPSORT_I_DEVELOPMENT_DATABASE_NAME:-}
     command:
       - uvicorn
       - app:app

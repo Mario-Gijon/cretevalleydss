@@ -29,7 +29,21 @@ def _is_isolated_local_demo_stack() -> bool:
     )
 
 
-_ACTIVATED = _is_isolated_e2e_stack() or _is_isolated_local_demo_stack()
+def _is_explicit_local_development_stack() -> bool:
+    """Expose AHPSort I in dev only after a separate, database-scoped opt-in."""
+    return (
+        os.environ.get("NODE_ENV") == "development"
+        and os.environ.get("AHPSORT_I_DEVELOPMENT_ENABLED") == "true"
+        and os.environ.get("AHPSORT_I_DEVELOPMENT_DATABASE_NAME")
+        == "cretevalleydss_develop"
+    )
+
+
+_ACTIVATED = (
+    _is_isolated_e2e_stack()
+    or _is_isolated_local_demo_stack()
+    or _is_explicit_local_development_stack()
+)
 
 
 MODEL_DEFINITION = ModelDefinition(
