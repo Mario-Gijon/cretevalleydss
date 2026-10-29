@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "supplierPrequalification": {
+    "issueName": "DEMO — AHPSort I — Supplier Pre-qualification (2012)",
+    "description": "Reproduction of the Supplier Pre-qualification judgments in Ishizaka, Pearman and Nemery (2012). Original Saaty comparisons are used; the known printed-value discrepancies remain documented in DecisionModelsService/models/ahp_sort_i/REFERENCE_DATA.md.",
+    "criteria": [
+      { "key": "experience", "name": "Experience", "type": "benefit" },
+      { "key": "flexibility", "name": "Flexibility", "type": "benefit" },
+      { "key": "security", "name": "Security", "type": "benefit" },
+      { "key": "resilience", "name": "Resilience", "type": "benefit" },
+      { "key": "environment", "name": "Environment", "type": "benefit" }
+    ],
+    "criterionPairwiseJudgments": [7, 4, 7, 8, 0.25, 1, 3, 4, 5, 3],
+    "expectedAHPWeights": [0.5645256214, 0.0806450327, 0.2337344535, 0.0806450327, 0.0404498597],
+    "alternatives": ["Supplier A", "Supplier B", "Supplier C", "Supplier D", "Supplier E", "Supplier F", "Supplier G", "Supplier H", "Supplier I", "Supplier J", "Supplier K", "Supplier L"],
+    "categories": [
+      { "categoryId": "rejected", "label": "Rejected", "order": 0 },
+      { "categoryId": "accepted", "label": "Accepted", "order": 1 }
+    ],
+    "profiles": [
+      { "profileId": "rejected-accepted-boundary", "lowerCategoryId": "rejected", "upperCategoryId": "accepted" }
+    ],
+    "alternativeToProfileByAlternative": {
+      "Supplier A": [9, 9, 9, 9, 9],
+      "Supplier B": [9, 9, 9, 9, 9],
+      "Supplier C": [8, 9, 9, 9, 9],
+      "Supplier D": [7, 9, 5, 0.2, 9],
+      "Supplier E": [5, 7, 7, 0.2, 5],
+      "Supplier F": [1, 0.16666666666666666, 9, 9, 9],
+      "Supplier G": [5, 3, 1, 5, 5],
+      "Supplier H": [0.14285714285714285, 9, 1, 9, 9],
+      "Supplier I": [0.25, 0.14285714285714285, 4, 0.2, 0.2],
+      "Supplier J": [0.1111111111111111, 0.1111111111111111, 1, 1, 1],
+      "Supplier K": [0.125, 0.1111111111111111, 1, 0.2, 0.2],
+      "Supplier L": [0.1111111111111111, 0.1111111111111111, 0.1111111111111111, 0.1111111111111111, 0.1111111111111111]
+    },
+    "expectedAssignments": {
+      "Supplier A": "Accepted", "Supplier B": "Accepted", "Supplier C": "Accepted", "Supplier D": "Accepted", "Supplier E": "Accepted", "Supplier F": "Accepted", "Supplier G": "Accepted",
+      "Supplier H": "Rejected", "Supplier I": "Rejected", "Supplier J": "Rejected", "Supplier K": "Rejected", "Supplier L": "Rejected"
+    }
+  },
+  "sustainableDevelopment": {
+    "issueName": "DEMO — GAHPSort — Sustainable Development (2021)",
+    "description": "Synthetic demonstration adapted around the six social indicators discussed by Labella, Ishizaka and Martínez (2021). Criterion preferences and country-to-profile judgments in this Issue are reproducible synthetic inputs, not values or classifications reported by the authors.",
+    "criteria": [
+      { "key": "poverty", "name": "People at risk of poverty or social exclusion", "type": "cost" },
+      { "key": "obesity", "name": "Obesity rate by BMI", "type": "cost" },
+      { "key": "life_expectancy", "name": "Life expectancy at birth", "type": "benefit" },
+      { "key": "neet", "name": "Young people not in employment, education or training (NEET)", "type": "cost" },
+      { "key": "gender_gap", "name": "Gender employment gap", "type": "cost" },
+      { "key": "homicide", "name": "Death rate due to homicide", "type": "cost" }
+    ],
+    "expertPairwiseOverrides": {
+      "expert_a": [{ "row": 0, "column": 1, "value": 3 }],
+      "expert_b": [{ "row": 1, "column": 2, "value": 2 }],
+      "expert_c": [{ "row": 2, "column": 3, "value": 4 }]
+    },
+    "expectedMCCWeights": [0.17803968, 0.16350689, 0.17900523, 0.15380651, 0.16282085, 0.16282085],
+    "alternatives": ["Spain", "United Kingdom", "Croatia", "Norway", "Romania"],
+    "categories": [
+      { "categoryId": "bad", "label": "Bad", "order": 0 },
+      { "categoryId": "moderate", "label": "Moderate", "order": 1 },
+      { "categoryId": "good", "label": "Good", "order": 2 }
+    ],
+    "profiles": [
+      { "profileId": "bad-moderate-boundary", "lowerCategoryId": "bad", "upperCategoryId": "moderate" },
+      { "profileId": "moderate-good-boundary", "lowerCategoryId": "moderate", "upperCategoryId": "good" }
+    ],
+    "categoryVotesByAlternative": {
+      "Spain": ["Bad", "Bad", "Bad"],
+      "United Kingdom": ["Moderate", "Moderate", "Good"],
+      "Croatia": ["Bad", "Moderate", "Good"],
+      "Norway": ["Good", "Good", "Moderate"],
+      "Romania": ["Bad", "Bad", "Good"]
+    },
+    "expectedAssignments": {
+      "Spain": "Bad",
+      "United Kingdom": "Moderate",
+      "Croatia": "Good",
+      "Norway": "Good",
+      "Romania": "Bad"
+    },
+    "expectedVotes": {
+      "Spain": { "status": "unanimous", "categoryCounts": [3, 0, 0] },
+      "United Kingdom": { "status": "unique_plurality", "categoryCounts": [0, 2, 1] },
+      "Croatia": { "status": "tied_plurality", "categoryCounts": [1, 1, 1] },
+      "Norway": { "status": "unique_plurality", "categoryCounts": [0, 1, 2] },
+      "Romania": { "status": "unique_plurality", "categoryCounts": [2, 0, 1] }
+    }
+  }
+}

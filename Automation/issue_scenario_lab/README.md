@@ -47,6 +47,7 @@ python -m issue_scenario_lab generate no-consensus-criteria-weighting
 python -m issue_scenario_lab generate no-consensus-expert-weights
 python -m issue_scenario_lab generate topsis-sort-2016
 python -m issue_scenario_lab generate topsis-sort-2016-tehran
+python -m issue_scenario_lab generate ahp-sort-i-development-demos
 python -m issue_scenario_lab generate consensus-first-round
 python -m issue_scenario_lab generate consensus-later-round
 python -m issue_scenario_lab generate consensus-max-rounds
@@ -299,3 +300,40 @@ python -m compileall src tests
 python -m pytest
 python -m ruff check .
 ```
+
+## AHPSort I development demonstrations
+
+`ahp-sort-i-development-demos` reuses the checked supplier transcription in
+`DecisionModelsService/tests/models/test_ahp_sort_i.py` and the already-tested
+three-expert synthetic comparison fixture in `Frontend/e2e/ahpSortIDemo.spec.js`.
+It creates two named Issues through the ordinary development Backend routes:
+the one-expert 2012 supplier case uses creator-side AHP pairwise judgments; the
+sustainable-development case uses three individual AHP matrices, Backend MCC
+aggregation, individual AHPSort I classifications, and an unweighted
+GAHPSort vote with optimistic tie-breaking. The 2021 preferences and
+classifications are disclosed as synthetic in the Issue description.
+
+The command uses the configured `owner`, `expert_a`, `expert_b`, and
+`expert_c` local test aliases. It requires exactly one authorized AHPSort I
+model and one AHP weighting model, and reuses an existing compatible numeric
+expression domain. It never creates expression domains, writes MongoDB
+directly, modifies model configuration, deletes Issues, or creates duplicates:
+valid finished Issues with these exact names are verified and reused, while an
+unfinished Issue with either name stops the run untouched. Both finished
+Issues are recorded in the normal Scenario Lab manifest for later inspection
+or explicit cleanup.
+
+Run from this directory with the ordinary development stack available:
+
+```bash
+SCENARIO_LAB_API_BASE_URL=http://localhost:5000/api \
+  .venv/bin/python -m issue_scenario_lab generate ahp-sort-i-development-demos
+```
+
+The generator validates the persisted AHP/MCC weights, individual input
+matrices and classifications, group votes, `sorting@1`, and the Backend
+Finished Issue projection before returning the real Issue IDs.
+`Frontend/e2e/ahpSortIDevelopmentDemos.spec.js` is a read-only desktop/mobile
+Playwright check. Set `AHPSORT_DEMO_OWNER_EMAIL` and
+`AHPSORT_DEMO_OWNER_PASSWORD` to the existing Scenario Lab owner credentials
+when running it against the development Frontend at `localhost:5173`.

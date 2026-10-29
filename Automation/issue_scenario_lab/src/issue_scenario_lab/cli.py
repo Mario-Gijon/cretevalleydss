@@ -13,6 +13,8 @@ from issue_scenario_lab.cleanup.finished import delete_finished_generation
 from issue_scenario_lab.config import Settings
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
+from issue_scenario_lab.scenarios.ahp_sort_i_development_demos import SCENARIO_ID as AHPSORT_I_DEMOS_SCENARIO_ID
+from issue_scenario_lab.scenarios.ahp_sort_i_development_demos import generate as generate_ahpsort_i_development_demos
 from issue_scenario_lab.scenarios.consensus_first_round import SCENARIO_ID as CONSENSUS_FIRST_ROUND_SCENARIO_ID
 from issue_scenario_lab.scenarios.consensus_first_round import generate as generate_consensus_first_round
 from issue_scenario_lab.scenarios.consensus_later_round import SCENARIO_ID as CONSENSUS_LATER_ROUND_SCENARIO_ID
@@ -349,6 +351,18 @@ def generate(
             generate_two_tuple_greece_video,
             {"model": "2-Tuple Linguistic Model", "criteriaWeightingModel": "Preference Order Criteria Weights", "experts": 5},
         ),
+        AHPSORT_I_DEMOS_SCENARIO_ID: (
+            generate_ahpsort_i_development_demos,
+            {
+                "models": ["AHPSort I", "AHP Criteria Weights"],
+                "issues": 2,
+                "individualSupplierExperts": 1,
+                "groupExperts": 3,
+                "groupWeighting": "AHP + MCC",
+                "groupClassification": "unweighted plurality, optimistic tie policy",
+                "consensus": False,
+            },
+        ),
     }
     selected = generators.get(scenario_id)
     if selected is None:
@@ -372,13 +386,47 @@ def generate(
                             "expert_d_alias": expert_d_alias,
                         }
                         if scenario_id == TOPSIS_SORT_2016_RICH_SCENARIO_ID
-                        else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+                        else (
+                            {
+                                "owner_alias": owner_alias,
+                                "supplier_expert_alias": expert_a_alias,
+                                "group_expert_aliases": (expert_a_alias, expert_b_alias, expert_c_alias),
+                            }
+                            if scenario_id == AHPSORT_I_DEMOS_SCENARIO_ID
+                            else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+                        )
                     )
                 )
             )
             result = selected[0](sessions, ManifestStore(settings.manifest_file), **kwargs)
     except ScenarioLabError as error:
         _raise_cli_error(error)
+    if scenario_id == AHPSORT_I_DEMOS_SCENARIO_ID:
+        console.print({
+            "scenarioId": scenario_id,
+            **selected[1],
+            "supplier": {
+                "generationId": result.supplier.generation_id,
+                "issueId": result.supplier.issue_id,
+                "issueName": result.supplier.issue_name,
+                "assignments": result.supplier.assignments_by_alternative_name,
+                "AHPWeights": result.supplier.weights_by_criterion_name,
+                "reusedExistingIssue": result.supplier.reused_existing_issue,
+            },
+            "sustainableDevelopment": {
+                "generationId": result.sustainable.generation_id,
+                "issueId": result.sustainable.issue_id,
+                "issueName": result.sustainable.issue_name,
+                "assignments": result.sustainable.assignments_by_alternative_name,
+                "individualAssignments": result.sustainable.individual_assignments_by_expert,
+                "MCCWeights": result.sustainable.weights_by_criterion_name,
+                "votes": result.sustainable.votes_by_alternative,
+                "reusedExistingIssue": result.sustainable.reused_existing_issue,
+            },
+            "finalStage": "finished",
+            "manifest": result.manifest_path,
+        })
+        return
     console.print(
         {
             "generationId": result.generation_id,
