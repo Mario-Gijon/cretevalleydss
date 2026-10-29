@@ -21,6 +21,29 @@ import {
 import { resolveAHPSortAlternativeProfilesContext } from "../../../src/features/decisionPlugins/evaluations/structures/ahpSortAlternativeProfiles/operations/resolveContext.js";
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
+vi.mock("@mui/x-data-grid", () => ({
+  DataGrid: ({ rows, columns, "aria-label": ariaLabel }) => (
+    <div role="grid" aria-label={ariaLabel}>
+      <div role="row">
+        {columns.map((column) => (
+          <div key={column.field} role="columnheader">{column.headerName}</div>
+        ))}
+      </div>
+      {rows.map((row) => (
+        <div key={row.id} role="row">
+          {columns.map((column) => (
+            <div key={column.field} role="gridcell">
+              {typeof column.renderCell === "function"
+                ? column.renderCell({ row, field: column.field })
+                : row[column.field]}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+}));
+
 const limitingDecisionContext = () => ({
   structure: { key: "ahpSortAlternativeProfiles", stage: "alternativeEvaluation" },
   alternatives: [
@@ -282,10 +305,12 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
       />
     );
 
-    expect(screen.getByText("Alternatives compared with profiles")).toBeInTheDocument();
-    expect(screen.getByText("Profiles compared with each other")).toBeInTheDocument();
+    expect(screen.getByText("Alternative comparisons")).toBeInTheDocument();
+    expect(screen.getByText("Profile comparisons")).toBeInTheDocument();
+    expect(screen.getAllByRole("grid")).toHaveLength(2);
     expect(screen.getAllByText("Low → Medium").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Medium → High").length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText("Neutral profile self-comparison")).toHaveLength(2);
     expect(container.textContent).not.toContain("profile-low-medium");
     expect(container.textContent).not.toContain("criterion-quality");
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
@@ -314,9 +339,10 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
       <Wrapper />
     );
 
-    expect(screen.getByText("0 of 10 comparisons complete")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Quality, 0 of 5 comparisons complete" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Cost, 0 of 5 comparisons complete" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Quality" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Cost" })).toBeInTheDocument();
+    expect(screen.queryByText(/comparisons complete|remaining/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     expect(screen.queryByText("profile-low-medium")).not.toBeInTheDocument();
 
     const alternativeSelector = screen.getByRole("combobox", {
@@ -335,13 +361,33 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
       profileComparisons: [],
     });
 
-    await user.click(screen.getByRole("tab", { name: "Cost, 0 of 5 comparisons complete" }));
+    await user.click(screen.getByRole("tab", { name: "Cost" }));
     expect(screen.getByRole("heading", { name: "Cost" })).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Quality, 1 of 5 comparisons complete" }));
+    await user.click(screen.getByRole("tab", { name: "Quality" }));
     expect(screen.getByRole("combobox", {
       name: "Compare Premium option with Low → Medium for Quality",
     })).toHaveTextContent("5");
     expect(latestEvaluation.alternativeProfileComparisons[0].criterionId).toBe("criterion-quality");
+  });
+
+  it("shows one alternative-by-profile grid and hides empty profile comparisons for one profile", () => {
+    const context = limitingDecisionContext();
+    context.leafCriteria = [context.leafCriteria[0]];
+    context.modelParameters.orderedCategories = context.modelParameters.orderedCategories.slice(0, 2);
+    context.modelParameters.ahpSortProfiles.profiles = [context.modelParameters.ahpSortProfiles.profiles[1]];
+
+    renderWithProviders(
+      <AHPSortAlternativeProfilesView
+        decisionContext={context}
+        evaluation={buildEmptyAHPSortAlternativeProfilesEvaluation()}
+        setEvaluation={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("grid", { name: "Quality alternative to profile comparisons" })).toBeInTheDocument();
+    expect(screen.getAllByRole("grid")).toHaveLength(1);
+    expect(screen.queryByText("Profile comparisons")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("combobox")).toHaveLength(2);
   });
 
   it("shows reciprocal profile judgments in both cells and does not create diagonal payloads", async () => {
@@ -391,6 +437,8 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
     expect(screen.getAllByText("Medium center").length).toBeGreaterThan(0);
     expect(screen.getAllByText("High center").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("grid")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Neutral profile self-comparison")).toHaveLength(3);
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(centralAssessment.totalExpected).toBe(18);
   });
@@ -407,6 +455,6 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent("Configure one profile for each category reference");
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 });

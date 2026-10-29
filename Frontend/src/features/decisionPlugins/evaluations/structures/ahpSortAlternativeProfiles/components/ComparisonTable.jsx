@@ -1,54 +1,87 @@
-import {
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-} from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Box, useTheme } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
 
-import { decisionMatrixSurface } from "../../../../shared/styles/decisionMatrixSurface.styles.js";
+import { buildEvaluationMatrixDataGridSx } from "../../../shared/styles/evaluationMatrixTable.styles.js";
+import {
+  ALTERNATIVE_CRITERIA_LABEL_COLUMN_MIN_WIDTH,
+  ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
+  EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
+} from "../../../shared/evaluationMatrixSizing.js";
 import SaatyComparisonSelect from "./SaatyComparisonSelect.jsx";
 import {
   getAlternativeToProfileValue,
   getOrientedProfileComparisonValue,
 } from "../operations/evaluationPayload.js";
 
-const tableSx = {
-  width: "max-content",
-  minWidth: "100%",
-  "& th": {
-    bgcolor: decisionMatrixSurface.headerBackground,
-    borderBottom: decisionMatrixSurface.cellBorder,
-    fontWeight: 800,
-  },
-  "& td": {
-    bgcolor: decisionMatrixSurface.cellBackground,
-    borderBottom: decisionMatrixSurface.cellBorder,
-    borderRight: decisionMatrixSurface.cellBorder,
-  },
-  "& tr:last-of-type td, & tr:last-of-type th": { borderBottom: 0 },
+const matrixViewportSx = {
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
 };
 
-const matrixCellSx = (theme) => ({
-  minWidth: 155,
-  px: 0.6,
-  py: 0.45,
-  textAlign: "center",
-  "& > *": { justifyContent: "center" },
-  "&:hover": { bgcolor: alpha(theme.palette.info.main, 0.055) },
-});
+const matrixGridSx = (theme) => {
+  const sharedStyles = buildEvaluationMatrixDataGridSx(theme);
 
-const RowLabel = ({ children }) => (
-  <TableCell component="th" scope="row" sx={{ minWidth: 170, maxWidth: 260 }}>
-    <Typography variant="body2" sx={{ fontWeight: 750, overflowWrap: "anywhere" }}>
-      {children}
-    </Typography>
-  </TableCell>
-);
+  return {
+    ...sharedStyles,
+    "& .MuiDataGrid-cell": {
+      ...sharedStyles["& .MuiDataGrid-cell"],
+      px: 0.75,
+      minWidth: 0,
+    },
+    "& .MuiDataGrid-cellContent": {
+      width: "100%",
+      minWidth: 0,
+    },
+  };
+};
+
+const buildColumns = ({ profiles, rowHeader, rowHeaderWidth, renderCell }) => [
+  {
+    field: "alternativeLabel",
+    headerName: rowHeader,
+    minWidth: rowHeaderWidth,
+    flex: 1,
+    sortable: false,
+  },
+  ...profiles.map((profile) => ({
+    field: profile.profileId,
+    headerName: profile.label,
+    minWidth: EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
+    flex: 1,
+    sortable: false,
+    renderCell: (params) => renderCell({ row: params.row, profile }),
+  })),
+];
+
+const DataGridMatrix = ({ rows, columns, label, rowHeaderField = "alternativeLabel", diagonalField = false }) => {
+  const theme = useTheme();
+
+  return (
+    <Box sx={matrixViewportSx}>
+      <DataGrid
+        aria-label={label}
+        autoHeight
+        density="compact"
+        rows={rows}
+        columns={columns}
+        getRowId={(row) => row.id}
+        getCellClassName={(params) => {
+          if (params.field === rowHeaderField) return "first-column";
+          return diagonalField && params.row.id === params.field ? "diagonal-cell" : "";
+        }}
+        hideFooter
+        disableColumnMenu
+        disableColumnFilter
+        disableColumnSorting
+        disableColumnSelector
+        disableRowSelectionOnClick
+        sx={matrixGridSx(theme)}
+      />
+    </Box>
+  );
+};
 
 export const AlternativeProfileComparisonsTable = ({
   alternatives,
@@ -57,61 +90,43 @@ export const AlternativeProfileComparisonsTable = ({
   assessment,
   onChange,
   readOnly,
-}) => (
-  <TableContainer
-    sx={{
-      width: "100%",
-      minWidth: 0,
-      overflowX: "auto",
-      overscrollBehaviorX: "contain",
-      border: "1px solid rgba(255,255,255,0.075)",
-      borderRadius: 1.25,
-    }}
-  >
-    <Table size="small" stickyHeader aria-label={`${criterion.name} alternative to profile comparisons`} sx={tableSx}>
-      <TableHead>
-        <TableRow>
-          <TableCell sx={{ minWidth: 170 }}>Alternative / profile</TableCell>
-          {profiles.map((profile) => (
-            <TableCell key={profile.profileId} sx={{ minWidth: 155, maxWidth: 230 }}>
-              <Typography variant="body2" sx={{ fontWeight: 800, overflowWrap: "anywhere" }}>
-                {profile.label}
-              </Typography>
-            </TableCell>
-          ))}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {alternatives.map((alternative) => (
-          <TableRow key={alternative.id} hover>
-            <RowLabel>{alternative.name}</RowLabel>
-            {profiles.map((profile) => {
-              const ariaLabel = `Compare ${alternative.name} with ${profile.label} for ${criterion.name}`;
-              return (
-                <TableCell key={profile.profileId} sx={matrixCellSx}>
-                  <SaatyComparisonSelect
-                    ariaLabel={ariaLabel}
-                    value={getAlternativeValue({ assessment, alternative, criterion, profile })}
-                    onChange={(value) => onChange({ alternative, profile, value })}
-                    readOnly={readOnly}
-                  />
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  </TableContainer>
-);
-
-const getAlternativeValue = ({ assessment, alternative, criterion, profile }) =>
-  getAlternativeToProfileValue({
-    assessment,
-    criterionId: criterion.id,
-    alternativeId: alternative.id,
-    profileId: profile.profileId,
+}) => {
+  const alternativesById = new Map(alternatives.map((alternative) => [alternative.id, alternative]));
+  const rows = alternatives.map((alternative) => ({
+    id: alternative.id,
+    alternativeLabel: alternative.name,
+  }));
+  const columns = buildColumns({
+    profiles,
+    rowHeader: "Alternative",
+    rowHeaderWidth: ALTERNATIVE_CRITERIA_LABEL_COLUMN_MIN_WIDTH,
+    renderCell: ({ row, profile }) => {
+      const alternative = alternativesById.get(row.id);
+      const ariaLabel = `Compare ${alternative.name} with ${profile.label} for ${criterion.name}`;
+      return (
+        <SaatyComparisonSelect
+          ariaLabel={ariaLabel}
+          value={getAlternativeToProfileValue({
+            assessment,
+            criterionId: criterion.id,
+            alternativeId: alternative.id,
+            profileId: profile.profileId,
+          })}
+          onChange={(value) => onChange({ alternative, profile, value })}
+          readOnly={readOnly}
+        />
+      );
+    },
   });
+
+  return (
+    <DataGridMatrix
+      label={`${criterion.name} alternative to profile comparisons`}
+      rows={rows}
+      columns={columns}
+    />
+  );
+};
 
 export const ProfileComparisonsTable = ({
   profiles,
@@ -120,86 +135,50 @@ export const ProfileComparisonsTable = ({
   onChange,
   readOnly,
 }) => {
-  if (profiles.length < 2) {
-    return (
-      <Typography variant="body2" color="text.secondary" role="status">
-        One profile is configured, so no profile-to-profile comparisons are needed.
-      </Typography>
-    );
-  }
+  const rows = profiles.map((profile) => ({
+    id: profile.profileId,
+    alternativeLabel: profile.label,
+  }));
+  const columns = buildColumns({
+    profiles,
+    rowHeader: "Profile",
+    rowHeaderWidth: ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
+    renderCell: ({ row, profile }) => {
+      const diagonal = row.id === profile.profileId;
+      if (diagonal) {
+        return <Box aria-label="Neutral profile self-comparison">1 — Neutral</Box>;
+      }
+
+      const rowProfile = profiles.find(({ profileId }) => profileId === row.id);
+      const ariaLabel = `Compare ${rowProfile.label} with ${profile.label} for ${criterion.name}`;
+      return (
+        <SaatyComparisonSelect
+          ariaLabel={ariaLabel}
+          value={getOrientedProfileComparisonValue({
+            assessment,
+            criterionId: criterion.id,
+            rowProfileId: rowProfile.profileId,
+            columnProfileId: profile.profileId,
+          })}
+          onChange={(value) => onChange({
+            rowProfile,
+            columnProfile: profile,
+            value,
+          })}
+          readOnly={readOnly}
+        />
+      );
+    },
+  });
 
   return (
-    <TableContainer
-      sx={{
-        width: "100%",
-        minWidth: 0,
-        overflowX: "auto",
-        overscrollBehaviorX: "contain",
-        border: "1px solid rgba(255,255,255,0.075)",
-        borderRadius: 1.25,
-      }}
-    >
-      <Table size="small" stickyHeader aria-label={`${criterion.name} profile comparisons`} sx={tableSx}>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ minWidth: 170 }}>Profile / profile</TableCell>
-            {profiles.map((profile) => (
-              <TableCell key={profile.profileId} sx={{ minWidth: 155, maxWidth: 230 }}>
-                <Typography variant="body2" sx={{ fontWeight: 800, overflowWrap: "anywhere" }}>
-                  {profile.label}
-                </Typography>
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {profiles.map((rowProfile) => (
-            <TableRow key={rowProfile.profileId} hover>
-              <RowLabel>{rowProfile.label}</RowLabel>
-              {profiles.map((columnProfile) => {
-                const diagonal = rowProfile.profileId === columnProfile.profileId;
-                const ariaLabel = `Compare ${rowProfile.label} with ${columnProfile.label} for ${criterion.name}`;
-                return (
-                  <TableCell
-                    key={columnProfile.profileId}
-                    sx={(theme) => ({
-                      ...matrixCellSx(theme),
-                      ...(diagonal ? {
-                        bgcolor: "#000000",
-                        color: "text.disabled",
-                        pointerEvents: "none",
-                        fontWeight: 800,
-                      } : {}),
-                    })}
-                  >
-                    {diagonal ? (
-                      <Box aria-label="Neutral profile self-comparison">1 — Neutral</Box>
-                    ) : (
-                      <SaatyComparisonSelect
-                        ariaLabel={ariaLabel}
-                        value={getProfileValue({ assessment, criterion, rowProfile, columnProfile })}
-                        onChange={(value) => onChange({ rowProfile, columnProfile, value })}
-                        readOnly={readOnly}
-                      />
-                    )}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <DataGridMatrix
+      label={`${criterion.name} profile comparisons`}
+      rows={rows}
+      columns={columns}
+      diagonalField
+    />
   );
-};
-
-const getProfileValue = ({ assessment, criterion, rowProfile, columnProfile }) => {
-  return getOrientedProfileComparisonValue({
-    assessment,
-    criterionId: criterion.id,
-    rowProfileId: rowProfile.profileId,
-    columnProfileId: columnProfile.profileId,
-  });
 };
 
 export default AlternativeProfileComparisonsTable;
