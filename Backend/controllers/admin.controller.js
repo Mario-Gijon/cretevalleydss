@@ -86,8 +86,15 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
   );
 };
 
-export const getModelManifestDryRunAdmin = async (_req, res) => {
-  const report = await runModelManifestDryRun();
+export const getModelManifestDryRunAdmin = async (req, res) => {
+  const requestedApiModelKeys = req.query?.apiModelKeys;
+  const apiModelKeys =
+    requestedApiModelKeys === undefined
+      ? undefined
+      : Array.isArray(requestedApiModelKeys)
+        ? requestedApiModelKeys
+        : [requestedApiModelKeys];
+  const report = await runModelManifestDryRun({ apiModelKeys });
 
   return sendSuccess(
     res,
@@ -203,7 +210,9 @@ export const syncModelManifestAdmin = async (req, res) => {
     );
   }
 
-  const report = await syncModelManifestToIssueModels();
+  const report = await syncModelManifestToIssueModels({
+    apiModelKeys: req.body?.apiModelKeys,
+  });
 
   return sendSuccess(
     res,

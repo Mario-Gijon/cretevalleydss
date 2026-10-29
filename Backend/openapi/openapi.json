@@ -348,6 +348,23 @@
         ],
         "summary": "Compara el manifest de DecisionModelsService con IssueModel sin escribir",
         "description": "Ejecuta una comprobación read-only entre GET /models/manifest de\nDecisionModelsService y los documentos IssueModel actuales en MongoDB.\nRequiere access token válido y rol admin.\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "apiModelKeys",
+            "required": false,
+            "description": "Al proporcionar una o más claves, limita la comprobación a esos modelos exactos. El modo acotado no permite creación, eliminación ni reconciliación de huérfanos.",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1,
+              "uniqueItems": true,
+              "example": ["ahp_sort_i"]
+            }
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -401,7 +418,7 @@
           "Admin"
         ],
         "summary": "Sincroniza el manifest de DecisionModelsService con IssueModel",
-        "description": "Sincroniza modelos públicos y seguros del manifest de DecisionModelsService con\nMongoDB. Requiere confirmación explícita y rol admin.\n",
+        "description": "Sincroniza modelos públicos y seguros del manifest de DecisionModelsService con\nMongoDB. Requiere confirmación explícita y rol admin. Si se proporciona apiModelKeys, solo sincroniza esos modelos exactos ya persistidos: exige una correspondencia única y no crea, elimina ni reconcilia otros modelos.\n",
         "security": [
           {
             "bearerAuth": []
@@ -420,6 +437,14 @@
                   "confirm": {
                     "type": "boolean",
                     "example": true
+                  },
+                  "apiModelKeys": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "description": "Opcional. Limita la operación a modelos existentes identificados de forma única; desactiva creación, eliminación y reconciliación global.",
+                    "example": ["ahp_sort_i"]
                   }
                 }
               }

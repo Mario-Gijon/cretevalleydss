@@ -4,6 +4,11 @@ import { resolveResultStructureMetadata } from "../../modules/decisionPlugins/re
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
+  normalizeApiModelKeys,
+  selectScopedManifestModels,
+} from "./modelManifestScope.js";
+import { createConflictError } from "../../utils/common/errors.js";
+import {
   MANIFEST_SYNC_SOURCE,
   buildSkippedManifestModel,
   buildTechnicalPayload,
@@ -317,8 +322,131 @@ const buildSummary = ({
   warnings: warnings.length,
 });
 
+const syncScopedManifestModels = async ({
+  manifest,
+  apiModelKeys,
+  now,
+}) => {
+  const manifestModels = Array.isArray(manifest.models) ? manifest.models : [];
+  const scopedManifestModels = selectScopedManifestModels(
+    manifestModels,
+    apiModelKeys
+  );
+  const issueModels = await IssueModel.find({
+    apiModelKey: { $in: apiModelKeys },
+  });
+  const mongoEntries = buildMongoEntries(issueModels);
+
+  // Preflight the complete scope before saving any document, so missing or
+  // ambiguous matches cannot produce a partial scoped synchronization.
+  const plans = scopedManifestModels.map((manifestModel) => {
+    const blockerReason = getSyncBlockerReason(manifestModel);
+    if (blockerReason) {
+      throw createConflictError(
+        `Scoped manifest model ${manifestModel.apiModelKey} cannot be synchronized: ${blockerReason}`,
+        {
+          field: "apiModelKeys",
+          details: { apiModelKey: manifestModel.apiModelKey, blockerReason },
+        }
+      );
+    }
+
+    const validationErrors = validateSyncableManifestModel(manifestModel);
+    if (validationErrors.length > 0) {
+      throw createConflictError(
+        `Scoped manifest model ${manifestModel.apiModelKey} has invalid runtime fields`,
+        {
+          field: "apiModelKeys",
+          details: { apiModelKey: manifestModel.apiModelKey, validationErrors },
+        }
+      );
+    }
+
+    const match = findMongoMatch(manifestModel, mongoEntries);
+    if (match.status !== "matched") {
+      throw createConflictError(
+        match.status === "ambiguous"
+          ? match.reason
+          : `Scoped IssueModel ${manifestModel.apiModelKey} was not found; scoped sync does not create models`,
+        {
+          field: "apiModelKeys",
+          details: {
+            apiModelKey: manifestModel.apiModelKey,
+            matchStatus: match.status,
+          },
+        }
+      );
+    }
+
+    match.entry.matchedBy = match.matchedBy;
+    const payload = buildTechnicalPayload({ manifest, manifestModel, now });
+    return { manifestModel, entry: match.entry, payload };
+  });
+
+  const updated = [];
+  const unchanged = [];
+  const warnings = [];
+
+  for (const { manifestModel, entry, payload } of plans) {
+    const visibilityWarning = buildVisibilityOverrideWarning({
+      model: entry.model,
+      payload,
+      manifestModel,
+    });
+    if (visibilityWarning) warnings.push(visibilityWarning);
+
+    const { status, item } = await updateExistingModel({
+      entry,
+      payload,
+      manifestModel,
+    });
+    (status === "updated" ? updated : unchanged).push(item);
+  }
+
+  const summary = buildSummary({
+    created: [],
+    updated,
+    unchanged,
+    skipped: [],
+    deleted: [],
+    blockedDeletions: [],
+    warnings,
+  });
+
+  return {
+    manifest: {
+      totalModels: scopedManifestModels.length,
+      syncableModels: scopedManifestModels.length,
+      scope: {
+        apiModelKeys,
+        createsAllowed: false,
+        deletionsAllowed: false,
+        orphanReconciliation: false,
+      },
+    },
+    created: [],
+    updated,
+    unchanged,
+    skipped: [],
+    deleted: [],
+    blockedDeletions: [],
+    warnings,
+    summary,
+  };
+};
+
 export const syncModelManifestToIssueModels = async (options = {}) => {
-  const manifest = await fetchModelManifest(options);
+  const { apiModelKeys: requestedApiModelKeys, ...manifestOptions } = options;
+  const apiModelKeys = normalizeApiModelKeys(requestedApiModelKeys);
+  const manifest = await fetchModelManifest(manifestOptions);
+  if (apiModelKeys !== null) {
+    return syncScopedManifestModels({
+      manifest,
+      apiModelKeys,
+      now: new Date(),
+    });
+  }
+
   const manifestModels = Array.isArray(manifest.models) ? manifest.models : [];
   const issueModels = await IssueModel.find();
   const mongoEntries = buildMongoEntries(issueModels);

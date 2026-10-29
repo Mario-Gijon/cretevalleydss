@@ -4,6 +4,10 @@ import { resolveResultStructureMetadata } from "../../modules/decisionPlugins/re
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
+  normalizeApiModelKeys,
+  selectScopedManifestModels,
+} from "./modelManifestScope.js";
+import {
   buildManifestTechnicalProjection,
   getSyncBlockerReason,
   isValueEqual,
@@ -333,12 +337,25 @@ const loadMissingModelReferences = async (modelId) => {
 export const buildModelManifestDryRunReport = async ({
   manifest,
   issueModels = [],
+  apiModelKeys: requestedApiModelKeys,
 }) => {
   const manifestModels = Array.isArray(manifest?.models) ? manifest.models : [];
-  const syncableManifestModels = manifestModels.filter(
-    (model) => !getSyncBlockerReason(model)
+  const apiModelKeys = normalizeApiModelKeys(requestedApiModelKeys);
+  const scopedManifestModels = selectScopedManifestModels(
+    manifestModels,
+    apiModelKeys
   );
-  const mongoModels = Array.isArray(issueModels) ? issueModels : [];
+  const syncableManifestModels = manifestModels.filter(
+    (model) =>
+      scopedManifestModels.includes(model) && !getSyncBlockerReason(model)
+  );
+  const allMongoModels = Array.isArray(issueModels) ? issueModels : [];
+  const mongoModels =
+    apiModelKeys === null
+      ? allMongoModels
+      : allMongoModels.filter((model) =>
+          apiModelKeys.includes(String(model?.apiModelKey || "").trim())
+        );
   const mongoEntries = buildMongoEntries(mongoModels);
   const matches = [];
   const modelRows = [];
@@ -472,7 +489,13 @@ export const buildModelManifestDryRunReport = async ({
   const deletedCandidates = [];
   const blockedDeletions = [];
 
-  for (const entry of mongoEntries.filter((mongoEntry) => !mongoEntry.matched)) {
+  // A scoped dry-run is an inspection of requested targets only. It must not
+  // classify any unmatched document as an orphan or deletion candidate.
+  const unmatchedEntries =
+    apiModelKeys === null
+      ? mongoEntries.filter((mongoEntry) => !mongoEntry.matched)
+      : [];
+  for (const entry of unmatchedEntries) {
     const apiModelKey = entry.model?.apiModelKey ?? null;
     const mongoName = entry.model?.name ?? null;
     const mongoId = toIdString(entry.model?._id);
@@ -578,15 +601,18 @@ export const buildModelManifestDryRunReport = async ({
     );
   }
 
-  if (deletedCandidates.length > 0 || blockedDeletions.length > 0) {
+  if (
+    apiModelKeys === null &&
+    (deletedCandidates.length > 0 || blockedDeletions.length > 0)
+  ) {
     recommendations.push(
       "Review managed Mongo IssueModels that are missing from the manifest before synchronization."
     );
   }
 
-  const notSyncable = buildNotSyncableModels(manifestModels);
+  const notSyncable = buildNotSyncableModels(scopedManifestModels);
 
-  manifestModels
+  scopedManifestModels
     .map((manifestModel) => ({
       manifestModel,
       blockerReason: getSyncBlockerReason(manifestModel),
@@ -609,7 +635,21 @@ export const buildModelManifestDryRunReport = async ({
   }
 
   return {
-    manifest: buildManifestSummary(manifest, manifestModels, syncableManifestModels),
+    manifest: buildManifestSummary(
+      manifest,
+      apiModelKeys === null ? manifestModels : scopedManifestModels,
+      syncableManifestModels
+    ),
+    ...(apiModelKeys === null
+      ? {}
+      : {
+          scope: {
+            apiModelKeys,
+            createsAllowed: false,
+            deletionsAllowed: false,
+            orphanReconciliation: false,
+          },
+        }),
     summary: {
       matched: matches.length,
       missingInMongo,
@@ -631,11 +671,16 @@ export const buildModelManifestDryRunReport = async ({
 };
 
 export const runModelManifestDryRun = async (options = {}) => {
-  const manifest = await fetchModelManifest(options);
-  const issueModels = await IssueModel.find().select("-__v").lean();
+  const { apiModelKeys: requestedApiModelKeys, ...manifestOptions } = options;
+  const apiModelKeys = normalizeApiModelKeys(requestedApiModelKeys);
+  const manifest = await fetchModelManifest(manifestOptions);
+  const query =
+    apiModelKeys === null ? {} : { apiModelKey: { $in: apiModelKeys } };
+  const issueModels = await IssueModel.find(query).select("-__v").lean();
 
   return buildModelManifestDryRunReport({
     manifest,
     issueModels,
+    apiModelKeys,
   });
 };

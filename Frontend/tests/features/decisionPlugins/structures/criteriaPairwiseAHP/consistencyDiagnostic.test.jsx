@@ -303,7 +303,7 @@ describe("manual AHP consistency check", () => {
       "You rated Quality as 9 times as important as Cost, and Cost as 9 times as important as Sustainability.",
     );
     expect(screen.getByTestId("ahp-diagnostic-triad")).toHaveTextContent(
-      "Together, those comparisons imply Quality is 81 times as important as Sustainability, while you rated Quality and Sustainability as equally important.",
+      "Together, these judgments suggest Quality is 81 times as important as Sustainability, but you rated Quality and Sustainability as equally important.",
     );
     expect(container.querySelectorAll('[data-review-candidate="true"]')).toHaveLength(6);
     expect(screen.queryByText(/What can I do|Advanced details|all DMS simulations|CI 0\.0500|λmax|discrepancy|counterfactual/i)).not.toBeInTheDocument();

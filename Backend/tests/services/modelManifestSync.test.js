@@ -6,7 +6,10 @@ vi.mock("../../services/modelApi/modelManifestClient.js", () => ({
 
 import { IssueModel } from "../../models/IssueModels.js";
 import { fetchModelManifest } from "../../services/modelApi/modelManifestClient.js";
-import { buildModelManifestDryRunReport } from "../../services/modelApi/modelManifestDryRun.js";
+import {
+  buildModelManifestDryRunReport,
+  runModelManifestDryRun,
+} from "../../services/modelApi/modelManifestDryRun.js";
 import {
   buildManifestTechnicalProjection,
   buildTechnicalPayload,
@@ -307,5 +310,226 @@ describe("result structure metadata in manifest synchronization", () => {
     expect(persisted).not.toHaveProperty("resultStructureVersion");
     expect(projection).not.toHaveProperty("resultStructureKey");
     expect(projection).not.toHaveProperty("resultStructureVersion");
+  });
+});
+
+describe("scoped model manifest synchronization", () => {
+  const apiModelKey = "ahp_sort_i";
+  const scope = { apiModelKeys: [apiModelKey] };
+
+  const ahpSortManifestModel = (overrides = {}) =>
+    issueManifestModel({
+      apiModelKey,
+      displayName: "AHPSort I",
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      evaluationStructureKey: "ahpSortAlternativeProfiles",
+      modelSection: {
+        whatItDoes: "Classifies alternatives into ordered categories.",
+        whenToUse: "Use AHP comparisons for alternatives and profiles.",
+        advantages: ["Supports limiting and central profiles."],
+        limitations: [
+          "Multi-expert classification uses unweighted category voting.",
+        ],
+      },
+      parameters: [
+        {
+          key: "orderedCategories",
+          label: "Ordered categories",
+          parameterStructureKey: "orderedCategories",
+          required: true,
+        },
+        {
+          key: "ahpSortProfiles",
+          label: "AHPSort I profiles",
+          parameterStructureKey: "ahpSortProfiles",
+          required: true,
+        },
+        {
+          key: "ahpSortGroup",
+          label: "Group classification",
+          parameterStructureKey: "ahpSortGroup",
+          required: false,
+          description: "Choose the group tie-breaking policy.",
+        },
+      ],
+      ...overrides,
+    });
+
+  const ahpSortPersistedModel = async (manifestModel, overrides = {}) => {
+    const payload = technicalMongoModel(manifestModel);
+    payload.resultStructureKey = "sorting";
+    payload.resultStructureVersion = 1;
+    payload.visibleInIssueCreation = true;
+    payload.supportsConsensus = false;
+    payload.modelSection.limitations = [
+      "Multi-expert aggregation of alternative/profile judgments is not supported yet.",
+    ];
+    return IssueModel.create({ ...payload, ...overrides });
+  };
+
+  beforeEach(() => {
+    fetchModelManifest.mockReset();
+  });
+
+  it("dry-runs and synchronizes only the requested existing AHPSort I row", async () => {
+    const manifestModel = ahpSortManifestModel();
+    const previousModel = ahpSortManifestModel({
+      parameters: manifestModel.parameters.slice(0, 2),
+      modelSection: {
+        ...manifestModel.modelSection,
+        limitations: [
+          "Multi-expert aggregation of alternative/profile judgments is not supported yet.",
+        ],
+      },
+    });
+    const target = await ahpSortPersistedModel(previousModel, {
+      visibleInIssueCreation: false,
+    });
+    const otherManifestModel = issueManifestModel({
+      apiModelKey: "unrelated-managed-model",
+    });
+    const otherManaged = await IssueModel.create(
+      technicalMongoModel(otherManifestModel)
+    );
+    const e2eFixture = await IssueModel.create(
+      technicalMongoModel(
+        issueManifestModel({ apiModelKey: "e2e_unmanaged_fixture" })
+      )
+    );
+    const nonTargetBefore = await IssueModel.find({
+      apiModelKey: { $ne: apiModelKey },
+    })
+      .sort({ apiModelKey: 1, _id: 1 })
+      .lean();
+    fetchModelManifest.mockResolvedValue({
+      models: [manifestModel, otherManifestModel],
+    });
+
+    const dryRun = await runModelManifestDryRun(scope);
+
+    expect(dryRun.scope).toEqual({
+      apiModelKeys: [apiModelKey],
+      createsAllowed: false,
+      deletionsAllowed: false,
+      orphanReconciliation: false,
+    });
+    expect(dryRun.manifest).toEqual({
+      totalModels: 1,
+      syncableModels: 1,
+      nonSyncableModels: 0,
+    });
+    expect(dryRun.matches).toHaveLength(1);
+    expect(dryRun.matches[0]).toMatchObject({
+      manifestKey: apiModelKey,
+      mongoId: String(target._id),
+      status: "matched",
+    });
+    expect(dryRun.summary.technicalDifferences).toHaveLength(1);
+    expect(dryRun.summary.technicalDifferences[0]).toMatchObject({
+      apiModelKey,
+      mongoId: String(target._id),
+      differences: expect.arrayContaining([
+        expect.objectContaining({ field: "parameters" }),
+        expect.objectContaining({ field: "modelSection" }),
+      ]),
+    });
+    expect(dryRun.summary.missingInMongo).toEqual([]);
+    expect(dryRun.summary.deletedCandidates).toEqual([]);
+    expect(dryRun.summary.blockedDeletions).toEqual([]);
+    expect(dryRun.modelRows).toHaveLength(1);
+
+    const result = await syncModelManifestToIssueModels(scope);
+    const targetAfter = await IssueModel.findById(target._id).lean();
+    const nonTargetAfter = await IssueModel.find({
+      apiModelKey: { $ne: apiModelKey },
+    })
+      .sort({ apiModelKey: 1, _id: 1 })
+      .lean();
+
+    expect(result.summary).toMatchObject({
+      created: 0,
+      updated: 1,
+      unchanged: 0,
+      deleted: 0,
+      blockedDeletions: 0,
+    });
+    expect(result.updated).toHaveLength(1);
+    expect(result.updated[0]).toMatchObject({
+      apiModelKey,
+      mongoId: String(target._id),
+    });
+    expect(result.scope).toBeUndefined();
+    expect(result.manifest.scope).toEqual(dryRun.scope);
+    expect(result.manifest.totalModels).toBe(1);
+    expect(result.manifest.syncableModels).toBe(1);
+    expect(targetAfter).toMatchObject({
+      apiModelKey,
+      implementationStatus: "ready",
+      publicUsable: true,
+      issueExecutionAuthorized: true,
+      visibleInIssueCreation: false,
+      supportsConsensus: false,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      parameters: buildTechnicalPayload({
+        manifest: { models: [manifestModel] },
+        manifestModel,
+      }).parameters,
+      modelSection: manifestModel.modelSection,
+    });
+    expect(nonTargetAfter).toEqual(nonTargetBefore);
+    expect(nonTargetAfter.map(({ _id }) => String(_id)).sort()).toEqual(
+      [String(otherManaged._id), String(e2eFixture._id)].sort()
+    );
+  });
+
+  it("rejects missing, ambiguous, duplicated, and malformed scopes before writing", async () => {
+    const manifestModel = ahpSortManifestModel();
+    fetchModelManifest.mockResolvedValue({ models: [manifestModel] });
+
+    await expect(
+      syncModelManifestToIssueModels({ apiModelKeys: ["missing_model"] })
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(await IssueModel.countDocuments()).toBe(0);
+
+    const first = await ahpSortPersistedModel(manifestModel);
+    const duplicate = await ahpSortPersistedModel(manifestModel, {
+      name: "Duplicate AHPSort I",
+    });
+    await expect(syncModelManifestToIssueModels(scope)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(await IssueModel.countDocuments()).toBe(2);
+    expect((await IssueModel.find().lean()).map(({ _id }) => String(_id)).sort()).toEqual(
+      [String(first._id), String(duplicate._id)].sort()
+    );
+
+    await expect(
+      syncModelManifestToIssueModels({ apiModelKeys: [apiModelKey, apiModelKey] })
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(syncModelManifestToIssueModels({ apiModelKeys: [] })).rejects.toMatchObject({
+      statusCode: 400,
+    });
+    await expect(
+      syncModelManifestToIssueModels({ apiModelKeys: [" "] })
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(await IssueModel.countDocuments()).toBe(2);
+  });
+
+  it("requires one exact manifest entry in scoped dry-run and sync", async () => {
+    const manifestModel = ahpSortManifestModel();
+    await ahpSortPersistedModel(manifestModel);
+    fetchModelManifest.mockResolvedValue({
+      models: [manifestModel, { ...manifestModel }],
+    });
+
+    await expect(runModelManifestDryRun(scope)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    await expect(syncModelManifestToIssueModels(scope)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(await IssueModel.countDocuments()).toBe(1);
   });
 });
