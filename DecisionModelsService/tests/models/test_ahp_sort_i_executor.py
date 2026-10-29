@@ -132,6 +132,34 @@ def test_adapter_resolves_weights_categories_and_profiles_by_ids_not_input_posit
     assert "boundaryProfiles" not in _request().modelParameters
 
 
+def test_adapter_normalizes_eight_decimal_persisted_weight_rounding():
+    request = _request()
+    request.modelParameters["weights"] = {"quality": 0.65, "safety": 0.35000001}
+
+    execution_input = _execution_input(request)
+    response = _json_response(execute_ahp_sort_i(request))
+    reference = _json_response(execute_ahp_sort_i(_request()))
+
+    assert sum(execution_input["criterionWeightsById"].values()) == pytest.approx(
+        1.0, abs=1e-15
+    )
+    assert execution_input["criterionWeightsById"] == pytest.approx(
+        {"quality": 0.65 / 1.00000001, "safety": 0.35000001 / 1.00000001}
+    )
+    assert response["success"] is True
+    assert response["data"]["assignments"] == reference["data"]["assignments"]
+
+
+def test_adapter_still_rejects_weights_outside_persisted_rounding_tolerance():
+    request = _request()
+    request.modelParameters["weights"] = {"quality": 0.65, "safety": 0.3500002}
+
+    response = _json_response(execute_ahp_sort_i(request))
+
+    assert response["success"] is False
+    assert "normalized to sum to 1" in response["error"]["details"]["reason"]
+
+
 @pytest.mark.parametrize(
     ("tie_policy", "expected_category", "expected_center"),
     [

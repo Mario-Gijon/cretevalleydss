@@ -71,6 +71,22 @@ describe("result structure metadata in manifest synchronization", () => {
     fetchModelManifest.mockReset();
   });
 
+  it("runs an unscoped dry-run when no apiModelKeys scope is requested", async () => {
+    const manifestModel = issueManifestModel();
+    await IssueModel.create(technicalMongoModel(manifestModel));
+    fetchModelManifest.mockResolvedValue({ models: [manifestModel] });
+
+    const dryRun = await runModelManifestDryRun();
+
+    expect(dryRun).not.toHaveProperty("scope");
+    expect(dryRun.modelRows).toHaveLength(1);
+    expect(dryRun.modelRows[0]).toMatchObject({
+      apiModelKey: manifestModel.apiModelKey,
+      syncState: "Synced",
+    });
+    expect(dryRun.summary.deletedCandidates).toEqual([]);
+  });
+
   it("persists result structure metadata for newly synchronized issue models", async () => {
     const manifestModel = issueManifestModel();
     fetchModelManifest.mockResolvedValue({ models: [manifestModel] });

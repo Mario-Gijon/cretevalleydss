@@ -1,5 +1,6 @@
 """Decision Plugin adapter for the AHPSort I mathematical core."""
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -19,6 +20,12 @@ from .run import (
 EVALUATION_STRUCTURE_KEY = "ahpSortAlternativeProfiles"
 CATEGORY_ORDER_SEMANTICS = "lower-order-is-less-preferred"
 PROFILE_MODES = {"limiting", "central"}
+# MCC weights are persisted by the current application path to eight decimal
+# places. Across the supported maximum of 15 criteria, that serialization can
+# move their sum by at most 7.5e-8. Correct only that representational residue at
+# the contract boundary; the mathematical core continues to reject weights
+# outside this narrow range and receives an exactly normalized vector.
+PERSISTED_WEIGHT_SUM_TOLERANCE = 1e-7
 
 
 def _required_text(value: Any, field: str) -> str:
@@ -214,6 +221,20 @@ def _execution_input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     weights = (payload.modelParameters or {}).get("weights")
     if not isinstance(weights, Mapping):
         raise ValueError("modelParameters.weights must be an object keyed by criterion ID")
+    criterion_ids = {criterion["id"] for criterion in criteria}
+    if set(weights) == criterion_ids and all(
+        not isinstance(weight, bool)
+        and isinstance(weight, (int, float))
+        and math.isfinite(float(weight))
+        and float(weight) >= 0
+        for weight in weights.values()
+    ):
+        total_weight = math.fsum(float(weight) for weight in weights.values())
+        if total_weight > 0 and abs(total_weight - 1.0) <= PERSISTED_WEIGHT_SUM_TOLERANCE:
+            weights = {
+                criterion["id"]: float(weights[criterion["id"]]) / total_weight
+                for criterion in criteria
+            }
     expert_evaluations = _expert_evaluations(payload)
     group_tie_policy = None
     if len(expert_evaluations) > 1:

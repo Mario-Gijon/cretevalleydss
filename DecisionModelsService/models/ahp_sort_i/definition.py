@@ -19,7 +19,17 @@ def _is_isolated_e2e_stack() -> bool:
     )
 
 
-_E2E_ACTIVATED = _is_isolated_e2e_stack()
+def _is_isolated_local_demo_stack() -> bool:
+    """Expose AHPSort I only in the explicitly authorized local demo stack."""
+    return (
+        os.environ.get("NODE_ENV") == "demo"
+        and os.environ.get("DEMO_LOCAL_STACK") == "true"
+        and os.environ.get("DEMO_MONGO_HOST") == "mongo-demo"
+        and os.environ.get("DEMO_MONGODB_DB_NAME") == "cretevalley_demo"
+    )
+
+
+_ACTIVATED = _is_isolated_e2e_stack() or _is_isolated_local_demo_stack()
 
 
 MODEL_DEFINITION = ModelDefinition(
@@ -68,14 +78,14 @@ MODEL_DEFINITION = ModelDefinition(
     response_examples=AHPSORT_I_RESPONSE_EXAMPLES,
     more_info_url="https://doi.org/10.1080/00207543.2012.657966",
     model_kind="issue",
-    implementation_status="ready" if _E2E_ACTIVATED else "scaffold",
+    implementation_status="ready" if _ACTIVATED else "scaffold",
     requires_homogeneous_expression_domains=False,
     evaluation_structure_key="ahpSortAlternativeProfiles",
     result_structure_key="sorting",
     result_structure_version=1,
     supports_consensus=False,
     supports_consensus_simulation=False,
-    issue_execution_authorized=_E2E_ACTIVATED,
+    issue_execution_authorized=_ACTIVATED,
     is_multi_criteria=True,
     uses_criteria_weights=True,
     uses_expert_weights=False,

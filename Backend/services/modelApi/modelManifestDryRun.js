@@ -681,6 +681,6 @@ export const runModelManifestDryRun = async (options = {}) => {
   return buildModelManifestDryRunReport({
     manifest,
     issueModels,
-    apiModelKeys,
+    ...(apiModelKeys === null ? {} : { apiModelKeys }),
   });
 };

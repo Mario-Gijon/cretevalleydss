@@ -1,0 +1,139 @@
+name: cretevalley-demo
+
+services:
+  mongo-demo:
+    image: mongo:7.0
+    command: ["mongod", "--replSet", "cretevalley-demo-rs", "--bind_ip_all"]
+    volumes:
+      - demo_mongo_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval 'try { const hello = db.adminCommand({ hello: 1 });
+          if (hello.setName === "cretevalley-demo-rs" && hello.isWritablePrimary) print("ready");
+          else if (!hello.setName) { rs.initiate({_id: "cretevalley-demo-rs", members: [{_id: 0, host: "mongo-demo:27017"}]}); print("initializing"); }
+          else print("initializing"); } catch (error) { if (error.code === 94 || error.codeName === "NotYetInitialized") { rs.initiate({_id: "cretevalley-demo-rs", members: [{_id: 0, host: "mongo-demo:27017"}]}); print("initializing"); } else throw error; }' | grep -q ready
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  decision-models-service-demo:
+    build:
+      context: .
+      dockerfile: docker/decision-models-service/Dockerfile.dev
+    working_dir: /app
+    environment:
+      NODE_ENV: demo
+      DEMO_LOCAL_STACK: "true"
+      DEMO_MONGO_HOST: mongo-demo
+      DEMO_MONGODB_DB_NAME: cretevalley_demo
+    command:
+      - uvicorn
+      - app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "7000"
+      - --reload
+    ports:
+      - "127.0.0.1:7001:7000"
+    volumes:
+      - ./DecisionModelsService:/app
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:7000/health', timeout=3).read()
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 12
+
+  backend-demo:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    working_dir: /app
+    environment:
+      NODE_ENV: demo
+      PORT: "5000"
+      DEMO_LOCAL_STACK: "true"
+      DEMO_MONGO_HOST: mongo-demo
+      DEMO_MONGODB_DB_NAME: cretevalley_demo
+      MONGODB_URI: mongodb://mongo-demo:27017/cretevalley_demo?replicaSet=cretevalley-demo-rs
+      MONGODB_DB_NAME: cretevalley_demo
+      JWT_SECRET: ${DEMO_JWT_SECRET:?Run the demo environment preparation script first}
+      JWT_REFRESH: ${DEMO_JWT_REFRESH:?Run the demo environment preparation script first}
+      ORIGIN_FRONT: http://localhost:5175
+      ORIGIN_BACK: http://localhost:5002
+      ORIGIN_CRETEVALLEY: http://localhost:5175
+      ORIGIN_SULEIMAN: http://localhost:5175
+      ORIGIN_APIMODELS: http://decision-models-service-demo:7000
+      DECISION_MODELS_SERVICE_BASE_URL: http://decision-models-service-demo:7000
+      DEMO_CREATOR_EMAIL: ${DEMO_CREATOR_EMAIL:?Run the demo environment preparation script first}
+      DEMO_CREATOR_PASSWORD: ${DEMO_CREATOR_PASSWORD:?Run the demo environment preparation script first}
+      DEMO_EXPERT_A_EMAIL: ${DEMO_EXPERT_A_EMAIL:?Run the demo environment preparation script first}
+      DEMO_EXPERT_A_PASSWORD: ${DEMO_EXPERT_A_PASSWORD:?Run the demo environment preparation script first}
+      DEMO_EXPERT_B_EMAIL: ${DEMO_EXPERT_B_EMAIL:?Run the demo environment preparation script first}
+      DEMO_EXPERT_B_PASSWORD: ${DEMO_EXPERT_B_PASSWORD:?Run the demo environment preparation script first}
+      DEMO_EXPERT_C_EMAIL: ${DEMO_EXPERT_C_EMAIL:?Run the demo environment preparation script first}
+      DEMO_EXPERT_C_PASSWORD: ${DEMO_EXPERT_C_PASSWORD:?Run the demo environment preparation script first}
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+          bun install --frozen-lockfile
+        fi
+        exec bun --watch server.js
+    ports:
+      - "127.0.0.1:5002:5000"
+    volumes:
+      - ./Backend:/app
+      - backend_demo_node_modules:/app/node_modules
+    depends_on:
+      mongo-demo:
+        condition: service_healthy
+      decision-models-service-demo:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'bun -e "fetch(''http://127.0.0.1:5000/api/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  frontend-demo:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile.dev
+    working_dir: /app
+    environment:
+      VITE_API_BACK: http://localhost:5002/api
+      VITE_MODE: demo
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+          bun install --frozen-lockfile
+        fi
+        exec bun run dev --host 0.0.0.0 --port 5173 --strictPort
+    ports:
+      - "127.0.0.1:5175:5173"
+    volumes:
+      - ./Frontend:/app
+      - frontend_demo_node_modules:/app/node_modules
+    depends_on:
+      backend-demo:
+        condition: service_healthy
+
+volumes:
+  demo_mongo_data:
+  backend_demo_node_modules:
+  frontend_demo_node_modules:
