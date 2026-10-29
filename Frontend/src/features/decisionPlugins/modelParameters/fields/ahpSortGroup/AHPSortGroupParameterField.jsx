@@ -1,4 +1,4 @@
-import { MenuItem, Stack, TextField, Typography } from "@mui/material";
+import AHPSortTiePreferenceField from "../ahpSortProfiles/AHPSortTiePreferenceField.jsx";
 
 const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -14,37 +14,18 @@ export const AHPSortGroupParameterField = ({
     ? parameterContext.selectedExpertCount
     : 0;
   const tiePolicy = isPlainObject(value) ? value.tiePolicy ?? "" : "";
-  const visibleError = showValidation ? error : "";
+  if (selectedExpertCount < 2) return null;
 
   return (
-    <Stack spacing={0.7} sx={{ minWidth: 0 }}>
-      <TextField
-        select
-        size="small"
-        color="secondary"
-        label="Equal-vote preference"
-        value={tiePolicy}
-        onChange={(event) => {
-          const next = event.target.value;
-          onChange(next ? { tiePolicy: next } : undefined);
-        }}
-        disabled={disabled}
-        error={Boolean(visibleError)}
-        helperText={visibleError || (
-          selectedExpertCount >= 2
-            ? "Required with multiple experts. It applies only when categories receive the same maximum number of votes."
-            : "Optional for individual classification; used only to break a group vote tie."
-        )}
-        sx={{ maxWidth: { xs: "100%", sm: 430 } }}
-      >
-        <MenuItem value="">Not set</MenuItem>
-        <MenuItem value="optimistic">More preferred category</MenuItem>
-        <MenuItem value="pessimistic">Less preferred category</MenuItem>
-      </TextField>
-      <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 760, lineHeight: 1.45 }}>
-        Each expert classifies alternatives independently. The category with the most votes wins, even without an absolute majority. This is unweighted voting, not consensus or combined Saaty judgments.
-      </Typography>
-    </Stack>
+    <AHPSortTiePreferenceField
+      label="Equal-vote preference"
+      info="Choose which category wins when multiple categories receive the same highest number of expert votes."
+      value={tiePolicy}
+      onChange={(nextPolicy) => onChange(nextPolicy ? { tiePolicy: nextPolicy } : undefined)}
+      error={error}
+      showValidation={showValidation}
+      disabled={disabled}
+    />
   );
 };
 

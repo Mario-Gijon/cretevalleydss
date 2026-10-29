@@ -85,6 +85,11 @@ describe("model-parameter Decision Plugin public registry", () => {
       memberStructureKeys: ["orderedCategories", "boundaryProfiles"],
     });
     expect(PARAMETER_FIELD_REGISTRY.orderedCategories.parameterGroup.FieldComponent).toBeTypeOf("function");
+    expect(PARAMETER_FIELD_REGISTRY.ahpSortProfiles.parameterGroup).toMatchObject({
+      key: "ahpsort-classification",
+      memberStructureKeys: ["orderedCategories", "ahpSortProfiles", "ahpSortGroup"],
+    });
+    expect(PARAMETER_FIELD_REGISTRY.ahpSortProfiles.parameterGroup.FieldComponent).toBeTypeOf("function");
   });
 
   it("resolves a parameter structure through an exclusive semantic capability", () => {

@@ -23,7 +23,7 @@ export const ahpSortProfilesParameterField = Object.freeze({
     }),
   parameterGroup: Object.freeze({
     key: "ahpsort-classification",
-    memberStructureKeys: Object.freeze(["orderedCategories", "ahpSortProfiles"]),
+    memberStructureKeys: Object.freeze(["orderedCategories", "ahpSortProfiles", "ahpSortGroup"]),
     FieldComponent: AHPSortClassificationParameterGroup,
   }),
 });

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ModelParameters from "../../../src/features/createIssue/summary/components/ModelParameters.jsx";
 import {
@@ -27,6 +27,7 @@ const categoriesWithTop = [
 const parameters = [
   { key: "orderedCategories", label: "Categories", parameterStructureKey: "orderedCategories" },
   { key: "ahpSortProfiles", label: "AHPSort I profiles", parameterStructureKey: "ahpSortProfiles" },
+  { key: "ahpSortGroup", label: "Group classification", parameterStructureKey: "ahpSortGroup", required: false },
 ];
 const profileParameter = parameters[1];
 const limitingValue = {
@@ -76,7 +77,7 @@ const contextFor = (categoryValues = categories) => buildParameterContext({
   leafCriteria: [],
 });
 
-const ModelParametersHarness = ({ initialValues }) => {
+const ModelParametersHarness = ({ initialValues, selectedExpertCount = 1, validationAttempted = false }) => {
   const [values, setValues] = useState(initialValues);
   const [defaultModelParams, setDefaultModelParams] = useState(true);
   const selectedModel = useMemo(() => ({ parameters }), []);
@@ -89,12 +90,13 @@ const ModelParametersHarness = ({ initialValues }) => {
     <>
       <ModelParameters
         selectedModel={selectedModel}
-        allData={{ criteria, alternatives: [] }}
+        allData={{ criteria, alternatives: [], addedExperts: Array.from({ length: selectedExpertCount }, (_, index) => `expert-${index + 1}`) }}
         paramValues={values}
         setParamValues={setValues}
         defaultModelParams={defaultModelParams}
         setDefaultModelParams={setDefaultModelParams}
         handleDefaultChange={() => setDefaultModelParams(false)}
+        validationAttempted={validationAttempted}
       />
       <output hidden data-testid="model-parameter-values">{JSON.stringify(values)}</output>
     </>
@@ -109,7 +111,7 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(entry.ReadOnlyComponent).toBeTypeOf("function");
     expect(entry.parameterGroup).toMatchObject({
       key: "ahpsort-classification",
-      memberStructureKeys: ["orderedCategories", "ahpSortProfiles"],
+      memberStructureKeys: ["orderedCategories", "ahpSortProfiles", "ahpSortGroup"],
     });
     expect(entry.valueDependencyStructureKeys).toEqual(["orderedCategories"]);
   });
@@ -127,11 +129,8 @@ describe("ahpSortProfiles model-parameter plugin", () => {
         { profileId: expect.any(String), lowerCategoryId: "category-medium", upperCategoryId: "category-high" },
       ],
     });
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
-    expect(screen.getByText("Low → Medium")).toBeInTheDocument();
-    expect(screen.getByText("Medium → High")).toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "Limiting profiles in preference order" }))
-      .queryByText(/profileId|categoryId|category-low/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Limiting profiles in preference order" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Low → Medium")).not.toBeInTheDocument();
     expect(validateAHPSortProfilesValue(profileParameter, value, contextFor())).toBeNull();
   });
 
@@ -150,24 +149,12 @@ describe("ahpSortProfiles model-parameter plugin", () => {
       ],
       tiePolicy: "",
     });
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
-    expect(screen.getByText("Low center")).toBeInTheDocument();
-    expect(screen.getByText("Medium center")).toBeInTheDocument();
-    expect(screen.getByText("High center")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Central profiles in preference order" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Low center")).not.toBeInTheDocument();
     expect(validateAHPSortProfilesValue(profileParameter, value, contextFor()))
       .toMatch(/Choose how equally close/);
-
-    await user.click(screen.getByRole("combobox", { name: /Equal-distance preference/ }));
-    await user.click(await screen.findByRole("option", { name: "Optimistic — more preferred category" }));
-    value = JSON.parse(screen.getByTestId("ahpsort-value").textContent);
-    expect(value.tiePolicy).toBe("optimistic");
-    expect(validateAHPSortProfilesValue(profileParameter, value, contextFor())).toBeNull();
-
-    await user.click(screen.getByRole("combobox", { name: /Equal-distance preference/ }));
-    await user.click(await screen.findByRole("option", { name: "Pessimistic — less preferred category" }));
-    value = JSON.parse(screen.getByTestId("ahpsort-value").textContent);
-    expect(value.tiePolicy).toBe("pessimistic");
-    expect(validateAHPSortProfilesValue(profileParameter, value, contextFor())).toBeNull();
+    expect(validateAHPSortProfilesValue(profileParameter, { ...value, tiePolicy: "optimistic" }, contextFor())).toBeNull();
+    expect(validateAHPSortProfilesValue(profileParameter, { ...value, tiePolicy: "pessimistic" }, contextFor())).toBeNull();
   });
 
   it("confirms method changes and creates fresh IDs for the new profile concept", async () => {
@@ -202,6 +189,29 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(switchedBack.profiles.every((profile) =>
       !changed.profiles.some((oldProfile) => oldProfile.profileId === profile.profileId)
     )).toBe(true);
+  });
+
+  it("updates visible tie controls and profile summaries immediately when the method changes", async () => {
+    const user = userEvent.setup();
+    render(<ModelParametersHarness initialValues={{ orderedCategories: categories, ahpSortProfiles: limitingValue }} />);
+    expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("2 boundary profiles generated automatically.");
+    expect(screen.queryByRole("combobox", { name: "Equal-distance preference" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Central profiles" }));
+    await user.click(screen.getByRole("button", { name: "Replace profiles" }));
+    expect(screen.getByRole("combobox", { name: "Equal-distance preference" })).toBeInTheDocument();
+    expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("3 central profiles generated automatically.");
+    let updated = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(updated.ahpSortProfiles).toMatchObject({ mode: "central", tiePolicy: "" });
+    expect(updated.ahpSortProfiles.profiles).toHaveLength(3);
+
+    await user.click(screen.getByRole("button", { name: "Limiting profiles" }));
+    await user.click(screen.getByRole("button", { name: "Replace profiles" }));
+    expect(screen.queryByRole("combobox", { name: "Equal-distance preference" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("2 boundary profiles generated automatically.");
+    updated = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(updated.ahpSortProfiles).toMatchObject({ mode: "limiting", profiles: expect.any(Array) });
+    expect(updated.ahpSortProfiles).not.toHaveProperty("tiePolicy");
   });
 
   it("preserves category/profile IDs on rename and keeps unchanged boundary IDs on add or reorder", () => {
@@ -308,6 +318,90 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("shows only the relevant tie preferences for one expert and multiple experts", async () => {
+    const user = userEvent.setup();
+    const limiting = { orderedCategories: categories, ahpSortProfiles: limitingValue };
+    const { rerender } = render(<ModelParametersHarness key="limiting-one" initialValues={limiting} selectedExpertCount={1} />);
+    await user.click(screen.getByRole("button", { name: "Limiting profiles" }));
+    expect(screen.queryByRole("combobox", { name: "Equal-vote preference" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Equal-distance preference" })).not.toBeInTheDocument();
+
+    const central = { orderedCategories: categories, ahpSortProfiles: centralValue };
+    rerender(<ModelParametersHarness key="central-one" initialValues={central} selectedExpertCount={1} />);
+    expect(screen.queryByRole("combobox", { name: "Equal-vote preference" })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Equal-distance preference" })).toBeInTheDocument();
+
+    rerender(<ModelParametersHarness key="limiting-multi" initialValues={limiting} selectedExpertCount={2} validationAttempted />);
+    expect(screen.getByRole("combobox", { name: "Equal-vote preference" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Equal-distance preference" })).not.toBeInTheDocument();
+    expect(screen.getByText("Choose an equal-vote preference for group classification.")).toBeInTheDocument();
+  });
+
+  it("places both preferences together for multiple experts with central profiles and preserves their independent values", async () => {
+    const user = userEvent.setup();
+    const initial = {
+      orderedCategories: categories,
+      ahpSortProfiles: centralValue,
+      ahpSortGroup: { tiePolicy: "optimistic" },
+    };
+    render(<ModelParametersHarness initialValues={initial} selectedExpertCount={3} />);
+    const groupPreference = screen.getByRole("combobox", { name: "Equal-vote preference" });
+    const distancePreference = screen.getByRole("combobox", { name: "Equal-distance preference" });
+    expect(groupPreference).toHaveTextContent("More preferred category");
+    expect(distancePreference).toHaveTextContent("More preferred category");
+    expect(screen.getByText("Tie preferences")).toBeInTheDocument();
+
+    await user.click(groupPreference);
+    await user.click(await screen.findByRole("option", { name: "Less preferred category" }));
+    await user.click(distancePreference);
+    await user.click(await screen.findByRole("option", { name: "Less preferred category" }));
+
+    const updated = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(updated.ahpSortGroup).toEqual({ tiePolicy: "pessimistic" });
+    expect(updated.ahpSortProfiles).toMatchObject({ mode: "central", tiePolicy: "pessimistic" });
+    expect(updated.ahpSortProfiles.profiles).toEqual(centralValue.profiles);
+  });
+
+  it("provides accessible, brief help for tie preferences, profile methods, and categories", async () => {
+    const user = userEvent.setup();
+    render(<ModelParametersHarness initialValues={{
+      orderedCategories: categories,
+      ahpSortProfiles: centralValue,
+      ahpSortGroup: { tiePolicy: "pessimistic" },
+    }} selectedExpertCount={2} />);
+
+    for (const label of [
+      "Equal-vote preference information",
+      "Equal-distance preference information",
+      "Profile method information",
+      "Categories information",
+    ]) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    }
+
+    const helpButton = screen.getByRole("button", { name: "Categories information" });
+    await user.hover(helpButton);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Categories define the names and preference order of the groups.",
+    );
+    await user.unhover(helpButton);
+    helpButton.focus();
+    expect(await screen.findByRole("tooltip")).toBeVisible();
+  });
+
+  it("updates the generated profile count when categories are added without losing existing profile IDs", async () => {
+    const user = userEvent.setup();
+    render(<ModelParametersHarness initialValues={{ orderedCategories: categories, ahpSortProfiles: limitingValue }} />);
+    expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("2 boundary profiles generated automatically.");
+
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+
+    expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("3 boundary profiles generated automatically.");
+    const updated = JSON.parse(screen.getByTestId("model-parameter-values").textContent);
+    expect(updated.ahpSortProfiles.profiles.slice(0, 2)).toEqual(limitingValue.profiles);
+    expect(updated.ahpSortProfiles.profiles).toHaveLength(3);
+  });
+
   it("confirms removal before reconciling AHPSort profiles and preserves the remaining boundary ID", async () => {
     const user = userEvent.setup();
     const initialValues = { orderedCategories: categories, ahpSortProfiles: limitingValue };
@@ -322,6 +416,7 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     expect(reconciled.orderedCategories.map(({ categoryId }) => categoryId))
       .toEqual(["category-low", "category-medium"]);
     expect(reconciled.ahpSortProfiles.profiles).toEqual([limitingValue.profiles[0]]);
+    expect(screen.getByTestId("ahpsort-profile-summary")).toHaveTextContent("1 boundary profile generated automatically.");
   });
 
   it("rejects incomplete, duplicate, out-of-order, and extra profile configurations", () => {
@@ -371,7 +466,8 @@ describe("ahpSortProfiles model-parameter plugin", () => {
     render(<ReadOnly value={centralValue} parameterContext={contextFor()} />);
     expect(screen.getByText("Central profiles")).toBeInTheDocument();
     expect(screen.getByText(/Equal-distance preference: more preferred category/)).toBeInTheDocument();
-    expect(screen.getByText("Low center")).toBeInTheDocument();
+    expect(screen.getByText("3 central profiles generated automatically.")).toBeInTheDocument();
+    expect(screen.queryByText("Low center")).not.toBeInTheDocument();
     expect(screen.queryByText(/profileId|categoryId|center-low|category-low/)).not.toBeInTheDocument();
   });
 

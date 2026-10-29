@@ -96,7 +96,7 @@ describe("Create Issue model parameter dependency reconciliation", () => {
     expect(screen.getByTestId("group-parameter-values")).toHaveTextContent('{"ahpSortGroup":{"tiePolicy":"optimistic"}}');
 
     await user.click(select);
-    await user.click(await screen.findByRole("option", { name: "Not set" }));
+    await user.click(await screen.findByRole("option", { name: "Choose preference" }));
 
     expect(screen.getByTestId("group-parameter-values")).toHaveTextContent("{}");
   });

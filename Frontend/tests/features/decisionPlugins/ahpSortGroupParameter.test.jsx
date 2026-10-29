@@ -64,27 +64,26 @@ describe("AHPSort I group classification parameter", () => {
     expect(screen.getByTestId("group-policy-value")).toHaveTextContent(JSON.stringify({ tiePolicy: "pessimistic" }));
 
     await user.click(select);
-    await user.click(await screen.findByRole("option", { name: "Not set" }));
+    await user.click(await screen.findByRole("option", { name: "Choose preference" }));
     expect(screen.getByTestId("group-policy-value")).toHaveTextContent("null");
   });
 
-  it("updates the requirement as expert count changes without losing a configured policy", async () => {
+  it("hides the preference for one expert and shows it when the group policy becomes relevant", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<FieldHarness selectedExpertCount={1} />);
-    const select = screen.getByRole("combobox", { name: "Equal-vote preference" });
-    expect(screen.getByText(/Optional for individual classification/)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Equal-vote preference" })).not.toBeInTheDocument();
 
     rerender(<FieldHarness selectedExpertCount={2} />);
-    expect(screen.getByText(/Required with multiple experts/)).toBeInTheDocument();
+    const select = screen.getByRole("combobox", { name: "Equal-vote preference" });
 
     await user.click(select);
     await user.click(await screen.findByRole("option", { name: "Less preferred category" }));
     rerender(<FieldHarness selectedExpertCount={1} />);
-    expect(screen.getByText(/Optional for individual classification/)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Equal-vote preference" })).not.toBeInTheDocument();
     expect(screen.getByTestId("group-policy-value")).toHaveTextContent(JSON.stringify({ tiePolicy: "pessimistic" }));
 
     rerender(<FieldHarness selectedExpertCount={2} />);
-    expect(select).toHaveTextContent("Less preferred category");
+    expect(screen.getByRole("combobox", { name: "Equal-vote preference" })).toHaveTextContent("Less preferred category");
   });
 
   it("rejects invalid values and never merges the central-profile preference into the group policy", () => {

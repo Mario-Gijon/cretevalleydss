@@ -113,13 +113,13 @@ const createIssue = async (page, {
 
   const profileModeLabel = mode === "limiting" ? "Limiting profiles" : "Central profiles";
   await page.getByRole("button", { name: profileModeLabel, exact: true }).click();
-  await expect(page.getByRole("list", {
-    name: mode === "limiting" ? "Limiting profiles in preference order" : "Central profiles in preference order",
-  })).toBeVisible();
+  await expect(page.getByTestId("ahpsort-profile-summary")).toContainText(
+    `${categoryLabels.length - (mode === "limiting" ? 1 : 0)} ${mode === "limiting" ? "boundary" : "central"} profiles generated automatically.`,
+  );
   if (mode === "central") {
     const tiePolicy = page.getByRole("combobox", { name: "Equal-distance preference" });
     await tiePolicy.click();
-    await page.getByRole("option", { name: "Optimistic — more preferred category", exact: true }).click();
+    await page.getByRole("option", { name: "More preferred category", exact: true }).click();
   }
   if (groupTiePolicy) {
     const groupPolicy = page.getByRole("combobox", { name: "Equal-vote preference" });

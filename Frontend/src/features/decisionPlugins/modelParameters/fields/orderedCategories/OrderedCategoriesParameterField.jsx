@@ -37,6 +37,7 @@ import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRound
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { alpha } from "@mui/material/styles";
 import { createOrderedCategory, normalizeOrderedCategoriesValue } from "./orderedCategoriesValues.js";
+import ParameterInfoTooltip from "../../components/ParameterInfoTooltip.jsx";
 
 const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, onRemove, showError }) => {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -158,7 +159,7 @@ const CategoryRow = ({ category, index, total, disabled, onLabelChange, onMove, 
   );
 };
 
-export const OrderedCategoriesParameterField = ({ parameter, value, onChange, error = "", disabled = false, inspectDependencyChange, showValidation = false }) => {
+export const OrderedCategoriesParameterField = ({ parameter, value, onChange, error = "", disabled = false, inspectDependencyChange, showValidation = false, infoTooltip = "" }) => {
   const label = "Categories";
   const [hasInteracted, setHasInteracted] = useState(false);
   const [pendingChange, setPendingChange] = useState(null);
@@ -202,7 +203,10 @@ export const OrderedCategoriesParameterField = ({ parameter, value, onChange, er
   return (
     <Stack spacing={0.65} sx={{ minWidth: 0 }}>
       <Box>
-        <Typography variant="body2" sx={{ fontWeight: 700 }}>{label}</Typography>
+        <Stack direction="row" spacing={0.2} alignItems="center">
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>{label}</Typography>
+          {infoTooltip ? <ParameterInfoTooltip label={label} text={infoTooltip} /> : null}
+        </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.72rem" }}>Less preferred → More preferred</Typography>
       </Box>
       {categories.length ? (
