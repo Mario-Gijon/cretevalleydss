@@ -27,6 +27,9 @@ describe("GAHPSort collective evaluation in Finished Issues", () => {
 
     expect(data.alternativeEvaluation.collectiveGroupPresentation).toMatchObject({ status: "available" });
     const rendered = renderView(data, selection);
+    const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
+    expect(within(alternativePanel).getByText("Performance of alternatives on each criterion.")).toBeInTheDocument();
     expect(screen.queryByTestId("gahpsort-collective-evaluation")).not.toBeInTheDocument();
     expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
 
@@ -37,6 +40,8 @@ describe("GAHPSort collective evaluation in Finished Issues", () => {
       </ThemeProvider>
     );
 
+    expect(within(alternativePanel).getByRole("heading", { name: "Collective GAHPSort classification" })).toBeInTheDocument();
+    expect(within(alternativePanel).getByText("Individual expert assignments, category votes and final group decisions.")).toBeInTheDocument();
     const table = screen.getByTestId("gahpsort-collective-evaluation");
     expect(window.getComputedStyle(table).overflowX).toBe("auto");
     expect(window.getComputedStyle(table).overflowY).toBe("hidden");
@@ -70,6 +75,8 @@ describe("GAHPSort collective evaluation in Finished Issues", () => {
         <EvaluationsView data={data} state={selection} actions={actions} />
       </ThemeProvider>
     );
+    expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
+    expect(within(alternativePanel).getByText("Performance of alternatives on each criterion.")).toBeInTheDocument();
     expect(screen.queryByTestId("gahpsort-collective-evaluation")).not.toBeInTheDocument();
     expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
   });

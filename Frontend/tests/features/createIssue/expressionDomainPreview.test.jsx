@@ -37,6 +37,8 @@ describe("ExpressionDomainPreview", () => {
       flexWrap: "wrap",
       width: "100%",
     });
+    expect(screen.getByTestId("numeric-saaty-preview-values").querySelectorAll(".MuiChip-root")).toHaveLength(17);
+    expect(screen.getByText("1 — Neutral", { exact: true }).closest(".MuiChip-root")).toBeInTheDocument();
     expect(screen.getByText("Numeric · 17 fixed values")).toBeInTheDocument();
   });
 

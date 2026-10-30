@@ -105,6 +105,10 @@ const EvaluationPluginPanel = ({
   const shouldRender = !useGroupCollectiveView &&
     stageData.renderer?.structureKey &&
     hasActiveViewData;
+  const title = useGroupCollectiveView ? "Collective GAHPSort classification" : stageData.title;
+  const subtitle = useGroupCollectiveView
+    ? "Individual expert assignments, category votes and final group decisions."
+    : stageData.subtitle;
   const submittedAt = stageData.individual?.submittedAt;
   const hasExpertSubmissionTimestamp = Boolean(submittedAt);
   const emptyState = resolveEmptyStateContent({
@@ -125,7 +129,7 @@ const EvaluationPluginPanel = ({
       <Box sx={{ minWidth: 0 }}>
         <Stack direction="row" spacing={0.7} alignItems="center" useFlexGap flexWrap="wrap">
           <Typography variant="h6" component="h2">
-            {stageData.title}
+            {title}
           </Typography>
           <Typography variant="caption"
             sx={{
@@ -142,7 +146,7 @@ const EvaluationPluginPanel = ({
             color: "text.secondary",
           }}
         >
-          {stageData.subtitle}
+          {subtitle}
         </Typography>
       </Box>
 

@@ -1,4 +1,5 @@
 import { Box, Divider, Stack, Tooltip, Typography } from "@mui/material";
+import Chip from "@mui/material/Chip";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
@@ -197,9 +198,19 @@ const renderNumericSaatyPreview = (domain) => {
         }}
       >
         {SAATY_SCALE_VALUES.map((value) => (
-          <Typography key={value} variant="body2" sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>
-            {formatSaatyScaleLabel(value)}
-          </Typography>
+          <Chip
+            key={value}
+            size="small"
+            color="secondary"
+            variant={value === 1 ? "filled" : "outlined"}
+            label={formatSaatyScaleLabel(value)}
+            sx={{
+              height: 24,
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+              "& .MuiChip-label": { px: 0.9 },
+            }}
+          />
         ))}
       </Box>
       <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
