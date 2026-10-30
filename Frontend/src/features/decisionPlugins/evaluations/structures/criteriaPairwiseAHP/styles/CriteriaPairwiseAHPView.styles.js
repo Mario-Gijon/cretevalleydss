@@ -3,8 +3,6 @@ export const criteriaPairwiseAHPViewSx = {
   matrixViewport: {
     width: "100%",
     minWidth: 0,
-    overflowX: "auto",
-    overscrollBehaviorX: "contain",
     borderRadius: 1.5,
   },
   empty: { color: "text.secondary", py: 1 },

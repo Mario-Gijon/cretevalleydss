@@ -226,7 +226,6 @@ const CriteriaPairwiseAHPView = ({
           }}
           sx={buildPairwiseMatrixSx({
             theme,
-            alternativeCount: criteria.length,
             buildSharedStyles: buildEvaluationMatrixDataGridSx,
           })}
         />

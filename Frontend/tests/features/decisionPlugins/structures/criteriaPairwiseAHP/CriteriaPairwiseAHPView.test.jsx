@@ -2,6 +2,7 @@ import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import CriteriaPairwiseAHPView from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/CriteriaPairwiseAHPView.jsx";
+import { criteriaPairwiseAHPViewSx } from "../../../../../src/features/decisionPlugins/evaluations/structures/criteriaPairwiseAHP/styles/CriteriaPairwiseAHPView.styles.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const decisionContext = {
@@ -39,6 +40,15 @@ const choosePreference = (rowCriterion, columnCriterion, label) => {
 };
 
 describe("CriteriaPairwiseAHPView", () => {
+  it("does not create an outer horizontal scroller around the DataGrid", () => {
+    expect(criteriaPairwiseAHPViewSx.matrixViewport).toMatchObject({
+      width: "100%",
+      minWidth: 0,
+    });
+    expect(criteriaPairwiseAHPViewSx.matrixViewport).not.toHaveProperty("overflowX");
+    expect(criteriaPairwiseAHPViewSx.matrixViewport).not.toHaveProperty("overscrollBehaviorX");
+  });
+
   it("renders a C by C grid with neutral diagonals and editable comparisons in both directions", () => {
     const { container } = renderView({ evaluation: { comparisons: [] } });
 

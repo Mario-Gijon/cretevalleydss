@@ -77,7 +77,6 @@ const PairwiseMatrix = ({
         }}
         sx={buildPairwiseMatrixSx({
           theme,
-          alternativeCount: alternatives.length,
           buildSharedStyles: buildEvaluationMatrixDataGridSx,
         })}
       />

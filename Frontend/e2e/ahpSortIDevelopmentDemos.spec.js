@@ -93,24 +93,107 @@ const expectDialogOnlyVerticalScroll = async (dialog) => {
   expect(metrics.nestedVerticalScrollers, JSON.stringify(metrics.nestedVerticalScrollers)).toEqual([]);
 };
 
-const expectMatrixHorizontalScroll = async (panel) => {
-  const scrollableMatrix = panel.locator(".MuiDataGrid-virtualScroller").first();
+const expectMatrixHorizontalScroll = async (panel, { requireInternalScroll = false } = {}) => {
+  const grid = panel.locator(".MuiDataGrid-root").first();
+  const scrollableMatrix = grid.locator(".MuiDataGrid-virtualScroller");
+  await expect(grid).toBeVisible();
   await expect(scrollableMatrix).toBeVisible();
-  const horizontalMetrics = await scrollableMatrix.evaluate((element) => ({
-    scrollWidth: element.scrollWidth,
-    clientWidth: element.clientWidth,
-    overflowX: window.getComputedStyle(element).overflowX,
-  }));
-  expect(horizontalMetrics.overflowX).toMatch(/auto|scroll/);
-  expect(horizontalMetrics.scrollWidth).toBeGreaterThan(horizontalMetrics.clientWidth);
-  await scrollableMatrix.evaluate((element) => { element.scrollLeft = element.scrollWidth; });
-  expect(await scrollableMatrix.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+
+  const initialMetrics = await grid.evaluate((element) => {
+    const outerElement = element.parentElement;
+    const scroller = element.querySelector(".MuiDataGrid-virtualScroller");
+    return {
+      outer: {
+        scrollWidth: outerElement.scrollWidth,
+        clientWidth: outerElement.clientWidth,
+        scrollLeft: outerElement.scrollLeft,
+        overflowX: window.getComputedStyle(outerElement).overflowX,
+      },
+      grid: {
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        rectWidth: element.getBoundingClientRect().width,
+      },
+      inner: {
+        scrollWidth: scroller.scrollWidth,
+        clientWidth: scroller.clientWidth,
+        scrollLeft: scroller.scrollLeft,
+        overflowX: window.getComputedStyle(scroller).overflowX,
+      },
+    };
+  });
+
+  expect(initialMetrics.outer.scrollWidth, JSON.stringify(initialMetrics)).toBeLessThanOrEqual(
+    initialMetrics.outer.clientWidth + 1
+  );
+  expect(initialMetrics.outer.overflowX, JSON.stringify(initialMetrics)).not.toMatch(/auto|scroll/);
+  expect(initialMetrics.grid.rectWidth, JSON.stringify(initialMetrics)).toBeLessThanOrEqual(
+    initialMetrics.outer.clientWidth + 1
+  );
+
+  if (!requireInternalScroll) return;
+
+  expect(initialMetrics.inner.scrollWidth, JSON.stringify(initialMetrics)).toBeGreaterThan(
+    initialMetrics.inner.clientWidth + 1
+  );
+  expect(initialMetrics.inner.overflowX, JSON.stringify(initialMetrics)).toMatch(/auto|scroll/);
+  const endMetrics = await scrollableMatrix.evaluate(async (element) => {
+    element.scrollLeft = element.scrollWidth;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const gridElement = element.closest(".MuiDataGrid-root");
+    const columnCount = Number(gridElement.querySelector('[role="grid"]')?.getAttribute("aria-colcount"));
+    const lastHeader = gridElement.querySelector(
+      `.MuiDataGrid-columnHeader[aria-colindex="${columnCount}"]`
+    );
+    const headerBounds = lastHeader?.getBoundingClientRect();
+    const scrollerBounds = element.getBoundingClientRect();
+    return {
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+      scrollLeft: element.scrollLeft,
+      outerScroll: {
+        scrollWidth: gridElement.parentElement.scrollWidth,
+        clientWidth: gridElement.parentElement.clientWidth,
+        scrollLeft: gridElement.parentElement.scrollLeft,
+        overflowX: window.getComputedStyle(gridElement.parentElement).overflowX,
+      },
+      columnCount,
+      lastColumnIndex: lastHeader?.getAttribute("aria-colindex"),
+      lastColumnVisible: Boolean(
+        headerBounds &&
+        headerBounds.left >= scrollerBounds.left - 1 &&
+        headerBounds.right <= scrollerBounds.right + 1
+      ),
+      horizontalScrollbar: (() => {
+        const scrollbar = gridElement.querySelector(".MuiDataGrid-scrollbar--horizontal");
+        return scrollbar ? {
+          scrollWidth: scrollbar.scrollWidth,
+          clientWidth: scrollbar.clientWidth,
+          clientHeight: scrollbar.clientHeight,
+          scrollLeft: scrollbar.scrollLeft,
+          overflowX: window.getComputedStyle(scrollbar).overflowX,
+        } : null;
+      })(),
+    };
+  });
+  expect(endMetrics.scrollLeft, JSON.stringify(endMetrics)).toBeGreaterThan(0);
+  expect(endMetrics.outerScroll.scrollWidth, JSON.stringify(endMetrics)).toBeLessThanOrEqual(
+    endMetrics.outerScroll.clientWidth + 1
+  );
+  expect(endMetrics.outerScroll.scrollLeft, JSON.stringify(endMetrics)).toBe(0);
+  expect(endMetrics.lastColumnIndex, JSON.stringify(endMetrics)).toBe(String(endMetrics.columnCount));
+  expect(endMetrics.lastColumnVisible, JSON.stringify(endMetrics)).toBe(true);
+  expect(endMetrics.horizontalScrollbar, JSON.stringify(endMetrics)).not.toBeNull();
+  expect(endMetrics.horizontalScrollbar.scrollWidth, JSON.stringify(endMetrics)).toBeGreaterThan(
+    endMetrics.horizontalScrollbar.clientWidth
+  );
 };
 
 const verifyEvaluationScrollAcrossViewports = async (page, dialog, { requireCriteriaWeighting = false } = {}) => {
   const criteriaPanel = dialog.getByTestId("evaluation-stage-panel-criteriaWeighting");
   const alternativePanel = dialog.getByTestId("evaluation-stage-panel-alternativeEvaluation");
   if (requireCriteriaWeighting) await expect(criteriaPanel).toBeVisible();
+  const hasCriteriaWeightingPanel = await criteriaPanel.isVisible().catch(() => false);
   await expect(alternativePanel).toBeVisible();
   await selectDifferentExpertWhenAvailable(page, dialog);
 
@@ -133,18 +216,26 @@ const verifyEvaluationScrollAcrossViewports = async (page, dialog, { requireCrit
     await expectNoHorizontalOverflow(page);
     await expectDialogOnlyVerticalScroll(dialog);
 
-    if (requireCriteriaWeighting) {
+    if (hasCriteriaWeightingPanel) {
       await dialog.evaluate((element) => { element.scrollTop = 0; });
       await criteriaPanel.evaluate((element) => element.scrollIntoView({ block: "start" }));
       const criteriaScrollTop = await dialog.evaluate((element) => element.scrollTop);
+      const criteriaGrid = criteriaPanel.locator(".MuiDataGrid-root").first();
+      if (await criteriaGrid.count()) {
+        const columnCount = await criteriaGrid.evaluate((element) => Number(
+          element.querySelector('[role="grid"]')?.getAttribute("aria-colcount")
+        ));
+        await expectMatrixHorizontalScroll(criteriaPanel, {
+          requireInternalScroll: viewport.width < 600 && columnCount > 2,
+        });
+      }
       await alternativePanel.evaluate((element) => element.scrollIntoView({ block: "start" }));
       expect(await dialog.evaluate((element) => element.scrollTop)).toBeGreaterThan(criteriaScrollTop);
     } else {
       await alternativePanel.scrollIntoViewIfNeeded();
     }
     if (viewport.width < 600) {
-      if (requireCriteriaWeighting) await expectMatrixHorizontalScroll(criteriaPanel);
-      await expectMatrixHorizontalScroll(alternativePanel);
+      await expectMatrixHorizontalScroll(alternativePanel, { requireInternalScroll: true });
     }
 
     await dialog.evaluate((element) => { element.scrollTop = element.scrollHeight; });

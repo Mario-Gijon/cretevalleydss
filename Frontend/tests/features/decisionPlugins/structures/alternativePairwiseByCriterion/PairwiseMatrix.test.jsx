@@ -11,10 +11,6 @@ import {
   buildEvaluationMatrixDataGridSx,
   evaluationMatrixInputBoundarySx,
 } from "../../../../../src/features/decisionPlugins/evaluations/shared/styles/evaluationMatrixTable.styles.js";
-import {
-  ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH,
-  EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH,
-} from "../../../../../src/features/decisionPlugins/evaluations/shared/evaluationMatrixSizing.js";
 import { renderWithProviders } from "../../../../setup/renderWithProviders.jsx";
 
 const expressionDomain = {
@@ -98,22 +94,16 @@ describe("PairwiseMatrix layout", () => {
     expect(styles["& .MuiDataGrid-columnHeader"].backgroundColor).toBe(headerBackground);
   });
 
-  it("leaves horizontal scrolling to DataGrid while preserving the matrix minimum width", () => {
+  it("leaves horizontal scrolling to DataGrid while keeping its root within the available width", () => {
     expect(pairwiseMatrixSx.container).toMatchObject({ width: "100%", minWidth: 0 });
     expect(pairwiseMatrixSx.container).not.toHaveProperty("overflowX");
 
     const styles = buildPairwiseMatrixSx({
       theme: {},
-      alternativeCount: 6,
       buildSharedStyles: () => ({ "& .first-column": { px: 1 } }),
     });
 
-    expect(styles.minWidth).toBe(
-      Math.max(
-        500,
-        6 * EVALUATION_MATRIX_VALUE_COLUMN_MIN_WIDTH + ALTERNATIVE_PAIRWISE_LABEL_COLUMN_MIN_WIDTH
-      )
-    );
+    expect(styles.minWidth).toBe(0);
     expect(styles["& .MuiDataGrid-cell.pairwise-grid-cell, & .MuiDataGrid-cell.diagonal-cell"]).toEqual({
       px: 0,
     });
