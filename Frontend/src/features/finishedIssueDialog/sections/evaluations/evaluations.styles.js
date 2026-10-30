@@ -101,8 +101,7 @@ export const evaluationPluginRendererViewportSx = {
   width: "100%",
   maxWidth: "100%",
   minWidth: 0,
-  maxHeight: { xs: 520, xl: 620 },
-  overflow: "auto",
+  overflow: "visible",
   p: 0.85,
   borderRadius: 1.8,
   border: "1px solid rgba(255,255,255,0.08)",
@@ -173,14 +172,10 @@ export const expressionDomainCardSx = {
   bgcolor: "rgba(3,10,17,0.26)",
 };
 
-export const expressionDomainCriteriaListSx = (criteriaCount) => ({
-  ...(criteriaCount > 5 ? localScrollbarSx : {}),
+export const expressionDomainCriteriaListSx = () => ({
   m: 0,
   mt: 0.55,
   pl: 2.2,
-  maxHeight: criteriaCount > 5 ? 112 : "none",
-  overflowY: criteriaCount > 5 ? "auto" : "visible",
-  overflowX: "hidden",
   color: "text.secondary",
   "& li": {
     py: 0.15,

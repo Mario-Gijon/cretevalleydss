@@ -377,7 +377,8 @@ describe("EvaluationsView", () => {
     expect(screen.getByText("Quality", { selector: "span" })).toBeInTheDocument();
     expect(screen.queryByText("Risk", { selector: "span" })).not.toBeInTheDocument();
     expect(evaluationPluginRendererViewportSx).not.toHaveProperty("minHeight");
-    expect(evaluationPluginRendererViewportSx).toMatchObject({ width: "100%", maxWidth: "100%", maxHeight: { xs: 520, xl: 620 }, overflow: "auto" });
+    expect(evaluationPluginRendererViewportSx).not.toHaveProperty("maxHeight");
+    expect(evaluationPluginRendererViewportSx).toMatchObject({ width: "100%", maxWidth: "100%", overflow: "visible" });
     expect(evaluationsExpertControlSx).toMatchObject({ width: { xs: "100%", sm: 230 } });
     expect(evaluationsToggleSx).toMatchObject({ width: { xs: "100%", sm: "auto" } });
     expect(evaluationsHeaderSx).toMatchObject({
@@ -397,7 +398,7 @@ describe("EvaluationsView", () => {
     expect(evaluationsStageDividerNarrowSx.display).toEqual({ xs: "block", xl: "none" });
   });
 
-  it("shows all used criteria and scrolls the expanded list only above five items", () => {
+  it("shows all used criteria without creating an inner vertical scroller", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.criteria.nodes.push(
       ...Array.from({ length: 5 }, (_, index) => ({
@@ -411,8 +412,8 @@ describe("EvaluationsView", () => {
     renderView(data);
 
     expect(data.domains[0].criteriaCount).toBe(7);
-    expect(expressionDomainCriteriaListSx(7)).toMatchObject({ maxHeight: 112, overflowY: "auto" });
-    expect(expressionDomainCriteriaListSx(5)).toMatchObject({ maxHeight: "none", overflowY: "visible" });
+    expect(expressionDomainCriteriaListSx()).not.toHaveProperty("maxHeight");
+    expect(expressionDomainCriteriaListSx()).not.toHaveProperty("overflowY");
     const toggle = screen.getByRole("button", { name: "Used by 7 criteria" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggle);

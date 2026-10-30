@@ -73,7 +73,7 @@ const ExpressionDomainCard = ({ item }) => {
         <Box
           id={criteriaListId}
           component="ul"
-          sx={expressionDomainCriteriaListSx(item.criteriaCount)}
+          sx={expressionDomainCriteriaListSx()}
         >
           {item.criteria.map((criterion, index) => (
             <li key={criterion.id ?? `${criterion.name}-${index}`}>
