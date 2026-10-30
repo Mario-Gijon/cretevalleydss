@@ -176,8 +176,8 @@ describe("createIssuePayload", () => {
       apiModelKey: "ahp_sort_i",
       supportedExpressionDomains: [
         {
-          typeKey: "numericContinuous",
-          constraints: { min: 1 / 9, max: 9 },
+          typeKey: "numericSaaty",
+          constraints: { scale: "saaty-fundamental-1-9" },
         },
       ],
       parameters: [
@@ -188,9 +188,9 @@ describe("createIssuePayload", () => {
     };
     const ahpDomain = {
       _id: "domain-ahp",
-      name: "Numerical AHP [1/9, 9]",
-      typeKey: "numericContinuous",
-      definition: { min: 1 / 9, max: 9, step: null },
+      name: "AHP Saaty Scale",
+      typeKey: "numericSaaty",
+      definition: { scale: "saaty-fundamental-1-9" },
     };
     const paramValues = {
       orderedCategories: [

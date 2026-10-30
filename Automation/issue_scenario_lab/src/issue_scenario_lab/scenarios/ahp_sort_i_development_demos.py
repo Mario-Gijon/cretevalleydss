@@ -15,8 +15,13 @@ from issue_scenario_lab.errors import ManifestError, ScenarioLabError
 from issue_scenario_lab.manifest.models import GeneratedIssue
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.no_consensus_basic import _id, _items
+from issue_scenario_lab.scenarios.saaty_scale import (
+    AHP_SAATY_DOMAIN_NAME,
+    AHP_SAATY_SCALE_KEY,
+    is_saaty_scale_value,
+)
 
-SCENARIO_ID = "ahp-sort-i-development-demos"
+SCENARIO_ID = "ahp-sort-i-development-demos-saaty-v2"
 MODEL_KEY = "ahp_sort_i"
 WEIGHTING_MODEL_KEY = "ahp_criteria_weights"
 RESULT_STRUCTURE_KEY = "sorting"
@@ -24,8 +29,8 @@ RESULT_STRUCTURE_VERSION = 1
 CRITERIA_STAGE = "criteriaWeighting"
 ALTERNATIVE_STAGE = "alternativeEvaluation"
 FIXTURE_PATH = Path(__file__).parents[3] / "data" / "ahp_sort_i_development_demos.json"
-SUPPLIER_ISSUE_NAME = "DEMO — AHPSort I — Supplier Pre-qualification (2012)"
-SUSTAINABLE_ISSUE_NAME = "DEMO — GAHPSort — Sustainable Development (2021)"
+SUPPLIER_ISSUE_NAME = "DEMO — AHPSort I — Supplier Pre-qualification (2012) — AHP Saaty Scale"
+SUSTAINABLE_ISSUE_NAME = "DEMO — GAHPSort — Sustainable Development (2021) — AHP Saaty Scale"
 
 
 @dataclass(frozen=True)
@@ -57,8 +62,8 @@ def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
 
 
 def validate_fixture(fixture: Any) -> None:
-    if not isinstance(fixture, dict) or fixture.get("schemaVersion") != 1:
-        raise ScenarioLabError("AHPSort I demonstration fixture must use schemaVersion 1")
+    if not isinstance(fixture, dict) or fixture.get("schemaVersion") != 2:
+        raise ScenarioLabError("AHPSort I Saaty-scale demonstration fixture must use schemaVersion 2")
     supplier = fixture.get("supplierPrequalification")
     sustainable = fixture.get("sustainableDevelopment")
     if not isinstance(supplier, dict) or supplier.get("issueName") != SUPPLIER_ISSUE_NAME:
@@ -125,10 +130,7 @@ def validate_fixture(fixture: Any) -> None:
 
 
 def _is_saaty(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value)) and any(
-        math.isclose(float(value), allowed, rel_tol=0, abs_tol=1e-12)
-        for allowed in [*range(1, 10), *(1 / divisor for divisor in range(2, 10))]
-    )
+    return is_saaty_scale_value(value)
 
 
 def _require_unique_model(response: Any, model_key: str, collection_key: str) -> dict[str, Any]:
@@ -153,8 +155,8 @@ def _compatible_models(response: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         "criterionWeights": model.get("usesCriteriaWeights") is True,
         "supportedSaatyDomain": any(
             isinstance(item, dict)
-            and item.get("typeKey") == "numericContinuous"
-            and item.get("constraints") == {"min": 1 / 9, "max": 9}
+            and item.get("typeKey") == "numericSaaty"
+            and item.get("constraints") == {"scale": AHP_SAATY_SCALE_KEY}
             for item in model.get("supportedExpressionDomains", [])
         ),
     }
@@ -171,7 +173,7 @@ def _compatible_models(response: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     return model, weighting
 
 
-def _select_existing_numeric_domain(domains: Any, model: dict[str, Any]) -> dict[str, Any]:
+def _select_existing_saaty_domain(domains: Any, model: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(domains, dict):
         raise ScenarioLabError("Backend expression-domain response must be an object")
     supported = [
@@ -179,36 +181,26 @@ def _select_existing_numeric_domain(domains: Any, model: dict[str, Any]) -> dict
         for item in model.get("supportedExpressionDomains", [])
         if isinstance(item, dict) and isinstance(item.get("typeKey"), str)
     ]
-    all_domains = [*_items(domains, "globals"), *_items(domains, "userDomains")]
+    global_domains = _items(domains, "globals")
     compatible = [
         domain
-        for domain in all_domains
+        for domain in global_domains
         if _id(domain)
         and isinstance(domain.get("definition"), dict)
+        and domain.get("name") == AHP_SAATY_DOMAIN_NAME
+        and domain.get("typeKey") == "numericSaaty"
+        and domain.get("definition") == {"scale": AHP_SAATY_SCALE_KEY}
         and any(
-            domain.get("typeKey") == supported_entry.get("typeKey")
-            and all(
-                domain["definition"].get(key) == expected
-                for key, expected in supported_entry.get("constraints", {}).items()
-            )
+            supported_entry.get("typeKey") == "numericSaaty"
+            and supported_entry.get("constraints") == {"scale": AHP_SAATY_SCALE_KEY}
             for supported_entry in supported
         )
     ]
-    if not compatible:
-        raise ScenarioLabError("no existing supported numeric expression domain is available; the generator will not create one")
-    return next(
-        (item for item in compatible if item.get("name") == "Numerical AHP [1/9, 9]"),
-        next(
-            (
-                item
-                for item in compatible
-                if item.get("typeKey") == "numericContinuous"
-                and item.get("definition", {}).get("min") == 1 / 9
-                and item.get("definition", {}).get("max") == 9
-            ),
-            compatible[0],
-        ),
-    )
+    if len(compatible) != 1:
+        raise ScenarioLabError(
+            "expected exactly one global AHP Saaty Scale domain; the generator will not create or substitute one"
+        )
+    return compatible[0]
 
 
 def _saaty_comparisons(
@@ -621,6 +613,24 @@ def _validate_finished(
     if any(not value for value in criterion_ids_by_key.values()):
         raise ScenarioLabError("Finished Issue is missing a persisted criterion ID")
 
+    domain_snapshots = _items(detail, "expressionDomains")
+    saaty_snapshots = [
+        item for item in domain_snapshots
+        if item.get("name") == AHP_SAATY_DOMAIN_NAME
+        and item.get("typeKey") == "numericSaaty"
+        and item.get("definition") == {"scale": AHP_SAATY_SCALE_KEY}
+        and item.get("scope") == "global"
+        and isinstance(item.get("sourceDomainId"), str)
+        and bool(item.get("sourceDomainId"))
+    ]
+    if len(saaty_snapshots) != 1:
+        raise ScenarioLabError("Finished Issue must preserve exactly one global AHP Saaty Scale snapshot")
+    saaty_snapshot_id = _id(saaty_snapshots[0])
+    if not saaty_snapshot_id or {
+        item.get("expressionDomainId") for item in leaf_nodes
+    } != {saaty_snapshot_id}:
+        raise ScenarioLabError("all leaf criteria must share the persisted AHP Saaty Scale snapshot")
+
     phase_results = _items(detail, "phaseResults")
     sort_results = [item for item in phase_results if item.get("stage") == ALTERNATIVE_STAGE and item.get("phase") == 0]
     if (
@@ -1029,7 +1039,7 @@ def generate(
         sessions.users[alias].email.casefold(): _user_id_from_token(sessions.client_for(alias).access_token)
         for alias in emails_by_alias
     }
-    domain = _select_existing_numeric_domain(owner_api.expression_domains(), model)
+    domain = _select_existing_saaty_domain(owner_api.expression_domains(), model)
 
     supplier_active, supplier_finished = _find_exact_issues(owner_api, supplier["issueName"])
     sustainable_active, sustainable_finished = _find_exact_issues(owner_api, sustainable["issueName"])

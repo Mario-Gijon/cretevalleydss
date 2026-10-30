@@ -1,4 +1,5 @@
 import { normalizeExpressionDomainCreationPayload } from "./normalizeExpressionDomainPayload.js";
+import { buildCanonicalSaatyExpressionDomain } from "./types/numericSaaty/globalDomain.js";
 
 const freezeDeep = (value) => {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
@@ -18,6 +19,7 @@ export const CANONICAL_GLOBAL_EXPRESSION_DOMAINS = freezeDeep([
       max: 1,
     },
   },
+  buildCanonicalSaatyExpressionDomain(),
   {
     name: "Numerical AHP [1/9, 9]",
     typeKey: "numericContinuous",

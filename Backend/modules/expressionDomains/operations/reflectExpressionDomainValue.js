@@ -8,6 +8,7 @@ import {
   getNumericDiscreteEvaluationDefinition,
 } from "../types/numericDiscrete/evaluation.js";
 import { getNumericContinuousEvaluationDefinition } from "../types/numericContinuous/evaluation.js";
+import { validateNumericSaatyEvaluation } from "../types/numericSaaty/evaluation.js";
 import { assertPairwiseReflectionCompatible } from "./assertPairwiseReflectionCompatible.js";
 import { validateFuzzyValuesOrThrow } from "./validateFuzzyValues.js";
 
@@ -37,6 +38,9 @@ export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
       const definition = getNumericContinuousEvaluationDefinition(expressionDomain);
       return definition.min + definition.max - normalizedValue;
     }
+
+    case "numericSaaty":
+      return 1 / validateNumericSaatyEvaluation({ value: normalizedValue, expressionDomain });
 
     case "numericDiscrete": {
       assertPairwiseReflectionCompatible(expressionDomain);

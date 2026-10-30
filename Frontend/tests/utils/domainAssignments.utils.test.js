@@ -84,13 +84,14 @@ describe("getSupportedDomainPools", () => {
     ]);
   });
 
-  it("offers the AHP [1/9, 9] domain for AHPSort and remaps an old 0-1 draft", () => {
+  it("offers only the fixed global Saaty scale for AHPSort and remaps an old draft", () => {
     const ahpSortModel = {
       apiModelKey: "ahp_sort_i",
+      requiresHomogeneousExpressionDomains: true,
       supportedExpressionDomains: [
         {
-          typeKey: "numericContinuous",
-          constraints: { min: 1 / 9, max: 9 },
+          typeKey: "numericSaaty",
+          constraints: { scale: "saaty-fundamental-1-9" },
         },
       ],
     };
@@ -103,13 +104,13 @@ describe("getSupportedDomainPools", () => {
       },
       {
         _id: "domain-ahp",
-        name: "Numerical AHP [1/9, 9]",
-        typeKey: "numericContinuous",
-        definition: { min: 1 / 9, max: 9, step: null },
+        name: "AHP Saaty Scale",
+        typeKey: "numericSaaty",
+        definition: { scale: "saaty-fundamental-1-9" },
       },
       {
         _id: "domain-ahp-legacy",
-        name: "AHPSort I Saaty ratio scale",
+        name: "Deprecated AHP range",
         typeKey: "numericContinuous",
         definition: { min: 1 / 9, max: 9, step: null },
       },
@@ -118,7 +119,6 @@ describe("getSupportedDomainPools", () => {
 
     expect(options.allDomains.map(({ _id }) => _id)).toEqual([
       "domain-ahp",
-      "domain-ahp-legacy",
     ]);
     expect(options.defaultDomainId).toBe("domain-ahp");
 
@@ -128,7 +128,13 @@ describe("getSupportedDomainPools", () => {
         { id: "quality", name: "Quality" },
         { id: "cost", name: "Cost" },
       ],
-      currentConfig: { mode: "global", globalDomainId: "domain-0-1" },
+      currentConfig: {
+        mode: "byCriterion",
+        domainsByCriterion: {
+          Quality: "domain-0-1",
+          Cost: "domain-ahp-legacy",
+        },
+      },
       globalDomains,
       expressionDomains: [],
     });

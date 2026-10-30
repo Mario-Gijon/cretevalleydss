@@ -4,10 +4,12 @@ import { linguisticFuzzy } from "./types/linguisticFuzzy/index.js";
 import { linguisticOrdinal } from "./types/linguisticOrdinal/index.js";
 import { numericContinuous } from "./types/numericContinuous/index.js";
 import { numericDiscrete } from "./types/numericDiscrete/index.js";
+import { numericSaaty } from "./types/numericSaaty/index.js";
 
 export const EXPRESSION_DOMAIN_TYPE_CATALOG = Object.freeze({
   numericContinuous,
   numericDiscrete,
+  numericSaaty,
   linguisticOrdinal,
   linguistic2Tuple,
   linguisticFuzzy,

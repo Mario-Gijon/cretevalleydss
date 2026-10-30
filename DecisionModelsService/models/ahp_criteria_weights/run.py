@@ -12,6 +12,14 @@ from typing import Any
 
 import numpy as np
 
+from models.saaty_scale import (
+    SAATY_SCALE,
+    SAATY_SCALE_TOLERANCE,
+    SAATY_SCALE_VALUES,
+    is_saaty_scale_value,
+)
+
+__all__ = ["SAATY_SCALE", "SAATY_SCALE_TOLERANCE", "SAATY_SCALE_VALUES"]
 
 RANDOM_INDEX_BY_SIZE = {
     1: 0.0,
@@ -31,12 +39,7 @@ RANDOM_INDEX_BY_SIZE = {
     15: 1.59,
 }
 MAX_SUPPORTED_CRITERIA = max(RANDOM_INDEX_BY_SIZE)
-SAATY_SCALE = frozenset(
-    [float(value) for value in range(1, 10)]
-    + [1.0 / value for value in range(2, 10)]
-)
-SAATY_SCALE_VALUES = tuple(sorted(SAATY_SCALE))
-SCALE_TOLERANCE = 1e-12
+SCALE_TOLERANCE = SAATY_SCALE_TOLERANCE
 EIGEN_RESIDUAL_TOLERANCE = 1e-9
 CONSISTENCY_REVIEW_THRESHOLD = 0.10
 
@@ -95,7 +98,7 @@ def _normalize_judgment(value: Any, field: str) -> float:
     numeric = float(value)
     if not math.isfinite(numeric):
         raise ValueError(f"{field} must be finite")
-    if not any(math.isclose(numeric, allowed, rel_tol=0, abs_tol=SCALE_TOLERANCE) for allowed in SAATY_SCALE):
+    if not is_saaty_scale_value(numeric):
         raise ValueError(f"{field} must be one of Saaty's 1–9 scale values or a reciprocal")
     return numeric
 

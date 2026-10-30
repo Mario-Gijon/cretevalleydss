@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "supplierPrequalification": {
-    "issueName": "DEMO — AHPSort I — Supplier Pre-qualification (2012)",
+    "issueName": "DEMO — AHPSort I — Supplier Pre-qualification (2012) — AHP Saaty Scale",
     "description": "Reproduction of the Supplier Pre-qualification judgments in Ishizaka, Pearman and Nemery (2012). Original Saaty comparisons are used; the known printed-value discrepancies remain documented in DecisionModelsService/models/ahp_sort_i/REFERENCE_DATA.md.",
     "criteria": [
       { "key": "experience", "name": "Experience", "type": "benefit" },
@@ -40,7 +40,7 @@
     }
   },
   "sustainableDevelopment": {
-    "issueName": "DEMO — GAHPSort — Sustainable Development (2021)",
+    "issueName": "DEMO — GAHPSort — Sustainable Development (2021) — AHP Saaty Scale",
     "description": "Synthetic demonstration adapted around the six social indicators discussed by Labella, Ishizaka and Martínez (2021). Criterion preferences and country-to-profile judgments in this Issue are reproducible synthetic inputs, not values or classifications reported by the authors.",
     "criteria": [
       { "key": "poverty", "name": "People at risk of poverty or social exclusion", "type": "cost" },

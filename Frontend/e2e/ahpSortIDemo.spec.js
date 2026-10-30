@@ -387,7 +387,7 @@ const runSupplierDemo = async (page) => {
         experts: [DEMO_USERS.experts[0]],
         creatorPairwiseValues: SUPPLIER_PAIRWISE_VALUES,
         categories: ["Rejected", "Accepted"],
-        domainName: "Numerical AHP [1/9, 9]",
+        domainName: "AHP Saaty Scale",
       });
     }
     await logout(page);
@@ -508,7 +508,7 @@ const runSustainableGroupDemo = async (page) => {
         useExpertMcc: true,
         groupTiePolicy: "optimistic",
         categories: ["Bad", "Moderate", "Good"],
-        domainName: "Numerical AHP [1/9, 9]",
+        domainName: "AHP Saaty Scale",
       });
     }
     await logout(page);

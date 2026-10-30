@@ -1,22 +1,10 @@
-export const SAATY_SCALE_VALUES = Object.freeze([
-  1 / 9,
-  1 / 8,
-  1 / 7,
-  1 / 6,
-  1 / 5,
-  1 / 4,
-  1 / 3,
-  1 / 2,
-  1,
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-]);
+import {
+  formatSaatyScaleLabel,
+  getSaatyScaleValue,
+  SAATY_SCALE_VALUES,
+} from "../../../../../expressionDomains/types/numericSaaty/saatyScale.js";
+
+export { getSaatyScaleValue, SAATY_SCALE_VALUES };
 
 export const AHP_NORMALIZED_PREFERENCE_DECIMAL_PLACES = 4;
 export const AHP_SELECT_DISPLAY_DECIMAL_PLACES = 3;
@@ -36,18 +24,7 @@ export const saatyValueToNormalizedPreference = (value) => {
   return value / (1 + value);
 };
 
-export const getSaatyScaleValue = (value) => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return SAATY_SCALE_VALUES.find((allowed) => Math.abs(allowed - value) <= 1e-12) ?? null;
-};
-
-export const formatSaatyPreferenceLabel = (value) => {
-  const saatyValue = getSaatyScaleValue(value);
-  if (saatyValue === null) return "";
-  if (saatyValue === 1) return "1 — Neutral";
-  if (saatyValue < 1) return `1/${Math.round(1 / saatyValue)}`;
-  return String(saatyValue);
-};
+export const formatSaatyPreferenceLabel = formatSaatyScaleLabel;
 
 export const SAATY_NORMALIZED_PREFERENCE_OPTIONS = Object.freeze(
   SAATY_SCALE_VALUES.map((saatyValue) => Object.freeze({

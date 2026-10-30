@@ -6,6 +6,7 @@ import {
   isNumericDiscreteExpressionDomain,
   normalizeSupportedExpressionDomains,
 } from "./expressionDomains";
+import { AHP_SAATY_SCALE_KEY } from "../features/expressionDomains/types/numericSaaty/saatyScale.js";
 
 const getModelDomainSupport = (selectedModel) => {
   const supportedExpressionDomains = normalizeSupportedExpressionDomains(
@@ -77,10 +78,8 @@ const toValidDomainIdSet = (domains) =>
       .filter(Boolean)
   );
 
-const isSaatyRangeDomain = (domain) => {
-  const { min, max } = getExpressionDomainNumericRange(domain);
-  return isNumericContinuousDomain(domain) && min === 1 / 9 && max === 9;
-};
+const isSaatyScaleDomain = (domain) =>
+  domain?.typeKey === "numericSaaty" && domain?.definition?.scale === AHP_SAATY_SCALE_KEY;
 
 export const resolveExpressionDomainOptions = (
   selectedModel,
@@ -94,22 +93,16 @@ export const resolveExpressionDomainOptions = (
   );
 
   const allDomains = [...numericDomains, ...linguisticDomains];
-  const requiresSaatyRange = normalizeSupportedExpressionDomains(
+  const requiresSaatyScale = normalizeSupportedExpressionDomains(
     selectedModel?.supportedExpressionDomains
   ).some(
-    (entry) =>
-      entry.typeKey === "numericContinuous" &&
-      entry.constraints.min === 1 / 9 &&
-      entry.constraints.max === 9
+    (entry) => entry.typeKey === "numericSaaty" && entry.constraints.scale === AHP_SAATY_SCALE_KEY
   );
-  const defaultSaatyRangeDomainId = requiresSaatyRange
-    ? normalizeDomainId(
-        numericDomains.find((domain) => domain.name === "Numerical AHP [1/9, 9]")?._id
-      ) ||
-      normalizeDomainId(numericDomains.find(isSaatyRangeDomain)?._id)
+  const defaultSaatyScaleDomainId = requiresSaatyScale
+    ? normalizeDomainId(numericDomains.find(isSaatyScaleDomain)?._id)
     : "";
   const defaultDomainId =
-    defaultSaatyRangeDomainId ||
+    defaultSaatyScaleDomainId ||
     normalizeDomainId(
       numericDomains.find(
         (domain) => {

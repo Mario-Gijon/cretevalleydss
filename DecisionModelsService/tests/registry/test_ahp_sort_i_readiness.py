@@ -1,5 +1,4 @@
 import pytest
-
 from models.ahp_sort_i.definition import (
     _is_explicit_local_development_stack,
     _is_isolated_e2e_stack,
@@ -70,10 +69,11 @@ def test_ahp_sort_i_is_ready_and_authorized_in_the_isolated_e2e_stack(monkeypatc
     assert "default" not in group_parameter
     assert manifest["supportedExpressionDomains"] == [
         {
-            "typeKey": "numericContinuous",
-            "constraints": {"min": 1 / 9, "max": 9},
+            "typeKey": "numericSaaty",
+            "constraints": {"scale": "saaty-fundamental-1-9"},
         }
     ]
+    assert manifest["requiresHomogeneousExpressionDomains"] is True
 
 
 def test_ahp_sort_i_stays_scaffold_if_isolation_database_does_not_match(monkeypatch):

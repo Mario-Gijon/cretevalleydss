@@ -47,6 +47,7 @@ export const areExpressionDomainValuesEqual = ({
   switch (normalizedTypeKey) {
     case "numericContinuous":
     case "numericDiscrete":
+    case "numericSaaty":
       return (
         typeof left === "number" &&
         Number.isFinite(left) &&

@@ -107,6 +107,35 @@ npm start
 
 > Check the actual scripts in `package.json` and use the one that matches your local setup.
 
+## Scoped AHP Saaty domain synchronization
+
+For the AHP Saaty scale, use the scoped, idempotent synchronizer below instead
+of the reset command. It only creates or updates the single global
+`AHP Saaty Scale` document and never changes other domains or Issue snapshots.
+It defaults to a dry-run. Apply is guarded to the development database and
+requires an immediately reviewed dry-run:
+
+```bash
+cd Backend
+NODE_ENV=development \
+  MONGODB_DB_NAME=cretevalleydss_develop \
+  EXPRESSION_DOMAIN_SYNC_TARGET=cretevalleydss_develop \
+  bun run sync:global-expression-domain:saaty
+```
+
+After confirming the dry-run reports only the expected `AHP Saaty Scale`
+create/update, apply with the same target variables and `--apply`:
+
+```bash
+NODE_ENV=development \
+  MONGODB_DB_NAME=cretevalleydss_develop \
+  EXPRESSION_DOMAIN_SYNC_TARGET=cretevalleydss_develop \
+  bun run sync:global-expression-domain:saaty --apply
+```
+
+The old `Numerical AHP [1/9, 9]` domain is not deleted by this command. Review
+historical Issue references before any future cleanup.
+
 ## Reset global expression domains
 
 Run this command deliberately when the selected database needs its global expression domains replaced:

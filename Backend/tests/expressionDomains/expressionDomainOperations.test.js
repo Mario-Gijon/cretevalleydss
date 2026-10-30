@@ -82,6 +82,21 @@ const buildHexagonalFuzzyDomain = () => ({
 });
 
 describe("expression domain operations", () => {
+  it("reflects numericSaaty by its reciprocal and accepts only scale values", () => {
+    const expressionDomain = {
+      typeKey: "numericSaaty",
+      definition: { scale: "saaty-fundamental-1-9" },
+    };
+    expect(reflectExpressionDomainValue({ value: 5, expressionDomain })).toBe(1 / 5);
+    expect(reflectExpressionDomainValue({ value: 1 / 3, expressionDomain })).toBe(3);
+    expect(areExpressionDomainValuesEqual({
+      left: 1 / 3,
+      right: 1 / 3 + 1e-13,
+      expressionDomain,
+    })).toBe(true);
+    expect(() => reflectExpressionDomainValue({ value: 1.7, expressionDomain })).toThrow(/17 fundamental/);
+  });
+
   it("reflects numericContinuous 1..5 so 2 becomes 4", () => {
     expect(
       reflectExpressionDomainValue({

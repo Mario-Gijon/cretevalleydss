@@ -46,6 +46,7 @@
     "migrate:issue-stage-results": "node scripts/migrate-issue-stage-results.js",
     "migrate:expression-domains": "node scripts/migrate-expression-domains.js",
     "reset:global-expression-domains": "node scripts/reset-global-expression-domains.js",
+    "sync:global-expression-domain:saaty": "node scripts/sync-global-saaty-expression-domain.js",
     "docs:openapi": "node scripts/generate-openapi.mjs",
     "docs:openapi:lint": "redocly lint openapi/openapi.json",
     "docs:openapi:bundle": "redocly bundle openapi/openapi.json -o openapi/bundled-openapi.json",

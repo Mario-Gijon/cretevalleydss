@@ -309,6 +309,12 @@ export const ViewExpressionsDomainDialog = ({
                       >
                         Discrete
                       </MenuItem>,
+                      <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.saaty}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.saaty}
+                      >
+                        Saaty scale
+                      </MenuItem>,
                     ]
                   ) : (
                     [

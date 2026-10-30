@@ -19,6 +19,22 @@ import ExpressionDomainPreview from "../../../src/features/createIssue/expressio
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 describe("ExpressionDomainPreview", () => {
+  it("previews the immutable Saaty scale with its fraction labels", () => {
+    renderWithProviders(
+      <ExpressionDomainPreview
+        domain={{
+          typeKey: "numericSaaty",
+          definition: { scale: "saaty-fundamental-1-9" },
+        }}
+      />
+    );
+
+    for (const label of ["1/9", "1/8", "1/7", "1/6", "1/5", "1/4", "1/3", "1/2", "1 — Neutral", "2", "3", "4", "5", "6", "7", "8", "9"]) {
+      expect(screen.getByText(label, { exact: true })).toBeInTheDocument();
+    }
+    expect(screen.getByText("Numeric · 17 fixed values")).toBeInTheDocument();
+  });
+
   it("renders a compact numeric continuous preview without repeated labels", () => {
     renderWithProviders(
       <ExpressionDomainPreview

@@ -5,7 +5,6 @@ import json
 from copy import deepcopy
 
 import pytest
-
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios import ahp_sort_i_development_demos as scenario
@@ -166,8 +165,8 @@ def test_model_preflight_requires_a_unique_authorized_ahpsort_plugin() -> None:
             "usesCriteriaWeights": True,
             "supportedExpressionDomains": [
                 {
-                    "typeKey": "numericContinuous",
-                    "constraints": {"min": 1 / 9, "max": 9},
+                    "typeKey": "numericSaaty",
+                    "constraints": {"scale": "saaty-fundamental-1-9"},
                 }
             ],
         }],
@@ -185,12 +184,12 @@ def test_model_preflight_requires_a_unique_authorized_ahpsort_plugin() -> None:
         scenario._compatible_models({**response, "models": [{**response["models"][0], "issueExecutionAuthorized": False}]})
 
 
-def test_domain_selection_requires_the_saaty_range_and_prefers_the_global_domain() -> None:
+def test_domain_selection_requires_the_single_global_saaty_scale() -> None:
     model = {
         "supportedExpressionDomains": [
             {
-                "typeKey": "numericContinuous",
-                "constraints": {"min": 1 / 9, "max": 9},
+                "typeKey": "numericSaaty",
+                "constraints": {"scale": "saaty-fundamental-1-9"},
             }
         ]
     }
@@ -203,25 +202,26 @@ def test_domain_selection_requires_the_saaty_range_and_prefers_the_global_domain
                 "definition": {"min": 0, "max": 1},
             },
             {
-                "id": "ahp",
-                "name": "Numerical AHP [1/9, 9]",
-                "typeKey": "numericContinuous",
-                "definition": {"min": 1 / 9, "max": 9},
-            },
-            {
-                "id": "ahp-legacy",
-                "name": "AHPSort I Saaty ratio scale",
-                "typeKey": "numericContinuous",
-                "definition": {"min": 1 / 9, "max": 9},
+                "id": "ahp-saaty",
+                "name": "AHP Saaty Scale",
+                "typeKey": "numericSaaty",
+                "definition": {"scale": "saaty-fundamental-1-9"},
             },
         ],
-        "userDomains": [],
+        "userDomains": [
+            {
+                "id": "private-saaty",
+                "name": "AHP Saaty Scale copy",
+                "typeKey": "numericSaaty",
+                "definition": {"scale": "saaty-fundamental-1-9"},
+            },
+        ],
     }
 
-    assert scenario._select_existing_numeric_domain(domains, model)["id"] == "ahp"
+    assert scenario._select_existing_saaty_domain(domains, model)["id"] == "ahp-saaty"
 
-    with pytest.raises(ScenarioLabError, match="no existing supported numeric expression domain"):
-        scenario._select_existing_numeric_domain(
+    with pytest.raises(ScenarioLabError, match="exactly one global AHP Saaty Scale"):
+        scenario._select_existing_saaty_domain(
             {"globals": [domains["globals"][0]], "userDomains": []},
             model,
         )

@@ -143,17 +143,17 @@ describe("supported expression domain guidance", () => {
     ).toEqual(["Numeric continuous [0, 1]"]);
   });
 
-  it("keeps the Saaty lower bound readable as one ninth", () => {
+  it("describes the fixed Saaty scale without presenting it as a continuous interval", () => {
     expect(
       formatSupportedExpressionDomainLabels([
-        { typeKey: "numericContinuous", constraints: { min: 1 / 9, max: 9 } },
+        { typeKey: "numericSaaty", constraints: { scale: "saaty-fundamental-1-9" } },
       ])
-    ).toEqual(["Numeric continuous [1/9, 9]"]);
+    ).toEqual(["AHP Saaty Scale"]);
     expect(getExpressionDomainDisplayMeta({
-      name: "Numerical AHP [1/9, 9]",
-      typeKey: "numericContinuous",
-      definition: { min: 1 / 9, max: 9 },
-    }).descriptor).toBe("Numeric continuous [1/9, 9]");
+      name: "AHP Saaty Scale",
+      typeKey: "numericSaaty",
+      definition: { scale: "saaty-fundamental-1-9" },
+    }).descriptor).toBe("Numeric Saaty scale (17 values)");
   });
 
   it("formats discrete steps and allowed linguistic label counts", () => {

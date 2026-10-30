@@ -1,15 +1,10 @@
 import { resolveCriteria } from "./resolveCriteria";
-import { SAATY_SCALE_VALUES } from "./saatyPreference";
+import { getSaatyScaleValue } from "../../../../../expressionDomains/types/numericSaaty/saatyScale.js";
 
 export const MAX_AHP_CRITERIA = 15;
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
-
-const isSaatyValue = (value) =>
-  typeof value === "number" &&
-  Number.isFinite(value) &&
-  SAATY_SCALE_VALUES.some((allowed) => Math.abs(value - allowed) <= 1e-12);
 
 export const validateEvaluation = ({ decisionContext, evaluation }) => {
   const criteria = resolveCriteria({ decisionContext });
@@ -57,7 +52,7 @@ export const validateEvaluation = ({ decisionContext, evaluation }) => {
       throw new Error("AHP evaluation contains a duplicate criterion pair.");
     }
     seenPairs.add(pairKey);
-    if (!isSaatyValue(comparison.value)) {
+    if (getSaatyScaleValue(comparison.value) === null) {
       throw new Error(`AHP comparison ${index + 1} is outside Saaty's scale.`);
     }
     return { criterionId, comparedCriterionId, value: comparison.value };

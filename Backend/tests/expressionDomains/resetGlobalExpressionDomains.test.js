@@ -54,9 +54,10 @@ describe("resetGlobalExpressionDomains", () => {
 
     expect(result).toEqual({
       deletedCount: 2,
-      insertedCount: 5,
+      insertedCount: 6,
       insertedNames: [
         "Continuous 0-1",
+        "AHP Saaty Scale",
         "Numerical AHP [1/9, 9]",
         "Discrete 0-9",
         "Ordinal 5",
@@ -64,7 +65,7 @@ describe("resetGlobalExpressionDomains", () => {
       ],
     });
 
-    expect(await ExpressionDomain.countDocuments({ owner: null })).toBe(5);
+    expect(await ExpressionDomain.countDocuments({ owner: null })).toBe(6);
     expect(await ExpressionDomain.find({ owner: null }).select("-createdAt -updatedAt -_id").lean()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -72,6 +73,12 @@ describe("resetGlobalExpressionDomains", () => {
           name: "Continuous 0-1",
           typeKey: "numericContinuous",
           definition: { min: 0, max: 1, step: null },
+        }),
+        expect.objectContaining({
+          owner: null,
+          name: "AHP Saaty Scale",
+          typeKey: "numericSaaty",
+          definition: { scale: "saaty-fundamental-1-9" },
         }),
         expect.objectContaining({
           owner: null,
@@ -122,11 +129,11 @@ describe("resetGlobalExpressionDomains", () => {
 
     const secondResult = await resetGlobalExpressionDomains();
     expect(secondResult).toEqual({
-      deletedCount: 5,
-      insertedCount: 5,
+      deletedCount: 6,
+      insertedCount: 6,
       insertedNames: result.insertedNames,
     });
-    expect(await ExpressionDomain.countDocuments({ owner: null })).toBe(5);
+    expect(await ExpressionDomain.countDocuments({ owner: null })).toBe(6);
 
     await ExpressionDomain.create({
       owner: owner._id,
@@ -135,13 +142,13 @@ describe("resetGlobalExpressionDomains", () => {
       definition: { min: 0, max: 1, step: null },
     });
     const domainsPayload = await getExpressionDomainsPayload({ userId: owner._id });
-    expect(domainsPayload.globals).toHaveLength(5);
+    expect(domainsPayload.globals).toHaveLength(6);
     expect(domainsPayload.globals.every(({ ownerId }) => ownerId === null)).toBe(true);
     expect(domainsPayload.globals).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        name: "Numerical AHP [1/9, 9]",
-        typeKey: "numericContinuous",
-        definition: { min: 1 / 9, max: 9, step: null },
+        name: "AHP Saaty Scale",
+        typeKey: "numericSaaty",
+        definition: { scale: "saaty-fundamental-1-9" },
       }),
     ]));
     expect(domainsPayload.userDomains).toHaveLength(2);

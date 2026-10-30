@@ -3,6 +3,7 @@ import { linguistic2TupleExpressionDomainType } from "./types/linguistic2Tuple/i
 import { linguisticOrdinalExpressionDomainType } from "./types/linguisticOrdinal/index.js";
 import { numericContinuousExpressionDomainType } from "./types/numericContinuous/index.js";
 import { numericDiscreteExpressionDomainType } from "./types/numericDiscrete/index.js";
+import { numericSaatyExpressionDomainType } from "./types/numericSaaty/index.js";
 
 const ORDERED_EXPRESSION_DOMAIN_TYPE_ENTRIES = Object.freeze([
   numericContinuousExpressionDomainType,
@@ -15,6 +16,7 @@ const ORDERED_EXPRESSION_DOMAIN_TYPE_ENTRIES = Object.freeze([
 export const EXPRESSION_DOMAIN_TYPE_CATALOG = Object.freeze({
   numericContinuous: numericContinuousExpressionDomainType,
   numericDiscrete: numericDiscreteExpressionDomainType,
+  numericSaaty: numericSaatyExpressionDomainType,
   linguisticOrdinal: linguisticOrdinalExpressionDomainType,
   linguistic2Tuple: linguistic2TupleExpressionDomainType,
   linguisticFuzzy: linguisticFuzzyExpressionDomainType,

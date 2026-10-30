@@ -93,7 +93,7 @@ MODEL_DEFINITION = ModelDefinition(
     more_info_url="https://doi.org/10.1080/00207543.2012.657966",
     model_kind="issue",
     implementation_status="ready" if _ACTIVATED else "scaffold",
-    requires_homogeneous_expression_domains=False,
+    requires_homogeneous_expression_domains=True,
     evaluation_structure_key="ahpSortAlternativeProfiles",
     result_structure_key="sorting",
     result_structure_version=1,
@@ -105,13 +105,12 @@ MODEL_DEFINITION = ModelDefinition(
     uses_expert_weights=False,
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=False,
-    # The shared Issue creation flow requires a domain snapshot for every leaf
-    # criterion. AHPSort I judgments use Saaty's [1/9, 9] scale; this metadata
-    # describes their valid range without transforming the judgments.
+    # The shared Issue creation flow requires a global domain snapshot for every
+    # leaf criterion. New Issues use the fixed, immutable 17-value Saaty scale.
     supported_expression_domains=[
         {
-            "typeKey": "numericContinuous",
-            "constraints": {"min": 1 / 9, "max": 9},
+            "typeKey": "numericSaaty",
+            "constraints": {"scale": "saaty-fundamental-1-9"},
         },
     ],
     parameters=[

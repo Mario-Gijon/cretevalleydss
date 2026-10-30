@@ -1,4 +1,4 @@
-const NUMERIC_TYPE_KEYS = Object.freeze(["numericContinuous", "numericDiscrete"]);
+const NUMERIC_TYPE_KEYS = Object.freeze(["numericContinuous", "numericDiscrete", "numericSaaty"]);
 const LINGUISTIC_TYPE_KEYS = Object.freeze([
   "linguisticOrdinal",
   "linguistic2Tuple",
@@ -19,6 +19,7 @@ export const MANAGE_DOMAIN_SUBTYPE_FILTERS = Object.freeze({
   ordinal: "ordinal",
   twoTuple: "twoTuple",
   fuzzy: "fuzzy",
+  saaty: "saaty",
 });
 
 export const getManageExpressionDomainFamily = (domain) => {
@@ -55,6 +56,8 @@ const matchesSubtypeFilter = (domain, subtypeFilter) => {
       return typeKey === "numericContinuous";
     case MANAGE_DOMAIN_SUBTYPE_FILTERS.discrete:
       return typeKey === "numericDiscrete";
+    case MANAGE_DOMAIN_SUBTYPE_FILTERS.saaty:
+      return typeKey === "numericSaaty";
     case MANAGE_DOMAIN_SUBTYPE_FILTERS.ordinal:
       return typeKey === "linguisticOrdinal";
     case MANAGE_DOMAIN_SUBTYPE_FILTERS.twoTuple:

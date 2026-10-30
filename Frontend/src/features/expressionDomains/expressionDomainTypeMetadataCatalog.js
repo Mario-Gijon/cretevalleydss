@@ -90,9 +90,17 @@ const ORDERED_EXPRESSION_DOMAIN_TYPE_METADATA_ENTRIES = Object.freeze([
   }),
 ]);
 
+const numericSaatyMetadata = Object.freeze({
+  key: "numericSaaty",
+  label: "AHP Saaty Scale",
+  description: "Fixed numeric Saaty scale with 17 values.",
+  family: "numeric",
+  compatibilityConstraintFields: Object.freeze([]),
+});
+
 export const EXPRESSION_DOMAIN_TYPE_METADATA_CATALOG = Object.freeze(
   Object.fromEntries(
-    ORDERED_EXPRESSION_DOMAIN_TYPE_METADATA_ENTRIES.map((entry) => [
+    [numericSaatyMetadata, ...ORDERED_EXPRESSION_DOMAIN_TYPE_METADATA_ENTRIES].map((entry) => [
       entry.key,
       entry,
     ])

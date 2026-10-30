@@ -5,11 +5,19 @@ import {
   getExpressionDomainType,
   getExpressionDomainTypeOrThrow,
   listExpressionDomainTypes,
-} from "../../../src/features/expressionDomains/index.js";
+} from "../../../src/features/expressionDomains/expressionDomainTypeCatalog.js";
 
 const EXPECTED_TYPE_KEYS = [
   "numericContinuous",
   "numericDiscrete",
+  "linguisticOrdinal",
+  "linguistic2Tuple",
+  "linguisticFuzzy",
+];
+const REGISTERED_TYPE_KEYS = [
+  "numericContinuous",
+  "numericDiscrete",
+  "numericSaaty",
   "linguisticOrdinal",
   "linguistic2Tuple",
   "linguisticFuzzy",
@@ -22,10 +30,12 @@ describe("expression domain type catalog", () => {
     );
   });
 
-  it("registers exactly the five supported keys", () => {
+  it("registers the fixed Saaty type without exposing it as user-creatable", () => {
     expect(Object.keys(EXPRESSION_DOMAIN_TYPE_CATALOG)).toEqual(
-      EXPECTED_TYPE_KEYS
+      REGISTERED_TYPE_KEYS
     );
+    expect(getExpressionDomainType("numericSaaty")).toMatchObject({ key: "numericSaaty" });
+    expect(listExpressionDomainTypes().some(({ key }) => key === "numericSaaty")).toBe(false);
   });
 
   it("resolves the corresponding entry for each known key", () => {
@@ -53,5 +63,13 @@ describe("expression domain type catalog", () => {
       expect(entry.EvaluationInput).toBeTruthy();
       expect(typeof entry.validateEvaluation).toBe("function");
     }
+  });
+
+  it("registers a validated Saaty evaluation input without a user creation form", () => {
+    const entry = getExpressionDomainType("numericSaaty");
+    expect(entry.EvaluationInput).toBeTruthy();
+    expect(typeof entry.validateEvaluation).toBe("function");
+    expect(entry.CreationForm).toBeUndefined();
+    expect(listExpressionDomainTypes()).not.toContain(entry);
   });
 });

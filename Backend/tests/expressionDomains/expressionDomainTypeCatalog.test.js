@@ -8,6 +8,7 @@ import {
 const EXPECTED_TYPE_KEYS = [
   "numericContinuous",
   "numericDiscrete",
+  "numericSaaty",
   "linguisticOrdinal",
   "linguistic2Tuple",
   "linguisticFuzzy",

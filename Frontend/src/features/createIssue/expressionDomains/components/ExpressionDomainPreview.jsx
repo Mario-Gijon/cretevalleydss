@@ -3,6 +3,11 @@ import { alpha, useTheme } from "@mui/material/styles";
 
 import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
 import { isPlainObject } from "../../../../utils/common/objects";
+import {
+  AHP_SAATY_SCALE_KEY,
+  formatSaatyScaleLabel,
+  SAATY_SCALE_VALUES,
+} from "../../../expressionDomains/types/numericSaaty/saatyScale.js";
 
 const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(value);
 
@@ -172,6 +177,27 @@ const renderNumericDiscretePreview = (domain) => {
   );
 };
 
+const renderNumericSaatyPreview = (domain) => {
+  if (domain?.definition?.scale !== AHP_SAATY_SCALE_KEY) {
+    return <PreviewUnavailable />;
+  }
+
+  return (
+    <PreviewRail>
+      <Stack direction="row" useFlexGap flexWrap="wrap" spacing={0.4}>
+        {SAATY_SCALE_VALUES.map((value) => (
+          <Typography key={value} variant="body2" sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>
+            {formatSaatyScaleLabel(value)}
+          </Typography>
+        ))}
+      </Stack>
+      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+        Numeric · 17 fixed values
+      </Typography>
+    </PreviewRail>
+  );
+};
+
 const renderLinguisticOrdinalPreview = (domain) => {
   const labels = Array.isArray(domain?.definition?.labels) ? domain.definition.labels : null;
 
@@ -321,6 +347,8 @@ export const ExpressionDomainPreview = ({ domain }) => {
       return renderNumericContinuousPreview(domain);
     case "numericDiscrete":
       return renderNumericDiscretePreview(domain);
+    case "numericSaaty":
+      return renderNumericSaatyPreview(domain);
     case "linguisticOrdinal":
     case "linguistic2Tuple":
       return renderLinguisticOrdinalPreview(domain);

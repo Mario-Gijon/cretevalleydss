@@ -1,6 +1,7 @@
 import { findMatchingFuzzyLabel } from "../../../../../expressionDomains";
 import { isPlainObject } from "../../../../../../utils/common/objects";
 import { PAIRWISE_MAX_DECIMAL_PLACES } from "./numericPrecision";
+import { formatSaatyScaleLabel, getSaatyScaleValue } from "../../../../../expressionDomains/types/numericSaaty/saatyScale.js";
 
 const UNMATCHED_FUZZY_TOOLTIP =
   "No predefined label matches this derived inverse.";
@@ -72,6 +73,12 @@ export const formatValue = ({ value, expressionDomain }) => {
         text: formatNumericValue({ value }),
         tooltip: null,
       };
+
+    case "numericSaaty": {
+      const saatyValue = getSaatyScaleValue(value);
+      if (saatyValue === null) throw new Error("Saaty pairwise value is invalid.");
+      return { text: formatSaatyScaleLabel(saatyValue), tooltip: null };
+    }
 
     case "linguisticOrdinal":
       return {

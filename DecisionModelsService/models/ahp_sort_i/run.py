@@ -15,14 +15,13 @@ from typing import Any
 
 from models.ahp_criteria_weights.run import (
     MAX_SUPPORTED_CRITERIA as MAX_SUPPORTED_LOCAL_MATRIX_SIZE,
+)
+from models.ahp_criteria_weights.run import (
     run_ahp_criteria_weights,
 )
+from models.saaty_scale import SAATY_SCALE, is_saaty_scale_value
 
-
-SAATY_VALUES = frozenset(
-    [float(value) for value in range(1, 10)]
-    + [1.0 / value for value in range(2, 10)]
-)
+SAATY_VALUES = SAATY_SCALE
 WEIGHT_SUM_TOLERANCE = 1e-12
 PROFILE_ORDER_TOLERANCE = 1e-12
 CLASSIFICATION_TIE_TOLERANCE = 1e-12
@@ -148,7 +147,7 @@ def _normalize_judgment(value: Any, field: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{field} must be a numeric Saaty comparison")
     numeric = float(value)
-    if not math.isfinite(numeric) or numeric not in SAATY_VALUES:
+    if not math.isfinite(numeric) or not is_saaty_scale_value(numeric):
         raise ValueError(
             f"{field} must be one of Saaty's 1–9 scale values or a reciprocal"
         )

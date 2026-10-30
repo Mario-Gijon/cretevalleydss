@@ -35,6 +35,13 @@ const domainsFixture = [
     __domainScope: "user",
   },
   {
+    _id: "global-saaty",
+    name: "AHP Saaty Scale",
+    typeKey: "numericSaaty",
+    definition: { scale: "saaty-fundamental-1-9" },
+    __domainScope: "global",
+  },
+  {
     _id: "user-two-tuple",
     name: "Fine preference scale",
     typeKey: "linguistic2Tuple",
@@ -89,6 +96,7 @@ describe("manageExpressionDomains.helpers", () => {
       "Global Cost Range",
       "Priority Ladder",
       "Ticket Count",
+      "AHP Saaty Scale",
       "Fine preference scale",
       "Suitability Cloud",
     ]);
@@ -97,7 +105,7 @@ describe("manageExpressionDomains.helpers", () => {
   it("filters numeric and linguistic families from canonical typeKey only", () => {
     expect(
       runFilter({ familyFilter: MANAGE_DOMAIN_FAMILY_FILTERS.numeric })
-    ).toEqual(["Global Cost Range", "Ticket Count"]);
+    ).toEqual(["Global Cost Range", "Ticket Count", "AHP Saaty Scale"]);
     expect(
       runFilter({ familyFilter: MANAGE_DOMAIN_FAMILY_FILTERS.linguistic })
     ).toEqual(["Priority Ladder", "Fine preference scale", "Suitability Cloud"]);
@@ -116,6 +124,12 @@ describe("manageExpressionDomains.helpers", () => {
         subtypeFilter: MANAGE_DOMAIN_SUBTYPE_FILTERS.discrete,
       })
     ).toEqual(["Ticket Count"]);
+    expect(
+      runFilter({
+        familyFilter: MANAGE_DOMAIN_FAMILY_FILTERS.numeric,
+        subtypeFilter: MANAGE_DOMAIN_SUBTYPE_FILTERS.saaty,
+      })
+    ).toEqual(["AHP Saaty Scale"]);
   });
 
   it("filters linguistic subtypes exactly", () => {

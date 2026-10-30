@@ -345,6 +345,8 @@ export const getExpressionDomainDisplayMeta = (domain) => {
     descriptor = bounds
       ? `Numeric discrete ${bounds}${stepLabel}`
       : `Numeric discrete${stepLabel}`;
+  } else if (typeKey === "numericSaaty") {
+    descriptor = "Numeric Saaty scale (17 values)";
   } else if (typeKey === "linguisticOrdinal") {
     descriptor = labelCount
       ? `Ordered linguistic (${labelCount} labels)`

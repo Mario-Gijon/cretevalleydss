@@ -303,7 +303,8 @@ python -m ruff check .
 
 ## AHPSort I development demonstrations
 
-`ahp-sort-i-development-demos` reuses the checked supplier transcription in
+`ahp-sort-i-development-demos-saaty-v2` creates new Saaty-scale versions using
+the checked supplier transcription in
 `DecisionModelsService/tests/models/test_ahp_sort_i.py` and the already-tested
 three-expert synthetic comparison fixture in `Frontend/e2e/ahpSortIDemo.spec.js`.
 It creates two named Issues through the ordinary development Backend routes:
@@ -315,19 +316,19 @@ classifications are disclosed as synthetic in the Issue description.
 
 The command uses the configured `owner`, `expert_a`, `expert_b`, and
 `expert_c` local test aliases. It requires exactly one authorized AHPSort I
-model and one AHP weighting model, and reuses an existing compatible numeric
-expression domain. It never creates expression domains, writes MongoDB
-directly, modifies model configuration, deletes Issues, or creates duplicates:
-valid finished Issues with these exact names are verified and reused, while an
-unfinished Issue with either name stops the run untouched. Both finished
-Issues are recorded in the normal Scenario Lab manifest for later inspection
-or explicit cleanup.
+model, one AHP weighting model, and exactly one global `AHP Saaty Scale`
+domain. It never creates expression domains, writes MongoDB directly, modifies
+model configuration, deletes Issues, or reuses the previous versions: the
+versioned Issue names distinguish these new generations. An unfinished Issue
+with either new name stops the run untouched. Both finished Issues are
+recorded in the normal Scenario Lab manifest for later inspection or explicit
+cleanup.
 
 Run from this directory with the ordinary development stack available:
 
 ```bash
 SCENARIO_LAB_API_BASE_URL=http://localhost:5000/api \
-  .venv/bin/python -m issue_scenario_lab generate ahp-sort-i-development-demos
+  .venv/bin/python -m issue_scenario_lab generate ahp-sort-i-development-demos-saaty-v2
 ```
 
 The generator validates the persisted AHP/MCC weights, individual input

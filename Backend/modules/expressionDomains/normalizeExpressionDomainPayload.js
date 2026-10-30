@@ -60,5 +60,11 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     });
   }
 
+  if (typeof payload.typeKey === "string" && payload.typeKey.trim() === "numericSaaty") {
+    throw createForbiddenError(
+      "AHP Saaty Scale is predefined and cannot be created or modified by users."
+    );
+  }
+
   return normalizeExpressionDomainCreationPayload(payload);
 };

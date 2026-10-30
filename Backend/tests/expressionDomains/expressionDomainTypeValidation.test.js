@@ -5,8 +5,43 @@ import { linguistic2Tuple } from "../../modules/expressionDomains/types/linguist
 import { linguisticOrdinal } from "../../modules/expressionDomains/types/linguisticOrdinal/index.js";
 import { numericContinuous } from "../../modules/expressionDomains/types/numericContinuous/index.js";
 import { numericDiscrete } from "../../modules/expressionDomains/types/numericDiscrete/index.js";
+import { numericSaaty } from "../../modules/expressionDomains/types/numericSaaty/index.js";
+import { AHP_SAATY_SCALE_VALUES } from "../../modules/expressionDomains/types/numericSaaty/saatyScale.js";
+import { normalizeNewExpressionDomainPayload } from "../../modules/expressionDomains/normalizeExpressionDomainPayload.js";
 
 describe("expression domain type validation", () => {
+  it("validates only the 17 fixed AHP Saaty values and rejects user creation", () => {
+    const domain = {
+      name: "AHP Saaty Scale",
+      typeKey: "numericSaaty",
+      definition: { scale: "saaty-fundamental-1-9" },
+    };
+
+    for (const value of AHP_SAATY_SCALE_VALUES) {
+      expect(numericSaaty.validateEvaluation({ value, expressionDomain: domain })).toBe(value);
+    }
+    expect(numericSaaty.validateEvaluation({ value: 1 / 3 + 1e-13, expressionDomain: domain })).toBe(1 / 3);
+    for (const invalid of [1.7, 2.5, 0.7]) {
+      expect(() => numericSaaty.validateEvaluation({ value: invalid, expressionDomain: domain })).toThrow(/17 fundamental/);
+    }
+    for (const invalid of [true, Number.NaN]) {
+      expect(() => numericSaaty.validateEvaluation({ value: invalid, expressionDomain: domain })).toThrow(/finite number/);
+    }
+    expect(() => numericSaaty.validateEvaluation({
+      value: 3,
+      expressionDomain: { ...domain, definition: { scale: "other" } },
+    })).toThrow(/definition is invalid/);
+    for (const payload of [domain, { ...domain, typeKey: " numericSaaty " }]) {
+      let creationError;
+      try {
+        normalizeNewExpressionDomainPayload(payload);
+      } catch (error) {
+        creationError = error;
+      }
+      expect(creationError).toMatchObject({ code: "FORBIDDEN", statusCode: 403 });
+    }
+  });
+
   it("validates numericContinuous creation and evaluation", () => {
     const expressionDomain = numericContinuous.validateCreation({
       name: "Numeric continuous",

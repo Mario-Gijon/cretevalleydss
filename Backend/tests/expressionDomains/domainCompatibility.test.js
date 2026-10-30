@@ -191,19 +191,19 @@ describe("domainCompatibility", () => {
     ).toBe(false);
   });
 
-  it("accepts the AHPSort Saaty range and rejects the unrelated 0-1 domain", () => {
+  it("accepts only the immutable Saaty scale for AHPSort and rejects the legacy continuous range", () => {
     const supportedExpressionDomains = [
       {
-        typeKey: "numericContinuous",
-        constraints: { min: 1 / 9, max: 9 },
+        typeKey: "numericSaaty",
+        constraints: { scale: "saaty-fundamental-1-9" },
       },
     ];
 
     expect(
       isDomainSnapshotSupportedByModel({
         domainSnapshot: {
-          typeKey: "numericContinuous",
-          definition: { min: 1 / 9, max: 9 },
+          typeKey: "numericSaaty",
+          definition: { scale: "saaty-fundamental-1-9" },
         },
         supportedExpressionDomains,
       })
@@ -214,6 +214,16 @@ describe("domainCompatibility", () => {
         domainSnapshot: {
           typeKey: "numericContinuous",
           definition: { min: 0, max: 1 },
+        },
+        supportedExpressionDomains,
+      })
+    ).toBe(false);
+
+    expect(
+      isDomainSnapshotSupportedByModel({
+        domainSnapshot: {
+          typeKey: "numericContinuous",
+          definition: { min: 1 / 9, max: 9 },
         },
         supportedExpressionDomains,
       })

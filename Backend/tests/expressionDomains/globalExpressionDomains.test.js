@@ -9,6 +9,7 @@ describe("canonical global expression domains", () => {
   it("defines the current global domains, including the Saaty-scale numeric domain", () => {
     expect(CANONICAL_GLOBAL_EXPRESSION_DOMAINS.map(({ typeKey }) => typeKey)).toEqual([
       "numericContinuous",
+      "numericSaaty",
       "numericContinuous",
       "numericDiscrete",
       "linguisticOrdinal",
@@ -26,6 +27,12 @@ describe("canonical global expression domains", () => {
         name: "Continuous 0-1",
         typeKey: "numericContinuous",
         definition: { min: 0, max: 1, step: null },
+      },
+      {
+        owner: null,
+        name: "AHP Saaty Scale",
+        typeKey: "numericSaaty",
+        definition: { scale: "saaty-fundamental-1-9" },
       },
       {
         owner: null,
@@ -74,7 +81,11 @@ describe("canonical global expression domains", () => {
   });
 
   it("uses the balanced shoulder tuples in the canonical source", () => {
-    expect(CANONICAL_GLOBAL_EXPRESSION_DOMAINS[4]).toEqual({
+    expect(
+      CANONICAL_GLOBAL_EXPRESSION_DOMAINS.find(
+        ({ name }) => name === "Fuzzy Linguistic 5"
+      )
+    ).toEqual({
       name: "Fuzzy Linguistic 5",
       typeKey: "linguisticFuzzy",
       definition: {
