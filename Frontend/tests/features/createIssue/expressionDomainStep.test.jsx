@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { CreateIssueContext } from "../../../src/features/createIssue/context/createIssue.context.js";
@@ -65,5 +66,58 @@ describe("ExpressionDomainStep supported-domain guidance", () => {
         { exact: true }
       )
     ).toBeInTheDocument();
+  });
+
+  it("lists the global AHP range and excludes Continuous 0-1 for AHPSort I", async () => {
+    const user = userEvent.setup();
+    const ahpDomain = {
+      _id: "domain-ahp",
+      name: "Numerical AHP [1/9, 9]",
+      typeKey: "numericContinuous",
+      definition: { min: 1 / 9, max: 9, step: null },
+    };
+    const setExpressionDomainConfig = vi.fn();
+    renderWithProviders(
+      <CreateIssueContext.Provider
+        value={{
+          allData: {
+            selectedModel: {
+              _id: "model-ahp-sort-i",
+              name: "AHPSort I",
+              supportedExpressionDomains: [
+                {
+                  typeKey: "numericContinuous",
+                  constraints: { min: 1 / 9, max: 9 },
+                },
+              ],
+            },
+            criteria: [{ id: "criterion-quality", name: "Quality", children: [] }],
+          },
+          expressionDomainConfig: { mode: "global", globalDomainId: "" },
+          setExpressionDomainConfig,
+        }}
+      >
+        <ExpressionDomainStep />
+      </CreateIssueContext.Provider>,
+      {
+        issuesValue: {
+          globalDomains: [domain, ahpDomain],
+          expressionDomains: [],
+          setExpressionDomains: vi.fn(),
+        },
+      }
+    );
+
+    expect(screen.getByText("Numeric continuous [1/9, 9]", { exact: true })).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "Domain" }));
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    const ahpOption = screen.getByRole("option", { name: /Numerical AHP \[1\/9, 9\]/ });
+    expect(ahpOption).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Continuous 0-1/ })).not.toBeInTheDocument();
+    await user.click(ahpOption);
+    expect(setExpressionDomainConfig).toHaveBeenCalledWith({
+      mode: "global",
+      globalDomainId: ahpDomain._id,
+    });
   });
 });

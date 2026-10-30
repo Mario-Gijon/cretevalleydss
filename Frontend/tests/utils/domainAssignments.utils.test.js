@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getSupportedDomainPools } from "../../src/utils/domainAssignments.utils.js";
+import {
+  buildInitialExpressionDomainConfig,
+  getSupportedDomainPools,
+  resolveExpressionDomainOptions,
+} from "../../src/utils/domainAssignments.utils.js";
 
 describe("getSupportedDomainPools", () => {
   it("separates numeric and linguistic domains through typeKey/catalog metadata", () => {
@@ -78,5 +82,57 @@ describe("getSupportedDomainPools", () => {
       "domain-ordinal",
       "domain-fuzzy",
     ]);
+  });
+
+  it("offers the AHP [1/9, 9] domain for AHPSort and remaps an old 0-1 draft", () => {
+    const ahpSortModel = {
+      apiModelKey: "ahp_sort_i",
+      supportedExpressionDomains: [
+        {
+          typeKey: "numericContinuous",
+          constraints: { min: 1 / 9, max: 9 },
+        },
+      ],
+    };
+    const globalDomains = [
+      {
+        _id: "domain-0-1",
+        name: "Continuous 0-1",
+        typeKey: "numericContinuous",
+        definition: { min: 0, max: 1, step: null },
+      },
+      {
+        _id: "domain-ahp",
+        name: "Numerical AHP [1/9, 9]",
+        typeKey: "numericContinuous",
+        definition: { min: 1 / 9, max: 9, step: null },
+      },
+      {
+        _id: "domain-ahp-legacy",
+        name: "AHPSort I Saaty ratio scale",
+        typeKey: "numericContinuous",
+        definition: { min: 1 / 9, max: 9, step: null },
+      },
+    ];
+    const options = resolveExpressionDomainOptions(ahpSortModel, globalDomains, []);
+
+    expect(options.allDomains.map(({ _id }) => _id)).toEqual([
+      "domain-ahp",
+      "domain-ahp-legacy",
+    ]);
+    expect(options.defaultDomainId).toBe("domain-ahp");
+
+    const nextConfig = buildInitialExpressionDomainConfig({
+      selectedModel: ahpSortModel,
+      leafCriteria: [
+        { id: "quality", name: "Quality" },
+        { id: "cost", name: "Cost" },
+      ],
+      currentConfig: { mode: "global", globalDomainId: "domain-0-1" },
+      globalDomains,
+      expressionDomains: [],
+    });
+
+    expect(nextConfig).toEqual({ mode: "global", globalDomainId: "domain-ahp" });
   });
 });

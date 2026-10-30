@@ -106,11 +106,13 @@ MODEL_DEFINITION = ModelDefinition(
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=False,
     # The shared Issue creation flow requires a domain snapshot for every leaf
-    # criterion. AHPSort I judgments themselves remain on the Saaty scale; the
-    # numeric domain is retained as generic Issue metadata only.
+    # criterion. AHPSort I judgments use Saaty's [1/9, 9] scale; this metadata
+    # describes their valid range without transforming the judgments.
     supported_expression_domains=[
-        {"typeKey": "numericContinuous"},
-        {"typeKey": "numericDiscrete"},
+        {
+            "typeKey": "numericContinuous",
+            "constraints": {"min": 1 / 9, "max": 9},
+        },
     ],
     parameters=[
         {

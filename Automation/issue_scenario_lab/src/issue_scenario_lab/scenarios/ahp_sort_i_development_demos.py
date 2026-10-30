@@ -151,8 +151,10 @@ def _compatible_models(response: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         "evaluationStructure": model.get("evaluationStructureKey") == "ahpSortAlternativeProfiles",
         "consensusDisabled": model.get("supportsConsensus") is False and model.get("supportsConsensusSimulation") is False,
         "criterionWeights": model.get("usesCriteriaWeights") is True,
-        "supportedNumericDomain": any(
-            isinstance(item, dict) and item.get("typeKey") in {"numericContinuous", "numericDiscrete"}
+        "supportedSaatyDomain": any(
+            isinstance(item, dict)
+            and item.get("typeKey") == "numericContinuous"
+            and item.get("constraints") == {"min": 1 / 9, "max": 9}
             for item in model.get("supportedExpressionDomains", [])
         ),
     }
@@ -172,18 +174,40 @@ def _compatible_models(response: Any) -> tuple[dict[str, Any], dict[str, Any]]:
 def _select_existing_numeric_domain(domains: Any, model: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(domains, dict):
         raise ScenarioLabError("Backend expression-domain response must be an object")
-    supported = {
-        item.get("typeKey")
+    supported = [
+        item
         for item in model.get("supportedExpressionDomains", [])
         if isinstance(item, dict) and isinstance(item.get("typeKey"), str)
-    }
+    ]
     all_domains = [*_items(domains, "globals"), *_items(domains, "userDomains")]
-    compatible = [item for item in all_domains if _id(item) and item.get("typeKey") in supported and isinstance(item.get("definition"), dict)]
+    compatible = [
+        domain
+        for domain in all_domains
+        if _id(domain)
+        and isinstance(domain.get("definition"), dict)
+        and any(
+            domain.get("typeKey") == supported_entry.get("typeKey")
+            and all(
+                domain["definition"].get(key) == expected
+                for key, expected in supported_entry.get("constraints", {}).items()
+            )
+            for supported_entry in supported
+        )
+    ]
     if not compatible:
         raise ScenarioLabError("no existing supported numeric expression domain is available; the generator will not create one")
     return next(
-        (item for item in compatible if item.get("name") == "AHPSort I Saaty ratio scale"),
-        next((item for item in compatible if item.get("typeKey") == "numericContinuous"), compatible[0]),
+        (item for item in compatible if item.get("name") == "Numerical AHP [1/9, 9]"),
+        next(
+            (
+                item
+                for item in compatible
+                if item.get("typeKey") == "numericContinuous"
+                and item.get("definition", {}).get("min") == 1 / 9
+                and item.get("definition", {}).get("max") == 9
+            ),
+            compatible[0],
+        ),
     )
 
 

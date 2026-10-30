@@ -19,6 +19,14 @@ export const CANONICAL_GLOBAL_EXPRESSION_DOMAINS = freezeDeep([
     },
   },
   {
+    name: "Numerical AHP [1/9, 9]",
+    typeKey: "numericContinuous",
+    definition: {
+      min: 1 / 9,
+      max: 9,
+    },
+  },
+  {
     name: "Discrete 0-9",
     typeKey: "numericDiscrete",
     definition: {

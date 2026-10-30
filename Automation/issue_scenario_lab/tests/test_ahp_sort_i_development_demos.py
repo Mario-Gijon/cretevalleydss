@@ -164,7 +164,12 @@ def test_model_preflight_requires_a_unique_authorized_ahpsort_plugin() -> None:
             "supportsConsensus": False,
             "supportsConsensusSimulation": False,
             "usesCriteriaWeights": True,
-            "supportedExpressionDomains": [{"typeKey": "numericContinuous"}],
+            "supportedExpressionDomains": [
+                {
+                    "typeKey": "numericContinuous",
+                    "constraints": {"min": 1 / 9, "max": 9},
+                }
+            ],
         }],
         "criteriaWeightingModels": [{
             "id": "weighting-id",
@@ -178,6 +183,48 @@ def test_model_preflight_requires_a_unique_authorized_ahpsort_plugin() -> None:
     assert scenario._compatible_models(response)[0]["id"] == "ahpsort-id"
     with pytest.raises(ScenarioLabError, match="issueExecutionAuthorized"):
         scenario._compatible_models({**response, "models": [{**response["models"][0], "issueExecutionAuthorized": False}]})
+
+
+def test_domain_selection_requires_the_saaty_range_and_prefers_the_global_domain() -> None:
+    model = {
+        "supportedExpressionDomains": [
+            {
+                "typeKey": "numericContinuous",
+                "constraints": {"min": 1 / 9, "max": 9},
+            }
+        ]
+    }
+    domains = {
+        "globals": [
+            {
+                "id": "zero-one",
+                "name": "Continuous 0-1",
+                "typeKey": "numericContinuous",
+                "definition": {"min": 0, "max": 1},
+            },
+            {
+                "id": "ahp",
+                "name": "Numerical AHP [1/9, 9]",
+                "typeKey": "numericContinuous",
+                "definition": {"min": 1 / 9, "max": 9},
+            },
+            {
+                "id": "ahp-legacy",
+                "name": "AHPSort I Saaty ratio scale",
+                "typeKey": "numericContinuous",
+                "definition": {"min": 1 / 9, "max": 9},
+            },
+        ],
+        "userDomains": [],
+    }
+
+    assert scenario._select_existing_numeric_domain(domains, model)["id"] == "ahp"
+
+    with pytest.raises(ScenarioLabError, match="no existing supported numeric expression domain"):
+        scenario._select_existing_numeric_domain(
+            {"globals": [domains["globals"][0]], "userDomains": []},
+            model,
+        )
 
 
 def test_authenticated_user_id_comes_from_existing_session_token() -> None:

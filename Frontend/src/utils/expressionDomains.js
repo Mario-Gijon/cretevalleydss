@@ -87,8 +87,13 @@ export const normalizeSupportedExpressionDomains = (
           : {},
     }));
 
-const formatSupportedNumber = (value) =>
-  typeof value === "number" && Number.isFinite(value) ? String(value) : null;
+const formatExpressionDomainNumber = (value) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  if (value === 1 / 9) return "1/9";
+  return String(value);
+};
+
+const formatSupportedNumber = formatExpressionDomainNumber;
 
 const formatSupportedList = (values) => {
   const normalized = values
@@ -310,8 +315,13 @@ export const getExpressionDomainFuzzyValueCount = (domain) => {
     : null;
 };
 
-const formatNumericBounds = ({ min, max }) =>
-  Number.isFinite(min) && Number.isFinite(max) ? `[${min}, ${max}]` : null;
+const formatNumericBounds = ({ min, max }) => {
+  const formattedMin = formatExpressionDomainNumber(min);
+  const formattedMax = formatExpressionDomainNumber(max);
+  return formattedMin !== null && formattedMax !== null
+    ? `[${formattedMin}, ${formattedMax}]`
+    : null;
+};
 
 export const getExpressionDomainDisplayMeta = (domain) => {
   const name = getExpressionDomainName(domain);

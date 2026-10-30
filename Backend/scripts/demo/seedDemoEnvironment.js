@@ -61,17 +61,6 @@ const seedDemoEnvironment = async () => {
     );
   }
 
-  await ExpressionDomain.updateOne(
-    { owner: null, name: "AHPSort I Saaty ratio scale" },
-    {
-      $set: {
-        typeKey: "numericContinuous",
-        definition: { min: 1 / 9, max: 9 },
-      },
-    },
-    { upsert: true },
-  );
-
   console.log(
     `Demo users and expression domains are ready in ${target.databaseName}; no Issues were inserted.`,
   );

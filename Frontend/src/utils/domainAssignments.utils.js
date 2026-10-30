@@ -77,6 +77,11 @@ const toValidDomainIdSet = (domains) =>
       .filter(Boolean)
   );
 
+const isSaatyRangeDomain = (domain) => {
+  const { min, max } = getExpressionDomainNumericRange(domain);
+  return isNumericContinuousDomain(domain) && min === 1 / 9 && max === 9;
+};
+
 export const resolveExpressionDomainOptions = (
   selectedModel,
   globalDomains = [],
@@ -89,7 +94,22 @@ export const resolveExpressionDomainOptions = (
   );
 
   const allDomains = [...numericDomains, ...linguisticDomains];
+  const requiresSaatyRange = normalizeSupportedExpressionDomains(
+    selectedModel?.supportedExpressionDomains
+  ).some(
+    (entry) =>
+      entry.typeKey === "numericContinuous" &&
+      entry.constraints.min === 1 / 9 &&
+      entry.constraints.max === 9
+  );
+  const defaultSaatyRangeDomainId = requiresSaatyRange
+    ? normalizeDomainId(
+        numericDomains.find((domain) => domain.name === "Numerical AHP [1/9, 9]")?._id
+      ) ||
+      normalizeDomainId(numericDomains.find(isSaatyRangeDomain)?._id)
+    : "";
   const defaultDomainId =
+    defaultSaatyRangeDomainId ||
     normalizeDomainId(
       numericDomains.find(
         (domain) => {

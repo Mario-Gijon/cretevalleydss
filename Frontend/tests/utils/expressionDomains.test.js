@@ -143,6 +143,19 @@ describe("supported expression domain guidance", () => {
     ).toEqual(["Numeric continuous [0, 1]"]);
   });
 
+  it("keeps the Saaty lower bound readable as one ninth", () => {
+    expect(
+      formatSupportedExpressionDomainLabels([
+        { typeKey: "numericContinuous", constraints: { min: 1 / 9, max: 9 } },
+      ])
+    ).toEqual(["Numeric continuous [1/9, 9]"]);
+    expect(getExpressionDomainDisplayMeta({
+      name: "Numerical AHP [1/9, 9]",
+      typeKey: "numericContinuous",
+      definition: { min: 1 / 9, max: 9 },
+    }).descriptor).toBe("Numeric continuous [1/9, 9]");
+  });
+
   it("formats discrete steps and allowed linguistic label counts", () => {
     expect(
       formatSupportedExpressionDomainLabels([

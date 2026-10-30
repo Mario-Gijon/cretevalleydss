@@ -170,6 +170,60 @@ describe("createIssuePayload", () => {
     expect(otherModel.ok).toBe(true);
   });
 
+  it("keeps the AHP expression domain at issue scope for every selected expert", () => {
+    const ahpSortIModel = {
+      ...basicCreateIssueModelFixture,
+      apiModelKey: "ahp_sort_i",
+      supportedExpressionDomains: [
+        {
+          typeKey: "numericContinuous",
+          constraints: { min: 1 / 9, max: 9 },
+        },
+      ],
+      parameters: [
+        { key: "orderedCategories", parameterStructureKey: "orderedCategories", required: true },
+        { key: "ahpSortProfiles", parameterStructureKey: "ahpSortProfiles", required: true },
+        { key: "ahpSortGroup", parameterStructureKey: "ahpSortGroup", required: false },
+      ],
+    };
+    const ahpDomain = {
+      _id: "domain-ahp",
+      name: "Numerical AHP [1/9, 9]",
+      typeKey: "numericContinuous",
+      definition: { min: 1 / 9, max: 9, step: null },
+    };
+    const paramValues = {
+      orderedCategories: [
+        { categoryId: "low", label: "Low", order: 0 },
+        { categoryId: "high", label: "High", order: 1 },
+      ],
+      ahpSortProfiles: {
+        mode: "limiting",
+        profiles: [{ profileId: "low-high", lowerCategoryId: "low", upperCategoryId: "high" }],
+      },
+      ahpSortGroup: { tiePolicy: "pessimistic" },
+    };
+    const result = buildCreateIssueRequestPayload(buildPayloadInput({
+      selectedModel: ahpSortIModel,
+      globalDomains: [globalContinuousDomainFixture, ahpDomain],
+      expressionDomainConfig: { mode: "global", globalDomainId: ahpDomain._id },
+      paramValues,
+      allData: {
+        selectedModel: ahpSortIModel,
+        addedExperts: ["expert1@example.com", "expert2@example.com"],
+        expressionDomainConfig: { mode: "global", globalDomainId: ahpDomain._id },
+        paramValues,
+      },
+    }));
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.expressionDomainConfig).toEqual({
+      mode: "global",
+      globalDomainId: ahpDomain._id,
+    });
+    expect(result.payload.addedExperts).toHaveLength(2);
+  });
+
   it("builds the expected payload for a valid create-issue request", () => {
     const result = buildCreateIssueRequestPayload(buildPayloadInput());
 

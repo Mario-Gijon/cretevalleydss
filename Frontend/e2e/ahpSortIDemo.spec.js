@@ -164,7 +164,7 @@ const createIssue = async (page, {
 
   const domainSelect = page.getByRole("combobox", { name: /^Domain\b/ });
   await domainSelect.click();
-  await page.getByRole("option", { name: new RegExp(`^${domainName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`) }).click();
+  await page.getByRole("option").filter({ hasText: domainName }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
   await page.getByLabel("Issue name", { exact: true }).fill(issueName);
@@ -387,7 +387,7 @@ const runSupplierDemo = async (page) => {
         experts: [DEMO_USERS.experts[0]],
         creatorPairwiseValues: SUPPLIER_PAIRWISE_VALUES,
         categories: ["Rejected", "Accepted"],
-        domainName: "AHPSort I Saaty ratio scale",
+        domainName: "Numerical AHP [1/9, 9]",
       });
     }
     await logout(page);
@@ -508,7 +508,7 @@ const runSustainableGroupDemo = async (page) => {
         useExpertMcc: true,
         groupTiePolicy: "optimistic",
         categories: ["Bad", "Moderate", "Good"],
-        domainName: "AHPSort I Saaty ratio scale",
+        domainName: "Numerical AHP [1/9, 9]",
       });
     }
     await logout(page);

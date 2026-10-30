@@ -6,8 +6,9 @@ import {
 } from "../../modules/expressionDomains/globalExpressionDomains.js";
 
 describe("canonical global expression domains", () => {
-  it("defines exactly the four current global domains", () => {
+  it("defines the current global domains, including the Saaty-scale numeric domain", () => {
     expect(CANONICAL_GLOBAL_EXPRESSION_DOMAINS.map(({ typeKey }) => typeKey)).toEqual([
+      "numericContinuous",
       "numericContinuous",
       "numericDiscrete",
       "linguisticOrdinal",
@@ -25,6 +26,12 @@ describe("canonical global expression domains", () => {
         name: "Continuous 0-1",
         typeKey: "numericContinuous",
         definition: { min: 0, max: 1, step: null },
+      },
+      {
+        owner: null,
+        name: "Numerical AHP [1/9, 9]",
+        typeKey: "numericContinuous",
+        definition: { min: 1 / 9, max: 9, step: null },
       },
       {
         owner: null,
@@ -67,7 +74,7 @@ describe("canonical global expression domains", () => {
   });
 
   it("uses the balanced shoulder tuples in the canonical source", () => {
-    expect(CANONICAL_GLOBAL_EXPRESSION_DOMAINS[3]).toEqual({
+    expect(CANONICAL_GLOBAL_EXPRESSION_DOMAINS[4]).toEqual({
       name: "Fuzzy Linguistic 5",
       typeKey: "linguisticFuzzy",
       definition: {
@@ -88,7 +95,7 @@ describe("canonical global expression domains", () => {
     const second = buildCanonicalGlobalExpressionDomains();
 
     expect(first).not.toBe(second);
-    expect(first[3].definition).not.toBe(second[3].definition);
+    expect(first[1].definition).not.toBe(second[1].definition);
     expect(first).toEqual(second);
   });
 });
