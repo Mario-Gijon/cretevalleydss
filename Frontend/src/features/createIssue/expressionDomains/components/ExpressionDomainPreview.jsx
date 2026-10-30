@@ -184,13 +184,24 @@ const renderNumericSaatyPreview = (domain) => {
 
   return (
     <PreviewRail>
-      <Stack direction="row" useFlexGap flexWrap="wrap" spacing={0.4}>
+      <Box
+        data-testid="numeric-saaty-preview-values"
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 0.4,
+          width: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+        }}
+      >
         {SAATY_SCALE_VALUES.map((value) => (
           <Typography key={value} variant="body2" sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>
             {formatSaatyScaleLabel(value)}
           </Typography>
         ))}
-      </Stack>
+      </Box>
       <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
         Numeric · 17 fixed values
       </Typography>

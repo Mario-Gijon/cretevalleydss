@@ -366,7 +366,7 @@ export const ViewExpressionsDomainDialog = ({
                 sx={{
                   display: "grid",
                   gridTemplateColumns: {
-                    xs: "1fr",
+                    xs: "minmax(0, 1fr)",
                     md: "minmax(250px, 1fr) minmax(0, 2fr)",
                   },
                   alignItems: "start",
@@ -403,7 +403,7 @@ export const ViewExpressionsDomainDialog = ({
                 sx={{
                   display: "grid",
                   gridTemplateColumns: {
-                    xs: "1fr",
+                    xs: "minmax(0, 1fr)",
                     sm: "repeat(2, minmax(0, 1fr))",
                     lg: "repeat(3, minmax(0, 1fr))",
                   },
