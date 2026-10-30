@@ -15,6 +15,7 @@ import {
   evaluationPluginEmptyStateSx,
 } from "../evaluations.styles";
 import UnsupportedEvaluationStructureAlert from "./UnsupportedEvaluationStructureAlert";
+import GAHPSortCollectiveEvaluation from "./GAHPSortCollectiveEvaluation.jsx";
 
 const formatSubmittedAt = (value) => {
   if (!value) return "—";
@@ -100,7 +101,8 @@ const EvaluationPluginPanel = ({
   const hasActiveViewData = showCollective
     ? stageData.hasUsableCollectiveEvaluation
     : stageData.hasUsableIndividualEvaluation;
-  const shouldRender =
+  const useGroupCollectiveView = showCollective && Boolean(stageData.collectiveGroupPresentation);
+  const shouldRender = !useGroupCollectiveView &&
     stageData.renderer?.structureKey &&
     hasActiveViewData;
   const submittedAt = stageData.individual?.submittedAt;
@@ -156,7 +158,11 @@ const EvaluationPluginPanel = ({
         </Typography>
       ) : null}
 
-      {!hasActiveViewData ? <EvaluationEmptyState content={emptyState} /> : null}
+      {!hasActiveViewData && !useGroupCollectiveView ? <EvaluationEmptyState content={emptyState} /> : null}
+
+      {useGroupCollectiveView ? (
+        <GAHPSortCollectiveEvaluation presentation={stageData.collectiveGroupPresentation} />
+      ) : null}
 
       {shouldRender ? (
         <Box sx={evaluationPluginRendererViewportSx}>

@@ -3,6 +3,7 @@ import { isPlainObject } from "../../../../../utils/common/objects";
 import { formatParticipationLabel } from "./formatParticipationLabel";
 import { resolveFinishedExpertIdentity } from "./resolveFinishedExpertIdentity";
 import { isUsableCollectiveEvaluation } from "./isUsableCollectiveEvaluation";
+import { buildAHPSortIGroupEvaluationPresentation } from "./buildAHPSortIGroupEvaluationPresentation.js";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -104,6 +105,7 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
       hasUsableIndividualEvaluation: false,
       hasUsableCollectiveEvaluation: false,
       canShowCollective: false,
+      collectiveGroupPresentation: null,
       renderer: null,
     };
   }
@@ -121,6 +123,9 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
   const collectivePayload = payloadFor(collective);
   const hasUsableIndividualEvaluation = isPlainObject(individualPayload);
   const context = contextFor({ payload, stage, phase, individual, collective });
+  const collectiveGroupPresentation = stage === "alternativeEvaluation"
+    ? buildAHPSortIGroupEvaluationPresentation({ payload, phase })
+    : null;
   const hasUsableCollectiveEvaluation = isUsableCollectiveEvaluation({
     structureKey: context?.structureKey,
     decisionContext: context?.decisionContext,
@@ -142,6 +147,7 @@ const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
     hasUsableIndividualEvaluation,
     hasUsableCollectiveEvaluation,
     canShowCollective: Boolean(collective),
+    collectiveGroupPresentation,
     renderer:
       context &&
       (hasUsableIndividualEvaluation || hasUsableCollectiveEvaluation)
