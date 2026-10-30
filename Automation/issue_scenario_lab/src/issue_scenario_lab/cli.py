@@ -15,6 +15,8 @@ from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.ahp_sort_i_development_demos import SCENARIO_ID as AHPSORT_I_DEMOS_SCENARIO_ID
 from issue_scenario_lab.scenarios.ahp_sort_i_development_demos import generate as generate_ahpsort_i_development_demos
+from issue_scenario_lab.scenarios.ahp_sort_i_sustainable_multicriteria_v3 import SCENARIO_ID as AHPSORT_I_SUSTAINABLE_MULTICRITERIA_V3_SCENARIO_ID
+from issue_scenario_lab.scenarios.ahp_sort_i_sustainable_multicriteria_v3 import generate as generate_ahpsort_i_sustainable_multicriteria_v3
 from issue_scenario_lab.scenarios.consensus_first_round import SCENARIO_ID as CONSENSUS_FIRST_ROUND_SCENARIO_ID
 from issue_scenario_lab.scenarios.consensus_first_round import generate as generate_consensus_first_round
 from issue_scenario_lab.scenarios.consensus_later_round import SCENARIO_ID as CONSENSUS_LATER_ROUND_SCENARIO_ID
@@ -363,6 +365,19 @@ def generate(
                 "consensus": False,
             },
         ),
+        AHPSORT_I_SUSTAINABLE_MULTICRITERIA_V3_SCENARIO_ID: (
+            generate_ahpsort_i_sustainable_multicriteria_v3,
+            {
+                "model": "AHPSort I",
+                "alternatives": 5,
+                "criteria": 6,
+                "individualExperts": 3,
+                "criteriaWeighting": "AHP + MCC",
+                "groupClassification": "GAHPSort I optimistic plurality",
+                "syntheticValidationData": True,
+                "resultStructure": "sorting@1",
+            },
+        ),
     }
     selected = generators.get(scenario_id)
     if selected is None:
@@ -393,7 +408,16 @@ def generate(
                                 "group_expert_aliases": (expert_a_alias, expert_b_alias, expert_c_alias),
                             }
                             if scenario_id == AHPSORT_I_DEMOS_SCENARIO_ID
+                            else (
+                                {
+                                    "owner_alias": owner_alias,
+                                    "expert_a_alias": expert_a_alias,
+                                    "expert_b_alias": expert_b_alias,
+                                    "expert_c_alias": expert_c_alias,
+                                }
+                                if scenario_id == AHPSORT_I_SUSTAINABLE_MULTICRITERIA_V3_SCENARIO_ID
                             else {"owner_alias": owner_alias, "expert_a_alias": expert_a_alias, "expert_b_alias": expert_b_alias}
+                            )
                         )
                     )
                 )
@@ -425,6 +449,24 @@ def generate(
             },
             "finalStage": "finished",
             "manifest": result.manifest_path,
+        })
+        return
+    if scenario_id == AHPSORT_I_SUSTAINABLE_MULTICRITERIA_V3_SCENARIO_ID:
+        console.print({
+            "scenarioId": scenario_id,
+            **selected[1],
+            "generationId": result.generation_id,
+            "issueId": result.issue_id,
+            "issueName": result.issue_name,
+            "individualAHPWeights": result.individual_weights_by_expert,
+            "AHPConsistency": result.consistency_by_expert,
+            "MCCWeights": result.weights_by_criterion_name,
+            "individualAssignments": result.individual_assignments_by_expert,
+            "collectiveAssignments": result.assignments_by_alternative_name,
+            "votes": result.votes_by_alternative,
+            "reusedExistingIssue": result.reused_existing_issue,
+            "finalStage": "finished",
+            "manifest": str(settings.manifest_file),
         })
         return
     console.print(

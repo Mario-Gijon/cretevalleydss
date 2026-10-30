@@ -32,6 +32,19 @@ const DEMOS = [
     },
     categories: ["Bad", "Moderate", "Good"],
   },
+  {
+    key: "sustainable-multicriteria-v3",
+    name: "DEMO — GAHPSort — Sustainable Development — Multicriteria V3",
+    hasCriteriaWeighting: true,
+    assignments: {
+      Spain: "Bad",
+      "United Kingdom": "Good",
+      Croatia: "Good",
+      Norway: "Moderate",
+      Romania: "Moderate",
+    },
+    categories: ["Bad", "Moderate", "Good"],
+  },
 ];
 
 const expectNoHorizontalOverflow = async (page) => {
@@ -87,9 +100,13 @@ const expandExpressionDomainCriteria = async (dialog) => {
   }
 };
 
-const expectDialogOnlyVerticalScroll = async (dialog) => {
+const expectDialogOnlyVerticalScroll = async (dialog, { requireOverflow = true } = {}) => {
   const metrics = await inspectEvaluationScroll(dialog);
-  expect(metrics.outerScrollHeight).toBeGreaterThan(metrics.outerClientHeight);
+  if (requireOverflow) {
+    expect(metrics.outerScrollHeight).toBeGreaterThan(metrics.outerClientHeight);
+  } else {
+    expect(metrics.outerScrollHeight).toBeGreaterThanOrEqual(metrics.outerClientHeight);
+  }
   expect(metrics.nestedVerticalScrollers, JSON.stringify(metrics.nestedVerticalScrollers)).toEqual([]);
 };
 
@@ -306,6 +323,75 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
       });
     });
   }
+
+  test("multicriteria-v3 retains criterion- and expert-specific comparisons and persisted analysis", async ({ page }) => {
+    test.skip(!OWNER.email || !OWNER.password, "Set AHPSORT_DEMO_OWNER_EMAIL/PASSWORD from the existing Scenario Lab owner account.");
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.setViewportSize({ width: 1440, height: 960 });
+    await loginAsUser(page, OWNER);
+    const dialog = await openFinishedIssue(page, "DEMO — GAHPSort — Sustainable Development — Multicriteria V3");
+
+    const executionsTab = dialog.getByRole("tab", { name: "Executions", exact: true });
+    await expect(executionsTab).toBeVisible();
+    await executionsTab.click();
+    await expect(dialog.getByTestId("models-execution-gallery")).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Selected execution — Base", exact: true })).toBeVisible();
+    await expect(dialog.getByText("AHPSort I", { exact: true })).toBeVisible();
+
+    await dialog.getByRole("tab", { name: "Evaluations", exact: true }).click();
+    const criteriaPanel = dialog.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    const alternativePanel = dialog.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    await expect(criteriaPanel).toBeVisible();
+    await expect(alternativePanel).toBeVisible();
+    const criteriaGrid = criteriaPanel.locator(".MuiDataGrid-root").first();
+    await expect(criteriaGrid).toBeVisible();
+    expect(await criteriaGrid.locator("[aria-label]").count()).toBeGreaterThan(0);
+    expect(await criteriaGrid.innerText()).toMatch(/1\/|[2-9]/);
+    const criterionTabs = alternativePanel.getByRole("tab");
+    await expect(criterionTabs).toHaveCount(6);
+
+    const expertSelector = dialog.getByLabel("Expert");
+    const matrixByExpert = [];
+    const readMatrixValues = async () => alternativePanel.locator(".MuiDataGrid-root").first()
+      .locator("[aria-label^='Compare']")
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("aria-label")?.split(": ").at(-1)).sort());
+    for (let expertIndex = 0; expertIndex < 3; expertIndex += 1) {
+      await expertSelector.click();
+      const options = page.getByRole("option");
+      await expect(options).toHaveCount(3);
+      await options.nth(expertIndex).click();
+      await criterionTabs.nth(2).click();
+      await expect(criterionTabs.nth(2)).toHaveAttribute("aria-selected", "true");
+      matrixByExpert.push(await readMatrixValues());
+    }
+    expect(new Set(matrixByExpert.map((matrix) => matrix.join("\n"))).size).toBeGreaterThan(1);
+
+    await criterionTabs.nth(0).click();
+    const povertyMatrix = await readMatrixValues();
+    await criterionTabs.nth(2).click();
+    const lifeExpectancyMatrix = await readMatrixValues();
+    expect(povertyMatrix).not.toEqual(lifeExpectancyMatrix);
+    expect(povertyMatrix.some((value) => value.includes("1/"))).toBe(true);
+
+    await dialog.getByRole("tab", { name: "Analysis", exact: true }).click();
+    await expect(dialog.getByText("General visualizations", { exact: true })).toBeVisible();
+    await dialog.getByRole("tab", { name: "Interpretation", exact: true }).click();
+    await expect(dialog.getByText("General analysis", { exact: true })).toBeVisible();
+    const persistedInterpretation = dialog.getByText(/The final classification places/);
+    await expect(persistedInterpretation).toContainText("Croatia");
+    await expect(persistedInterpretation).toContainText("United Kingdom");
+    await expect(persistedInterpretation).toContainText("Good");
+    await expect(persistedInterpretation).toContainText("Spain");
+    await expect(persistedInterpretation).toContainText("Bad");
+
+    for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await expectNoHorizontalOverflow(page);
+      await expectDialogOnlyVerticalScroll(dialog, { requireOverflow: false });
+    }
+    expect(pageErrors).toEqual([]);
+  });
 
   test("TOPSIS-Sort keeps its shared evaluation renderer within the dialog scroll", async ({ page }) => {
     test.skip(!OWNER.email || !OWNER.password, "Set AHPSORT_DEMO_OWNER_EMAIL/PASSWORD from the existing Scenario Lab owner account.");

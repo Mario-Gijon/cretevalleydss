@@ -1,0 +1,847 @@
+{
+  "criteria": [
+    {
+      "key": "poverty",
+      "name": "People at risk of poverty or social exclusion",
+      "type": "cost"
+    },
+    {
+      "key": "obesity",
+      "name": "Obesity rate by BMI",
+      "type": "cost"
+    },
+    {
+      "key": "life_expectancy",
+      "name": "Life expectancy at birth",
+      "type": "benefit"
+    },
+    {
+      "key": "neet",
+      "name": "Young people not in employment, education or training (NEET)",
+      "type": "cost"
+    },
+    {
+      "key": "gender_gap",
+      "name": "Gender employment gap",
+      "type": "cost"
+    },
+    {
+      "key": "homicide",
+      "name": "Death rate due to homicide",
+      "type": "cost"
+    }
+  ],
+  "alternatives": [
+    "Spain",
+    "United Kingdom",
+    "Croatia",
+    "Norway",
+    "Romania"
+  ],
+  "categories": [
+    {
+      "categoryId": "bad",
+      "label": "Bad",
+      "order": 0
+    },
+    {
+      "categoryId": "moderate",
+      "label": "Moderate",
+      "order": 1
+    },
+    {
+      "categoryId": "good",
+      "label": "Good",
+      "order": 2
+    }
+  ],
+  "profiles": [
+    {
+      "profileId": "bad-moderate-boundary",
+      "lowerCategoryId": "bad",
+      "upperCategoryId": "moderate"
+    },
+    {
+      "profileId": "moderate-good-boundary",
+      "lowerCategoryId": "moderate",
+      "upperCategoryId": "good"
+    }
+  ],
+  "schemaVersion": 1,
+  "scenarioId": "ahp-sort-i-sustainable-multicriteria-v3",
+  "issueName": "DEMO — GAHPSort — Sustainable Development — Multicriteria V3",
+  "description": "Synthetic preferences created only to validate deterministic multi-criteria AHPSort I and GAHPSort behavior. These are not empirical results, country assessments, or transcribed judgments from the scientific article.",
+  "expertPairwiseOverrides": {
+    "expert_a": [
+      {
+        "row": 0,
+        "column": 1,
+        "value": 3.0
+      },
+      {
+        "row": 0,
+        "column": 2,
+        "value": 0.3333333333333333
+      },
+      {
+        "row": 0,
+        "column": 3,
+        "value": 1.0
+      },
+      {
+        "row": 0,
+        "column": 4,
+        "value": 3.0
+      },
+      {
+        "row": 0,
+        "column": 5,
+        "value": 3.0
+      },
+      {
+        "row": 1,
+        "column": 2,
+        "value": 0.1111111111111111
+      },
+      {
+        "row": 1,
+        "column": 3,
+        "value": 0.3333333333333333
+      },
+      {
+        "row": 1,
+        "column": 4,
+        "value": 1.0
+      },
+      {
+        "row": 1,
+        "column": 5,
+        "value": 1.0
+      },
+      {
+        "row": 2,
+        "column": 3,
+        "value": 3.0
+      },
+      {
+        "row": 2,
+        "column": 4,
+        "value": 9.0
+      },
+      {
+        "row": 2,
+        "column": 5,
+        "value": 9.0
+      },
+      {
+        "row": 3,
+        "column": 4,
+        "value": 3.0
+      },
+      {
+        "row": 3,
+        "column": 5,
+        "value": 3.0
+      },
+      {
+        "row": 4,
+        "column": 5,
+        "value": 1.0
+      }
+    ],
+    "expert_b": [
+      {
+        "row": 0,
+        "column": 1,
+        "value": 7.0
+      },
+      {
+        "row": 0,
+        "column": 2,
+        "value": 7.0
+      },
+      {
+        "row": 0,
+        "column": 3,
+        "value": 1.0
+      },
+      {
+        "row": 0,
+        "column": 4,
+        "value": 7.0
+      },
+      {
+        "row": 0,
+        "column": 5,
+        "value": 1.0
+      },
+      {
+        "row": 1,
+        "column": 2,
+        "value": 1.0
+      },
+      {
+        "row": 1,
+        "column": 3,
+        "value": 0.14285714285714285
+      },
+      {
+        "row": 1,
+        "column": 4,
+        "value": 1.0
+      },
+      {
+        "row": 1,
+        "column": 5,
+        "value": 0.14285714285714285
+      },
+      {
+        "row": 2,
+        "column": 3,
+        "value": 0.14285714285714285
+      },
+      {
+        "row": 2,
+        "column": 4,
+        "value": 1.0
+      },
+      {
+        "row": 2,
+        "column": 5,
+        "value": 0.14285714285714285
+      },
+      {
+        "row": 3,
+        "column": 4,
+        "value": 7.0
+      },
+      {
+        "row": 3,
+        "column": 5,
+        "value": 1.0
+      },
+      {
+        "row": 4,
+        "column": 5,
+        "value": 0.14285714285714285
+      }
+    ],
+    "expert_c": [
+      {
+        "row": 0,
+        "column": 1,
+        "value": 5.0
+      },
+      {
+        "row": 0,
+        "column": 2,
+        "value": 1.0
+      },
+      {
+        "row": 0,
+        "column": 3,
+        "value": 5.0
+      },
+      {
+        "row": 0,
+        "column": 4,
+        "value": 1.0
+      },
+      {
+        "row": 0,
+        "column": 5,
+        "value": 5.0
+      },
+      {
+        "row": 1,
+        "column": 2,
+        "value": 0.2
+      },
+      {
+        "row": 1,
+        "column": 3,
+        "value": 1.0
+      },
+      {
+        "row": 1,
+        "column": 4,
+        "value": 0.2
+      },
+      {
+        "row": 1,
+        "column": 5,
+        "value": 1.0
+      },
+      {
+        "row": 2,
+        "column": 3,
+        "value": 5.0
+      },
+      {
+        "row": 2,
+        "column": 4,
+        "value": 1.0
+      },
+      {
+        "row": 2,
+        "column": 5,
+        "value": 5.0
+      },
+      {
+        "row": 3,
+        "column": 4,
+        "value": 0.2
+      },
+      {
+        "row": 3,
+        "column": 5,
+        "value": 1.0
+      },
+      {
+        "row": 4,
+        "column": 5,
+        "value": 5.0
+      }
+    ]
+  },
+  "expectedAHPWeightsByExpert": {
+    "expert_a": [
+      0.16666666666666666,
+      0.05555555555555556,
+      0.5,
+      0.16666666666666666,
+      0.05555555555555556,
+      0.05555555555555556
+    ],
+    "expert_b": [
+      0.2916666666666667,
+      0.04166666666666668,
+      0.04166666666666667,
+      0.29166666666666674,
+      0.04166666666666667,
+      0.29166666666666674
+    ],
+    "expert_c": [
+      0.27777777777777785,
+      0.05555555555555555,
+      0.2777777777777778,
+      0.05555555555555558,
+      0.2777777777777778,
+      0.05555555555555558
+    ]
+  },
+  "expectedConsistencyByExpert": {
+    "expert_a": {
+      "lambdaMax": 6.000000000000001,
+      "consistencyIndex": 1.7763568394002506e-16,
+      "randomIndex": 1.24,
+      "consistencyRatio": 1.4325458382260086e-16,
+      "consistencyStatus": "consistent"
+    },
+    "expert_b": {
+      "lambdaMax": 6.000000000000002,
+      "consistencyIndex": 3.552713678800501e-16,
+      "randomIndex": 1.24,
+      "consistencyRatio": 2.8650916764520173e-16,
+      "consistencyStatus": "consistent"
+    },
+    "expert_c": {
+      "lambdaMax": 5.999999999999998,
+      "consistencyIndex": 0.0,
+      "randomIndex": 1.24,
+      "consistencyRatio": 0.0,
+      "consistencyStatus": "consistent"
+    }
+  },
+  "expectedMCCWeights": [
+    0.25972222,
+    0.073611111,
+    0.27777778,
+    0.16666667,
+    0.091666667,
+    0.13055556
+  ],
+  "profileComparisonsByCriterion": {
+    "poverty": 0.3333333333333333,
+    "obesity": 0.25,
+    "life_expectancy": 0.5,
+    "neet": 0.3333333333333333,
+    "gender_gap": 0.25,
+    "homicide": 0.5
+  },
+  "alternativeToProfileByExpert": {
+    "expert_a": {
+      "Spain": {
+        "poverty": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "obesity": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 0.25,
+          "moderate-good-boundary": 0.125
+        },
+        "neet": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "homicide": {
+          "bad-moderate-boundary": 0.25,
+          "moderate-good-boundary": 0.125
+        }
+      },
+      "United Kingdom": {
+        "poverty": {
+          "bad-moderate-boundary": 9,
+          "moderate-good-boundary": 3
+        },
+        "obesity": {
+          "bad-moderate-boundary": 8,
+          "moderate-good-boundary": 2
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 1
+        },
+        "neet": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "homicide": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        }
+      },
+      "Croatia": {
+        "poverty": {
+          "bad-moderate-boundary": 6,
+          "moderate-good-boundary": 2
+        },
+        "obesity": {
+          "bad-moderate-boundary": 8,
+          "moderate-good-boundary": 2
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 6,
+          "moderate-good-boundary": 2
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 1
+        },
+        "homicide": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 2
+        }
+      },
+      "Norway": {
+        "poverty": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "obesity": {
+          "bad-moderate-boundary": 8,
+          "moderate-good-boundary": 2
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 1
+        },
+        "homicide": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        }
+      },
+      "Romania": {
+        "poverty": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "obesity": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 6,
+          "moderate-good-boundary": 3
+        },
+        "neet": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "homicide": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 2
+        }
+      }
+    },
+    "expert_b": {
+      "Spain": {
+        "poverty": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "obesity": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 0.25,
+          "moderate-good-boundary": 0.125
+        },
+        "neet": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "homicide": {
+          "bad-moderate-boundary": 0.25,
+          "moderate-good-boundary": 0.125
+        }
+      },
+      "United Kingdom": {
+        "poverty": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "obesity": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "homicide": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        }
+      },
+      "Croatia": {
+        "poverty": {
+          "bad-moderate-boundary": 6,
+          "moderate-good-boundary": 2
+        },
+        "obesity": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 1
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 2
+        },
+        "neet": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 8,
+          "moderate-good-boundary": 2
+        },
+        "homicide": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 1
+        }
+      },
+      "Norway": {
+        "poverty": {
+          "bad-moderate-boundary": 3,
+          "moderate-good-boundary": 1
+        },
+        "obesity": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 1
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 8,
+          "moderate-good-boundary": 4
+        },
+        "neet": {
+          "bad-moderate-boundary": 3,
+          "moderate-good-boundary": 1
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 8,
+          "moderate-good-boundary": 2
+        },
+        "homicide": {
+          "bad-moderate-boundary": 6,
+          "moderate-good-boundary": 3
+        }
+      },
+      "Romania": {
+        "poverty": {
+          "bad-moderate-boundary": 9,
+          "moderate-good-boundary": 3
+        },
+        "obesity": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 9,
+          "moderate-good-boundary": 3
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "homicide": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        }
+      }
+    },
+    "expert_c": {
+      "Spain": {
+        "poverty": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "obesity": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "homicide": {
+          "bad-moderate-boundary": 0.25,
+          "moderate-good-boundary": 0.125
+        }
+      },
+      "United Kingdom": {
+        "poverty": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "obesity": {
+          "bad-moderate-boundary": 0.5,
+          "moderate-good-boundary": 0.125
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.1111111111111111
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "homicide": {
+          "bad-moderate-boundary": 0.3333333333333333,
+          "moderate-good-boundary": 0.16666666666666666
+        }
+      },
+      "Croatia": {
+        "poverty": {
+          "bad-moderate-boundary": 6,
+          "moderate-good-boundary": 2
+        },
+        "obesity": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 1
+        },
+        "neet": {
+          "bad-moderate-boundary": 6,
+          "moderate-good-boundary": 2
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 4,
+          "moderate-good-boundary": 1
+        },
+        "homicide": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        }
+      },
+      "Norway": {
+        "poverty": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "obesity": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 3,
+          "moderate-good-boundary": 1
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "homicide": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        }
+      },
+      "Romania": {
+        "poverty": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "obesity": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "life_expectancy": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        },
+        "neet": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.3333333333333333
+        },
+        "gender_gap": {
+          "bad-moderate-boundary": 2,
+          "moderate-good-boundary": 0.5
+        },
+        "homicide": {
+          "bad-moderate-boundary": 1,
+          "moderate-good-boundary": 0.5
+        }
+      }
+    }
+  },
+  "expectedIndividualAssignmentsByExpert": {
+    "expert_a": {
+      "Spain": "Bad",
+      "United Kingdom": "Good",
+      "Croatia": "Good",
+      "Norway": "Moderate",
+      "Romania": "Moderate"
+    },
+    "expert_b": {
+      "Spain": "Bad",
+      "United Kingdom": "Moderate",
+      "Croatia": "Good",
+      "Norway": "Good",
+      "Romania": "Moderate"
+    },
+    "expert_c": {
+      "Spain": "Bad",
+      "United Kingdom": "Bad",
+      "Croatia": "Good",
+      "Norway": "Moderate",
+      "Romania": "Moderate"
+    }
+  },
+  "expectedAssignments": {
+    "Spain": "Bad",
+    "United Kingdom": "Good",
+    "Croatia": "Good",
+    "Norway": "Moderate",
+    "Romania": "Moderate"
+  },
+  "expectedVotes": {
+    "Spain": {
+      "status": "unanimous",
+      "categoryCounts": [
+        3,
+        0,
+        0
+      ]
+    },
+    "United Kingdom": {
+      "status": "tied_plurality",
+      "categoryCounts": [
+        1,
+        1,
+        1
+      ]
+    },
+    "Croatia": {
+      "status": "unanimous",
+      "categoryCounts": [
+        0,
+        0,
+        3
+      ]
+    },
+    "Norway": {
+      "status": "unique_plurality",
+      "categoryCounts": [
+        0,
+        2,
+        1
+      ]
+    },
+    "Romania": {
+      "status": "unanimous",
+      "categoryCounts": [
+        0,
+        3,
+        0
+      ]
+    }
+  },
+  "expectedLocalConsistency": {
+    "matrixCount": 90,
+    "reviewCount": 0,
+    "maximumCR": 1.914177628664063e-15
+  }
+}

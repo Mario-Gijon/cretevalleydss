@@ -43,6 +43,8 @@ class DemonstrationIssueResult:
     individual_assignments_by_expert: dict[str, dict[str, str]]
     votes_by_alternative: dict[str, dict[str, Any]]
     reused_existing_issue: bool
+    individual_weights_by_expert: dict[str, dict[str, float]] | None = None
+    consistency_by_expert: dict[str, dict[str, Any]] | None = None
 
 
 @dataclass(frozen=True)
@@ -390,15 +392,21 @@ def _alternative_evaluation_payload(
     criterion_ids = _criterion_ids_by_key(criteria, fixture)
     profiles = _resolve_profiles(context, fixture)
     if group:
-        votes = fixture["categoryVotesByAlternative"]
-        value_by_category = {"Bad": 1 / 9, "Moderate": 1, "Good": 9}
-        if expert_alias not in {"expert_a", "expert_b", "expert_c"}:
-            raise ScenarioLabError("group AHPSort I fixture requires expert_a, expert_b and expert_c")
-        expert_index = ["expert_a", "expert_b", "expert_c"].index(expert_alias)
-        judgments = {
-            alternative: value_by_category[votes[alternative][expert_index]]
-            for alternative in fixture["alternatives"]
-        }
+        explicit_by_expert = fixture.get("alternativeToProfileByExpert")
+        if isinstance(explicit_by_expert, dict):
+            if expert_alias not in explicit_by_expert:
+                raise ScenarioLabError("group AHPSort I fixture is missing this expert's explicit judgments")
+            judgments = explicit_by_expert[expert_alias]
+        else:
+            votes = fixture["categoryVotesByAlternative"]
+            value_by_category = {"Bad": 1 / 9, "Moderate": 1, "Good": 9}
+            if expert_alias not in {"expert_a", "expert_b", "expert_c"}:
+                raise ScenarioLabError("group AHPSort I fixture requires expert_a, expert_b and expert_c")
+            expert_index = ["expert_a", "expert_b", "expert_c"].index(expert_alias)
+            judgments = {
+                alternative: value_by_category[votes[alternative][expert_index]]
+                for alternative in fixture["alternatives"]
+            }
     else:
         judgments = fixture["alternativeToProfileByAlternative"]
 
@@ -408,8 +416,29 @@ def _alternative_evaluation_payload(
         if not group and len(values) != len(criteria):
             raise ScenarioLabError(f"alternative judgments for {alternative_name} are incomplete")
         for criterion_index, criterion in enumerate(fixture["criteria"]):
-            value = values[criterion_index] if not group else values
+            explicit_profile_values = (
+                values.get(criterion["key"])
+                if group and isinstance(fixture.get("alternativeToProfileByExpert"), dict)
+                else None
+            )
+            if explicit_profile_values is not None:
+                if not isinstance(explicit_profile_values, dict) or set(explicit_profile_values) != {
+                    profile["profileId"] for profile in profiles
+                }:
+                    raise ScenarioLabError(
+                        f"alternative judgments for {alternative_name}/{criterion['key']} must cover every profile ID"
+                    )
+                profile_values = {
+                    profile["profileId"]: explicit_profile_values[profile["profileId"]]
+                    for profile in profiles
+                }
+            else:
+                value = values[criterion_index] if not group else values
+                profile_values = {profile["profileId"]: value for profile in profiles}
             for profile in profiles:
+                value = profile_values[profile["profileId"]]
+                if not _is_saaty(value):
+                    raise ScenarioLabError("alternative/profile comparisons must use the original Saaty scale")
                 alternative_rows.append({
                     "alternativeId": alternative_ids[alternative_name],
                     "criterionId": criterion_ids[criterion["key"]],
@@ -424,7 +453,7 @@ def _alternative_evaluation_payload(
                     "criterionId": criterion_ids[criterion["key"]],
                     "firstProfileId": first["profileId"],
                     "secondProfileId": second["profileId"],
-                    "firstToSecond": 1 / 3,
+                    "firstToSecond": fixture.get("profileComparisonsByCriterion", {}).get(criterion["key"], 1 / 3),
                 })
     return {"alternativeProfileComparisons": alternative_rows, "profileComparisons": profile_rows}
 
@@ -522,6 +551,78 @@ def _weights_by_name(detail: dict[str, Any], fixture: dict[str, Any], expected: 
     return weights
 
 
+def _validate_individual_ahp_results(
+    raw_output: Any,
+    *,
+    fixture: dict[str, Any],
+    expert_aliases: tuple[str, ...],
+    expert_emails_by_alias: dict[str, str],
+    expert_ids_by_alias: dict[str, str],
+    criteria: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, Any]]]:
+    expected_weights = fixture.get("expectedAHPWeightsByExpert")
+    if not isinstance(expected_weights, dict):
+        return {}, {}
+    if not isinstance(raw_output, dict):
+        raise ScenarioLabError("AHPSort I fixture requires persisted individual AHP diagnostics")
+
+    weight_results = raw_output.get("expertWeightsByExpert")
+    diagnostics = raw_output.get("expertDiagnosticsByExpert")
+    if not isinstance(weight_results, dict) or not isinstance(diagnostics, dict):
+        raise ScenarioLabError("AHP + MCC output is missing individual weights or consistency diagnostics")
+    criteria_by_name = {item.get("name"): item for item in criteria}
+    if set(criteria_by_name) != {item["name"] for item in fixture["criteria"]}:
+        raise ScenarioLabError("individual AHP diagnostics cannot be matched to the configured criteria")
+
+    def find_expert_record(records: dict[str, Any], alias: str) -> Any:
+        email = expert_emails_by_alias[alias].casefold()
+        user_id = expert_ids_by_alias[alias]
+        matches = [
+            value for key, value in records.items()
+            if str(key).casefold() == email or str(key) == user_id
+        ]
+        if len(matches) != 1:
+            raise ScenarioLabError(f"AHP + MCC output does not identify exactly one record for {alias}")
+        return matches[0]
+
+    individual_weights: dict[str, dict[str, float]] = {}
+    consistency_by_expert: dict[str, dict[str, Any]] = {}
+    expected_consistency = fixture.get("expectedConsistencyByExpert", {})
+    for alias in expert_aliases:
+        actual_weights = find_expert_record(weight_results, alias)
+        diagnostic = find_expert_record(diagnostics, alias)
+        if not isinstance(actual_weights, dict) or not isinstance(diagnostic, dict):
+            raise ScenarioLabError(f"AHP + MCC output for {alias} is malformed")
+        values_by_name: dict[str, float] = {}
+        expected_values = expected_weights.get(alias)
+        if not isinstance(expected_values, list) or len(expected_values) != len(fixture["criteria"]):
+            raise ScenarioLabError(f"fixture is missing the validated individual AHP weights for {alias}")
+        for index, criterion in enumerate(fixture["criteria"]):
+            criterion_id = _id(criteria_by_name[criterion["name"]])
+            value = actual_weights.get(criterion_id)
+            if not _finite(value) or not math.isclose(float(value), float(expected_values[index]), rel_tol=0, abs_tol=2e-7):
+                raise ScenarioLabError(f"individual AHP weight for {alias}/{criterion['name']} differs from its reference")
+            values_by_name[criterion["name"]] = float(value)
+        if not math.isclose(math.fsum(values_by_name.values()), 1.0, rel_tol=0, abs_tol=2e-7):
+            raise ScenarioLabError(f"individual AHP weights for {alias} are not normalized")
+
+        expected_metrics = expected_consistency.get(alias, {}) if isinstance(expected_consistency, dict) else {}
+        metrics = {
+            key: diagnostic.get(key)
+            for key in ("lambdaMax", "consistencyIndex", "randomIndex", "consistencyRatio", "consistencyStatus")
+        }
+        for key, expected_value in expected_metrics.items():
+            actual_value = metrics.get(key)
+            if isinstance(expected_value, (int, float)) and not isinstance(expected_value, bool):
+                if not _finite(actual_value) or not math.isclose(float(actual_value), float(expected_value), rel_tol=0, abs_tol=1e-9):
+                    raise ScenarioLabError(f"AHP consistency metric {key} for {alias} differs from its reference")
+            elif actual_value != expected_value:
+                raise ScenarioLabError(f"AHP consistency status for {alias} differs from its reference")
+        individual_weights[alias] = values_by_name
+        consistency_by_expert[alias] = metrics
+    return individual_weights, consistency_by_expert
+
+
 def _validate_group_votes(
     diagnostics: dict[str, Any],
     *,
@@ -536,7 +637,8 @@ def _validate_group_votes(
     if not isinstance(results, dict):
         raise ScenarioLabError("group voting diagnostics are missing per-alternative votes")
     category_order = [item["label"] for item in fixture["categories"]]
-    individual_assignments: dict[str, dict[str, str]] = {alias: {} for alias in ("expert_a", "expert_b", "expert_c")}
+    expert_aliases = tuple(expert_ids_by_alias)
+    individual_assignments: dict[str, dict[str, str]] = {alias: {} for alias in expert_aliases}
     vote_summary: dict[str, dict[str, Any]] = {}
     for alternative in fixture["alternatives"]:
         vote = results.get(alternative_ids_by_name[alternative])
@@ -553,7 +655,13 @@ def _validate_group_votes(
         for alias, expert_id in expert_ids_by_alias.items():
             category_id = classifications[expert_id]
             category = next((item["label"] for item in fixture["categories"] if item["categoryId"] == category_id), None)
-            if category != fixture["categoryVotesByAlternative"][alternative][("expert_a", "expert_b", "expert_c").index(alias)]:
+            expected_by_expert = fixture.get("expectedIndividualAssignmentsByExpert")
+            expected_category = (
+                expected_by_expert.get(alias, {}).get(alternative)
+                if isinstance(expected_by_expert, dict)
+                else fixture["categoryVotesByAlternative"][alternative][expert_aliases.index(alias)]
+            )
+            if category != expected_category:
                 raise ScenarioLabError(f"individual classification for {alternative}/{alias} differs from its submitted vote")
             individual_assignments[alias][alternative] = category
             by_alias[alias] = category
@@ -680,12 +788,22 @@ def _validate_finished(
     }
     individual_assignments: dict[str, dict[str, str]] = {}
     vote_summary: dict[str, dict[str, Any]] = {}
+    individual_weights_by_expert: dict[str, dict[str, float]] = {}
+    consistency_by_expert: dict[str, dict[str, Any]] = {}
     if group:
         weighting_results = [item for item in phase_results if item.get("stage") == CRITERIA_STAGE and item.get("phase") == 0]
         if len(weighting_results) != 1 or weighting_results[0].get("rawOutput", {}).get("aggregation", {}).get("method") != "mcc":
             raise ScenarioLabError("collective criterion weights were not produced by the existing MCC stage")
         if weighting_results[0].get("rawOutput", {}).get("priorityMethod") != "principalEigenvector":
             raise ScenarioLabError("individual AHP priorities were not calculated with the principal eigenvector method")
+        individual_weights_by_expert, consistency_by_expert = _validate_individual_ahp_results(
+            weighting_results[0].get("rawOutput"),
+            fixture=fixture,
+            expert_aliases=expert_aliases,
+            expert_emails_by_alias=expert_emails_by_alias,
+            expert_ids_by_alias={alias: expert_ids_by_alias[alias] for alias in expert_aliases},
+            criteria=leaf_nodes,
+        )
         weighting_evaluations = [item for item in individuals if item.get("stage") == CRITERIA_STAGE and item.get("phase") == 0]
         if len(weighting_evaluations) != 3 or any(item.get("completed") is not True for item in weighting_evaluations):
             raise ScenarioLabError("Finished Issue must preserve three completed individual AHP weighting evaluations")
@@ -739,6 +857,8 @@ def _validate_finished(
         individual_assignments_by_expert=individual_assignments,
         votes_by_alternative=vote_summary,
         reused_existing_issue=True,
+        individual_weights_by_expert=individual_weights_by_expert,
+        consistency_by_expert=consistency_by_expert,
     )
 
 
@@ -915,17 +1035,22 @@ def _run_sustainable(
     expert_aliases: tuple[str, str, str],
     expert_emails_by_alias: dict[str, str],
     expert_ids_by_email: dict[str, str],
+    owner_alias: str = "owner",
+    scenario_id: str = SCENARIO_ID,
 ) -> DemonstrationIssueResult:
-    owner_api = IssuesApi(sessions.client_for("owner"))
+    owner_api = IssuesApi(sessions.client_for(owner_alias))
     if existing_finished:
         issue_id = _id(existing_finished) or ""
         result = _validate_finished(owner_api.finished_issue(issue_id), issue_id=issue_id, fixture=fixture, group=True, expert_aliases=expert_aliases,
                                     expert_emails_by_alias=expert_emails_by_alias,
                                     expert_ids_by_email=expert_ids_by_email)
-        generation_id = _ensure_manifest_entry(store, issue_id=issue_id, issue_name=fixture["issueName"], aliases=("owner", *expert_aliases))
+        generation_id = _ensure_manifest_entry(
+            store, issue_id=issue_id, issue_name=fixture["issueName"], aliases=(owner_alias, *expert_aliases), scenario_id=scenario_id
+        )
         return DemonstrationIssueResult(generation_id, result.issue_id, result.issue_name, result.assignments_by_alternative_name,
                                         result.weights_by_criterion_name, result.individual_assignments_by_expert,
-                                        result.votes_by_alternative, True)
+                                        result.votes_by_alternative, True, result.individual_weights_by_expert,
+                                        result.consistency_by_expert)
 
     issue_id, _ = _create_issue(owner_api=owner_api, fixture=fixture, model=model, weighting=weighting,
                                 experts=expert_aliases, sessions=sessions, domain=domain, group=True)
@@ -960,6 +1085,18 @@ def _run_sustainable(
         if not isinstance(collective, dict) or weight_result.get("rawOutput", {}).get("aggregation", {}).get("method") != "mcc":
             raise ScenarioLabError("Backend did not calculate the collective AHP weights using MCC")
         _assert_weight_values(collective, fixture, criteria_by_alias[expert_aliases[0]], fixture["expectedMCCWeights"], label="MCC")
+        expert_ids_by_alias = {
+            alias: expert_ids_by_email[expert_emails_by_alias[alias].casefold()]
+            for alias in expert_aliases
+        }
+        _validate_individual_ahp_results(
+            weight_result.get("rawOutput"),
+            fixture=fixture,
+            expert_aliases=expert_aliases,
+            expert_emails_by_alias=expert_emails_by_alias,
+            expert_ids_by_alias=expert_ids_by_alias,
+            criteria=criteria_by_alias[expert_aliases[0]],
+        )
 
         for alias in expert_aliases:
             api = IssuesApi(sessions.client_for(alias))
@@ -983,10 +1120,13 @@ def _run_sustainable(
         result = _validate_finished(owner_api.finished_issue(issue_id), issue_id=issue_id, fixture=fixture, group=True, expert_aliases=expert_aliases,
                                     expert_emails_by_alias=expert_emails_by_alias,
                                     expert_ids_by_email=expert_ids_by_email)
-        generation_id = _ensure_manifest_entry(store, issue_id=issue_id, issue_name=fixture["issueName"], aliases=("owner", *expert_aliases))
+        generation_id = _ensure_manifest_entry(
+            store, issue_id=issue_id, issue_name=fixture["issueName"], aliases=(owner_alias, *expert_aliases), scenario_id=scenario_id
+        )
         return DemonstrationIssueResult(generation_id, result.issue_id, result.issue_name, result.assignments_by_alternative_name,
                                         result.weights_by_criterion_name, result.individual_assignments_by_expert,
-                                        result.votes_by_alternative, False)
+                                        result.votes_by_alternative, False, result.individual_weights_by_expert,
+                                        result.consistency_by_expert)
     except Exception as error:
         raise ScenarioLabError(f"group demonstration failed after creating the Issue (id={issue_id}); it was not deleted: {error}") from error
 

@@ -338,3 +338,29 @@ Finished Issue projection before returning the real Issue IDs.
 Playwright check. Set `AHPSORT_DEMO_OWNER_EMAIL` and
 `AHPSORT_DEMO_OWNER_PASSWORD` to the existing Scenario Lab owner credentials
 when running it against the development Frontend at `localhost:5173`.
+
+`ahp-sort-i-sustainable-multicriteria-v3` is a separate, single-Issue GAHPSort
+variant. It preserves the five countries and six cost/benefit criteria while
+recording every synthetic alternative/profile judgment explicitly by expert,
+alternative, criterion, and profile ID. Each expert also has a distinct,
+complete, reciprocal AHP criteria matrix. The profile-to-profile comparison
+varies by criterion, and the checked fixture freezes individual and collective
+classifications, AHP/MCC weights, and consistency evidence. All synthetic
+preferences are disclosed in the Issue description and are not empirical
+country results or judgments transcribed from the article. It leaves the
+existing V2 demo Issues and their evaluations untouched.
+
+Run it with the same local accounts, Backend, DMS, and global Saaty domain as
+the other Scenario Lab scenarios:
+
+```bash
+SCENARIO_LAB_API_BASE_URL=http://localhost:5000/api \
+  .venv/bin/python -m issue_scenario_lab generate ahp-sort-i-sustainable-multicriteria-v3
+```
+
+The generator submits the three independent AHP evaluations, lets the existing
+Backend calculate MCC weights, submits the explicit criterion-specific
+alternative/profile matrices, and lets the existing GAHPSort path classify and
+vote. It validates the Finished Issue projection and records only this new
+generation in the existing manifest. An unfinished V3 Issue with the same
+identity stops generation without changing or deleting it.

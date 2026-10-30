@@ -553,8 +553,7 @@ describe("EvaluationStructureDialog", () => {
     mockSubmitIssueEvaluationPayload.mockResolvedValue({ success: true, message: "Submitted." });
 
     renderDialog({ structureKey: "ahpSortAlternativeProfiles" });
-    await screen.findByText("0 of 1 comparisons complete");
-    const submitButton = screen.getByRole("button", { name: "Submit" });
+    const submitButton = await screen.findByRole("button", { name: "Submit" });
     expect(submitButton).toBeDisabled();
 
     await user.click(screen.getByRole("combobox", {

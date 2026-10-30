@@ -5,9 +5,11 @@ import json
 from copy import deepcopy
 
 import pytest
+
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios import ahp_sort_i_development_demos as scenario
+from issue_scenario_lab.scenarios import ahp_sort_i_sustainable_multicriteria_v3 as multicriteria_v3
 
 FIXTURE = scenario.load_fixture()
 
@@ -251,3 +253,115 @@ def test_evaluation_context_projects_leaf_criteria_and_alternatives() -> None:
 
     assert criteria == leaf_criteria
     assert alternatives == [{"id": "alternative-id", "name": "Supplier A"}]
+
+
+def test_multicriteria_v3_fixture_has_explicit_synthetic_judgments_for_each_expert_and_criterion() -> None:
+    fixture = multicriteria_v3.load_fixture()
+    assert fixture["issueName"] == "DEMO — GAHPSort — Sustainable Development — Multicriteria V3"
+    assert "synthetic" in fixture["description"].casefold()
+    assert "not empirical" in fixture["description"].casefold()
+    assert "categoryVotesByAlternative" not in fixture
+    assert set(fixture["alternativeToProfileByExpert"]) == {"expert_a", "expert_b", "expert_c"}
+
+    expected_scale = {1 / 9, 1 / 8, 1 / 7, 1 / 6, 1 / 5, 1 / 4, 1 / 3, 1 / 2, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+    values_used = set(fixture["profileComparisonsByCriterion"].values())
+    for expert in fixture["alternativeToProfileByExpert"].values():
+        assert set(expert) == set(fixture["alternatives"])
+        for by_criterion in expert.values():
+            assert set(by_criterion) == {criterion["key"] for criterion in fixture["criteria"]}
+            for by_profile in by_criterion.values():
+                assert set(by_profile) == {profile["profileId"] for profile in fixture["profiles"]}
+                values_used.update(by_profile.values())
+    for overrides in fixture["expertPairwiseOverrides"].values():
+        values_used.update(item["value"] for item in overrides)
+    assert values_used == expected_scale
+
+    assert fixture["profileComparisonsByCriterion"] == {
+        "poverty": 1 / 3,
+        "obesity": 1 / 4,
+        "life_expectancy": 1 / 2,
+        "neet": 1 / 3,
+        "gender_gap": 1 / 4,
+        "homicide": 1 / 2,
+    }
+    assert fixture["expectedVotes"]["Spain"] == {"status": "unanimous", "categoryCounts": [3, 0, 0]}
+    assert fixture["expectedVotes"]["United Kingdom"] == {"status": "tied_plurality", "categoryCounts": [1, 1, 1]}
+    assert fixture["expectedVotes"]["Croatia"] == {"status": "unanimous", "categoryCounts": [0, 0, 3]}
+    assert fixture["expectedVotes"]["Norway"] == {"status": "unique_plurality", "categoryCounts": [0, 2, 1]}
+    assert fixture["expectedAssignments"]["United Kingdom"] == "Good"
+
+
+def test_multicriteria_v3_builds_id_scoped_matrices_independently_by_expert_and_criterion() -> None:
+    fixture = multicriteria_v3.load_fixture()
+    alternatives = [{"id": f"alt-{name}", "name": name} for name in fixture["alternatives"]]
+    criteria = [{"id": f"crit-{item['key']}", "name": item["name"]} for item in fixture["criteria"]]
+    profiles = {"mode": "limiting", "profiles": deepcopy(fixture["profiles"])}
+    payload_a = scenario._alternative_evaluation_payload(
+        context={"modelParameters": {"ahpSortProfiles": profiles}},
+        alternatives=alternatives,
+        criteria=criteria,
+        fixture=fixture,
+        expert_alias="expert_a",
+        group=True,
+    )
+    payload_b = scenario._alternative_evaluation_payload(
+        context={"modelParameters": {"ahpSortProfiles": profiles}},
+        alternatives=alternatives,
+        criteria=criteria,
+        fixture=fixture,
+        expert_alias="expert_b",
+        group=True,
+    )
+    assert len(payload_a["alternativeProfileComparisons"]) == 5 * 6 * 2
+    assert len(payload_a["profileComparisons"]) == 6
+    by_key_a = {
+        (row["alternativeId"], row["criterionId"], row["profileId"]): row["alternativeToProfile"]
+        for row in payload_a["alternativeProfileComparisons"]
+    }
+    by_key_b = {
+        (row["alternativeId"], row["criterionId"], row["profileId"]): row["alternativeToProfile"]
+        for row in payload_b["alternativeProfileComparisons"]
+    }
+    spain_poverty = ("alt-Spain", "crit-poverty", "bad-moderate-boundary")
+    uk_obesity = ("alt-United Kingdom", "crit-obesity", "moderate-good-boundary")
+    assert by_key_a[spain_poverty] == fixture["alternativeToProfileByExpert"]["expert_a"]["Spain"]["poverty"]["bad-moderate-boundary"]
+    croatia_life = ("alt-Croatia", "crit-life_expectancy", "bad-moderate-boundary")
+    assert by_key_a[croatia_life] != by_key_b[croatia_life]
+    assert by_key_a[("alt-Spain", "crit-poverty", "bad-moderate-boundary")] != by_key_a[
+        ("alt-Spain", "crit-life_expectancy", "bad-moderate-boundary")
+    ]
+    assert by_key_a[uk_obesity] != by_key_a[("alt-United Kingdom", "crit-life_expectancy", "moderate-good-boundary")]
+    assert {row["criterionId"]: row["firstToSecond"] for row in payload_a["profileComparisons"]} == {
+        f"crit-{key}": value for key, value in fixture["profileComparisonsByCriterion"].items()
+    }
+
+
+def test_multicriteria_v3_ahp_matrices_are_distinct_normalized_and_consistent() -> None:
+    fixture = multicriteria_v3.load_fixture()
+    matrices = []
+    for alias, overrides in fixture["expertPairwiseOverrides"].items():
+        comparisons = scenario._saaty_comparisons(
+            [{"id": criterion["key"]} for criterion in fixture["criteria"]],
+            overrides=overrides,
+        )
+        assert len(comparisons) == 15
+        assert all(scenario._is_saaty(item["value"]) for item in comparisons)
+        matrices.append(tuple(item["value"] for item in comparisons))
+        assert sum(fixture["expectedAHPWeightsByExpert"][alias]) == pytest.approx(1)
+        assert fixture["expectedConsistencyByExpert"][alias]["consistencyStatus"] == "consistent"
+        assert fixture["expectedConsistencyByExpert"][alias]["consistencyRatio"] <= 0.10
+    assert len(set(matrices)) == 3
+
+
+def test_multicriteria_v3_manifest_uses_a_separate_versioned_scenario_id(tmp_path) -> None:
+    store = ManifestStore(tmp_path / "manifest.json")
+    generation_id = scenario._ensure_manifest_entry(
+        store,
+        issue_id="v3-finished-id",
+        issue_name=multicriteria_v3.ISSUE_NAME,
+        aliases=("owner", "expert_a", "expert_b", "expert_c"),
+        scenario_id=multicriteria_v3.SCENARIO_ID,
+    )
+    entry = store.list_entries()[0]
+    assert entry.generation_id == generation_id
+    assert entry.scenario_id == "ahp-sort-i-sustainable-multicriteria-v3"
