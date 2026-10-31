@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import DashboardView from "../../../../../src/features/finishedIssueDialog/sections/dashboard/components/DashboardView.jsx";
+import SortingDashboardResult from "../../../../../src/features/finishedIssueDialog/resultPresentations/presentations/sorting/v1/SortingDashboardResult.jsx";
 import { buildDashboardData } from "../../../../../src/features/finishedIssueDialog/sections/dashboard/logic/buildFinishedIssueDashboardData.js";
 import {
   sortingFinalCategoryAlternativesSx,
@@ -127,12 +128,14 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(categoryCards[0]).toHaveAccessibleName("Preferred category: 2 alternatives");
     expect(within(categoryCards[0]).getByText("Alternative A")).toBeInTheDocument();
     expect(within(categoryCards[0]).getByText("Alternative C")).toBeInTheDocument();
+    expect(within(categoryCards[0]).queryByText(/\d+ alternatives?/)).not.toBeInTheDocument();
     expect(categoryCards[1]).toHaveAccessibleName("Repeated label: 1 alternative");
     expect(within(categoryCards[1]).getByText(alternatives[1].name)).toBeInTheDocument();
     expect(categoryCards[2]).toHaveAccessibleName("Repeated label: 0 alternatives");
     expect(within(categoryCards[2]).getByText("No alternatives in this category")).toBeInTheDocument();
     expect(data.result.categories.map(({ id }) => id)).toEqual(["cat-top", "cat-high", "cat-low"]);
     expect(data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-label")).not.toBeInTheDocument();
     expect(screen.queryByText("0.7100")).not.toBeInTheDocument();
     expect(data.findings[0].items).toContain("Alternatives assigned to the highest-preference category (Preferred category): Alternative A, Alternative C.");
   });
@@ -156,10 +159,45 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.getByTestId("sorting-final-result")).toBeInTheDocument();
     expect(screen.getAllByTestId("sorting-final-category")).toHaveLength(3);
     expect(screen.getByText("0.7100")).toBeInTheDocument();
-    expect(screen.getAllByTestId("sorting-relative-closeness-point")[0]).toHaveAttribute("data-relative-closeness-value", "0.71");
+    expect(screen.getAllByTestId("sorting-metric-point")[0]).toHaveAttribute("data-metric-value", "0.71");
     expect(screen.getByText("Sorting summary")).toBeInTheDocument();
     expect(screen.queryByTestId("topsis-sort-category-list")).not.toBeInTheDocument();
     expect(screen.queryByText(/ranking|winner/i)).not.toBeInTheDocument();
+  });
+
+  it("renders future Sorting metrics from declared metadata without inventing a scale or order", () => {
+    const result = {
+      categories: [{
+        id: "category-a",
+        label: "A very long category name that should remain readable on a narrow screen",
+        order: 0,
+        metricRange: null,
+        alternatives: [
+          { id: "alternative-first", name: "Configured first", metricValue: 0.72 },
+          { id: "alternative-second", name: "Configured second", metricValue: 0.31 },
+        ],
+      }],
+      metric: {
+        key: "globalPriority",
+        label: "Global AHP priority",
+        minimum: 0,
+        maximum: 1,
+        precision: 4,
+        comparableAcrossAlternatives: false,
+        visualization: "value-only",
+        ordering: "preserve",
+      },
+    };
+
+    render(<ThemeProvider theme={createTheme()}><SortingDashboardResult result={result} /></ThemeProvider>);
+
+    const category = screen.getByRole("listitem", { name: /A very long category name/ });
+    expect(within(category).getAllByTestId("sorting-metric-value").map((value) => value.textContent)).toEqual(["0.7200", "0.3100"]);
+    expect(within(category).getAllByRole("listitem").map((row) => row.querySelector("p")?.textContent)).toEqual([
+      "Configured first",
+      "Configured second",
+    ]);
+    expect(within(category).queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
   });
 
   it("renders a generic continuous classification that grows within Finished Issue", () => {
@@ -334,19 +372,27 @@ describe("sorting@1 Finished Issue presentation", () => {
     const category = screen.getByRole("listitem", { name: "Medium: 3 alternatives", exact: true });
     const rows = within(category).getAllByRole("listitem");
 
-    expect(data.result.metric).toMatchObject({ key: "relativeCloseness", label: "Relative closeness", minimum: 0, maximum: 1 });
+    expect(data.result.metric).toMatchObject({
+      key: "relativeCloseness",
+      label: "Relative closeness",
+      minimum: 0,
+      maximum: 1,
+      comparableAcrossAlternatives: true,
+      visualization: "bounded-position",
+      ordering: "descending-within-category",
+    });
     expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
       "Budget option, Relative closeness 0.6900",
       "Balanced option, Relative closeness 0.6000",
       "Premium option, Relative closeness 0.5100",
     ]);
-    const scales = within(category).getAllByTestId("sorting-relative-closeness-scale");
+    const scales = within(category).getAllByTestId("sorting-metric-scale");
     expect(scales).toHaveLength(3);
-    expect(within(category).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
-    expect(within(category).getAllByTestId("sorting-relative-closeness-point")[0]).toHaveStyle({ left: "69%" });
-    expect(within(category).getAllByTestId("sorting-relative-closeness-point")[1]).toHaveStyle({ left: "60%" });
-    expect(within(category).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual([
+    expect(within(category).getAllByTestId("sorting-metric-point")[0]).toHaveStyle({ left: "69%" });
+    expect(within(category).getAllByTestId("sorting-metric-point")[1]).toHaveStyle({ left: "60%" });
+    expect(within(category).getAllByTestId("sorting-metric-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual([
       "0.5", "0.7", "0.5", "0.7", "0.5", "0.7",
     ]);
     expect(within(category).getByText("0.6900")).toBeInTheDocument();
@@ -356,7 +402,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByText(/rank/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("No alternatives in this category")).toHaveLength(2);
     expect(screen.getAllByTestId("sorting-final-empty-category-icon")).toHaveLength(2);
-    expect(data.result.categories.find(({ label }) => label === "Medium").relativeClosenessRange).toEqual({ lower: 0.5, upper: 0.7 });
+    expect(data.result.categories.find(({ label }) => label === "Medium").metricRange).toEqual({ lower: 0.5, upper: 0.7 });
   });
 
   it("keeps full-precision boundary evidence and positions markers without showing interval labels", () => {
@@ -370,12 +416,12 @@ describe("sorting@1 Finished Issue presentation", () => {
     const category = screen.getByRole("listitem", { name: "Medium: 1 alternative", exact: true });
     const categoryData = data.result.categories.find(({ id }) => id === "cat-medium");
 
-    expect(within(category).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
-    expect(categoryData.relativeClosenessRange).toEqual({ lower: 0.50006, upper: 0.70006 });
-    expect(categoryData.alternatives.find(({ id }) => id === "mongo-b").relativeCloseness).toBe(0.60006);
-    expect(within(category).getByTestId("sorting-relative-closeness-point")).toHaveStyle({ left: "60.006%" });
-    expect(within(category).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.style.left)).toEqual([
+    expect(categoryData.metricRange).toEqual({ lower: 0.50006, upper: 0.70006 });
+    expect(categoryData.alternatives.find(({ id }) => id === "mongo-b").metricValue).toBe(0.60006);
+    expect(within(category).getByTestId("sorting-metric-point")).toHaveStyle({ left: "60.006%" });
+    expect(within(category).getAllByTestId("sorting-metric-boundary").map((marker) => marker.style.left)).toEqual([
       "50.006%", "70.006%",
     ]);
     expect(within(category).getByText("0.6001")).toBeInTheDocument();
@@ -409,12 +455,12 @@ describe("sorting@1 Finished Issue presentation", () => {
       "Balanced option, Relative closeness 0.3500",
       "Premium option, Relative closeness 0.1000",
     ]);
-    expect(within(lowest).getAllByTestId("sorting-relative-closeness-point").map((point) => point.style.left)).toEqual(["35%", "10%"]);
-    expect(within(highest).getAllByTestId("sorting-relative-closeness-point").map((point) => point.style.left)).toEqual(["95%", "71%"]);
-    expect(within(lowest).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.5", "0.5"]);
-    expect(within(highest).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.7", "0.7"]);
-    expect(within(lowest).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
-    expect(within(highest).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
+    expect(within(lowest).getAllByTestId("sorting-metric-point").map((point) => point.style.left)).toEqual(["35%", "10%"]);
+    expect(within(highest).getAllByTestId("sorting-metric-point").map((point) => point.style.left)).toEqual(["95%", "71%"]);
+    expect(within(lowest).getAllByTestId("sorting-metric-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.5", "0.5"]);
+    expect(within(highest).getAllByTestId("sorting-metric-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.7", "0.7"]);
+    expect(within(lowest).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
+    expect(within(highest).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
     expect(screen.queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Closer to|Centered in this category|Position within category/)).not.toBeInTheDocument();
   });
@@ -441,7 +487,7 @@ describe("sorting@1 Finished Issue presentation", () => {
       "Budget option",
       "Out-of-range alternative",
     ]);
-    expect(within(category).getAllByTestId("sorting-relative-closeness-point")).toHaveLength(2);
+    expect(within(category).getAllByTestId("sorting-metric-point")).toHaveLength(2);
     expect(within(category).getByText("Budget option")).toBeInTheDocument();
     expect(within(category).queryByText("0.9000")).not.toBeInTheDocument();
   });
@@ -463,7 +509,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(within(empty).getByText("No alternatives in this category", { exact: true })).toBeInTheDocument();
     expect(within(empty).getByTestId("sorting-final-empty-category-icon")).toHaveAttribute("aria-hidden", "true");
     expect(within(empty).getByTestId("sorting-final-empty-category")).toHaveAccessibleName("No alternatives in this category");
-    expect(within(empty).queryByTestId("sorting-relative-closeness-point")).not.toBeInTheDocument();
+    expect(within(empty).queryByTestId("sorting-metric-point")).not.toBeInTheDocument();
     const populated = screen.getByRole("listitem", { name: "Medium: 14 alternatives", exact: true });
     expect(within(populated).getByTestId("sorting-final-category-body")).not.toHaveStyle({ overflowY: "auto" });
     expect(within(populated).getByTestId("sorting-final-category-body")).not.toHaveStyle({ maxHeight: "280px" });
@@ -535,9 +581,9 @@ describe("sorting@1 Finished Issue presentation", () => {
       "Balanced option, Relative closeness 0.5400",
       "Budget option, Relative closeness 0.2200",
     ]);
-    expect(within(category).getAllByTestId("sorting-relative-closeness-point")).toHaveLength(3);
-    expect(within(category).queryByTestId("sorting-relative-closeness-boundary")).not.toBeInTheDocument();
-    expect(within(category).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
+    expect(within(category).getAllByTestId("sorting-metric-point")).toHaveLength(3);
+    expect(within(category).queryByTestId("sorting-metric-boundary")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closer to|Centered in this category/)).not.toBeInTheDocument();
     expect(data.result.categories).toHaveLength(3);
   });
@@ -669,7 +715,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     const baseExecution = selectFinishedIssueExecution(basePayload);
     const baseDashboard = buildDashboardData({ payload: basePayload, selectedExecution: baseExecution });
     expect(baseDashboard.findings).toHaveLength(3);
-    expect(baseDashboard.result.categories.find(({ id }) => id === "cat-medium").relativeClosenessRange).toEqual({ lower: 0.5, upper: 0.7 });
+    expect(baseDashboard.result.categories.find(({ id }) => id === "cat-medium").metricRange).toEqual({ lower: 0.5, upper: 0.7 });
 
     const scenarioOutput = {
       ...output,
@@ -709,8 +755,8 @@ describe("sorting@1 Finished Issue presentation", () => {
       headline: "Medium",
       text: "Medium is the lowest category containing evaluated alternatives, with 2 alternatives assigned. No alternatives were assigned to the Low category.",
     });
-    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").relativeClosenessRange).toEqual({ lower: 0.48, upper: 0.75 });
-    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").alternatives.find(({ id }) => id === "mongo-b").relativeCloseness).toBe(0.6);
+    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").metricRange).toEqual({ lower: 0.48, upper: 0.75 });
+    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").alternatives.find(({ id }) => id === "mongo-b").metricValue).toBe(0.6);
   });
 
   it("does not identify TOPSIS-Sort by its visible name", () => {

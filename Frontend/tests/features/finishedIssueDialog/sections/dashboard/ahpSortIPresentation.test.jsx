@@ -113,22 +113,36 @@ const centralExecution = ({ policy = "optimistic", tied = true, assignedCategory
   ];
   const profileIds = ["center-low", "center-high"];
   const quality = localEvidence({ profileIds, central: true });
+  const safety = localEvidence({ profileIds, central: true });
+  const globalPriority = tied ? 1 / 3 : 0.55;
+  const profileGlobalPrioritiesById = tied
+    ? { "center-low": 1 / 6, "center-high": 0.5 }
+    : { "center-low": 0.1, "center-high": 0.35 };
+  quality.alternative = globalPriority;
+  safety.alternative = globalPriority;
+  quality.centralProfilesById = { ...profileGlobalPrioritiesById };
+  safety.centralProfilesById = { ...profileGlobalPrioritiesById };
+  const profileContributionsFor = (weight) => Object.fromEntries(
+    Object.entries(profileGlobalPrioritiesById).map(([id, priority]) => [id, weight * priority]),
+  );
   const diagnostics = {
     categoryId: assignedId,
-    globalPriority: tied ? 0.4 : 0.55,
-    profileGlobalPrioritiesById: { "center-low": 0.2, "center-high": 0.6 },
-    weightsByCriterion: { "quality-id": 1 },
+    globalPriority,
+    profileGlobalPrioritiesById,
+    weightsByCriterion: { "quality-id": 0.7, "safety-id": 0.3 },
     weightedContributionsByCriterion: {
-      "quality-id": { alternative: 0.8, centralProfilesById: quality._profileWeightedById },
+      "quality-id": { alternative: 0.7 * globalPriority, centralProfilesById: profileContributionsFor(0.7) },
+      "safety-id": { alternative: 0.3 * globalPriority, centralProfilesById: profileContributionsFor(0.3) },
     },
     localPrioritiesByCriterion: {
-      "quality-id": { ...quality, alternative: 0.8, _profileWeightedById: undefined },
+      "quality-id": { ...quality, _profileWeightedById: undefined },
+      "safety-id": { ...safety, _profileWeightedById: undefined },
     },
     classification: {
       rule: "nearest_central_profile_with_explicit_tie_policy",
       selectedCenterProfileId: selectedId,
-      distanceToSelectedCenter: tied ? 0.2 : 0.05,
-      centerDistancesByProfileId: tied ? { "center-low": 0.2, "center-high": 0.2 } : { "center-low": 0.35, "center-high": 0.05 },
+      distanceToSelectedCenter: tied ? 1 / 6 : 0.2,
+      centerDistancesByProfileId: tied ? { "center-low": 1 / 6, "center-high": 1 / 6 } : { "center-low": 0.45, "center-high": 0.2 },
       tieDetected: tied,
       tiedCenterProfileIds: tied ? ["center-low", "center-high"] : [selectedId],
       tiePolicy: policy,
@@ -259,15 +273,29 @@ const centralGroupExecution = ({ profileTiePolicy, groupTiePolicy }) => {
     individualResult.categoryId = assignedCategoryId;
     if (!isTie) {
       const selectedCenterProfileId = assignedCategoryId === "high-id" ? "center-high" : "center-low";
-      const priority = assignedCategoryId === "high-id" ? 0.9 : 0.1;
+      const priority = assignedCategoryId === "high-id" ? 0.55 : 0.05;
+      const profilePriorities = assignedCategoryId === "high-id"
+        ? { "center-low": 0.1, "center-high": 0.35 }
+        : { "center-low": 0.4, "center-high": 0.55 };
       individualResult.globalPriority = priority;
+      individualResult.profileGlobalPrioritiesById = profilePriorities;
+      for (const [criterionId, local] of Object.entries(individualResult.localPrioritiesByCriterion)) {
+        local.alternative = priority;
+        local.centralProfilesById = { ...profilePriorities };
+        const weight = individualResult.weightsByCriterion[criterionId];
+        const contribution = individualResult.weightedContributionsByCriterion[criterionId];
+        contribution.alternative = weight * priority;
+        contribution.centralProfilesById = Object.fromEntries(
+          Object.entries(profilePriorities).map(([profileId, value]) => [profileId, weight * value]),
+        );
+      }
       individualResult.classification = {
         ...individualResult.classification,
         selectedCenterProfileId,
-        distanceToSelectedCenter: assignedCategoryId === "high-id" ? 0.3 : 0.1,
+        distanceToSelectedCenter: assignedCategoryId === "high-id" ? 0.2 : 0.35,
         centerDistancesByProfileId: assignedCategoryId === "high-id"
-          ? { "center-low": 0.7, "center-high": 0.3 }
-          : { "center-low": 0.1, "center-high": 0.5 },
+          ? { "center-low": 0.45, "center-high": 0.2 }
+          : { "center-low": 0.35, "center-high": 0.5 },
         tieDetected: false,
         tiedCenterProfileIds: [selectedCenterProfileId],
       };
@@ -389,6 +417,23 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const above = renderSelected(limitingExecution());
     expect(screen.getByRole("list", { name: "Final sorting by category" })).toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toHaveTextContent("Supplier A");
+    expect(above.data.result.metric).toMatchObject({
+      key: "globalPriority",
+      label: "Global AHP priority",
+      minimum: 0,
+      maximum: 1,
+      comparableAcrossAlternatives: false,
+      visualization: "value-only",
+      ordering: "preserve",
+    });
+    expect(screen.getByTestId("sorting-metric-label")).toHaveTextContent("Global AHP priority");
+    expect(screen.getByTestId("sorting-metric-label")).toHaveAttribute(
+      "aria-label",
+      "Global AHP priority; values use alternative-specific reference profiles",
+    );
+    expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.7100");
+    expect(screen.getByTestId("sorting-metric-value")).toHaveAttribute("aria-label", "Global AHP priority 0.7100");
+    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahp-sort-i-assignment-explanation")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahp-sort-i-mathematical-details")).not.toBeInTheDocument();
     expect(above.data.result.ahpSortI.alternativesById["alt-a"].explanation).toMatch(/AHP priority \(0\.7100\).*Medium \/ High limiting profile \(0\.6000\)/);
@@ -458,7 +503,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       payload: { alternatives, criteria },
       selectedExecution: centralExecution({ tied: false }),
     });
-    expect(closest.result.ahpSortI.alternativesById["alt-a"].explanation).toContain("closest to the High center (0.6000; distance 0.0500)");
+    expect(closest.result.ahpSortI.alternativesById["alt-a"].explanation).toContain("closest to the High center (0.3500; distance 0.2000)");
+    expect(closest.result.metric?.label).toBe("Global AHP priority");
   });
 
   it("flags central-profile evidence whose priorities or stored distances contradict the selected run", () => {
@@ -534,6 +580,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     delete missing.standardizedOutput.diagnostics;
     const missingData = renderSelected(missing);
     expect(missingData.data.result.available).toBe(true);
+    expect(missingData.data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toBeInTheDocument();
     expect(screen.queryByText("Detailed AHP evidence is not available for this saved execution.")).not.toBeInTheDocument();
 
@@ -541,6 +589,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const conflict = limitingExecution({ assignedCategoryId: "high-id", diagnosticsOverrides: { categoryId: "low-id" } });
     const { data: conflictData } = renderSelected(conflict);
     expect(conflictData.result.available).toBe(true);
+    expect(conflictData.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
     expect(conflictData.result.ahpSortI.alternativesById["alt-a"].status).toBe("integrity_warning");
     expect(conflictData.result.ahpSortI.alternativesById["alt-a"].message).toMatch(/do not agree/);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -548,6 +598,20 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     cleanup();
     renderAnalysis(conflict);
     expect(screen.getByTestId("ahp-sort-i-analysis-integrity_warning")).toHaveTextContent(/do not agree with the stored classifications/);
+
+    cleanup();
+    const invalidPriority = limitingExecution({ priority: 1.01 });
+    const invalidPriorityData = renderSelected(invalidPriority);
+    expect(invalidPriorityData.data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+
+    cleanup();
+    const inconsistentEvidence = limitingExecution();
+    inconsistentEvidence.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"]
+      .weightedContributionsByCriterion["quality-id"].alternative += 0.1;
+    const inconsistentEvidenceData = renderSelected(inconsistentEvidence);
+    expect(inconsistentEvidenceData.data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
   });
 
   it("does not order alternatives across categories or by global AHP priority", () => {
@@ -557,6 +621,10 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     secondDiagnostics.globalPriority = 0.99;
     for (const criterion of Object.values(secondDiagnostics.localPrioritiesByCriterion)) {
       criterion.entityOrder[0].alternativeId = "alt-z";
+      criterion.alternative = 0.99;
+    }
+    for (const [criterionId, contribution] of Object.entries(secondDiagnostics.weightedContributionsByCriterion)) {
+      contribution.alternative = secondDiagnostics.weightsByCriterion[criterionId] * 0.99;
     }
     execution.standardizedOutput.assignments.push({ alternativeId: "alt-z", categoryId: "high-id" });
     execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-z"] = secondDiagnostics;
@@ -565,7 +633,55 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const highCategory = screen.getByRole("listitem", { name: "High: 2 alternatives" });
     const alternativeRows = [...highCategory.querySelector("ul").children];
     expect(alternativeRows.map((row) => row.querySelector("p")?.textContent)).toEqual(["Supplier A", "Supplier Z"]);
+    expect(within(highCategory).getAllByTestId("sorting-metric-value").map((value) => value.textContent)).toEqual(["0.7100", "0.9900"]);
+    expect(within(highCategory).queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
     expect(screen.queryByText(/rank|probability|confidence/i)).not.toBeInTheDocument();
+  });
+
+  it("shows central-profile priorities as values only and preserves configured alternative order", () => {
+    const execution = centralExecution({ tied: false });
+    execution.requestSnapshot = { modelParameters: execution.modelParameters, context: { criteria: criterionNames } };
+    const secondDiagnostics = structuredClone(execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"]);
+    secondDiagnostics.globalPriority = 0.05;
+    secondDiagnostics.categoryId = "low-id";
+    secondDiagnostics.profileGlobalPrioritiesById = { "center-low": 0.4, "center-high": 0.55 };
+    for (const [criterionId, local] of Object.entries(secondDiagnostics.localPrioritiesByCriterion)) {
+      local.entityOrder[0].alternativeId = "alt-z";
+      local.alternative = 0.05;
+      local.centralProfilesById = { "center-low": 0.4, "center-high": 0.55 };
+      const weight = secondDiagnostics.weightsByCriterion[criterionId];
+      secondDiagnostics.weightedContributionsByCriterion[criterionId].alternative = weight * 0.05;
+      secondDiagnostics.weightedContributionsByCriterion[criterionId].centralProfilesById = {
+        "center-low": weight * 0.4,
+        "center-high": weight * 0.55,
+      };
+    }
+    secondDiagnostics.classification = {
+      ...secondDiagnostics.classification,
+      selectedCenterProfileId: "center-low",
+      distanceToSelectedCenter: 0.35,
+      centerDistancesByProfileId: { "center-low": 0.35, "center-high": 0.5 },
+      tieDetected: false,
+      tiedCenterProfileIds: ["center-low"],
+    };
+    execution.standardizedOutput.assignments = [
+      { alternativeId: "alt-a", categoryId: "high-id" },
+      { alternativeId: "alt-z", categoryId: "low-id" },
+    ];
+    execution.standardizedOutput.categories = [
+      { categoryId: "low-id", label: "Low", order: 0 },
+      { categoryId: "high-id", label: "High", order: 1 },
+    ];
+    execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-z"] = secondDiagnostics;
+    const { data } = renderSelected(execution, { payload: { alternatives: [...alternatives, { id: "alt-z", name: "Supplier Z" }] } });
+
+    expect(data.result.metric?.label).toBe("Global AHP priority");
+    const high = screen.getByRole("listitem", { name: "High: 1 alternative" });
+    const low = screen.getByRole("listitem", { name: "Low: 1 alternative" });
+    expect(within(high).getByText("0.5500")).toBeInTheDocument();
+    expect(within(low).getByText("0.0500")).toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Global AHP priority.*relative position/i)).not.toBeInTheDocument();
   });
 
   it("uses the selected scenario snapshot rather than current Issue parameters", () => {
@@ -639,6 +755,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const classification = rendered.data.result.ahpSortIGroup.alternativesById["alt-a"];
 
     expect(rendered.data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
     expect(classification).toMatchObject({
       voteValid: true,
       participantCount: 4,

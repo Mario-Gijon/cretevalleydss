@@ -17,8 +17,21 @@ const ORDER_SEMANTICS = "lower-order-is-less-preferred";
 const asArray = (value) => Array.isArray(value) ? value : [];
 const nonEmptyString = (value) => typeof value === "string" && value.trim() ? value : null;
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const AHP_PRIORITY_EVIDENCE_TOLERANCE = 1e-12;
 
 const unavailable = (reason) => ({ available: false, unavailableReason: reason, categories: [], assignmentCount: 0 });
+
+const hasConsistentAHPSortPriorityEvidence = (evidence) => {
+  const criteria = evidence?.criteria;
+  if (evidence?.status !== "available" || evidence.detailsAvailable !== true || !Array.isArray(criteria) || !criteria.length) return false;
+  if (criteria.some((criterion) => [criterion.weight, criterion.alternativeLocalPriority, criterion.weightedContribution]
+    .some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1))) return false;
+  const contributionsMatchLocalPriorities = criteria.every((criterion) =>
+    Math.abs(criterion.weight * criterion.alternativeLocalPriority - criterion.weightedContribution) <= AHP_PRIORITY_EVIDENCE_TOLERANCE,
+  );
+  const evidencePriority = criteria.reduce((sum, criterion) => sum + criterion.weightedContribution, 0);
+  return contributionsMatchLocalPriorities && Math.abs(evidencePriority - evidence.globalPriority) <= AHP_PRIORITY_EVIDENCE_TOLERANCE;
+};
 
 const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) => {
   const output = execution?.standardizedOutput;
@@ -75,8 +88,11 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
   const ahpSortIGroup = ahpSortI
     ? buildAHPSortIGroupEvidence({ result: { categories, assignmentCount: assignedIds.size }, execution, criteria })
     : null;
+  const ahpSortIEvidence = ahpSortI
+    ? buildAHPSortIEvidence({ result: { categories, assignmentCount: assignedIds.size }, execution, criteria })
+    : null;
   const relativeClosenessByAlternativeId = output.diagnostics?.closeness_by_alternative_id;
-  const closenessFor = (alternativeId) => {
+  const metricValueFor = (alternativeId) => {
     const value = relativeClosenessByAlternativeId?.[alternativeId];
     return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
   };
@@ -84,25 +100,63 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
     ? buildTopsisSortCategoryIntervals({ categories, assignmentCount: assignedIds.size }, execution)
     : null;
   for (const category of categories) {
-    category.relativeClosenessRange = categoryIntervals?.get(category.id) ?? null;
+    category.metricRange = categoryIntervals?.get(category.id) ?? null;
     category.alternatives = category.alternatives.map((alternative) => ({
       ...alternative,
-      relativeCloseness: closenessFor(alternative.id),
+      metricValue: metricValueFor(alternative.id),
     }));
+  }
+  const hasRelativeCloseness = categories.some((category) => category.alternatives.some((alternative) => alternative.metricValue !== null));
+  const ahpMetricAvailable = assignedIds.size > 0 && ahpSortIEvidence?.status === "available" && !ahpSortIGroup &&
+    categories.every((category) => category.alternatives.every((alternative) => {
+      const evidence = ahpSortIEvidence.alternativesById?.[alternative.id];
+      return hasConsistentAHPSortPriorityEvidence(evidence) && typeof evidence.globalPriority === "number" &&
+        Number.isFinite(evidence.globalPriority) && evidence.globalPriority >= 0 && evidence.globalPriority <= 1 &&
+        evidence.alternative?.id === alternative.id && evidence.category?.id === category.id;
+    }));
+  const metric = ahpMetricAvailable
+    ? {
+      key: "globalPriority",
+      label: "Global AHP priority",
+      minimum: 0,
+      maximum: 1,
+      precision: 4,
+      comparableAcrossAlternatives: false,
+      visualization: "value-only",
+      ordering: "preserve",
+    }
+    : hasRelativeCloseness
+      ? {
+        key: "relativeCloseness",
+        label: "Relative closeness",
+        minimum: 0,
+        maximum: 1,
+        precision: 4,
+        comparableAcrossAlternatives: true,
+        visualization: "bounded-position",
+        ordering: "descending-within-category",
+      }
+      : null;
+  if (ahpMetricAvailable) {
+    for (const category of categories) {
+      category.alternatives = category.alternatives.map((alternative) => ({
+        ...alternative,
+        metricValue: ahpSortIEvidence.alternativesById[alternative.id].globalPriority,
+      }));
+      category.metricRange = null;
+    }
   }
   const normalized = {
     available: true,
     unavailableReason: null,
     categories,
     assignmentCount: assignedIds.size,
-    metric: categories.some((category) => category.alternatives.some((alternative) => alternative.relativeCloseness !== null))
-      ? { key: "relativeCloseness", label: "Relative closeness", minimum: 0, maximum: 1 }
-      : null,
+    metric,
   };
   if (ahpSortIGroup) {
     normalized.ahpSortIGroup = ahpSortIGroup;
   } else if (ahpSortI) {
-    normalized.ahpSortI = buildAHPSortIEvidence({ result: normalized, execution, criteria });
+    normalized.ahpSortI = ahpSortIEvidence;
   }
   return normalized;
 };

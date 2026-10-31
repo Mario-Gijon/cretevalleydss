@@ -304,6 +304,21 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
         await expect(row).toHaveCount(1);
         await expect(row.getByText(alternative, { exact: true }).first()).toBeVisible();
       }
+      const metricValues = dialog.getByTestId("sorting-metric-value");
+      if (demo.key === "supplier") {
+        await expect(dialog.getByTestId("sorting-metric-label")).toHaveText("Global AHP priority");
+        await expect(metricValues).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(metricValues.first()).toHaveAttribute("data-metric-key", "globalPriority");
+        await expect(dialog.getByTestId("sorting-metric-scale")).toHaveCount(0);
+        for (const alternative of Object.keys(demo.assignments)) {
+          const row = dialog.getByTestId("sorting-final-alternative").filter({ hasText: alternative });
+          await expect(row.getByTestId("sorting-metric-value")).toHaveAttribute("aria-label", /^Global AHP priority 0\.\d{4}$/);
+        }
+      } else {
+        await expect(dialog.getByTestId("sorting-metric-label")).toHaveCount(0);
+        await expect(metricValues).toHaveCount(0);
+        await expect(dialog.getByTestId("sorting-metric-scale")).toHaveCount(0);
+      }
       await page.screenshot({ path: test.info().outputPath(`${demo.key}-finished-desktop.png`), fullPage: true });
 
       await page.setViewportSize({ width: 390, height: 844 });
@@ -406,6 +421,15 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
 
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("tab", { name: "Summary", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(dialog.getByTestId("sorting-metric-value")).toHaveCount(22);
+    await expect(dialog.getByTestId("sorting-metric-label")).toHaveText("Relative closeness");
+    await expect(dialog.getByTestId("sorting-metric-value").first()).toHaveAttribute("data-metric-key", "relativeCloseness");
+    await expect(dialog.getByTestId("sorting-metric-point")).toHaveCount(22);
+    for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await expectNoHorizontalOverflow(page);
+      await expect(dialog.getByTestId("sorting-metric-point")).toHaveCount(22);
+    }
     await dialog.getByRole("tab", { name: "Evaluations", exact: true }).click();
     await verifyEvaluationScrollAcrossViewports(page, dialog);
   });
