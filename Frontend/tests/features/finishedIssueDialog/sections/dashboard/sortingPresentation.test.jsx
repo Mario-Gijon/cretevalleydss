@@ -253,6 +253,52 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(within(category).getAllByTestId("sorting-metric-scale")[0]).toHaveAttribute("data-domain-maximum", "1");
   });
 
+  it("renders generic shared decision thresholds and orders comparable alternatives stably", () => {
+    const result = {
+      categories: [{
+        id: "accepted",
+        label: "Accepted",
+        order: 1,
+        metricRange: null,
+        alternatives: [
+          { id: "first-tie", name: "First tie", metricValue: 0.8 },
+          { id: "lower", name: "Lower priority", metricValue: 0.6 },
+          { id: "second-tie", name: "Second tie", metricValue: 0.8 },
+        ],
+      }],
+      metric: {
+        key: "globalPriority",
+        label: "Global AHP priority",
+        minimum: 0,
+        maximum: 1,
+        precision: 4,
+        comparableAcrossAlternatives: true,
+        visualization: "bounded-position",
+        referenceScope: "shared-decision-threshold",
+        threshold: 0.5,
+        ordering: "descending-within-category",
+      },
+    };
+
+    render(<ThemeProvider theme={createTheme()}><SortingDashboardResult result={result} /></ThemeProvider>);
+
+    expect(screen.getByTestId("sorting-metric-legend")).toHaveTextContent("Global AHP priority");
+    expect(screen.getByTestId("sorting-metric-legend")).toHaveTextContent("Decision threshold · 0.5");
+    const category = screen.getByRole("listitem", { name: "Accepted: 3 alternatives" });
+    expect([...category.querySelector("ul").children].map((row) => row.querySelector("p")?.textContent)).toEqual([
+      "First tie",
+      "Second tie",
+      "Lower priority",
+    ]);
+    expect(within(category).getAllByTestId("sorting-metric-threshold").map((line) => line.style.left)).toEqual([
+      "50%", "50%", "50%",
+    ]);
+    expect(within(category).getAllByTestId("sorting-metric-point").map((point) => point.style.left)).toEqual([
+      "80%", "80%", "60%",
+    ]);
+    expect(screen.queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
+  });
+
   it("keeps a contextual metric value when an alternative has no reliable references", () => {
     const result = {
       categories: [{

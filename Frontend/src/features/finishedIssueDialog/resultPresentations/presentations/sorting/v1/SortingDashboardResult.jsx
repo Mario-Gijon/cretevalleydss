@@ -23,6 +23,13 @@ const metricPrecisionFor = (metric) => Number.isInteger(metric?.precision) && me
   ? metric.precision
   : 4;
 
+const sharedDecisionThresholdFor = (metric) => metric?.referenceScope === "shared-decision-threshold" &&
+  metric.visualization === "bounded-position" &&
+  metric.comparableAcrossAlternatives === true &&
+  isValidMetricValue(metric.threshold, metric)
+  ? metric.threshold
+  : null;
+
 const isNonEmptyMetricReference = (reference, metric) => typeof reference?.id === "string" && reference.id.length > 0
   && typeof reference.label === "string" && reference.label.length > 0
   && isValidMetricValue(reference.value, metric);
@@ -42,11 +49,13 @@ const MetricScale = ({ value, metric, references, theme }) => (
     data-metric-value={value}
     data-domain-minimum={metric.minimum}
     data-domain-maximum={metric.maximum}
-    role={metric.visualization === "contextual-reference" ? "img" : undefined}
+    role={metric.visualization === "contextual-reference" || sharedDecisionThresholdFor(metric) !== null ? "img" : undefined}
     aria-label={metric.visualization === "contextual-reference"
       ? `${metric.label} ${value.toFixed(metricPrecisionFor(metric))} on a ${metric.minimum} to ${metric.maximum} scale; reference profiles: ${references.map(({ label, value: referenceValue }) => `${label} ${referenceValue.toFixed(metricPrecisionFor(metric))}`).join(", ")}`
+      : sharedDecisionThresholdFor(metric) !== null
+        ? `${metric.label} ${value.toFixed(metricPrecisionFor(metric))} on a ${metric.minimum} to ${metric.maximum} scale; decision threshold ${sharedDecisionThresholdFor(metric)}`
       : undefined}
-    aria-hidden={metric.visualization === "contextual-reference" ? undefined : "true"}
+    aria-hidden={metric.visualization === "contextual-reference" || sharedDecisionThresholdFor(metric) !== null ? undefined : "true"}
     sx={{ position: "relative", height: 12, mx: 0.45, overflow: "visible" }}
   >
     <Box
@@ -81,6 +90,23 @@ const MetricScale = ({ value, metric, references, theme }) => (
           }}
         />
       ))}
+    {sharedDecisionThresholdFor(metric) !== null && (
+      <Box
+        data-testid="sorting-metric-threshold"
+        data-threshold-value={sharedDecisionThresholdFor(metric)}
+        aria-hidden="true"
+        title={`Decision threshold ${sharedDecisionThresholdFor(metric)}`}
+        style={{ left: toScalePercent(sharedDecisionThresholdFor(metric), metric) }}
+        sx={{
+          position: "absolute",
+          top: 0,
+          height: 10,
+          zIndex: 1,
+          borderLeft: `1px dashed ${alpha(theme.palette.text.secondary, 0.8)}`,
+          transform: "translateX(-50%)",
+        }}
+      />
+    )}
     <Box
       data-testid="sorting-metric-point"
       data-metric-key={metric.key}
@@ -96,10 +122,44 @@ const MetricScale = ({ value, metric, references, theme }) => (
         borderRadius: "50%",
         bgcolor: "secondary.main",
         transform: "translate(-50%, -50%)",
+        ...(sharedDecisionThresholdFor(metric) !== null ? { zIndex: 2 } : {}),
       }}
     />
   </Box>
 );
+
+const MetricLegend = ({ metric }) => {
+  const threshold = sharedDecisionThresholdFor(metric);
+  if (threshold === null) return null;
+
+  return (
+    <Stack
+      direction="row"
+      flexWrap="wrap"
+      justifyContent="flex-end"
+      alignItems="center"
+      columnGap={1.2}
+      rowGap={0.35}
+      role="group"
+      aria-label="Global AHP priority scale legend"
+      data-testid="sorting-metric-legend"
+      sx={{ alignSelf: "flex-end", px: 0.9, pb: 0.35, minWidth: 0 }}
+    >
+      <Stack direction="row" alignItems="center" spacing={0.5} data-testid="sorting-metric-legend-priority">
+        <Box aria-hidden="true" sx={{ width: 7, height: 7, flex: "0 0 auto", borderRadius: "50%", bgcolor: "secondary.main" }} />
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.68rem", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+          {metric.label}
+        </Typography>
+      </Stack>
+      <Stack direction="row" alignItems="center" spacing={0.5} data-testid="sorting-metric-legend-threshold">
+        <Box aria-hidden="true" sx={{ width: 8, height: 11, flex: "0 0 auto", borderLeft: "1px dashed", borderColor: "text.secondary" }} />
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.68rem", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+          Decision threshold · {String(threshold)}
+        </Typography>
+      </Stack>
+    </Stack>
+  );
+};
 
 const SortingAlternativeRow = ({ alternative, range, theme, metric }) => {
   const metricValue = metric && isValidMetricValue(alternative.metricValue, metric)
@@ -179,20 +239,24 @@ const SortingDashboardResult = ({ result }) => {
   return (
     <Box sx={sortingFinalResultSx}>
       {metric && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          data-testid="sorting-metric-label"
-          aria-label={metric.comparableAcrossAlternatives === false
-            ? `${metric.label}; values use alternative-specific reference profiles`
-            : metric.label}
-          title={metric.comparableAcrossAlternatives === false
-            ? "Values are calculated relative to each alternative's own reference profiles."
-            : metric.label}
-          sx={{ alignSelf: "flex-end", pr: 0.9, pb: 0.15, lineHeight: 1.2 }}
-        >
-          {metric.label}
-        </Typography>
+        sharedDecisionThresholdFor(metric) !== null
+          ? <MetricLegend metric={metric} />
+          : (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              data-testid="sorting-metric-label"
+              aria-label={metric.comparableAcrossAlternatives === false
+                ? `${metric.label}; values use alternative-specific reference profiles`
+                : metric.label}
+              title={metric.comparableAcrossAlternatives === false
+                ? "Values are calculated relative to each alternative's own reference profiles."
+                : metric.label}
+              sx={{ alignSelf: "flex-end", pr: 0.9, pb: 0.15, lineHeight: 1.2 }}
+            >
+              {metric.label}
+            </Typography>
+          )
       )}
       <Box role="list" aria-label="Final sorting by category" data-testid="sorting-final-result" sx={{ width: "100%", minWidth: 0 }}>
         {result.categories.map((category) => {

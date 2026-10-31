@@ -17,7 +17,9 @@ const ORDER_SEMANTICS = "lower-order-is-less-preferred";
 const asArray = (value) => Array.isArray(value) ? value : [];
 const nonEmptyString = (value) => typeof value === "string" && value.trim() ? value : null;
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isNormalizedPriority = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
 const AHP_PRIORITY_EVIDENCE_TOLERANCE = 1e-12;
+const BINARY_DECISION_THRESHOLD = 0.5;
 
 const unavailable = (reason) => ({ available: false, unavailableReason: reason, categories: [], assignmentCount: 0 });
 
@@ -45,6 +47,112 @@ const ahpProfileReferencesFor = (evidence) => {
     return !valid;
   })) return [];
   return references.map(({ id, label, priority }) => ({ id, label, value: priority }));
+};
+
+const valuesAreClose = (left, right) => typeof left === "number" && Number.isFinite(left) &&
+  typeof right === "number" && Number.isFinite(right) &&
+  Math.abs(left - right) <= AHP_PRIORITY_EVIDENCE_TOLERANCE;
+
+const hasComparableBinaryAHPSortEvidence = ({ categories, alternativeIds, evidence }) => {
+  if (
+    evidence?.status !== "available" || evidence.profileMode !== "limiting" ||
+    categories.length !== 2 || alternativeIds.length === 0
+  ) return false;
+
+  const orderedCategories = categories.slice().sort((left, right) => left.order - right.order);
+  const expectedEvidenceKeys = [...alternativeIds].sort();
+  const actualEvidenceKeys = Object.keys(evidence.alternativesById || {}).sort();
+  if (actualEvidenceKeys.length !== expectedEvidenceKeys.length ||
+    actualEvidenceKeys.some((id, index) => id !== expectedEvidenceKeys[index])) return false;
+
+  let sharedProfileId = null;
+  let sharedCriterionIds = null;
+  let sharedWeights = null;
+
+  for (const alternativeId of alternativeIds) {
+    const alternativeEvidence = evidence.alternativesById[alternativeId];
+    if (
+      alternativeEvidence?.status !== "available" || alternativeEvidence.alternative?.id !== alternativeId ||
+      !orderedCategories.some((category) => category.id === alternativeEvidence.category?.id) ||
+      !Array.isArray(alternativeEvidence.profilePriorities) || alternativeEvidence.profilePriorities.length !== 1 ||
+      !isRecord(alternativeEvidence.profilePriorities[0]) ||
+      !nonEmptyString(alternativeEvidence.profilePriorities[0].id) ||
+      !isNormalizedPriority(alternativeEvidence.profilePriorities[0].priority) ||
+      !Array.isArray(alternativeEvidence.criteria) || alternativeEvidence.criteria.length === 0 ||
+      !hasConsistentAHPSortPriorityEvidence(alternativeEvidence)
+    ) return false;
+
+    const profileReference = alternativeEvidence.profilePriorities[0];
+    if (sharedProfileId === null) sharedProfileId = profileReference.id;
+    else if (profileReference.id !== sharedProfileId) return false;
+
+    const rowsByCriterion = new Map(alternativeEvidence.criteria.map((row) => [row.id, row]));
+    if (rowsByCriterion.size !== alternativeEvidence.criteria.length || [...rowsByCriterion.keys()].some((id) => !nonEmptyString(id))) return false;
+    const criterionIds = [...rowsByCriterion.keys()].sort();
+    if (sharedCriterionIds === null) sharedCriterionIds = criterionIds;
+    else if (criterionIds.length !== sharedCriterionIds.length || criterionIds.some((id, index) => id !== sharedCriterionIds[index])) return false;
+
+    const weights = new Map();
+    let weightTotal = 0;
+    let alternativeContributionTotal = 0;
+    let profileContributionTotal = 0;
+    for (const [criterionId, row] of rowsByCriterion) {
+      const localProfile = row.profileLocalPriorities?.[0]?.value;
+      const profileContribution = row.profileWeightedContributions?.[0]?.value;
+      const matrix = row.matrix?.values;
+      const ratio = matrix?.[0]?.[1];
+      const reciprocal = matrix?.[1]?.[0];
+      if (
+        !isNormalizedPriority(row.weight) || !isNormalizedPriority(row.alternativeLocalPriority) || !isNormalizedPriority(localProfile) ||
+        !isNormalizedPriority(row.weightedContribution) || typeof profileContribution !== "number" || !Number.isFinite(profileContribution) ||
+        row.profileLocalPriorities.length !== 1 || row.profileWeightedContributions.length !== 1 ||
+        !Array.isArray(matrix) || matrix.length !== 2 || matrix.some((line) => !Array.isArray(line) || line.length !== 2 || line.some((value) => typeof value !== "number" || !Number.isFinite(value))) ||
+        !valuesAreClose(matrix[0][0], 1) || !valuesAreClose(matrix[1][1], 1) ||
+        typeof ratio !== "number" || ratio <= 0 || typeof reciprocal !== "number" || reciprocal <= 0 ||
+        !valuesAreClose(ratio * reciprocal, 1)
+      ) return false;
+
+      const matrixAlternativePriority = ratio / (1 + ratio);
+      const matrixProfilePriority = 1 / (1 + ratio);
+      if (
+        !valuesAreClose(matrixAlternativePriority, row.alternativeLocalPriority) ||
+        !valuesAreClose(matrixProfilePriority, localProfile) ||
+        !valuesAreClose(row.alternativeLocalPriority + localProfile, 1) ||
+        !valuesAreClose(row.weight * row.alternativeLocalPriority, row.weightedContribution) ||
+        !valuesAreClose(row.weight * localProfile, profileContribution)
+      ) return false;
+
+      if (sharedWeights && !valuesAreClose(row.weight, sharedWeights.get(criterionId))) return false;
+      weights.set(criterionId, row.weight);
+      weightTotal += row.weight;
+      alternativeContributionTotal += row.weightedContribution;
+      profileContributionTotal += profileContribution;
+    }
+
+    if (
+      !valuesAreClose(weightTotal, 1) ||
+      !valuesAreClose(alternativeContributionTotal, alternativeEvidence.globalPriority) ||
+      !valuesAreClose(profileContributionTotal, profileReference.priority) ||
+      !valuesAreClose(alternativeEvidence.globalPriority + profileReference.priority, 1)
+    ) return false;
+
+    const upperCategory = orderedCategories[1];
+    const lowerCategory = orderedCategories[0];
+    const categoryFromExistingRule = alternativeEvidence.globalPriority >= profileReference.priority
+      ? upperCategory
+      : lowerCategory;
+    const categoryFromThreshold = alternativeEvidence.globalPriority >= BINARY_DECISION_THRESHOLD
+      ? upperCategory
+      : lowerCategory;
+    if (
+      alternativeEvidence.category.id !== categoryFromExistingRule.id ||
+      alternativeEvidence.category.id !== categoryFromThreshold.id
+    ) return false;
+
+    if (sharedWeights === null) sharedWeights = weights;
+  }
+
+  return true;
 };
 
 const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) => {
@@ -140,9 +248,11 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
           evidence.alternative?.id === alternative.id && evidence.category?.id === category.id &&
           hasConsistentAHPSortPriorityEvidence(evidence);
         const rawDiagnostics = rawAHPSortDiagnostics?.resultsByAlternativeId?.[alternative.id];
+        const mayUseSavedScalarWithoutDetail = evidence?.status === "unavailable" ||
+          (evidence?.status === "available" && evidence.detailsAvailable !== true);
         const storedPriority = detailedEvidenceIsConsistent
           ? evidence.globalPriority
-          : evidence?.status === "unavailable" && hasAHPSortDiagnosticIdentity && rawDiagnostics?.categoryId === category.id
+          : mayUseSavedScalarWithoutDetail && hasAHPSortDiagnosticIdentity && rawDiagnostics?.categoryId === category.id
             ? rawDiagnostics.globalPriority
             : null;
         if (typeof storedPriority !== "number" || !Number.isFinite(storedPriority) || storedPriority < 0 || storedPriority > 1) {
@@ -156,6 +266,11 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
       if (!ahpMetricAvailable) break;
     }
   }
+  const hasSharedBinaryDecisionThreshold = ahpMetricAvailable && hasComparableBinaryAHPSortEvidence({
+    categories,
+    alternativeIds,
+    evidence: ahpSortIEvidence,
+  });
   const ahpMetric = ahpMetricAvailable
     ? {
       key: "globalPriority",
@@ -163,10 +278,15 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
       minimum: 0,
       maximum: 1,
       precision: 4,
-      comparableAcrossAlternatives: false,
-      visualization: hasContextualProfileReferences ? "contextual-reference" : "value-only",
-      referenceScope: hasContextualProfileReferences ? "alternative" : null,
-      ordering: "preserve",
+      comparableAcrossAlternatives: hasSharedBinaryDecisionThreshold,
+      visualization: hasSharedBinaryDecisionThreshold
+        ? "bounded-position"
+        : hasContextualProfileReferences ? "contextual-reference" : "value-only",
+      referenceScope: hasSharedBinaryDecisionThreshold
+        ? "shared-decision-threshold"
+        : hasContextualProfileReferences ? "alternative" : null,
+      ...(hasSharedBinaryDecisionThreshold ? { threshold: BINARY_DECISION_THRESHOLD } : {}),
+      ordering: hasSharedBinaryDecisionThreshold ? "descending-within-category" : "preserve",
     }
     : null;
   const relativeClosenessMetric = hasRelativeCloseness
@@ -187,7 +307,7 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
       category.alternatives = category.alternatives.map((alternative) => ({
         ...alternative,
         metricValue: ahpMetricValuesByAlternativeId[alternative.id].value,
-        metricReferences: ahpMetricValuesByAlternativeId[alternative.id].references,
+        metricReferences: hasSharedBinaryDecisionThreshold ? [] : ahpMetricValuesByAlternativeId[alternative.id].references,
       }));
       category.metricRange = null;
     }

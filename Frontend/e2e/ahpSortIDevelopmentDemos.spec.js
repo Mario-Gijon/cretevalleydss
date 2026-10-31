@@ -18,6 +18,13 @@ const DEMOS = [
       "Supplier H": "Rejected", "Supplier I": "Rejected", "Supplier J": "Rejected", "Supplier K": "Rejected", "Supplier L": "Rejected",
     },
     categories: ["Rejected", "Accepted"],
+    priorities: {
+      "Supplier A": 0.9, "Supplier B": 0.9, "Supplier C": 0.8937,
+      "Supplier D": 0.8112, "Supplier E": 0.7927, "Supplier F": 0.6131,
+      "Supplier G": 0.7487, "Supplier H": 0.369, "Supplier I": 0.3302,
+      "Supplier J": 0.2419, "Supplier K": 0.2078, "Supplier L": 0.1,
+    },
+    acceptedOrder: ["Supplier A", "Supplier B", "Supplier C", "Supplier D", "Supplier E", "Supplier G", "Supplier F"],
   },
   {
     key: "sustainable-development",
@@ -306,18 +313,33 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
       }
       const metricValues = dialog.getByTestId("sorting-metric-value");
       if (demo.key === "supplier") {
-        await expect(dialog.getByTestId("sorting-metric-label")).toHaveText("Global AHP priority");
+        await expect(dialog.getByTestId("sorting-metric-legend-priority")).toHaveText("Global AHP priority");
+        await expect(dialog.getByTestId("sorting-metric-legend-threshold")).toHaveText("Decision threshold · 0.5");
         await expect(metricValues).toHaveCount(Object.keys(demo.assignments).length);
         await expect(metricValues.first()).toHaveAttribute("data-metric-key", "globalPriority");
         await expect(dialog.getByTestId("sorting-metric-scale")).toHaveCount(Object.keys(demo.assignments).length);
         await expect(dialog.getByTestId("sorting-metric-point")).toHaveCount(Object.keys(demo.assignments).length);
-        await expect(dialog.getByTestId("sorting-metric-reference")).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(dialog.getByTestId("sorting-metric-threshold")).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(dialog.getByTestId("sorting-metric-reference")).toHaveCount(0);
+        const acceptedCard = dialog.getByRole("listitem", { name: "Accepted: 7 alternatives", exact: true });
+        const acceptedOrder = await acceptedCard.locator(":scope > ul > li").evaluateAll((rows) =>
+          rows.map((row) => row.querySelector("p")?.textContent));
+        expect(acceptedOrder).toEqual(demo.acceptedOrder);
         for (const alternative of Object.keys(demo.assignments)) {
           const row = dialog.getByTestId("sorting-final-alternative").filter({ hasText: alternative });
-          await expect(row.getByTestId("sorting-metric-value")).toHaveAttribute("aria-label", /^Global AHP priority 0\.\d{4}$/);
+          const expectedPriority = demo.priorities[alternative];
+          await expect(row.getByTestId("sorting-metric-value")).toHaveText(expectedPriority.toFixed(4));
+          await expect(row.getByTestId("sorting-metric-value")).toHaveAttribute("aria-label", "Global AHP priority " + expectedPriority.toFixed(4));
           await expect(row.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-minimum", "0");
           await expect(row.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-maximum", "1");
-          await expect(row.getByTestId("sorting-metric-reference")).toHaveCount(1);
+          await expect(row.getByTestId("sorting-metric-threshold")).toHaveAttribute("data-threshold-value", "0.5");
+          const positions = await row.evaluate((element) => ({
+            point: element.querySelector('[data-testid="sorting-metric-point"]')?.style.left,
+            threshold: element.querySelector('[data-testid="sorting-metric-threshold"]')?.style.left,
+            value: Number(element.querySelector('[data-testid="sorting-metric-value"]')?.getAttribute("data-metric-value")),
+          }));
+          expect(positions.point).toBe(String(Number((positions.value * 100).toPrecision(12))) + "%");
+          expect(positions.threshold).toBe("50%");
         }
       } else {
         await expect(dialog.getByTestId("sorting-metric-label")).toHaveCount(0);
@@ -331,7 +353,18 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
       await expectNoHorizontalOverflow(page);
       if (demo.key === "supplier") {
         await expect(dialog.getByTestId("sorting-metric-scale")).toHaveCount(Object.keys(demo.assignments).length);
-        await expect(dialog.getByTestId("sorting-metric-reference")).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(dialog.getByTestId("sorting-metric-threshold")).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(dialog.getByTestId("sorting-metric-reference")).toHaveCount(0);
+        const supplierRows = await dialog.getByTestId("sorting-final-alternative").evaluateAll((rows) => rows.map((row) => ({
+          name: row.querySelector("p")?.textContent,
+          point: row.querySelector('[data-testid="sorting-metric-point"]')?.style.left,
+          threshold: row.querySelector('[data-testid="sorting-metric-threshold"]')?.style.left,
+          value: Number(row.querySelector('[data-testid="sorting-metric-value"]')?.getAttribute("data-metric-value")),
+        })));
+        for (const row of supplierRows) {
+          expect(row.point).toBe(String(Number((row.value * 100).toPrecision(12))) + "%");
+          expect(row.threshold).toBe("50%");
+        }
       }
       await page.screenshot({ path: test.info().outputPath(`${demo.key}-finished-mobile.png`), fullPage: true });
     });

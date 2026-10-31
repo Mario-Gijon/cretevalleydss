@@ -104,6 +104,78 @@ const limitingExecution = ({
   };
 };
 
+const binaryLimitingExecution = (values) => {
+  const categories = [
+    { categoryId: "rejected-id", label: "Rejected", order: 0 },
+    { categoryId: "accepted-id", label: "Accepted", order: 1 },
+  ];
+  const profileId = "binary-boundary";
+  const criterionWeights = { "quality-id": 0.7, "safety-id": 0.3 };
+  const alternativesById = Object.fromEntries(values.map(({ id, priority }) => {
+    const profilePriority = 1 - priority;
+    const categoryId = priority >= profilePriority ? "accepted-id" : "rejected-id";
+    const localPrioritiesByCriterion = {};
+    const weightedContributionsByCriterion = {};
+    for (const [criterionId, weight] of Object.entries(criterionWeights)) {
+      const ratio = priority / profilePriority;
+      localPrioritiesByCriterion[criterionId] = {
+        entityOrder: [
+          { entityType: "alternative", alternativeId: id },
+          { entityType: "profile", profileId },
+        ],
+        pairwiseMatrix: [[1, ratio], [1 / ratio, 1]],
+        alternative: priority,
+        profilesById: { [profileId]: profilePriority },
+        consistency: {
+          lambdaMax: 2,
+          consistencyIndex: null,
+          randomIndex: null,
+          consistencyRatio: null,
+          consistencyStatus: "not_applicable",
+        },
+      };
+      weightedContributionsByCriterion[criterionId] = {
+        alternative: weight * priority,
+        profilesById: { [profileId]: weight * profilePriority },
+      };
+    }
+    return [id, {
+      categoryId,
+      globalPriority: priority,
+      profileGlobalPrioritiesById: { [profileId]: profilePriority },
+      weightsByCriterion: criterionWeights,
+      weightedContributionsByCriterion,
+      localPrioritiesByCriterion,
+      classification: { rule: "ordered_limiting_profiles_equal_goes_to_more_preferred_category" },
+    }];
+  }));
+  const modelParameters = {
+    orderedCategories: categories,
+    ahpSortProfiles: {
+      mode: "limiting",
+      profiles: [{ profileId, lowerCategoryId: "rejected-id", upperCategoryId: "accepted-id" }],
+    },
+  };
+  return {
+    resultStructureKey: "sorting",
+    resultStructureVersion: 1,
+    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" } },
+    modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
+    modelParameters,
+    requestSnapshot: { modelParameters, context: { criteria: criterionNames } },
+    standardizedOutput: {
+      categoryOrderSemantics: "lower-order-is-less-preferred",
+      categories,
+      assignments: values.map(({ id }) => ({ alternativeId: id, categoryId: alternativesById[id].categoryId })),
+      diagnostics: {
+        modelKey: "ahp_sort_i",
+        profileMode: "limiting",
+        resultsByAlternativeId: alternativesById,
+      },
+    },
+  };
+};
+
 const centralExecution = ({ policy = "optimistic", tied = true, assignedCategoryId, selectedProfileId, modelParameters } = {}) => {
   const assignedId = assignedCategoryId || (policy === "optimistic" ? "high-id" : "low-id");
   const selectedId = selectedProfileId || (policy === "optimistic" ? "center-high" : "center-low");
@@ -479,6 +551,131 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(overlappingData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
   });
 
+  it("shows the shared 0.5 line and descending AHP priority order for validated binary limiting results", () => {
+    const suppliers = [
+      ["supplier-a", "Supplier A", 0.9],
+      ["supplier-b", "Supplier B", 0.9],
+      ["supplier-c", "Supplier C", 0.8937],
+      ["supplier-d", "Supplier D", 0.8112],
+      ["supplier-e", "Supplier E", 0.7927],
+      ["supplier-f", "Supplier F", 0.6131],
+      ["supplier-g", "Supplier G", 0.7487],
+      ["supplier-h", "Supplier H", 0.369],
+      ["supplier-i", "Supplier I", 0.3302],
+      ["supplier-j", "Supplier J", 0.2419],
+      ["supplier-k", "Supplier K", 0.2078],
+      ["supplier-l", "Supplier L", 0.1],
+    ].map(([id, name, priority]) => ({ id, name, priority }));
+    const execution = binaryLimitingExecution(suppliers);
+    const data = buildDashboardData({
+      payload: { alternatives: suppliers.map(({ id, name }) => ({ id, name })), criteria },
+      selectedExecution: execution,
+    });
+
+    expect(data.result.metric).toMatchObject({
+      key: "globalPriority",
+      label: "Global AHP priority",
+      minimum: 0,
+      maximum: 1,
+      precision: 4,
+      comparableAcrossAlternatives: true,
+      visualization: "bounded-position",
+      referenceScope: "shared-decision-threshold",
+      threshold: 0.5,
+      ordering: "descending-within-category",
+    });
+    render(<ThemeProvider theme={createTheme()}><DashboardView data={data} /></ThemeProvider>);
+
+    expect(screen.getByTestId("sorting-metric-legend-priority")).toHaveTextContent("Global AHP priority");
+    expect(screen.getByTestId("sorting-metric-legend-threshold")).toHaveTextContent("Decision threshold · 0.5");
+    const thresholds = screen.getAllByTestId("sorting-metric-threshold");
+    expect(thresholds).toHaveLength(12);
+    expect(thresholds.map((element) => element.style.left)).toEqual(Array(12).fill("50%"));
+    expect(screen.queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
+
+    const accepted = screen.getByRole("listitem", { name: "Accepted: 7 alternatives" });
+    expect([...accepted.querySelector("ul").children].map((row) => row.querySelector("p")?.textContent)).toEqual([
+      "Supplier A", "Supplier B", "Supplier C", "Supplier D", "Supplier E", "Supplier G", "Supplier F",
+    ]);
+    expect(within(accepted).getAllByTestId("sorting-metric-value").map((element) => element.textContent)).toEqual([
+      "0.9000", "0.9000", "0.8937", "0.8112", "0.7927", "0.7487", "0.6131",
+    ]);
+    const rejected = screen.getByRole("listitem", { name: "Rejected: 5 alternatives" });
+    expect(within(rejected).getAllByTestId("sorting-metric-value").map((element) => element.textContent)).toEqual([
+      "0.3690", "0.3302", "0.2419", "0.2078", "0.1000",
+    ]);
+  });
+
+  it("keeps conservative historical rendering when binary evidence is incomplete or fails complementarity", () => {
+    const suppliers = [
+      { id: "supplier-a", name: "Configured first", priority: 0.65 },
+      { id: "supplier-b", name: "Configured second", priority: 0.75 },
+    ];
+    const incomplete = binaryLimitingExecution(suppliers);
+    delete incomplete.standardizedOutput.diagnostics.resultsByAlternativeId["supplier-a"].localPrioritiesByCriterion;
+    const incompleteData = buildDashboardData({
+      payload: { alternatives: suppliers.map(({ id, name }) => ({ id, name })), criteria },
+      selectedExecution: incomplete,
+    });
+    expect(incompleteData.result.metric).toMatchObject({
+      comparableAcrossAlternatives: false,
+      visualization: "contextual-reference",
+      referenceScope: "alternative",
+      ordering: "preserve",
+    });
+    render(<ThemeProvider theme={createTheme()}><DashboardView data={incompleteData} /></ThemeProvider>);
+    expect(screen.queryByTestId("sorting-metric-threshold")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("sorting-metric-reference")).toHaveLength(1);
+    expect([...screen.getByRole("listitem", { name: "Accepted: 2 alternatives" }).querySelector("ul").children]
+      .map((row) => row.querySelector("p")?.textContent)).toEqual(["Configured first", "Configured second"]);
+
+    cleanup();
+    const nonComplementary = binaryLimitingExecution(suppliers);
+    nonComplementary.standardizedOutput.diagnostics.resultsByAlternativeId["supplier-a"]
+      .localPrioritiesByCriterion["quality-id"].profilesById["binary-boundary"] = 0.2;
+    const nonComparableData = buildDashboardData({
+      payload: { alternatives: suppliers.map(({ id, name }) => ({ id, name })), criteria },
+      selectedExecution: nonComplementary,
+    });
+    expect(nonComparableData.result.metric).toMatchObject({
+      comparableAcrossAlternatives: false,
+      visualization: "contextual-reference",
+      referenceScope: "alternative",
+      ordering: "preserve",
+    });
+    render(<ThemeProvider theme={createTheme()}><DashboardView data={nonComparableData} /></ThemeProvider>);
+    expect(screen.queryByTestId("sorting-metric-threshold")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("sorting-metric-reference")).toHaveLength(2);
+    expect([...screen.getByRole("listitem", { name: "Accepted: 2 alternatives" }).querySelector("ul").children]
+      .map((row) => row.querySelector("p")?.textContent)).toEqual(["Configured first", "Configured second"]);
+
+    cleanup();
+    const differentWeights = binaryLimitingExecution(suppliers);
+    const firstDiagnostics = differentWeights.standardizedOutput.diagnostics.resultsByAlternativeId["supplier-a"];
+    firstDiagnostics.weightsByCriterion = { "quality-id": 0.6, "safety-id": 0.4 };
+    for (const [criterionId, weight] of Object.entries(firstDiagnostics.weightsByCriterion)) {
+      const local = firstDiagnostics.localPrioritiesByCriterion[criterionId];
+      firstDiagnostics.weightedContributionsByCriterion[criterionId] = {
+        alternative: weight * local.alternative,
+        profilesById: { "binary-boundary": weight * local.profilesById["binary-boundary"] },
+      };
+    }
+    const differentWeightsData = buildDashboardData({
+      payload: { alternatives: suppliers.map(({ id, name }) => ({ id, name })), criteria },
+      selectedExecution: differentWeights,
+    });
+    expect(differentWeightsData.result.metric).toMatchObject({
+      comparableAcrossAlternatives: false,
+      visualization: "contextual-reference",
+      referenceScope: "alternative",
+      ordering: "preserve",
+    });
+    render(<ThemeProvider theme={createTheme()}><DashboardView data={differentWeightsData} /></ThemeProvider>);
+    expect(screen.queryByTestId("sorting-metric-threshold")).not.toBeInTheDocument();
+    expect([...screen.getByRole("listitem", { name: "Accepted: 2 alternatives" }).querySelector("ul").children]
+      .map((row) => row.querySelector("p")?.textContent)).toEqual(["Configured first", "Configured second"]);
+  });
+
   it("places saved AHP priorities, local consistency, assignment explanation, and matrices in Model Analysis", () => {
     const { workspace } = renderAnalysis(limitingExecution());
     const disclosure = screen.getByTestId("ahp-sort-i-mathematical-details");
@@ -691,7 +888,13 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-z"] = secondDiagnostics;
     const { data } = renderSelected(execution, { payload: { alternatives: [...alternatives, { id: "alt-z", name: "Supplier Z" }] } });
 
-    expect(data.result.metric?.label).toBe("Global AHP priority");
+    expect(data.result.metric).toMatchObject({
+      label: "Global AHP priority",
+      comparableAcrossAlternatives: false,
+      visualization: "contextual-reference",
+      referenceScope: "alternative",
+      ordering: "preserve",
+    });
     const high = screen.getByRole("listitem", { name: "High: 1 alternative" });
     const low = screen.getByRole("listitem", { name: "Low: 1 alternative" });
     expect(within(high).getByText("0.5500")).toBeInTheDocument();
