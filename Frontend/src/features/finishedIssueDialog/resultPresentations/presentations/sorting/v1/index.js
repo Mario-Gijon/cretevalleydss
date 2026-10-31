@@ -33,6 +33,20 @@ const hasConsistentAHPSortPriorityEvidence = (evidence) => {
   return contributionsMatchLocalPriorities && Math.abs(evidencePriority - evidence.globalPriority) <= AHP_PRIORITY_EVIDENCE_TOLERANCE;
 };
 
+const ahpProfileReferencesFor = (evidence) => {
+  const references = evidence?.profilePriorities;
+  if (!Array.isArray(references) || references.length === 0) return [];
+  const ids = new Set();
+  if (references.some((reference) => {
+    const valid = nonEmptyString(reference?.id) && nonEmptyString(reference?.label) &&
+      typeof reference.priority === "number" && Number.isFinite(reference.priority) &&
+      reference.priority >= 0 && reference.priority <= 1 && !ids.has(reference.id);
+    if (valid) ids.add(reference.id);
+    return !valid;
+  })) return [];
+  return references.map(({ id, label, priority }) => ({ id, label, value: priority }));
+};
+
 const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) => {
   const output = execution?.standardizedOutput;
   if (!output || typeof output !== "object") return unavailable("The stored sorting result is unavailable.");
@@ -107,14 +121,42 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
     }));
   }
   const hasRelativeCloseness = categories.some((category) => category.alternatives.some((alternative) => alternative.metricValue !== null));
-  const ahpMetricAvailable = assignedIds.size > 0 && ahpSortIEvidence?.status === "available" && !ahpSortIGroup &&
-    categories.every((category) => category.alternatives.every((alternative) => {
-      const evidence = ahpSortIEvidence.alternativesById?.[alternative.id];
-      return hasConsistentAHPSortPriorityEvidence(evidence) && typeof evidence.globalPriority === "number" &&
-        Number.isFinite(evidence.globalPriority) && evidence.globalPriority >= 0 && evidence.globalPriority <= 1 &&
-        evidence.alternative?.id === alternative.id && evidence.category?.id === category.id;
-    }));
-  const metric = ahpMetricAvailable
+  const ahpMetricValuesByAlternativeId = {};
+  const rawAHPSortDiagnostics = output.diagnostics;
+  const hasAHPSortDiagnosticIdentity = rawAHPSortDiagnostics?.modelKey === "ahp_sort_i" &&
+    ["limiting", "central"].includes(rawAHPSortDiagnostics.profileMode) &&
+    isRecord(rawAHPSortDiagnostics.resultsByAlternativeId);
+  let ahpMetricAvailable = assignedIds.size > 0 && !ahpSortIGroup && ahpSortIEvidence !== null;
+  let hasContextualProfileReferences = false;
+  if (ahpMetricAvailable) {
+    for (const category of categories) {
+      for (const alternative of category.alternatives) {
+        const evidence = ahpSortIEvidence.alternativesById?.[alternative.id];
+        if (ahpSortIEvidence.status === "integrity_warning" || evidence?.status === "integrity_warning") {
+          ahpMetricAvailable = false;
+          break;
+        }
+        const detailedEvidenceIsConsistent = evidence?.status === "available" &&
+          evidence.alternative?.id === alternative.id && evidence.category?.id === category.id &&
+          hasConsistentAHPSortPriorityEvidence(evidence);
+        const rawDiagnostics = rawAHPSortDiagnostics?.resultsByAlternativeId?.[alternative.id];
+        const storedPriority = detailedEvidenceIsConsistent
+          ? evidence.globalPriority
+          : evidence?.status === "unavailable" && hasAHPSortDiagnosticIdentity && rawDiagnostics?.categoryId === category.id
+            ? rawDiagnostics.globalPriority
+            : null;
+        if (typeof storedPriority !== "number" || !Number.isFinite(storedPriority) || storedPriority < 0 || storedPriority > 1) {
+          ahpMetricAvailable = false;
+          break;
+        }
+        const references = detailedEvidenceIsConsistent ? ahpProfileReferencesFor(evidence) : [];
+        hasContextualProfileReferences ||= references.length > 0;
+        ahpMetricValuesByAlternativeId[alternative.id] = { value: storedPriority, references };
+      }
+      if (!ahpMetricAvailable) break;
+    }
+  }
+  const ahpMetric = ahpMetricAvailable
     ? {
       key: "globalPriority",
       label: "Global AHP priority",
@@ -122,26 +164,30 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
       maximum: 1,
       precision: 4,
       comparableAcrossAlternatives: false,
-      visualization: "value-only",
+      visualization: hasContextualProfileReferences ? "contextual-reference" : "value-only",
+      referenceScope: hasContextualProfileReferences ? "alternative" : null,
       ordering: "preserve",
     }
-    : hasRelativeCloseness
-      ? {
-        key: "relativeCloseness",
-        label: "Relative closeness",
-        minimum: 0,
-        maximum: 1,
-        precision: 4,
-        comparableAcrossAlternatives: true,
-        visualization: "bounded-position",
-        ordering: "descending-within-category",
-      }
-      : null;
+    : null;
+  const relativeClosenessMetric = hasRelativeCloseness
+    ? {
+      key: "relativeCloseness",
+      label: "Relative closeness",
+      minimum: 0,
+      maximum: 1,
+      precision: 4,
+      comparableAcrossAlternatives: true,
+      visualization: "bounded-position",
+      ordering: "descending-within-category",
+    }
+    : null;
+  const metric = ahpSortIGroup ? null : ahpSortI ? ahpMetric : relativeClosenessMetric;
   if (ahpMetricAvailable) {
     for (const category of categories) {
       category.alternatives = category.alternatives.map((alternative) => ({
         ...alternative,
-        metricValue: ahpSortIEvidence.alternativesById[alternative.id].globalPriority,
+        metricValue: ahpMetricValuesByAlternativeId[alternative.id].value,
+        metricReferences: ahpMetricValuesByAlternativeId[alternative.id].references,
       }));
       category.metricRange = null;
     }

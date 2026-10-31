@@ -309,10 +309,15 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
         await expect(dialog.getByTestId("sorting-metric-label")).toHaveText("Global AHP priority");
         await expect(metricValues).toHaveCount(Object.keys(demo.assignments).length);
         await expect(metricValues.first()).toHaveAttribute("data-metric-key", "globalPriority");
-        await expect(dialog.getByTestId("sorting-metric-scale")).toHaveCount(0);
+        await expect(dialog.getByTestId("sorting-metric-scale")).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(dialog.getByTestId("sorting-metric-point")).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(dialog.getByTestId("sorting-metric-reference")).toHaveCount(Object.keys(demo.assignments).length);
         for (const alternative of Object.keys(demo.assignments)) {
           const row = dialog.getByTestId("sorting-final-alternative").filter({ hasText: alternative });
           await expect(row.getByTestId("sorting-metric-value")).toHaveAttribute("aria-label", /^Global AHP priority 0\.\d{4}$/);
+          await expect(row.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-minimum", "0");
+          await expect(row.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-maximum", "1");
+          await expect(row.getByTestId("sorting-metric-reference")).toHaveCount(1);
         }
       } else {
         await expect(dialog.getByTestId("sorting-metric-label")).toHaveCount(0);
@@ -324,6 +329,10 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(dialog.getByRole("list", { name: "Final sorting by category" })).toBeVisible();
       await expectNoHorizontalOverflow(page);
+      if (demo.key === "supplier") {
+        await expect(dialog.getByTestId("sorting-metric-scale")).toHaveCount(Object.keys(demo.assignments).length);
+        await expect(dialog.getByTestId("sorting-metric-reference")).toHaveCount(Object.keys(demo.assignments).length);
+      }
       await page.screenshot({ path: test.info().outputPath(`${demo.key}-finished-mobile.png`), fullPage: true });
     });
 

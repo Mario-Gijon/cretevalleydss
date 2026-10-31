@@ -423,7 +423,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       minimum: 0,
       maximum: 1,
       comparableAcrossAlternatives: false,
-      visualization: "value-only",
+      visualization: "contextual-reference",
+      referenceScope: "alternative",
       ordering: "preserve",
     });
     expect(screen.getByTestId("sorting-metric-label")).toHaveTextContent("Global AHP priority");
@@ -433,7 +434,20 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     );
     expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.7100");
     expect(screen.getByTestId("sorting-metric-value")).toHaveAttribute("aria-label", "Global AHP priority 0.7100");
-    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
+    expect(screen.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-minimum", "0");
+    expect(screen.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-maximum", "1");
+    expect(screen.getByTestId("sorting-metric-scale")).toHaveAccessibleName(
+      "Global AHP priority 0.7100 on a 0 to 1 scale; reference profiles: Low / Medium boundary 0.3000, Medium / High boundary 0.6000",
+    );
+    expect(screen.getAllByTestId("sorting-metric-reference").map((reference) => [
+      reference.getAttribute("data-metric-reference-label"),
+      reference.getAttribute("data-reference-value"),
+      reference.style.left,
+    ])).toEqual([
+      ["Low / Medium boundary", "0.3", "30%"],
+      ["Medium / High boundary", "0.6", "60%"],
+    ]);
+    expect(screen.getByTestId("sorting-metric-point")).toHaveStyle({ left: "71%" });
     expect(screen.queryByTestId("ahp-sort-i-assignment-explanation")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahp-sort-i-mathematical-details")).not.toBeInTheDocument();
     expect(above.data.result.ahpSortI.alternativesById["alt-a"].explanation).toMatch(/AHP priority \(0\.7100\).*Medium \/ High limiting profile \(0\.6000\)/);
@@ -601,6 +615,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
 
     cleanup();
     const invalidPriority = limitingExecution({ priority: 1.01 });
+    invalidPriority.standardizedOutput.diagnostics.closeness_by_alternative_id = { "alt-a": 0.95 };
     const invalidPriorityData = renderSelected(invalidPriority);
     expect(invalidPriorityData.data.result.metric).toBe(null);
     expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
@@ -634,11 +649,12 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const alternativeRows = [...highCategory.querySelector("ul").children];
     expect(alternativeRows.map((row) => row.querySelector("p")?.textContent)).toEqual(["Supplier A", "Supplier Z"]);
     expect(within(highCategory).getAllByTestId("sorting-metric-value").map((value) => value.textContent)).toEqual(["0.7100", "0.9900"]);
-    expect(within(highCategory).queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
+    expect(within(highCategory).getAllByTestId("sorting-metric-scale")).toHaveLength(2);
+    expect(within(highCategory).getAllByTestId("sorting-metric-reference")).toHaveLength(4);
     expect(screen.queryByText(/rank|probability|confidence/i)).not.toBeInTheDocument();
   });
 
-  it("shows central-profile priorities as values only and preserves configured alternative order", () => {
+  it("shows central-profile priorities against each alternative's own profiles and preserves configured order", () => {
     const execution = centralExecution({ tied: false });
     execution.requestSnapshot = { modelParameters: execution.modelParameters, context: { criteria: criterionNames } };
     const secondDiagnostics = structuredClone(execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"]);
@@ -680,8 +696,36 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const low = screen.getByRole("listitem", { name: "Low: 1 alternative" });
     expect(within(high).getByText("0.5500")).toBeInTheDocument();
     expect(within(low).getByText("0.0500")).toBeInTheDocument();
-    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("sorting-metric-scale")).toHaveLength(2);
+    expect(within(high).getAllByTestId("sorting-metric-reference").map((reference) => [
+      reference.getAttribute("data-metric-reference-label"), reference.getAttribute("data-reference-value"), reference.style.left,
+    ])).toEqual([
+      ["Low center", "0.1", "10%"],
+      ["High center", "0.35", "35%"],
+    ]);
+    expect(within(low).getAllByTestId("sorting-metric-reference").map((reference) => [
+      reference.getAttribute("data-metric-reference-label"), reference.getAttribute("data-reference-value"), reference.style.left,
+    ])).toEqual([
+      ["Low center", "0.4", "40%"],
+      ["High center", "0.55", "55%"],
+    ]);
     expect(screen.queryByText(/Global AHP priority.*relative position/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the saved AHP priority visible without drawing a scale when profile references are unavailable", () => {
+    const execution = limitingExecution();
+    delete execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"].profileGlobalPrioritiesById;
+
+    const { data } = renderSelected(execution);
+
+    expect(data.result.metric).toMatchObject({
+      key: "globalPriority",
+      visualization: "value-only",
+      comparableAcrossAlternatives: false,
+      ordering: "preserve",
+    });
+    expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.7100");
+    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
   });
 
   it("uses the selected scenario snapshot rather than current Issue parameters", () => {
@@ -751,6 +795,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
         "expert-4": "low-id",
       },
     });
+    execution.standardizedOutput.diagnostics.closeness_by_alternative_id = { "alt-a": 0.8 };
     const rendered = renderSelected(execution);
     const classification = rendered.data.result.ahpSortIGroup.alternativesById["alt-a"];
 

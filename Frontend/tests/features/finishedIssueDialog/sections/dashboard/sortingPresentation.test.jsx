@@ -200,6 +200,87 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(within(category).queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
   });
 
+  it("renders contextual metrics on each alternative's own references and preserves configured order", () => {
+    const result = {
+      categories: [{
+        id: "category-a",
+        label: "A category",
+        order: 0,
+        metricRange: null,
+        alternatives: [
+          {
+            id: "alternative-first",
+            name: "Configured first",
+            metricValue: 0.72,
+            metricReferences: [{ id: "profile-first", label: "First profile", value: 0.81 }],
+          },
+          {
+            id: "alternative-second",
+            name: "Configured second",
+            metricValue: 0.31,
+            metricReferences: [
+              { id: "profile-second-low", label: "Second low profile", value: 0.25 },
+              { id: "profile-second-high", label: "Second high profile", value: 0.9 },
+            ],
+          },
+        ],
+      }],
+      metric: {
+        key: "contextualPriority",
+        label: "Contextual priority",
+        minimum: 0,
+        maximum: 1,
+        precision: 4,
+        comparableAcrossAlternatives: false,
+        visualization: "contextual-reference",
+        referenceScope: "alternative",
+        ordering: "preserve",
+      },
+    };
+
+    render(<ThemeProvider theme={createTheme()}><SortingDashboardResult result={result} /></ThemeProvider>);
+
+    const category = screen.getByRole("listitem", { name: /A category/ });
+    expect(within(category).getAllByRole("listitem").map((row) => row.querySelector("p")?.textContent)).toEqual([
+      "Configured first",
+      "Configured second",
+    ]);
+    expect(within(category).getAllByTestId("sorting-metric-value").map((value) => value.textContent)).toEqual(["0.7200", "0.3100"]);
+    expect(within(category).getAllByTestId("sorting-metric-scale")).toHaveLength(2);
+    expect(within(category).getAllByTestId("sorting-metric-point").map((point) => point.style.left)).toEqual(["72%", "31%"]);
+    expect(within(category).getAllByTestId("sorting-metric-reference").map((reference) => reference.style.left)).toEqual(["81%", "25%", "90%"]);
+    expect(within(category).getAllByTestId("sorting-metric-scale")[0]).toHaveAttribute("data-domain-minimum", "0");
+    expect(within(category).getAllByTestId("sorting-metric-scale")[0]).toHaveAttribute("data-domain-maximum", "1");
+  });
+
+  it("keeps a contextual metric value when an alternative has no reliable references", () => {
+    const result = {
+      categories: [{
+        id: "category-a",
+        label: "A category",
+        order: 0,
+        metricRange: null,
+        alternatives: [{ id: "alternative-a", name: "Alternative A", metricValue: 0.42 }],
+      }],
+      metric: {
+        key: "contextualPriority",
+        label: "Contextual priority",
+        minimum: 0,
+        maximum: 1,
+        precision: 4,
+        comparableAcrossAlternatives: false,
+        visualization: "contextual-reference",
+        referenceScope: "alternative",
+        ordering: "preserve",
+      },
+    };
+
+    render(<ThemeProvider theme={createTheme()}><SortingDashboardResult result={result} /></ThemeProvider>);
+
+    expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.4200");
+    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
+  });
+
   it("renders a generic continuous classification that grows within Finished Issue", () => {
     expect(sortingFinalResultSx).toMatchObject({
       display: "flex",
@@ -392,7 +473,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(within(category).queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
     expect(within(category).getAllByTestId("sorting-metric-point")[0]).toHaveStyle({ left: "69%" });
     expect(within(category).getAllByTestId("sorting-metric-point")[1]).toHaveStyle({ left: "60%" });
-    expect(within(category).getAllByTestId("sorting-metric-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual([
+    expect(within(category).getAllByTestId("sorting-metric-reference").map((marker) => marker.getAttribute("data-reference-value"))).toEqual([
       "0.5", "0.7", "0.5", "0.7", "0.5", "0.7",
     ]);
     expect(within(category).getByText("0.6900")).toBeInTheDocument();
@@ -421,7 +502,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(categoryData.metricRange).toEqual({ lower: 0.50006, upper: 0.70006 });
     expect(categoryData.alternatives.find(({ id }) => id === "mongo-b").metricValue).toBe(0.60006);
     expect(within(category).getByTestId("sorting-metric-point")).toHaveStyle({ left: "60.006%" });
-    expect(within(category).getAllByTestId("sorting-metric-boundary").map((marker) => marker.style.left)).toEqual([
+    expect(within(category).getAllByTestId("sorting-metric-reference").map((marker) => marker.style.left)).toEqual([
       "50.006%", "70.006%",
     ]);
     expect(within(category).getByText("0.6001")).toBeInTheDocument();
@@ -457,8 +538,8 @@ describe("sorting@1 Finished Issue presentation", () => {
     ]);
     expect(within(lowest).getAllByTestId("sorting-metric-point").map((point) => point.style.left)).toEqual(["35%", "10%"]);
     expect(within(highest).getAllByTestId("sorting-metric-point").map((point) => point.style.left)).toEqual(["95%", "71%"]);
-    expect(within(lowest).getAllByTestId("sorting-metric-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.5", "0.5"]);
-    expect(within(highest).getAllByTestId("sorting-metric-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.7", "0.7"]);
+    expect(within(lowest).getAllByTestId("sorting-metric-reference").map((marker) => marker.getAttribute("data-reference-value"))).toEqual(["0.5", "0.5"]);
+    expect(within(highest).getAllByTestId("sorting-metric-reference").map((marker) => marker.getAttribute("data-reference-value"))).toEqual(["0.7", "0.7"]);
     expect(within(lowest).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
     expect(within(highest).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
     expect(screen.queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
@@ -582,7 +663,7 @@ describe("sorting@1 Finished Issue presentation", () => {
       "Budget option, Relative closeness 0.2200",
     ]);
     expect(within(category).getAllByTestId("sorting-metric-point")).toHaveLength(3);
-    expect(within(category).queryByTestId("sorting-metric-boundary")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
     expect(within(category).queryByTestId("sorting-metric-interval")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closer to|Centered in this category/)).not.toBeInTheDocument();
     expect(data.result.categories).toHaveLength(3);

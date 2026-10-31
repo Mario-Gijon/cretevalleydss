@@ -19,6 +19,14 @@ const isValidMetricValue = (value, metric) => isValidMetricDefinition(metric)
   && value >= metric.minimum
   && value <= metric.maximum;
 
+const metricPrecisionFor = (metric) => Number.isInteger(metric?.precision) && metric.precision >= 0 && metric.precision <= 10
+  ? metric.precision
+  : 4;
+
+const isNonEmptyMetricReference = (reference, metric) => typeof reference?.id === "string" && reference.id.length > 0
+  && typeof reference.label === "string" && reference.label.length > 0
+  && isValidMetricValue(reference.value, metric);
+
 const toScalePercent = (value, metric) => `${Number((((value - metric.minimum) / (metric.maximum - metric.minimum)) * 100).toPrecision(12))}%`;
 
 const CategoryHeader = ({ category }) => (
@@ -27,12 +35,18 @@ const CategoryHeader = ({ category }) => (
   </Typography>
 );
 
-const BoundedMetricScale = ({ value, metric, range, theme }) => (
+const MetricScale = ({ value, metric, references, theme }) => (
   <Box
     data-testid="sorting-metric-scale"
     data-metric-key={metric.key}
     data-metric-value={value}
-    aria-hidden="true"
+    data-domain-minimum={metric.minimum}
+    data-domain-maximum={metric.maximum}
+    role={metric.visualization === "contextual-reference" ? "img" : undefined}
+    aria-label={metric.visualization === "contextual-reference"
+      ? `${metric.label} ${value.toFixed(metricPrecisionFor(metric))} on a ${metric.minimum} to ${metric.maximum} scale; reference profiles: ${references.map(({ label, value: referenceValue }) => `${label} ${referenceValue.toFixed(metricPrecisionFor(metric))}`).join(", ")}`
+      : undefined}
+    aria-hidden={metric.visualization === "contextual-reference" ? undefined : "true"}
     sx={{ position: "relative", height: 12, mx: 0.45, overflow: "visible" }}
   >
     <Box
@@ -46,20 +60,23 @@ const BoundedMetricScale = ({ value, metric, range, theme }) => (
         bgcolor: alpha(theme.palette.secondary.main, 0.34),
       }}
     />
-    {[range?.lower, range?.upper]
-      .filter((boundary) => isValidMetricValue(boundary, metric))
-      .map((boundary) => (
+    {references
+      .filter((reference) => isValidMetricValue(reference.value, metric))
+      .map((reference) => (
         <Box
-          key={boundary}
-          data-testid="sorting-metric-boundary"
-          data-boundary-value={boundary}
+          key={reference.id}
+          data-testid="sorting-metric-reference"
+          data-metric-reference-label={reference.label}
+          data-reference-value={reference.value}
           aria-hidden="true"
-          style={{ left: toScalePercent(boundary, metric) }}
+          title={reference.label}
+          style={{ left: toScalePercent(reference.value, metric) }}
           sx={{
             position: "absolute",
-            top: 1,
+            top: 0,
             height: 10,
-            borderLeft: `1px dashed ${alpha(theme.palette.text.secondary, 0.8)}`,
+            zIndex: 1,
+            borderLeft: `1px ${metric.visualization === "contextual-reference" ? "solid" : "dashed"} ${alpha(theme.palette.text.secondary, 0.8)}`,
             transform: "translateX(-50%)",
           }}
         />
@@ -69,6 +86,7 @@ const BoundedMetricScale = ({ value, metric, range, theme }) => (
       data-metric-key={metric.key}
       data-metric-value={value}
       aria-hidden="true"
+      title={metric.visualization === "contextual-reference" ? "Alternative priority" : undefined}
       style={{ left: toScalePercent(value, metric) }}
       sx={{
         position: "absolute",
@@ -87,14 +105,24 @@ const SortingAlternativeRow = ({ alternative, range, theme, metric }) => {
   const metricValue = metric && isValidMetricValue(alternative.metricValue, metric)
     ? alternative.metricValue
     : null;
-  const precision = Number.isInteger(metric?.precision) && metric.precision >= 0 && metric.precision <= 10
-    ? metric.precision
-    : 4;
+  const precision = metricPrecisionFor(metric);
   const metricLabel = metricValue === null ? null : metricValue.toFixed(precision);
   const accessibleLabel = metricLabel
     ? `${alternative.name}, ${metric.label} ${metricLabel}`
     : alternative.name;
-  const showScale = metric?.visualization === "bounded-position" && metricValue !== null;
+  const contextualReferences = metric?.visualization === "contextual-reference" && Array.isArray(alternative.metricReferences)
+    ? alternative.metricReferences.filter((reference) => isNonEmptyMetricReference(reference, metric))
+    : [];
+  const metricReferences = metric?.visualization === "contextual-reference"
+    ? contextualReferences
+    : metric?.visualization === "bounded-position" && range
+      ? [
+        { id: "lower-boundary", label: "Lower category boundary", value: range.lower },
+        { id: "upper-boundary", label: "Upper category boundary", value: range.upper },
+      ].filter((reference) => isValidMetricValue(reference.value, metric))
+      : [];
+  const showScale = metricValue !== null && (metric?.visualization === "bounded-position" ||
+    (metric?.visualization === "contextual-reference" && metricReferences.length > 0));
 
   return (
     <Box
@@ -132,10 +160,10 @@ const SortingAlternativeRow = ({ alternative, range, theme, metric }) => {
         )}
       </Box>
       {showScale && (
-        <BoundedMetricScale
+        <MetricScale
           value={metricValue}
           metric={metric}
-          range={range}
+          references={metricReferences}
           theme={theme}
         />
       )}
