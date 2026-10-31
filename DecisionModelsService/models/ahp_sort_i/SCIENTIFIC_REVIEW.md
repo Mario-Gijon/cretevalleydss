@@ -1,5 +1,10 @@
 # AHPSort I: scientific and implementation review
 
+> **Historical phase record.** This review describes an earlier implementation
+> phase and is not a statement of the current activation or multi-expert
+> status. For the current scientific behavior, differences from GAHPSort, and
+> independently checked evidence, see [SCIENTIFIC_AUDIT.md](SCIENTIFIC_AUDIT.md).
+
 ## Scope and source
 
 This note records the AHPSort I implementation in Crete Valley DSS for

@@ -1,5 +1,10 @@
 # AHPSort I — review brief for Álvaro
 
+> **Historical phase record.** This brief describes an earlier implementation
+> phase and is not a statement of the current activation or multi-expert
+> status. For the current scientific behavior, differences from GAHPSort, and
+> independently checked evidence, see [SCIENTIFIC_AUDIT.md](SCIENTIFIC_AUDIT.md).
+
 ## Purpose
 
 AHPSort I assigns alternatives to ordered, predefined categories by comparing
