@@ -89,7 +89,16 @@ const AHPSortAlternativeProfilesView = ({
         sx={{
           minHeight: 42,
           borderBottom: "1px solid rgba(255,255,255,0.10)",
-          "& .MuiTab-root": { minHeight: 42, minWidth: 110, px: 1.3, textTransform: "none" },
+          "& .MuiTab-root": {
+            minHeight: 42,
+            minWidth: { xs: 0, sm: 110 },
+            maxWidth: { xs: "calc(50vw - 30px)", sm: 360 },
+            px: 1.3,
+            textTransform: "none",
+            whiteSpace: "normal",
+            overflowWrap: "anywhere",
+          },
+          "& .MuiTabs-scrollButtons.Mui-disabled": { display: "none" },
         }}
       >
         {context.criteria.map((criterion) => {
