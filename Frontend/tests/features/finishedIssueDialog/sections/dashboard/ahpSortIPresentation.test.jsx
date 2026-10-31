@@ -6,6 +6,8 @@ import DashboardView from "../../../../../src/features/finishedIssueDialog/secti
 import { buildDashboardData } from "../../../../../src/features/finishedIssueDialog/sections/dashboard/logic/buildFinishedIssueDashboardData.js";
 import { selectFinishedIssueExecution } from "../../../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
 import { isAHPSortIExecution } from "../../../../../src/features/finishedIssueDialog/resultPresentations/modelFindings/ahp_sort_i.js";
+import { buildResultsAnalysisWorkspaceData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsAnalysisWorkspaceData.js";
+import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
 
 const limitingCategories = [
   { categoryId: "low-id", label: "Low", order: 0 },
@@ -347,6 +349,35 @@ const renderSelected = (execution, options = {}) => {
   return { data, payload };
 };
 
+const renderAnalysis = (execution) => {
+  const payload = {
+    alternatives,
+    criteria,
+    models: {
+      base: {
+        name: "AHPSort I",
+        technical: { apiModelKey: "ahp_sort_i" },
+        effectiveParameters: execution.modelParameters,
+      },
+    },
+    phaseResults: [{
+      stage: "alternativeEvaluation",
+      phase: 0,
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      standardizedOutput: execution.standardizedOutput,
+      modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
+      requestSnapshot: {
+        modelParameters: execution.modelParameters,
+        context: { criteria: criterionNames },
+      },
+    }],
+  };
+  const workspace = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"] });
+  render(<ThemeProvider theme={createTheme()}><VisualizationsPanel visualizations={{ mode: "single" }} executions={workspace.selected} /></ThemeProvider>);
+  return { workspace, payload };
+};
+
 describe("AHPSort I sorting@1 Finished Issue presentation", () => {
   it("identifies the model from execution metadata, not diagnostics alone", () => {
     expect(isAHPSortIExecution({ modelSpecificOutput: { apiModelKey: "ahp_sort_i" } })).toBe(true);
@@ -354,11 +385,13 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(isAHPSortIExecution({ standardizedOutput: { diagnostics: { modelKey: "ahp_sort_i" } } })).toBe(false);
   });
 
-  it("explains limiting-profile assignment, including equality within the AHP tolerance", () => {
+  it("keeps the Final result generic while retaining limiting assignment evidence", () => {
     const above = renderSelected(limitingExecution());
-    expect(above.data.result.displayMode).toBe("ahp-sort-i");
     expect(screen.getByRole("list", { name: "Final sorting by category" })).toBeInTheDocument();
-    expect(screen.getByText(/Supplier A was assigned to High because its AHP priority \(0\.7100\) reaches or exceeds the Medium \/ High limiting profile \(0\.6000\)/)).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toHaveTextContent("Supplier A");
+    expect(screen.queryByTestId("ahp-sort-i-assignment-explanation")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ahp-sort-i-mathematical-details")).not.toBeInTheDocument();
+    expect(above.data.result.ahpSortI.alternativesById["alt-a"].explanation).toMatch(/AHP priority \(0\.7100\).*Medium \/ High limiting profile \(0\.6000\)/);
     expect(screen.queryByText(/ranking|probability|confidence|winner/i)).not.toBeInTheDocument();
 
     const equal = limitingExecution({
@@ -387,10 +420,12 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(overlappingData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
   });
 
-  it("shows persisted priorities, weights, contributions, local consistency, and matrices only after opening details", () => {
-    const { data } = renderSelected(limitingExecution());
+  it("places saved AHP priorities, local consistency, assignment explanation, and matrices in Model Analysis", () => {
+    const { workspace } = renderAnalysis(limitingExecution());
     const disclosure = screen.getByTestId("ahp-sort-i-mathematical-details");
     expect(disclosure).not.toHaveAttribute("open");
+    expect(screen.getByRole("heading", { name: "AHPSort I classification evidence" })).toBeInTheDocument();
+    expect(screen.getByText(/Supplier A was assigned to High because its AHP priority/)).toBeInTheDocument();
     fireEvent.click(within(disclosure).getByText("View AHP evidence"));
     expect(within(disclosure).getByText("Alternative global priority:")).toBeInTheDocument();
     expect(within(disclosure).getByText("Quality")).toBeInTheDocument();
@@ -398,7 +433,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(within(disclosure).getAllByText(/λmax .* CI .* RI .* CR/)).toHaveLength(2);
     fireEvent.click(within(disclosure).getByText("Pairwise matrix for Quality"));
     expect(within(disclosure).getByRole("table", { name: "Pairwise matrix for Quality" })).toBeInTheDocument();
-    expect(data.result.ahpSortI.alternativesById["alt-a"].criteria).toHaveLength(2);
+    expect(workspace.selected[0].ahpSortIAnalysisEvidence.evidence.alternativesById["alt-a"].criteria).toHaveLength(2);
     expect(document.body.textContent).not.toContain("quality-id");
     expect(document.body.textContent).not.toContain("boundary-lm");
     expect(document.body.textContent).not.toContain("alt-a");
@@ -406,8 +441,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
 
   it("explains the closest central profile and optimistic/pessimistic tie decisions", () => {
     const optimistic = renderSelected(centralExecution());
-    expect(screen.getByText(/equally close to the Low and High centers/)).toBeInTheDocument();
-    expect(screen.getByText(/optimistic tie policy selected High, the more preferred category/)).toBeInTheDocument();
+    expect(screen.queryByTestId("ahp-sort-i-assignment-explanation")).not.toBeInTheDocument();
     expect(optimistic.data.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(true);
 
     const pessimisticExecution = centralExecution({ policy: "pessimistic" });
@@ -460,10 +494,11 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
         },
       },
     });
-    const { data } = renderSelected(inconsistent);
+    renderAnalysis(inconsistent);
+    const dashboardData = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: inconsistent });
     expect(screen.getByTestId("ahp-sort-i-consistency-warning")).toHaveTextContent(/CR above 0.10/);
-    expect(screen.getByTitle("Supplier A")).toBeInTheDocument();
-    expect(data.findings.some((finding) => finding.kind === "ahp_consistency")).toBe(true);
+    expect(screen.getAllByText("Supplier A").length).toBeGreaterThan(0);
+    expect(dashboardData.findings.some((finding) => finding.kind === "ahp_consistency")).toBe(true);
 
     const twoByTwo = limitingExecution({
       assignedCategoryId: "high-id",
@@ -500,7 +535,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const missingData = renderSelected(missing);
     expect(missingData.data.result.available).toBe(true);
     expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toBeInTheDocument();
-    expect(screen.getByText("Detailed AHP evidence is not available for this saved execution.")).toBeInTheDocument();
+    expect(screen.queryByText("Detailed AHP evidence is not available for this saved execution.")).not.toBeInTheDocument();
 
     cleanup();
     const conflict = limitingExecution({ assignedCategoryId: "high-id", diagnosticsOverrides: { categoryId: "low-id" } });
@@ -508,8 +543,11 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(conflictData.result.available).toBe(true);
     expect(conflictData.result.ahpSortI.alternativesById["alt-a"].status).toBe("integrity_warning");
     expect(conflictData.result.ahpSortI.alternativesById["alt-a"].message).toMatch(/do not agree/);
-    expect(screen.getByRole("alert")).toHaveTextContent(/do not agree with the stored classifications/);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toBeInTheDocument();
+    cleanup();
+    renderAnalysis(conflict);
+    expect(screen.getByTestId("ahp-sort-i-analysis-integrity_warning")).toHaveTextContent(/do not agree with the stored classifications/);
   });
 
   it("does not order alternatives across categories or by global AHP priority", () => {
@@ -600,7 +638,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const rendered = renderSelected(execution);
     const classification = rendered.data.result.ahpSortIGroup.alternativesById["alt-a"];
 
-    expect(rendered.data.result.displayMode).toBe("ahp-sort-i-group");
+    expect(rendered.data.result.metric).toBe(null);
     expect(classification).toMatchObject({
       voteValid: true,
       participantCount: 4,
@@ -612,25 +650,20 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
         { label: "High", count: 2 },
       ],
     });
-    expect(screen.getByText(/High received the most votes \(plurality\): 2 of 4/)).toBeInTheDocument();
-    expect(screen.getByTestId("ahpsort-i-group-votes")).toHaveTextContent("Low: 1 · Medium: 1 · High: 2");
+    expect(screen.queryByTestId("ahpsort-i-group-votes")).not.toBeInTheDocument();
+    expect(screen.queryByText(/High received the most votes \(plurality\): 2 of 4/)).not.toBeInTheDocument();
     expect(screen.queryByText(/consensus|probability|ranking/i)).not.toBeInTheDocument();
     expect(rendered.data.findings.map(({ title }) => title)).toContain("Unique plurality");
     expect(rendered.data.findings.map(({ title }) => title)).toContain("Different expert classifications");
 
-    const individualDetails = screen.getByText("Individual expert classifications");
-    expect(individualDetails.closest("details")).not.toHaveAttribute("open");
-    fireEvent.click(individualDetails);
-    expect(screen.getAllByTestId("ahpsort-i-individual-classification")).toHaveLength(4);
-    expect(screen.getByText("Expert 1 · High")).toBeInTheDocument();
-    expect(screen.getAllByText(/was assigned to High because its AHP priority/)).toHaveLength(2);
+    expect(screen.queryByTestId("ahpsort-i-individual-classifications")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/expert-[1-4]|low-id|medium-id|high-id|alt-a/);
   });
 
   it.each([
-    ["optimistic", "high-id", "High", "more preferred category"],
-    ["pessimistic", "low-id", "Low", "less preferred category"],
-  ])("applies the persisted %s preference only to tied group votes", (policy, assignedId, label, preference) => {
+    ["optimistic", "high-id", "High"],
+    ["pessimistic", "low-id", "Low"],
+  ])("applies the persisted %s preference only to tied group votes", (policy, assignedId, label) => {
     const execution = groupExecution({
       tiePolicy: policy,
       classifications: {
@@ -642,6 +675,10 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     });
     const data = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: execution });
     const classification = data.result.ahpSortIGroup.alternativesById["alt-a"];
+    expect(data.result.categories.find(({ id }) => id === assignedId)).toMatchObject({
+      label,
+      alternatives: expect.any(Array),
+    });
     expect(data.result.categories.find(({ id }) => id === assignedId)?.alternatives).toHaveLength(1);
     expect(classification).toMatchObject({
       voteValid: true,
@@ -650,8 +687,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       tiePolicy: policy,
     });
     render(<ThemeProvider theme={createTheme()}><DashboardView data={data} /></ThemeProvider>);
-    expect(screen.getByText(/tied with the most votes among 4 experts/)).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`The ${preference}, ${label}, was selected`))).toBeInTheDocument();
+    expect(screen.queryByText(/tied with the most votes among 4 experts/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ahpsort-i-group-votes")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -660,7 +697,6 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
   ])("keeps central-profile %s independent from group-vote %s", (profilePolicy, groupPolicy, expectedGroup, individualTieCategory) => {
     const execution = centralGroupExecution({ profileTiePolicy: profilePolicy, groupTiePolicy: groupPolicy });
     const data = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: execution });
-    expect(data.result.displayMode).toBe("ahp-sort-i-group");
     expect(data.result.ahpSortIGroup.unavailableReason).toBe(null);
     expect(data.result.ahpSortIGroup.status).toBe("available");
     expect(data.result.categories.find(({ label }) => label === expectedGroup).alternatives).toHaveLength(1);
@@ -739,7 +775,6 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     });
     execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"].votesByCategoryId["high-id"] = 9;
     const { data } = renderSelected(execution);
-    expect(data.result.displayMode).toBe("ahp-sort-i-group");
     expect(data.result.categories.find(({ id }) => id === "high-id").alternatives).toHaveLength(1);
     expect(data.result.ahpSortIGroup.status).toBe("integrity_warning");
     expect(data.result.ahpSortIGroup.alternativesById["alt-a"]).toMatchObject({
@@ -747,8 +782,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       category: { id: "high-id" },
       votes: null,
     });
-    expect(screen.getByTestId("ahpsort-i-group-integrity-warning")).toBeInTheDocument();
-    expect(screen.getByText("The saved category is shown; vote details need review.")).toBeInTheDocument();
+    expect(screen.queryByTestId("ahpsort-i-group-integrity-warning")).not.toBeInTheDocument();
+    expect(screen.queryByText("The saved category is shown; vote details need review.")).not.toBeInTheDocument();
   });
 
   it("keeps persisted assignments visible and flags a missing historical expert roster", () => {
@@ -762,7 +797,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(data.result.ahpSortIGroup.status).toBe("integrity_warning");
     expect(data.result.ahpSortIGroup.unavailableReason).toMatch(/expert roster is unavailable/);
     render(<ThemeProvider theme={createTheme()}><DashboardView data={data} /></ThemeProvider>);
-    expect(screen.getByTestId("ahpsort-i-group-integrity-warning")).toBeInTheDocument();
-    expect(screen.getByText("The saved expert roster is unavailable, so historical participation cannot be fully verified.")).toBeInTheDocument();
+    expect(screen.queryByTestId("ahpsort-i-group-integrity-warning")).not.toBeInTheDocument();
+    expect(screen.queryByText("The saved expert roster is unavailable, so historical participation cannot be fully verified.")).not.toBeInTheDocument();
   });
 });

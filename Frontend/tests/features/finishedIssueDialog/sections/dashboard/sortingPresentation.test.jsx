@@ -5,10 +5,9 @@ import { describe, expect, it } from "vitest";
 import DashboardView from "../../../../../src/features/finishedIssueDialog/sections/dashboard/components/DashboardView.jsx";
 import { buildDashboardData } from "../../../../../src/features/finishedIssueDialog/sections/dashboard/logic/buildFinishedIssueDashboardData.js";
 import {
-  sortingResultGridSx,
-  topsisSortCategoryGroupSx,
-  topsisSortCategorySx,
-  topsisSortResultGridSx,
+  sortingFinalCategoryAlternativesSx,
+  sortingFinalCategorySx,
+  sortingFinalResultSx,
 } from "../../../../../src/features/finishedIssueDialog/resultPresentations/presentations/sorting/v1/sortingResultGrid.styles.js";
 import { selectFinishedIssueExecution } from "../../../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
 
@@ -123,7 +122,7 @@ describe("sorting@1 Finished Issue presentation", () => {
   it("shows configured categories from highest to lowest preference and resolves alternatives by ID", () => {
     const data = renderDashboard();
     const result = screen.getByRole("list", { name: "Final sorting by category" });
-    const categoryCards = within(result).getAllByRole("listitem").filter((element) => element.hasAttribute("aria-label"));
+    const categoryCards = within(result).getAllByTestId("sorting-final-category");
     expect(categoryCards).toHaveLength(3);
     expect(categoryCards[0]).toHaveAccessibleName("Preferred category: 2 alternatives");
     expect(within(categoryCards[0]).getByText("Alternative A")).toBeInTheDocument();
@@ -131,9 +130,9 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(categoryCards[1]).toHaveAccessibleName("Repeated label: 1 alternative");
     expect(within(categoryCards[1]).getByText(alternatives[1].name)).toBeInTheDocument();
     expect(categoryCards[2]).toHaveAccessibleName("Repeated label: 0 alternatives");
-    expect(within(categoryCards[2]).getByText("No alternatives assigned.")).toBeInTheDocument();
+    expect(within(categoryCards[2]).getByText("No alternatives in this category")).toBeInTheDocument();
     expect(data.result.categories.map(({ id }) => id)).toEqual(["cat-top", "cat-high", "cat-low"]);
-    expect(data.result.displayMode).toBe("standard");
+    expect(data.result.metric).toBe(null);
     expect(screen.queryByText("0.7100")).not.toBeInTheDocument();
     expect(data.findings[0].items).toContain("Alternatives assigned to the highest-preference category (Preferred category): Alternative A, Alternative C.");
   });
@@ -147,37 +146,39 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByTestId("EmojiEventsRoundedIcon")).not.toBeInTheDocument();
   });
 
-  it("uses responsive columns, bounded height, and vertical scrolling for long sorting results", () => {
-    expect(sortingResultGridSx).toMatchObject({
-      gridTemplateColumns: {
-        xs: "minmax(0, 1fr)",
-        sm: "repeat(2, minmax(0, 1fr))",
-        xl: "repeat(3, minmax(0, 1fr))",
-      },
-      maxHeight: { xs: 340, md: 440 },
-      overflowY: "auto",
-      overflowX: "hidden",
-    });
+  it("renders a synthetic sorting@1 model with the shared view and compatible optional metric", () => {
+    const execution = topsisExecution({ diagnostics: topsisDiagnostics() });
+    execution.model = { name: "Synthetic classifier", technical: { apiModelKey: "future_sorting_model" } };
+    execution.modelSpecificOutput = { apiModelKey: "future_sorting_model" };
+    renderTopsisDashboard(execution);
+
+    expect(screen.getByRole("heading", { name: "Final result" })).toBeInTheDocument();
+    expect(screen.getByTestId("sorting-final-result")).toBeInTheDocument();
+    expect(screen.getAllByTestId("sorting-final-category")).toHaveLength(3);
+    expect(screen.getByText("0.7100")).toBeInTheDocument();
+    expect(screen.getAllByTestId("sorting-relative-closeness-point")[0]).toHaveAttribute("data-relative-closeness-value", "0.71");
+    expect(screen.getByText("Sorting summary")).toBeInTheDocument();
+    expect(screen.queryByTestId("topsis-sort-category-list")).not.toBeInTheDocument();
+    expect(screen.queryByText(/ranking|winner/i)).not.toBeInTheDocument();
   });
 
-  it("renders a continuous vertical classification with one bounded scroll region", () => {
-    expect(topsisSortResultGridSx).toMatchObject({
+  it("renders a generic continuous classification that grows within Finished Issue", () => {
+    expect(sortingFinalResultSx).toMatchObject({
       display: "flex",
       flexDirection: "column",
-      maxHeight: { xs: 340, md: 440 },
-      overflowY: "auto",
       overflowX: "hidden",
-      scrollbarWidth: "thin",
     });
-    expect(topsisSortCategorySx).toMatchObject({
+    expect(sortingFinalResultSx).not.toHaveProperty("maxHeight");
+    expect(sortingFinalResultSx).not.toHaveProperty("overflowY");
+    expect(sortingFinalCategorySx).toMatchObject({
       display: "grid",
       gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(190px, 0.34fr) minmax(0, 1fr)" },
       columnGap: { xs: 0, md: 2 },
     });
-    expect(topsisSortCategorySx).not.toHaveProperty("height");
-    expect(topsisSortCategorySx).not.toHaveProperty("borderRadius");
-    expect(topsisSortCategorySx).not.toHaveProperty("bgcolor");
-    expect(topsisSortCategoryGroupSx).toMatchObject({
+    expect(sortingFinalCategorySx).not.toHaveProperty("height");
+    expect(sortingFinalCategorySx).not.toHaveProperty("borderRadius");
+    expect(sortingFinalCategorySx).not.toHaveProperty("bgcolor");
+    expect(sortingFinalCategoryAlternativesSx).toMatchObject({
       position: "relative",
       "&::before": {
         position: "absolute",
@@ -185,18 +186,18 @@ describe("sorting@1 Finished Issue presentation", () => {
         color: "secondary.light",
       },
     });
-    expect(topsisSortCategoryGroupSx).not.toHaveProperty("borderLeft");
-    expect(topsisSortCategoryGroupSx).not.toHaveProperty("maxHeight");
-    expect(topsisSortCategoryGroupSx).not.toHaveProperty("overflowY");
+    expect(sortingFinalCategoryAlternativesSx).not.toHaveProperty("borderLeft");
+    expect(sortingFinalCategoryAlternativesSx).not.toHaveProperty("maxHeight");
+    expect(sortingFinalCategoryAlternativesSx).not.toHaveProperty("overflowY");
 
     renderTopsisDashboard();
-    const category = screen.getByRole("listitem", { name: "High", exact: true });
+    const category = screen.getByRole("listitem", { name: "High: 1 alternative", exact: true });
     const header = within(category).getByText("High");
-    const body = within(category).getByTestId("topsis-sort-category-body");
+    const body = within(category).getByTestId("sorting-final-category-body");
     expect(header).toHaveTextContent("High");
     expect(header.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(body).toContainElement(within(category).getByText("Premium option"));
-    expect(screen.getByTestId("topsis-sort-category-list")).toContainElement(body);
+    expect(screen.getByTestId("sorting-final-result")).toContainElement(body);
   });
 
   it.each([
@@ -330,32 +331,32 @@ describe("sorting@1 Finished Issue presentation", () => {
       assignments: topsisAlternatives.map(({ id }) => ({ alternativeId: id, categoryId: "cat-medium" })),
     });
     const data = renderTopsisDashboard(execution);
-    const category = screen.getByRole("listitem", { name: "Medium", exact: true });
+    const category = screen.getByRole("listitem", { name: "Medium: 3 alternatives", exact: true });
     const rows = within(category).getAllByRole("listitem");
 
-    expect(data.result.displayMode).toBe("topsis-sort");
+    expect(data.result.metric).toMatchObject({ key: "relativeCloseness", label: "Relative closeness", minimum: 0, maximum: 1 });
     expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
       "Budget option, Relative closeness 0.6900",
       "Balanced option, Relative closeness 0.6000",
       "Premium option, Relative closeness 0.5100",
     ]);
-    const scales = within(category).getAllByTestId("topsis-sort-closeness-scale");
+    const scales = within(category).getAllByTestId("sorting-relative-closeness-scale");
     expect(scales).toHaveLength(3);
-    expect(within(category).queryByTestId("topsis-sort-closeness-interval")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
-    expect(within(category).getAllByTestId("topsis-sort-closeness-point")[0]).toHaveStyle({ left: "69%" });
-    expect(within(category).getAllByTestId("topsis-sort-closeness-point")[1]).toHaveStyle({ left: "60%" });
-    expect(within(category).getAllByTestId("topsis-sort-boundary-marker").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual([
+    expect(within(category).getAllByTestId("sorting-relative-closeness-point")[0]).toHaveStyle({ left: "69%" });
+    expect(within(category).getAllByTestId("sorting-relative-closeness-point")[1]).toHaveStyle({ left: "60%" });
+    expect(within(category).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual([
       "0.5", "0.7", "0.5", "0.7", "0.5", "0.7",
     ]);
     expect(within(category).getByText("0.6900")).toBeInTheDocument();
-    expect(within(category).queryByTestId("topsis-sort-closeness-fill")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-relative-closeness-fill")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closer to|Centered in this category/)).not.toBeInTheDocument();
     expect(within(category).queryByRole("img")).not.toBeInTheDocument();
     expect(screen.queryByText(/rank/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("No alternatives in this category")).toHaveLength(2);
-    expect(screen.getAllByTestId("topsis-sort-empty-category-icon")).toHaveLength(2);
-    expect(data.result.categories.find(({ label }) => label === "Medium").closenessInterval).toEqual({ lower: 0.5, upper: 0.7 });
+    expect(screen.getAllByTestId("sorting-final-empty-category-icon")).toHaveLength(2);
+    expect(data.result.categories.find(({ label }) => label === "Medium").relativeClosenessRange).toEqual({ lower: 0.5, upper: 0.7 });
   });
 
   it("keeps full-precision boundary evidence and positions markers without showing interval labels", () => {
@@ -366,15 +367,15 @@ describe("sorting@1 Finished Issue presentation", () => {
       }),
     });
     const data = renderTopsisDashboard(execution);
-    const category = screen.getByRole("listitem", { name: "Medium", exact: true });
+    const category = screen.getByRole("listitem", { name: "Medium: 1 alternative", exact: true });
     const categoryData = data.result.categories.find(({ id }) => id === "cat-medium");
 
-    expect(within(category).queryByTestId("topsis-sort-closeness-interval")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
-    expect(categoryData.closenessInterval).toEqual({ lower: 0.50006, upper: 0.70006 });
-    expect(categoryData.alternatives.find(({ id }) => id === "mongo-b").closeness).toBe(0.60006);
-    expect(within(category).getByTestId("topsis-sort-closeness-point")).toHaveStyle({ left: "60.006%" });
-    expect(within(category).getAllByTestId("topsis-sort-boundary-marker").map((marker) => marker.style.left)).toEqual([
+    expect(categoryData.relativeClosenessRange).toEqual({ lower: 0.50006, upper: 0.70006 });
+    expect(categoryData.alternatives.find(({ id }) => id === "mongo-b").relativeCloseness).toBe(0.60006);
+    expect(within(category).getByTestId("sorting-relative-closeness-point")).toHaveStyle({ left: "60.006%" });
+    expect(within(category).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.style.left)).toEqual([
       "50.006%", "70.006%",
     ]);
     expect(within(category).getByText("0.6001")).toBeInTheDocument();
@@ -401,19 +402,19 @@ describe("sorting@1 Finished Issue presentation", () => {
         { alternativeId: "mongo-d", categoryId: "cat-high" },
       ],
     }), alternativesAtExtremes);
-    const lowest = screen.getByRole("listitem", { name: "Low", exact: true });
-    const highest = screen.getByRole("listitem", { name: "High", exact: true });
+    const lowest = screen.getByRole("listitem", { name: "Low: 2 alternatives", exact: true });
+    const highest = screen.getByRole("listitem", { name: "High: 2 alternatives", exact: true });
 
     expect(within(lowest).getAllByRole("listitem").map((row) => row.getAttribute("aria-label"))).toEqual([
       "Balanced option, Relative closeness 0.3500",
       "Premium option, Relative closeness 0.1000",
     ]);
-    expect(within(lowest).getAllByTestId("topsis-sort-closeness-point").map((point) => point.style.left)).toEqual(["35%", "10%"]);
-    expect(within(highest).getAllByTestId("topsis-sort-closeness-point").map((point) => point.style.left)).toEqual(["95%", "71%"]);
-    expect(within(lowest).getAllByTestId("topsis-sort-boundary-marker").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.5", "0.5"]);
-    expect(within(highest).getAllByTestId("topsis-sort-boundary-marker").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.7", "0.7"]);
-    expect(within(lowest).queryByTestId("topsis-sort-closeness-interval")).not.toBeInTheDocument();
-    expect(within(highest).queryByTestId("topsis-sort-closeness-interval")).not.toBeInTheDocument();
+    expect(within(lowest).getAllByTestId("sorting-relative-closeness-point").map((point) => point.style.left)).toEqual(["35%", "10%"]);
+    expect(within(highest).getAllByTestId("sorting-relative-closeness-point").map((point) => point.style.left)).toEqual(["95%", "71%"]);
+    expect(within(lowest).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.5", "0.5"]);
+    expect(within(highest).getAllByTestId("sorting-relative-closeness-boundary").map((marker) => marker.getAttribute("data-boundary-value"))).toEqual(["0.7", "0.7"]);
+    expect(within(lowest).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
+    expect(within(highest).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
     expect(screen.queryByText(/Closeness\s*[<>]/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Closer to|Centered in this category|Position within category/)).not.toBeInTheDocument();
   });
@@ -431,7 +432,7 @@ describe("sorting@1 Finished Issue presentation", () => {
         { alternativeId: "mongo-d", categoryId: "cat-medium" },
       ],
     }), alternativesWithInvalidData);
-    const category = screen.getByRole("listitem", { name: "Medium", exact: true });
+    const category = screen.getByRole("listitem", { name: "Medium: 4 alternatives", exact: true });
     const rows = within(category).getAllByRole("listitem");
 
     expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
@@ -440,7 +441,7 @@ describe("sorting@1 Finished Issue presentation", () => {
       "Budget option",
       "Out-of-range alternative",
     ]);
-    expect(within(category).getAllByTestId("topsis-sort-closeness-point")).toHaveLength(2);
+    expect(within(category).getAllByTestId("sorting-relative-closeness-point")).toHaveLength(2);
     expect(within(category).getByText("Budget option")).toBeInTheDocument();
     expect(within(category).queryByText("0.9000")).not.toBeInTheDocument();
   });
@@ -458,15 +459,16 @@ describe("sorting@1 Finished Issue presentation", () => {
     });
     const data = renderTopsisDashboard(execution, manyAlternatives);
 
-    const empty = screen.getByRole("listitem", { name: "High", exact: true });
+    const empty = screen.getByRole("listitem", { name: "High: 0 alternatives", exact: true });
     expect(within(empty).getByText("No alternatives in this category", { exact: true })).toBeInTheDocument();
-    expect(within(empty).getByTestId("topsis-sort-empty-category-icon")).toHaveAttribute("aria-hidden", "true");
-    expect(within(empty).getByTestId("topsis-sort-empty-category")).toHaveAccessibleName("No alternatives in this category");
-    expect(within(empty).queryByTestId("topsis-sort-closeness-point")).not.toBeInTheDocument();
-    const populated = screen.getByRole("listitem", { name: "Medium", exact: true });
-    expect(within(populated).getByTestId("topsis-sort-category-body")).not.toHaveStyle({ overflowY: "auto" });
-    expect(within(populated).getByTestId("topsis-sort-category-body")).not.toHaveStyle({ maxHeight: "280px" });
-    expect(screen.getByTestId("topsis-sort-category-list")).toHaveStyle({ overflowY: "auto" });
+    expect(within(empty).getByTestId("sorting-final-empty-category-icon")).toHaveAttribute("aria-hidden", "true");
+    expect(within(empty).getByTestId("sorting-final-empty-category")).toHaveAccessibleName("No alternatives in this category");
+    expect(within(empty).queryByTestId("sorting-relative-closeness-point")).not.toBeInTheDocument();
+    const populated = screen.getByRole("listitem", { name: "Medium: 14 alternatives", exact: true });
+    expect(within(populated).getByTestId("sorting-final-category-body")).not.toHaveStyle({ overflowY: "auto" });
+    expect(within(populated).getByTestId("sorting-final-category-body")).not.toHaveStyle({ maxHeight: "280px" });
+    expect(screen.getByTestId("sorting-final-result")).not.toHaveStyle({ overflowY: "auto" });
+    expect(screen.getByTestId("sorting-final-result")).not.toHaveStyle({ maxHeight: "440px" });
     expect(within(populated).getAllByRole("listitem")).toHaveLength(14);
     expect(within(populated).getByText(manyAlternatives[0].name)).toBeInTheDocument();
     expect(data.result.categories.map(({ label }) => label)).toEqual(["High", "Medium", "Low"]);
@@ -480,7 +482,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     const categories = labels.map((label, index) => ({ categoryId: `category-${index}`, label, order: index }));
     const execution = topsisExecution({ categories, assignments: [] });
     const data = renderTopsisDashboard(execution, []);
-    const renderedCategories = within(screen.getByTestId("topsis-sort-category-list")).getAllByTestId("topsis-sort-category");
+    const renderedCategories = within(screen.getByTestId("sorting-final-result")).getAllByTestId("sorting-final-category");
 
     expect(renderedCategories).toHaveLength(count);
     expect([...labels].reverse().every((label, index) => within(renderedCategories[index]).getByText(label))).toBe(true);
@@ -512,8 +514,8 @@ describe("sorting@1 Finished Issue presentation", () => {
     }), evaluatedAlternatives);
 
     expect(data.result.categories.map(({ label }) => label)).toEqual([longCategory, "Repeated label", "Repeated label"]);
-    const renderedCategories = screen.getByTestId("topsis-sort-category-list");
-    const longCategoryGroup = screen.getByRole("listitem", { name: longCategory, exact: true });
+    const renderedCategories = screen.getByTestId("sorting-final-result");
+    const longCategoryGroup = screen.getByRole("listitem", { name: `${longCategory}: 1 alternative`, exact: true });
     expect(within(longCategoryGroup).getByText(longCategory)).toBeInTheDocument();
     expect(within(longCategoryGroup).getByText(longAlternative)).toBeInTheDocument();
     expect(within(renderedCategories).getAllByText("Repeated label")).toHaveLength(2);
@@ -525,7 +527,7 @@ describe("sorting@1 Finished Issue presentation", () => {
       diagnostics: topsisDiagnostics({ closeness_by_profile_id: { "profile-medium": 0.7, "profile-high": 0.5 } }),
       assignments: topsisAlternatives.map(({ id }) => ({ alternativeId: id, categoryId: "cat-medium" })),
     }));
-    const category = screen.getByRole("listitem", { name: "Medium", exact: true });
+    const category = screen.getByRole("listitem", { name: "Medium: 3 alternatives", exact: true });
     const rows = within(category).getAllByRole("listitem");
 
     expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
@@ -533,9 +535,9 @@ describe("sorting@1 Finished Issue presentation", () => {
       "Balanced option, Relative closeness 0.5400",
       "Budget option, Relative closeness 0.2200",
     ]);
-    expect(within(category).getAllByTestId("topsis-sort-closeness-point")).toHaveLength(3);
-    expect(within(category).queryByTestId("topsis-sort-boundary-marker")).not.toBeInTheDocument();
-    expect(within(category).queryByTestId("topsis-sort-closeness-interval")).not.toBeInTheDocument();
+    expect(within(category).getAllByTestId("sorting-relative-closeness-point")).toHaveLength(3);
+    expect(within(category).queryByTestId("sorting-relative-closeness-boundary")).not.toBeInTheDocument();
+    expect(within(category).queryByTestId("sorting-relative-closeness-interval")).not.toBeInTheDocument();
     expect(within(category).queryByText(/Closer to|Centered in this category/)).not.toBeInTheDocument();
     expect(data.result.categories).toHaveLength(3);
   });
@@ -667,7 +669,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     const baseExecution = selectFinishedIssueExecution(basePayload);
     const baseDashboard = buildDashboardData({ payload: basePayload, selectedExecution: baseExecution });
     expect(baseDashboard.findings).toHaveLength(3);
-    expect(baseDashboard.result.categories.find(({ id }) => id === "cat-medium").closenessInterval).toEqual({ lower: 0.5, upper: 0.7 });
+    expect(baseDashboard.result.categories.find(({ id }) => id === "cat-medium").relativeClosenessRange).toEqual({ lower: 0.5, upper: 0.7 });
 
     const scenarioOutput = {
       ...output,
@@ -707,8 +709,8 @@ describe("sorting@1 Finished Issue presentation", () => {
       headline: "Medium",
       text: "Medium is the lowest category containing evaluated alternatives, with 2 alternatives assigned. No alternatives were assigned to the Low category.",
     });
-    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").closenessInterval).toEqual({ lower: 0.48, upper: 0.75 });
-    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").alternatives.find(({ id }) => id === "mongo-b").closeness).toBe(0.6);
+    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").relativeClosenessRange).toEqual({ lower: 0.48, upper: 0.75 });
+    expect(scenarioDashboard.result.categories.find(({ id }) => id === "cat-medium").alternatives.find(({ id }) => id === "mongo-b").relativeCloseness).toBe(0.6);
   });
 
   it("does not identify TOPSIS-Sort by its visible name", () => {

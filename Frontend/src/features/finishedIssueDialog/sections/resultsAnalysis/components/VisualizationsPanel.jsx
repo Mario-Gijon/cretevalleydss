@@ -37,6 +37,7 @@ import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
 import VisualizationReadingGuide from "./VisualizationReadingGuide.jsx";
+import AHPSortIClassificationAnalysis from "./AHPSortIClassificationAnalysis.jsx";
 
 const cardSx = {
   border: "1px solid rgba(83,198,214,0.16)",
@@ -916,6 +917,7 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
         </Box>
       </Box>
       {MODEL_ANALYSIS_STAGES.map((stage) => <StageVisualizations key={stage.key} executions={executions} stage={stage} />)}
+      <AHPSortIClassificationAnalysis executions={executions} />
     </Stack>
   );
 };

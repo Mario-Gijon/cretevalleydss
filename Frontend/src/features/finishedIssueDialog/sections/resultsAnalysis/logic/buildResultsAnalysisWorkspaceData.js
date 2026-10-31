@@ -296,6 +296,13 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
   const execution = resolveExecution(payload, option.key, selectedPhase);
   const resultPresentation = resolveResultPresentation(execution || {});
   const analysisSupported = Boolean(resultPresentation.presentation?.capabilities.resultsAnalysis);
+  const normalizedDashboardResult = analysisSupported && resultPresentation.resultStructureKey === "sorting"
+    ? resultPresentation.presentation.normalizeDashboardResult({
+      execution,
+      alternatives: payload?.alternatives,
+      criteria: payload?.criteria,
+    })
+    : null;
   const ranking = analysisSupported ? normalizeRanking({ payload, execution }) : [];
   const sorting = analysisSupported && resultPresentation.resultStructureKey === "sorting"
     ? normalizeSorting({ payload, output: execution?.standardizedOutput })
@@ -335,6 +342,12 @@ const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }
     color: RESULTS_ANALYSIS_SLOT_COLORS[slotIndex],
     ranking,
     sorting,
+    ahpSortIAnalysisEvidence: normalizedDashboardResult?.ahpSortI
+      ? {
+        categories: normalizedDashboardResult.categories,
+        evidence: normalizedDashboardResult.ahpSortI,
+      }
+      : null,
     categoricalPhases,
     categoricalTransitions,
     resultStructureKey: resultPresentation.resultStructureKey,

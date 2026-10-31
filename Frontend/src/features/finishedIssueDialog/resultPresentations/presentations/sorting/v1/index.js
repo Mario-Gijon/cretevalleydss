@@ -16,6 +16,7 @@ import {
 const ORDER_SEMANTICS = "lower-order-is-less-preferred";
 const asArray = (value) => Array.isArray(value) ? value : [];
 const nonEmptyString = (value) => typeof value === "string" && value.trim() ? value : null;
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
 const unavailable = (reason) => ({ available: false, unavailableReason: reason, categories: [], assignmentCount: 0 });
 
@@ -70,35 +71,33 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
   }
 
   categories.sort((left, right) => right.order - left.order);
-  const topsisSort = isTopsisSort2016Execution(execution);
   const ahpSortI = isAHPSortIExecution(execution);
   const ahpSortIGroup = ahpSortI
     ? buildAHPSortIGroupEvidence({ result: { categories, assignmentCount: assignedIds.size }, execution, criteria })
     : null;
-  if (topsisSort) {
-    const closenessByAlternativeId = execution?.standardizedOutput?.diagnostics?.closeness_by_alternative_id;
-    const categoryIntervals = buildTopsisSortCategoryIntervals({ categories, assignmentCount: assignedIds.size }, execution);
-    const closenessFor = (alternativeId) => {
-      const value = closenessByAlternativeId?.[alternativeId];
-      return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
-    };
-    for (const category of categories) {
-      category.closenessInterval = categoryIntervals?.get(category.id) ?? null;
-      category.alternatives = category.alternatives
-        .map((alternative) => {
-          return {
-            ...alternative,
-            closeness: closenessFor(alternative.id),
-          };
-        });
-    }
+  const relativeClosenessByAlternativeId = output.diagnostics?.closeness_by_alternative_id;
+  const closenessFor = (alternativeId) => {
+    const value = relativeClosenessByAlternativeId?.[alternativeId];
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
+  };
+  const categoryIntervals = isRecord(relativeClosenessByAlternativeId)
+    ? buildTopsisSortCategoryIntervals({ categories, assignmentCount: assignedIds.size }, execution)
+    : null;
+  for (const category of categories) {
+    category.relativeClosenessRange = categoryIntervals?.get(category.id) ?? null;
+    category.alternatives = category.alternatives.map((alternative) => ({
+      ...alternative,
+      relativeCloseness: closenessFor(alternative.id),
+    }));
   }
   const normalized = {
     available: true,
     unavailableReason: null,
     categories,
     assignmentCount: assignedIds.size,
-    displayMode: topsisSort ? "topsis-sort" : ahpSortIGroup ? "ahp-sort-i-group" : ahpSortI ? "ahp-sort-i" : "standard",
+    metric: categories.some((category) => category.alternatives.some((alternative) => alternative.relativeCloseness !== null))
+      ? { key: "relativeCloseness", label: "Relative closeness", minimum: 0, maximum: 1 }
+      : null,
   };
   if (ahpSortIGroup) {
     normalized.ahpSortIGroup = ahpSortIGroup;

@@ -1,34 +1,14 @@
-import { finishedIssueScrollbarSx } from "../../../../shared/styles/finishedIssueScrollbar.styles.js";
-
-export const sortingResultGridSx = Object.freeze({
-  display: "grid",
-  gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
-  alignContent: "start",
-  gap: 1,
-  width: "100%",
-  minWidth: 0,
-  maxHeight: { xs: 340, md: 440 },
-  overflowY: "auto",
-  overflowX: "hidden",
-  p: 0.2,
-  ...finishedIssueScrollbarSx,
-});
-
-/** TOPSIS-Sort categories share one scrollable, continuous classification list. */
-export const topsisSortResultGridSx = Object.freeze({
+/** A single natural-height result list; Finished Issue owns the vertical scroll. */
+export const sortingFinalResultSx = Object.freeze({
   display: "flex",
   flexDirection: "column",
   width: "100%",
   minWidth: 0,
-  maxHeight: { xs: 340, md: 440 },
-  overflowY: "auto",
   overflowX: "hidden",
-  overscrollBehavior: "contain",
   p: 0.2,
-  ...finishedIssueScrollbarSx,
 });
 
-export const topsisSortCategorySx = Object.freeze({
+export const sortingFinalCategorySx = Object.freeze({
   display: "grid",
   gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(190px, 0.34fr) minmax(0, 1fr)" },
   columnGap: { xs: 0, md: 2 },
@@ -39,7 +19,7 @@ export const topsisSortCategorySx = Object.freeze({
   "&:last-of-type": { borderBottom: 0 },
 });
 
-export const topsisSortCategoryGroupSx = Object.freeze({
+export const sortingFinalCategoryAlternativesSx = Object.freeze({
   position: "relative",
   listStyle: "none",
   minWidth: 0,
