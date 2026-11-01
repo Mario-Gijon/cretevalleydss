@@ -784,27 +784,146 @@ describe("AnalyticalGraph", () => {
       .toHaveTextContent("—");
   });
 
-  it("shows AHP individual and collective heatmap weights as percentages", () => {
+  it("shows AHP individual and collective weights as a shared-scale dot plot with coincident tooltip details", () => {
     const visualization = {
       key: "ahp-individual-collective-weights",
-      type: "heatmap",
+      type: "scatter",
       title: "Individual vs collective weights",
-      scale: { min: 0, max: 100, valuePrecision: 4, valueSuffix: "%" },
+      description: "Each row represents a criterion. Colored points show the importance assigned by individual experts, while the diamond marks the final MCC weight. Horizontal distance indicates differences in criterion importance.",
+      presentation: { stableSeriesColors: true, pointStyleLegend: true, tooltip: { variant: "point-details" } },
+      xAxis: { label: "Importance (%)", min: 0, max: 100, tickSuffix: "%" },
+      yAxis: { label: "Criterion", min: 0.5, max: 1.5, reverse: true, categories: [{ value: 1, label: "Life expectancy" }] },
       data: {
-        rows: [{ key: "expert-1", label: "Expert 1" }, { key: "collective", label: "Collective" }],
-        columns: [{ key: "c1", label: "Life expectancy" }],
-        values: [[27.78], [31.25]],
-        details: [[{ source: "Expert 1", valuePrecision: 4 }], [{ source: "Final MCC collective weights", valuePrecision: 4 }]],
+        series: [
+          { key: "expert-1", label: "Expert 1", pointStyle: "circle", pointRadius: 5.5, points: [{ id: "expert-1:c1", label: "Life expectancy", x: 27.7777777777, y: 1, details: { Expert: "Expert 1", "Weight (%)": 27.7777777777, Source: "Individual AHP", "Coincident with": "Collective" } }] },
+          { key: "mcc-collective", label: "Collective MCC", pointStyle: "rectRot", pointRadius: 7, points: [{ id: "mcc:c1", label: "Life expectancy", x: 27.7777777777, y: 1, details: { Expert: "Collective", "Weight (%)": 27.7777777777, Source: "MCC collective result", "Coincident with": "Expert 1" } }] },
+        ],
       },
     };
 
     render(<AnalyticalGraph visualization={visualization} />);
 
-    expect(screen.getByText("27.78%")).toBeInTheDocument();
-    expect(screen.getByText("31.25%")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Expert 1, Life expectancy: 27.78%/)).toHaveAttribute("aria-label", expect.stringContaining("Source: Expert 1"));
-    expect(screen.getByLabelText(/Collective, Life expectancy: 31.25%/)).toHaveAttribute("aria-label", expect.stringContaining("Source: Final MCC collective weights"));
-    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent("The collective row contains the final group weights.");
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-series", "2");
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-tick", "1%");
+    expect(scatterState.options.scales.x.min).toBe(0);
+    expect(scatterState.options.scales.x.max).toBe(100);
+    expect(scatterState.options.scales.y.reverse).toBe(true);
+    const yScale = { ticks: [] };
+    scatterState.options.scales.y.afterBuildTicks(yScale);
+    expect(yScale.ticks).toEqual([{ value: 1 }]);
+    expect(scatterState.data.datasets.map((series) => series.backgroundColor)).toEqual([
+      `${stableChartColor("expert-1")}d9`,
+      `${stableChartColor("mcc-collective")}d9`,
+    ]);
+    expect(scatterState.data.datasets[0].data[0].x).toBe(27.7777777777);
+    expect(scatterState.data.datasets[1].pointStyle).toBe("rectRot");
+    expect(scatterState.options.plugins.legend.labels.usePointStyle).toBe(true);
+    expect(scatterState.options.plugins.tooltip.callbacks.label({ raw: scatterState.data.datasets[0].data[0], dataset: scatterState.data.datasets[0] })).toEqual([
+      "Expert: Expert 1", "Weight (%): 27.7777777777", "Source: Individual AHP", "Coincident with: Collective",
+    ]);
+    const tooltipLines = scatterState.options.plugins.tooltip.callbacks.label({ raw: scatterState.data.datasets[1].data[0], dataset: scatterState.data.datasets[1] });
+    expect(tooltipLines).toContain("Weight (%): 27.7777777777");
+    expect(tooltipLines.join(" ")).not.toContain("(27.7777777777, 1)");
+    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent("the diamond marks the final MCC weight");
+  });
+
+  it("renders historical AHP individual-vs-collective heatmaps with the current dot-plot contract", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "ahp-individual-collective-weights",
+      type: "heatmap",
+      title: "Individual vs collective weights",
+      scale: { min: 0, max: 100, valuePrecision: 4, valueSuffix: "%" },
+      data: {
+        rows: [
+          { key: "expert-1", label: "Expert 1", source: "individual AHP" },
+          { key: "expert-2", label: "Expert 2", source: "individual AHP" },
+          { key: "collective", label: "Collective", source: "MCC" },
+        ],
+        columns: [{ key: "c1", label: "Life expectancy" }, { key: "c2", label: "Poverty risk" }],
+        values: [[27.7777, 5.5555], [27.7777, 29.1666], [27.7777, 25.9722]],
+        details: [
+          [{ source: "Expert 1", valuePrecision: 4 }, { source: "Expert 1", valuePrecision: 4 }],
+          [{ source: "Expert 2", valuePrecision: 4 }, { source: "Expert 2", valuePrecision: 4 }],
+          [{ source: "Final MCC collective weights", valuePrecision: 4 }, { source: "Final MCC collective weights", valuePrecision: 4 }],
+        ],
+      },
+    }} />);
+
+    expect(screen.getByTestId("analytical-graph-scatter")).toBeInTheDocument();
+    expect(screen.queryByTestId("analytical-graph-heatmap")).not.toBeInTheDocument();
+    expect(scatterState.data.datasets.map((series) => series.label)).toEqual(["Expert 1", "Expert 2", "Collective MCC"]);
+    expect(scatterState.data.datasets[2].pointStyle).toBe("rectRot");
+    expect(scatterState.data.datasets[0].data[0]).toMatchObject({ x: 27.7777, y: 1, label: "Life expectancy" });
+    expect(scatterState.data.datasets[2].data[0].details["Coincident with"]).toBe("Expert 1, Expert 2");
+    expect(scatterState.options.scales.x.min).toBe(0);
+    expect(scatterState.options.scales.x.max).toBe(100);
+    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent("the diamond marks the final MCC weight");
+  });
+
+  it("does not upgrade a historical AHP descriptor that lacks two individual experts", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "ahp-individual-collective-weights",
+      type: "heatmap",
+      data: {
+        rows: [{ key: "expert-1", label: "Expert 1" }, { key: "collective", label: "Collective", source: "MCC" }],
+        columns: [{ key: "c1", label: "Criterion 1" }],
+        values: [[60], [60]],
+      },
+    }} />);
+
+    expect(screen.getByTestId("analytical-graph-heatmap")).toBeInTheDocument();
+    expect(screen.queryByTestId("analytical-graph-scatter")).not.toBeInTheDocument();
+  });
+
+  it("shows AHP MCC changes in percentage points with accessible values and cell details", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "ahp-mcc-adjustment-map",
+      type: "heatmap",
+      title: "MCC weight adjustments",
+      description: "Each cell shows the change from an expert's original weight in percentage points.",
+      presentation: { heatmapStyle: "adjustment" },
+      scale: { kind: "diverging", center: 0, valuePrecision: 4, valueSuffix: " pp", label: "Change (percentage points)", legend: { negative: "Decrease", center: "0", positive: "Increase" } },
+      data: {
+        rows: [{ key: "expert-1", label: "A long expert name" }],
+        columns: [{ key: "c1", label: "A long criterion name" }],
+        values: [[-2.5]],
+        details: [[{ "Original weight": "32.5%", "Adjusted weight": "30%", "Collective weight": "31%", Change: "-2.5 pp" }]],
+      },
+    }} />);
+
+    expect(screen.getByText("-2.5 pp")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Change (percentage points)" })).toHaveTextContent("Decrease");
+    expect(screen.getByRole("group", { name: "Change (percentage points)" })).toHaveTextContent("Increase");
+    const cell = screen.getByLabelText(/A long expert name, A long criterion name: -2.5 pp/);
+    expect(cell).toHaveAttribute("role", "img");
+    expect(cell).toHaveAttribute("tabindex", "0");
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Original weight: 32.5%"));
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Collective weight: 31%"));
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Change: -2.5 pp"));
+    expect(screen.getByLabelText("A long criterion name")).toBeInTheDocument();
+  });
+
+  it("upgrades historical AHP MCC descriptors from normalized weights to percentage-point presentation", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "ahp-mcc-adjustment-map",
+      type: "heatmap",
+      title: "MCC weight adjustments",
+      scale: { kind: "diverging", center: 0 },
+      data: {
+        rows: [{ key: "expert-1", label: "Expert 1" }],
+        columns: [{ key: "c1", label: "Life expectancy" }],
+        values: [[0.043056]],
+        details: [[{ originalWeight: 0.166667, adjustedWeight: 0.209723, collectiveWeight: 0.259723, delta: 0.043056 }]],
+      },
+    }} />);
+
+    expect(screen.getByRole("group", { name: "Change (percentage points)" })).toBeInTheDocument();
+    expect(screen.getByText("4.3056 pp")).toBeInTheDocument();
+    expect(screen.queryByText("0.043056")).not.toBeInTheDocument();
+    const cell = screen.getByLabelText(/Expert 1, Life expectancy: 4.3056 pp/);
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Original Weight: 16.6667%"));
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Adjusted Weight: 20.9723%"));
+    expect(cell).toHaveAttribute("aria-label", expect.stringContaining("Change: 4.3056 pp"));
   });
 
   it("handles unsupported and malformed descriptors without crashing", () => {

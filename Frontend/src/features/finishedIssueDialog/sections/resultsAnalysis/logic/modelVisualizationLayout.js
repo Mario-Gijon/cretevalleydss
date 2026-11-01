@@ -3,6 +3,7 @@ import {
   isIndividualPreferenceDistribution,
 } from "../../../../../components/analyticalGraphs/logic/preferenceDistributionMatrix.js";
 import { resolveVisualizationPresentation } from "./resolveVisualizationPresentation.js";
+import { normalizeModelVisualization } from "./normalizeModelVisualization.js";
 
 const collectionLength = (value) => Array.isArray(value) ? value.length : 0;
 const COMPACT_CHART_HEIGHT = Object.freeze({ xs: 300, sm: 320 });
@@ -58,15 +59,16 @@ const categoricalScatterWidth = (categories) => {
 };
 
 export const getVisualizationLayout = (visualization) => {
-  const data = visualization?.data || {};
-  const presentation = resolveVisualizationPresentation(visualization);
+  const normalizedVisualization = normalizeModelVisualization(visualization);
+  const data = normalizedVisualization?.data || {};
+  const presentation = resolveVisualizationPresentation(normalizedVisualization);
   const preferredChartHeight = presentation.chartHeight;
-  if (isIndividualPreferenceDistribution(visualization)) {
-    return { span: 1, chartHeight: chartHeight(), chartMinWidth: getPreferenceDistributionMetrics(visualization).chartMinWidth };
+  if (isIndividualPreferenceDistribution(normalizedVisualization)) {
+    return { span: 1, chartHeight: chartHeight(), chartMinWidth: getPreferenceDistributionMetrics(normalizedVisualization).chartMinWidth };
   }
-  if (visualization?.type === "bar") {
+  if (normalizedVisualization?.type === "bar") {
     const categoryCount = collectionLength(data.categories);
-    if (visualization.orientation === "horizontal") {
+    if (normalizedVisualization.orientation === "horizontal") {
       return {
         span: 1,
         chartHeight: dynamicChartHeight(
@@ -78,23 +80,23 @@ export const getVisualizationLayout = (visualization) => {
     }
     return { span: 1, chartHeight: chartHeight(), chartMinWidth: categoricalChartWidth(categoryCount, 72, 6) };
   }
-  if (visualization?.type === "line") {
+  if (normalizedVisualization?.type === "line") {
     const chartMinWidth = presentation.chartMinWidth
       ?? (data.xScaleType === "linear" ? undefined : categoricalChartWidth(collectionLength(data.x), 68, 8));
     return { span: 1, chartHeight: preferredChartHeight || chartHeight(), ...(chartMinWidth ? { chartMinWidth } : {}) };
   }
-  if (visualization?.type === "scatter" && Array.isArray(visualization.yAxis?.categories)) {
+  if (normalizedVisualization?.type === "scatter" && Array.isArray(normalizedVisualization.yAxis?.categories)) {
     return {
       span: 1,
-      chartHeight: categoricalScatterHeight(visualization.yAxis.categories.length),
-      chartMinWidth: categoricalScatterWidth(visualization.yAxis.categories),
+      chartHeight: categoricalScatterHeight(normalizedVisualization.yAxis.categories.length),
+      chartMinWidth: categoricalScatterWidth(normalizedVisualization.yAxis.categories),
     };
   }
-  if (visualization?.type === "heatmap") {
+  if (normalizedVisualization?.type === "heatmap") {
     const columnCount = collectionLength(data.columns);
-    const mccAdjustmentMap = ["mcc-adjustment-map", "ahp-mcc-adjustment-map"].includes(visualization.key);
-    const twoTupleHeatmap = TWO_TUPLE_HEATMAP_KEYS.has(visualization.key);
-    const topsisProfile = TOPSIS_PROFILE_HEATMAP_KEYS.has(visualization.key);
+    const mccAdjustmentMap = ["mcc-adjustment-map", "ahp-mcc-adjustment-map"].includes(normalizedVisualization.key);
+    const twoTupleHeatmap = TWO_TUPLE_HEATMAP_KEYS.has(normalizedVisualization.key);
+    const topsisProfile = TOPSIS_PROFILE_HEATMAP_KEYS.has(normalizedVisualization.key);
     return {
       span: 1,
       chartHeight: dynamicChartHeight(

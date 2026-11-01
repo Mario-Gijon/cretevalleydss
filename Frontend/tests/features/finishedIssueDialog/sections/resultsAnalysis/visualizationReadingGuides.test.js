@@ -7,6 +7,9 @@ import {
 } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/visualizationReadingGuides.js";
 
 const MODEL_CHART_KEYS = [
+  "ahp-criterion-importance",
+  "ahp-individual-collective-weights",
+  "ahp-mcc-adjustment-map",
   "individual-preference-distribution",
   "collective-criterion-importance",
   "mcc-adjustment-map",
@@ -97,6 +100,13 @@ describe("visualization reading guides", () => {
   it("explains linguistic scale, MCC direction, TOPSIS reference positions, and distance contributions", () => {
     expect(getVisualizationReadingGuide({ key: "individual-preference-distribution" }).text).toContain("side-to-side offsets");
     expect(getVisualizationReadingGuide({ key: "mcc-adjustment-map" }).text).toContain("negative means lowered");
+    const ahpDotPlotGuide = getVisualizationReadingGuide({ key: "ahp-individual-collective-weights" }).text;
+    expect(ahpDotPlotGuide).toContain("Each row represents a criterion");
+    expect(ahpDotPlotGuide).toContain("the diamond marks the final MCC weight");
+    expect(ahpDotPlotGuide).not.toContain("collective row");
+    const ahpAdjustmentGuide = getVisualizationReadingGuide({ key: "ahp-mcc-adjustment-map" }).text;
+    expect(ahpAdjustmentGuide).toContain("percentage points");
+    expect(ahpAdjustmentGuide).toContain("zero means no adjustment");
     expect(getVisualizationReadingGuide({ key: "collective-beta-heatmap" }).text).toContain("may not be more desirable for a cost criterion");
     expect(getVisualizationReadingGuide({ key: "topsis-ideal-distances" }).text).toContain("most desirable reference");
     expect(getVisualizationReadingGuide({ key: "topsis-numeric-ideal-distances" }).text).toContain("Smaller D+ means closer");

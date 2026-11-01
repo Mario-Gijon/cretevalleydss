@@ -7,11 +7,11 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
   ),
   "ahp-individual-collective-weights": guide(
     "Individual vs collective weights",
-    "Each row shows how an expert distributes importance across criteria. The collective row contains the final group weights. Compare values within each column to understand differences between individual and collective priorities.",
+    "Each row represents a criterion. Colored points show the importance assigned by individual experts, while the diamond marks the final MCC weight. Horizontal distance indicates differences in criterion importance.",
   ),
   "ahp-mcc-adjustment-map": guide(
     "MCC weight adjustments",
-    "Positive values indicate that MCC increased an expert's original criterion weight; negative values indicate a reduction. Values near zero represent little or no adjustment.",
+    "Each cell shows the change from an expert's original weight in percentage points. Positive values indicate increases, negative values indicate reductions, zero means no adjustment, and color intensity shows the magnitude.",
   ),
   "individual-preference-distribution": guide(
     "Individual preference distribution",

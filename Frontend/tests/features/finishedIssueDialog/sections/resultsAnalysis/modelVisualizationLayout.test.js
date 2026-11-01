@@ -151,6 +151,32 @@ describe("getVisualizationLayout", () => {
     expect(layout.chartMinWidth).toBeGreaterThan(600);
   });
 
+  it("sizes AHP criterion-weight dots by row count and reserves width only for unusually long criterion labels", () => {
+    const categories = Array.from({ length: 6 }, (_, index) => ({ value: index + 1, label: `Criterion ${index + 1}` }));
+    expect(getVisualizationLayout({ type: "scatter", yAxis: { categories } })).toEqual({
+      span: 1,
+      chartHeight: { xs: 320, sm: 320 },
+    });
+
+    const longCategories = [{ value: 1, label: "A criterion with an unusually long descriptive name that should remain readable" }];
+    expect(getVisualizationLayout({ type: "scatter", yAxis: { categories: longCategories } }).chartMinWidth).toBeGreaterThan(600);
+  });
+
+  it("uses the compact categorical scatter layout for historical AHP weight heatmaps", () => {
+    const layout = getVisualizationLayout({
+      key: "ahp-individual-collective-weights",
+      type: "heatmap",
+      data: {
+        rows: [{ key: "expert-1", label: "Expert 1" }, { key: "collective", label: "Collective" }],
+        columns: [{ key: "c1", label: "Criterion 1" }, { key: "c2", label: "Criterion 2" }],
+        values: [[50, 50], [45, 55]],
+      },
+    });
+
+    expect(layout.chartHeight).toEqual({ xs: 320, sm: 320 });
+    expect(layout.chartMinWidth).toBeUndefined();
+  });
+
   it("keeps even compact-card rows complete and preserves descriptor order", () => {
     const descriptors = [{ key: "pie", type: "pie" }, { key: "radar", type: "radar" }, { key: "scatter", type: "scatter" }, { key: "last", type: "pie" }];
     const layout = buildVisualizationLayout(descriptors);

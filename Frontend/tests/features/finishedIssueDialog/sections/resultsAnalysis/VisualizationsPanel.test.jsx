@@ -158,7 +158,7 @@ describe("VisualizationsPanel", () => {
       executions={[{ key: "base", displayLabel: "Base", stageAnalyses: {
         criteriaWeighting: { apiModelKey: "ahp_criteria_weights", analysis: { sections: [
           { id: "ahp-criterion-importance", title: "Criterion importance", order: 0, visualizations: [{ key: "ahp-criterion-importance", type: "bar" }] },
-          { id: "ahp-individual-collective-weights", title: "Individual vs collective weights", order: 1, visualizations: [{ key: "ahp-individual-collective-weights", type: "heatmap" }] },
+          { id: "ahp-individual-collective-weights", title: "Individual vs collective weights", order: 1, visualizations: [{ key: "ahp-individual-collective-weights", type: "scatter" }] },
           { id: "ahp-mcc-adjustment-map", title: "MCC weight adjustments", order: 2, visualizations: [{ key: "ahp-mcc-adjustment-map", type: "heatmap" }] },
         ] } },
       } }]}
@@ -172,6 +172,26 @@ describe("VisualizationsPanel", () => {
       "ahp-mcc-adjustment-map",
     ]);
     expect(screen.queryByText("AHP criteria-weighting visualizations")).not.toBeInTheDocument();
+  });
+
+  it("omits the empty general relationship card when sorting has no analytical projection", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", resultStructureKey: "sorting", genericAnalysis: { facts: { expertCollectiveRelationship: { available: false, unavailableReason: "missing_analytical_projection" } } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.queryByTestId("expert-collective-relationship")).not.toBeInTheDocument();
+    expect(screen.getByText("General visualizations")).toBeInTheDocument();
+  });
+
+  it("keeps a concrete unavailable reason visible for a sorting projection integrity failure", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", resultStructureKey: "sorting", genericAnalysis: { facts: { expertCollectiveRelationship: { available: false, unavailableReason: "invalid_frozen_numeric_evidence" } } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByTestId("expert-collective-relationship")).toBeInTheDocument();
+    expect(screen.getByText("The frozen execution evaluations are incomplete or invalid, so no projection was generated.")).toBeInTheDocument();
   });
 
   it("renders model-owned TOPSIS descriptors through the shared alternative-evaluation pipeline", () => {

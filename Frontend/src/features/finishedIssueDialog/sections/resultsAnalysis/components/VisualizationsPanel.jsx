@@ -202,7 +202,7 @@ const ConsensusCard = ({ consensus }) => (
   </Box>
 );
 
-const SingleVisualization = ({ visualizations }) => {
+const SingleVisualization = ({ visualizations, unavailableReason }) => {
   const scatter = visualizations.singleScatter;
   return (
     <Stack spacing={1.4}>
@@ -218,7 +218,7 @@ const SingleVisualization = ({ visualizations }) => {
             </Box>
           ) : (
             <VisualizationUnavailableState
-              description={unavailableMessage(scatter?.unavailableReason)}
+              description={unavailableMessage(scatter?.unavailableReason || unavailableReason)}
             />
           )}
         </Box>
@@ -617,7 +617,7 @@ const RankingTemporalSection = ({ executions }) => {
   </Box>;
 };
 
-const ExpertCollectiveRelationship = ({ visualizations }) => {
+const ExpertCollectiveRelationship = ({ visualizations, unavailableReason }) => {
   const [representation, setRepresentation] = useState("map");
   const mapAvailable = hasRenderableExpertCollectiveMap(visualizations);
   const mapRelationshipProjections = renderableDistanceProjections(
@@ -648,6 +648,7 @@ const ExpertCollectiveRelationship = ({ visualizations }) => {
     ) : (
       <SingleVisualization
         visualizations={visualizations}
+        unavailableReason={unavailableReason}
       />
     );
   return (
@@ -832,9 +833,13 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
     executions,
     "rankingEvolution",
   );
-  const sortingProjectionUnavailable = executions.some(
+  const sortingProjectionUnavailableReason = executions.find(
     (execution) => execution?.resultStructureKey === "sorting" &&
-      execution?.genericAnalysis?.facts?.expertCollectiveRelationship?.unavailableReason,
+      execution?.genericAnalysis?.facts?.expertCollectiveRelationship?.unavailableReason &&
+      execution.genericAnalysis.facts.expertCollectiveRelationship.unavailableReason !== "missing_analytical_projection",
+  )?.genericAnalysis?.facts?.expertCollectiveRelationship?.unavailableReason;
+  const sortingProjectionUnavailable = Boolean(
+    sortingProjectionUnavailableReason,
   );
   const expertCollectiveAvailable = hasRenderableExpertCollectiveMap(visualizations) ||
     renderableDistanceProjections(visualizations.canonicalProjections).length > 0 ||
@@ -854,7 +859,7 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
 
   const renderGeneralVisualization = (type) => {
     if (type === "expertCollective") {
-      return <ExpertCollectiveRelationship key={type} visualizations={visualizations} />;
+      return <ExpertCollectiveRelationship key={type} visualizations={visualizations} unavailableReason={sortingProjectionUnavailableReason} />;
     }
     if (type === "consensus") {
       return <ConsensusCard key={type} consensus={visualizations.consensus} />;

@@ -2,7 +2,7 @@ import { Scatter } from "react-chartjs-2";
 import { Chart as ChartJS, Legend, LinearScale, PointElement, ScatterController, Tooltip } from "chart.js";
 
 import GraphUnavailable from "./GraphUnavailable.jsx";
-import { buildCartesianChartOptions, chartColor } from "../chartTheme.js";
+import { buildCartesianChartOptions, chartColor, stableChartColor } from "../chartTheme.js";
 import { resolveVisualizationPresentation } from "../../../features/finishedIssueDialog/sections/resultsAnalysis/logic/resolveVisualizationPresentation.js";
 import {
   buildPreferenceDistributionDatasets,
@@ -32,6 +32,7 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
   const presentation = resolveVisualizationPresentation(visualization);
   const tooltipPresentation = presentation.tooltip;
   const usesClosenessBoundaryTooltip = tooltipPresentation?.variant === "closeness-boundaries";
+  const usesPointDetailsTooltip = tooltipPresentation?.variant === "point-details";
   const hasNonInteractiveReferenceLines = presentation.referenceLines?.interactive === false;
   const closenessPrecision = Number.isInteger(tooltipPresentation?.precision)
     ? Math.min(20, Math.max(0, tooltipPresentation.precision))
@@ -42,17 +43,21 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
   const chartSeries = isPreferenceDistribution ? buildPreferenceDistributionDatasets(series) : series;
   const normalized = chartSeries.map((item, index) => {
     const isNonInteractiveReference = hasNonInteractiveReferenceLines && Boolean(item.showLine);
+    const color = presentation.stableSeriesColors
+      ? stableChartColor(item.key || item.label)
+      : chartColor(index);
     return {
       label: item.label || item.key,
       expertKey: isPreferenceDistribution ? item.expertKey : undefined,
       isNonInteractiveReference,
       data: (item.points || []).filter((point) => Number.isFinite(point?.x) && Number.isFinite(point?.y)).map((point) => ({ x: point.x, y: point.y, id: point.id, label: point.label, details: point.details, expertKey: point.expertKey })),
-      backgroundColor: `${chartColor(index)}d9`,
-      borderColor: chartColor(index),
-      pointStyle: isPreferenceDistribution ? "circle" : undefined,
+      backgroundColor: `${color}d9`,
+      borderColor: color,
+      pointStyle: item.pointStyle || (isPreferenceDistribution ? "circle" : undefined),
       pointRadius: isNonInteractiveReference ? 0 : (isPreferenceDistribution ? 5.5 : (item.pointRadius ?? 5)),
       pointHoverRadius: isNonInteractiveReference ? 0 : (isPreferenceDistribution ? 6.5 : (item.pointHoverRadius ?? 7)),
       pointHitRadius: isNonInteractiveReference ? 0 : (isPreferenceDistribution ? 2 : item.pointHitRadius),
+      pointBorderWidth: isPreferenceDistribution ? 1.5 : item.pointBorderWidth,
       showLine: Boolean(item.showLine),
       borderDash: item.borderDash,
       borderWidth: isPreferenceDistribution
@@ -60,7 +65,6 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
         : (item.borderWidth ?? (item.showLine ? 2 : 0)),
       order: item.order,
       pointBorderColor: isPreferenceDistribution ? "rgba(7,13,22,0.94)" : undefined,
-      pointBorderWidth: isPreferenceDistribution ? 1.5 : undefined,
       ...(isPreferenceDistribution ? {
         backgroundColor: (context) => {
           const hoveredExpertKey = context.chart.$hoveredExpertKey;
@@ -171,12 +175,19 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
             min: visualization.xAxis?.min,
             max: visualization.xAxis?.max,
             grid: { display: true, color: "rgba(255,255,255,0.10)" },
+            ticks: {
+              ...baseOptions.scales.x.ticks,
+              ...(typeof visualization.xAxis?.tickSuffix === "string" && visualization.xAxis.tickSuffix
+                ? { callback: (value) => `${value}${visualization.xAxis.tickSuffix}` }
+                : {}),
+            },
           },
           y: {
             ...baseOptions.scales.y,
             type: visualization.yAxis?.scaleType || "linear",
             min: visualization.yAxis?.min,
             max: visualization.yAxis?.max,
+            reverse: visualization.yAxis?.reverse === true,
             afterBuildTicks: visualization.yAxis?.categories?.length
               ? (scale) => {
                   scale.ticks = visualization.yAxis.categories.map((category) => ({ value: category.value }));
@@ -193,7 +204,11 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
           ...baseOptions.plugins,
           legend: {
             ...baseOptions.plugins.legend,
-            labels: { ...baseOptions.plugins.legend.labels, usePointStyle: false },
+            labels: {
+              ...baseOptions.plugins.legend.labels,
+              usePointStyle: presentation.pointStyleLegend === true,
+              ...(presentation.pointStyleLegend === true ? { pointStyleWidth: 12 } : {}),
+            },
           },
           tooltip: {
             ...baseOptions.plugins.tooltip,
@@ -202,7 +217,14 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
             } : {}),
             callbacks: {
               title: (contexts) => contexts[0]?.raw?.label || "",
-              label: usesClosenessBoundaryTooltip
+              label: usesPointDetailsTooltip
+                ? (context) => {
+                    const details = Object.entries(context.raw?.details || {})
+                      .filter(([, value]) => ["string", "number", "boolean"].includes(typeof value))
+                      .map(([key, value]) => `${key}: ${value}`);
+                    return details.length ? details : context.dataset?.label || "Point";
+                  }
+                : usesClosenessBoundaryTooltip
                 ? (context) => {
                     const point = context.raw || {};
                     const details = point.details || {};

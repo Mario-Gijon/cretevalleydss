@@ -103,18 +103,48 @@ def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
     assert facts["mcc"]["available"] is True
     assert keys == ["ahp-criterion-importance", "ahp-individual-collective-weights", "ahp-mcc-adjustment-map"]
     comparison = result["visualizations"][1]
-    assert [row["label"] for row in comparison["data"]["rows"]] == ["Expert 1", "Expert 2", "Collective"]
-    assert comparison["data"]["rows"][-1]["source"] == "MCC"
-    assert comparison["data"]["values"][-1] == pytest.approx(
+    assert comparison["type"] == "scatter"
+    assert comparison["presentation"] == {
+        "stableSeriesColors": True,
+        "pointStyleLegend": True,
+        "tooltip": {"variant": "point-details"},
+    }
+    assert comparison["xAxis"] == {"label": "Importance (%)", "min": 0, "max": 100, "tickSuffix": "%"}
+    assert [item["key"] for item in comparison["data"]["series"]] == ["expert-1@example.test", "expert-2@example.test", "mcc-collective"]
+    assert comparison["data"]["series"][-1]["pointStyle"] == "rectRot"
+    assert [item["y"] for item in comparison["data"]["series"][0]["points"]] == [1, 2, 3]
+    assert [item["label"] for item in comparison["yAxis"]["categories"]] == [
+        criterion["name"] for criterion in facts["criteria"]["items"]
+    ]
+    assert [point["x"] for point in comparison["data"]["series"][-1]["points"]] == pytest.approx(
         [facts["finalWeightsByCriterion"][criterion["criterionId"]] * 100 for criterion in facts["criteria"]["items"]]
     )
+    assert comparison["data"]["series"][0]["points"][0]["details"]["Expert"] == "Expert 1"
+    assert comparison["data"]["series"][0]["points"][0]["details"]["Source"] == "Individual AHP"
+    assert comparison["data"]["series"][-1]["points"][0]["details"]["Source"] == "MCC collective result"
+    assert comparison["data"]["series"][0]["points"][0]["x"] == pytest.approx(
+        facts["experts"]["items"][0]["weightsByCriterion"]["c1"] * 100
+    )
     adjustment = result["visualizations"][2]
-    assert adjustment["scale"] == {"kind": "diverging", "center": 0}
+    assert adjustment["scale"] == {
+        "kind": "diverging",
+        "center": 0,
+        "valuePrecision": 4,
+        "valueSuffix": " pp",
+        "label": "Change (percentage points)",
+        "legend": {"negative": "Decrease", "center": "0", "positive": "Increase"},
+    }
+    assert adjustment["presentation"] == {"heatmapStyle": "adjustment"}
     assert "insight" not in adjustment
     assert "Positive values indicate" in adjustment["description"]
-    assert adjustment["data"]["values"][0][0] == pytest.approx(
-        facts["mcc"]["cells"][0]["adjustedWeight"] - facts["mcc"]["cells"][0]["originalWeight"]
-    )
+    assert adjustment["data"]["values"][0][0] == pytest.approx(round(facts["mcc"]["cells"][0]["delta"] * 100, 4))
+    assert adjustment["data"]["details"][0][0] == {
+        "Original weight": f"{facts['mcc']['cells'][0]['originalWeight'] * 100}%",
+        "Adjusted weight": f"{facts['mcc']['cells'][0]['adjustedWeight'] * 100}%",
+        "Collective weight": f"{facts['mcc']['cells'][0]['collectiveWeight'] * 100}%",
+        "Change": f"{facts['mcc']['cells'][0]['delta'] * 100} pp",
+    }
+    assert adjustment["data"]["columns"][0]["label"] == "Life expectancy"
     assert len(result["sections"]) == 3
     assert all("final importance" not in visualization.get("insight", "") for visualization in result["visualizations"])
     assert "percentage points" in result["interpretation"]
@@ -131,6 +161,29 @@ def test_mcc_with_no_material_adjustments_has_no_adjustment_heatmap():
         "ahp-individual-collective-weights",
     ]
     assert "no material numerical adjustments" in result["interpretation"]
+    comparison = result["visualizations"][1]
+    first, second, collective = comparison["data"]["series"]
+    assert first["points"][0]["x"] == pytest.approx(second["points"][0]["x"])
+    assert first["points"][0]["x"] == pytest.approx(collective["points"][0]["x"])
+    assert first["points"][0]["details"]["Coincident with"] == "Expert 2, Collective"
+    assert collective["points"][0]["details"]["Coincident with"] == "Expert 1, Expert 2"
+
+
+def test_individual_collective_dotplot_uses_stable_expert_order_and_keeps_unrounded_weights():
+    result = _run([_other_consistent_evaluation(), _consistent_evaluation()])
+    descriptor = result["visualizations"][1]
+
+    assert [series["key"] for series in descriptor["data"]["series"]] == [
+        "expert-1@example.test", "expert-2@example.test", "mcc-collective"
+    ]
+    for criterion_index, criterion in enumerate(result["facts"]["criteria"]["items"], start=1):
+        assert all(point["y"] == criterion_index for series in descriptor["data"]["series"] for point in series["points"] if point["label"] == criterion["name"])
+        expert_one_point = descriptor["data"]["series"][0]["points"][criterion_index - 1]
+        raw_weight = result["facts"]["experts"]["items"][1]["weightsByCriterion"][criterion["criterionId"]]
+        assert expert_one_point["x"] == raw_weight * 100
+    assert descriptor["yAxis"]["reverse"] is True
+    assert descriptor["xAxis"]["min"] == 0
+    assert descriptor["xAxis"]["max"] == 100
 
 
 def test_invalid_diagnostic_does_not_hide_valid_weight_visualizations():
