@@ -28,6 +28,14 @@ const priorityForCategory = {
   "cat-good": 0.8,
 };
 
+const weightsByExpert = {
+  "expert-a@example.test": { "criterion-quality": 0.7, "criterion-cost": 0.3 },
+  "expert-b@example.test": { "criterion-quality": 0.4, "criterion-cost": 0.6 },
+  "expert-c@example.test": { "criterion-quality": 0.5, "criterion-cost": 0.5 },
+};
+
+const collectiveWeights = { "criterion-quality": 0.55, "criterion-cost": 0.45 };
+
 const localEvidence = (alternativeId, priority) => ({
   entityOrder: [
     { entityType: "alternative", alternativeId },
@@ -134,24 +142,27 @@ const modelParameters = (tiePolicy) => ({
   ahpSortGroup: { tiePolicy },
 });
 
-export const buildGAHPSortFinishedIssueFixture = ({ tiePolicy = "optimistic" } = {}) => ({
-  issue: { id: "gahpsort-issue" },
+export const buildAHPSortIGroupFinishedIssueFixture = ({ tiePolicy = "optimistic" } = {}) => ({
+  issue: { id: "ahpsort-i-group-issue" },
   lifecycle: { active: false },
   consensus: { enabled: false },
   alternatives: alternativeNames,
   criteria: {
-    nodes: [{ id: "criterion-quality", name: "Quality", isLeaf: true, parentId: null }],
+    nodes: [
+      { id: "criterion-quality", name: "Quality", isLeaf: true, parentId: null },
+      { id: "criterion-cost", name: "Cost", isLeaf: true, parentId: null },
+    ],
   },
   participants: [
-    { expert: { id: "expert-a", name: "Expert A" }, invitationStatus: "accepted" },
-    { expert: { id: "expert-b", name: "Expert B" }, invitationStatus: "accepted" },
-    { expert: { id: "expert-c", name: "Expert C" }, invitationStatus: "accepted" },
+    { expert: { id: "expert-a", name: "Expert A", email: "expert-a@example.test" }, invitationStatus: "accepted" },
+    { expert: { id: "expert-b", name: "Expert B", email: "expert-b@example.test" }, invitationStatus: "accepted" },
+    { expert: { id: "expert-c", name: "Expert C", email: "expert-c@example.test" }, invitationStatus: "accepted" },
   ],
   participantHistory: {
     records: [
-      { expert: { id: "expert-a", name: "Expert A" } },
-      { expert: { id: "expert-b", name: "Expert B" } },
-      { expert: { id: "expert-c", name: "Expert C" } },
+      { expert: { id: "expert-a", name: "Expert A", email: "expert-a@example.test" } },
+      { expert: { id: "expert-b", name: "Expert B", email: "expert-b@example.test" } },
+      { expert: { id: "expert-c", name: "Expert C", email: "expert-c@example.test" } },
     ],
   },
   models: {
@@ -182,15 +193,17 @@ export const buildGAHPSortFinishedIssueFixture = ({ tiePolicy = "optimistic" } =
   }],
   evaluations: {
     contexts: [
-      { id: "criteriaWeighting:1", stage: "criteriaWeighting", phase: 1, structureKey: "criteriaPairwiseAHP", decisionContext: { structure: { key: "criteriaPairwiseAHP" }, leafCriteria: [{ id: "criterion-quality", name: "Quality" }] } },
-      { id: "alternativeEvaluation:0", stage: "alternativeEvaluation", phase: 0, structureKey: "ahpSortAlternativeProfiles", decisionContext: { structure: { key: "ahpSortAlternativeProfiles" } } },
+      { id: "criteriaWeighting:1", stage: "criteriaWeighting", phase: 1, structureKey: "criteriaPairwiseAHP", decisionContext: { structure: { key: "criteriaPairwiseAHP" }, leafCriteria: [{ id: "criterion-quality", name: "Quality" }, { id: "criterion-cost", name: "Cost" }] } },
+      { id: "alternativeEvaluation:0", stage: "alternativeEvaluation", phase: 0, structureKey: "ahpSortAlternativeProfiles", decisionContext: { structure: { key: "ahpSortAlternativeProfiles" }, leafCriteria: [{ id: "criterion-quality", name: "Quality" }, { id: "criterion-cost", name: "Cost" }] } },
     ],
     individual: [
-      { id: "criteria-expert-a", expertId: "expert-a", stage: "criteriaWeighting", phase: 1, completed: true, submittedAt: "2026-01-01T00:00:00.000Z", rawPayload: { weightsByCriterion: { "criterion-quality": 1 } }, contextId: "criteriaWeighting:1" },
-      { id: "alternative-expert-a", expertId: "expert-a", stage: "alternativeEvaluation", phase: 0, completed: true, submittedAt: "2026-01-01T00:00:00.000Z", rawPayload: { individualSaatyMatrix: true }, contextId: "alternativeEvaluation:0" },
+      ...["expert-a", "expert-b", "expert-c"].flatMap((expertId, index) => [
+        { id: `criteria-${expertId}`, expertId, stage: "criteriaWeighting", phase: 1, completed: true, submittedAt: `2026-01-0${index + 1}T00:00:00.000Z`, rawPayload: { weightsByCriterion: weightsByExpert[`${expertId}@example.test`] }, contextId: "criteriaWeighting:1" },
+        { id: `alternative-${expertId}`, expertId, stage: "alternativeEvaluation", phase: 0, completed: true, submittedAt: `2026-01-0${index + 1}T00:00:00.000Z`, rawPayload: { individualSaatyMatrix: true, expertId }, contextId: "alternativeEvaluation:0" },
+      ]),
     ],
     collective: [
-      { stage: "criteriaWeighting", phase: 1, rawPayload: { weightsByCriterion: { "criterion-quality": 1 } }, displayPayload: { weightsByCriterion: { "criterion-quality": 1 }, expertWeightsByExpert: { "expert-a": { "criterion-quality": 1 }, "expert-b": { "criterion-quality": 1 }, "expert-c": { "criterion-quality": 1 } }, expertDiagnosticsByExpert: { "expert-a": { consistencyRatio: 0 }, "expert-b": { consistencyRatio: 0 }, "expert-c": { consistencyRatio: 0 } } }, contextId: "criteriaWeighting:1" },
+      { stage: "criteriaWeighting", phase: 1, rawPayload: { weightsByCriterion: collectiveWeights }, displayPayload: { weightsByCriterion: collectiveWeights, expertWeightsByExpert: weightsByExpert, expertDiagnosticsByExpert: { "expert-a@example.test": { consistencyRatio: 0 }, "expert-b@example.test": { consistencyRatio: 0 }, "expert-c@example.test": { consistencyRatio: 0 } } }, contextId: "criteriaWeighting:1" },
       { stage: "alternativeEvaluation", phase: 0, rawPayload: { unavailableSaatyCollective: true }, displayPayload: { unavailableSaatyCollective: true }, contextId: "alternativeEvaluation:0" },
     ],
   },

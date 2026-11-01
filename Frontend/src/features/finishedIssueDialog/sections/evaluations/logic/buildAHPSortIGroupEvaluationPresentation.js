@@ -15,7 +15,8 @@ const isGroupExecution = (execution) => {
 /**
  * Resolve the saved base AHPSort I result through the same result presentation
  * normalizer used by Finished Issue's result summary. This only validates and
- * formats persisted GAHPSort evidence; it does not recreate the vote.
+ * formats AHPSort I's saved collective-assignment extension; it does not
+ * recreate the group decision.
  */
 export const buildAHPSortIGroupEvaluationPresentation = ({ payload, phase } = {}) => {
   const execution = selectFinishedIssueExecution(payload, "base", phase);
@@ -51,7 +52,7 @@ export const buildAHPSortIGroupEvaluationPresentation = ({ payload, phase } = {}
   if (!evidence) {
     return {
       status: "unavailable",
-      message: "No saved GAHPSort classification evidence is available for this execution.",
+      message: "No saved collective assignment evidence is available for this execution.",
       categories: [],
       alternativeIds: [],
       evidence: null,

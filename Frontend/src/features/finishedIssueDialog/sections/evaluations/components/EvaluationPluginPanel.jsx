@@ -15,7 +15,8 @@ import {
   evaluationPluginEmptyStateSx,
 } from "../evaluations.styles";
 import UnsupportedEvaluationStructureAlert from "./UnsupportedEvaluationStructureAlert";
-import GAHPSortCollectiveEvaluation from "./GAHPSortCollectiveEvaluation.jsx";
+import AHPSortICollectiveAssignments from "./AHPSortICollectiveAssignments.jsx";
+import AHPSortICriteriaWeightSummary from "./AHPSortICriteriaWeightSummary.jsx";
 
 const formatSubmittedAt = (value) => {
   if (!value) return "—";
@@ -93,24 +94,35 @@ const EvaluationEmptyState = ({ content }) => {
 
 const EvaluationPluginPanel = ({
   stageData,
+  modelApiKey,
+  expertEmail,
   showCollective,
   expertName,
   consensusEnabled,
 }) => {
   if (!stageData.available) return null;
+  const isAHPSortI = modelApiKey === "ahp_sort_i";
+  const isAHPSortICriteriaWeighting = isAHPSortI && stageData.stage === "criteriaWeighting";
+  const isAHPSortIAlternativeEvaluation = isAHPSortI && stageData.stage === "alternativeEvaluation";
+  const hasAHPSortIIndividualEvaluation = isAHPSortI && stageData.hasUsableIndividualEvaluation;
+  const hasAHPSortIGroupAssignment = isAHPSortIAlternativeEvaluation &&
+    stageData.collectiveGroupPresentation?.status === "available";
   const hasActiveViewData = showCollective
-    ? stageData.hasUsableCollectiveEvaluation
+    ? isAHPSortI
+      ? hasAHPSortIIndividualEvaluation || hasAHPSortIGroupAssignment
+      : stageData.hasUsableCollectiveEvaluation
     : stageData.hasUsableIndividualEvaluation;
-  const useGroupCollectiveView = showCollective && Boolean(stageData.collectiveGroupPresentation);
-  const shouldRender = !useGroupCollectiveView &&
-    stageData.renderer?.structureKey &&
-    hasActiveViewData;
-  const title = useGroupCollectiveView ? "Collective GAHPSort classification" : stageData.title;
-  const subtitle = useGroupCollectiveView
-    ? "Individual expert assignments, category votes and final group decisions."
-    : stageData.subtitle;
+  const shouldRender = Boolean(stageData.renderer?.structureKey) &&
+    (isAHPSortI ? stageData.hasUsableIndividualEvaluation : hasActiveViewData);
+  const title = stageData.title;
+  const subtitle = stageData.subtitle;
   const submittedAt = stageData.individual?.submittedAt;
   const hasExpertSubmissionTimestamp = Boolean(submittedAt);
+  const selectedExpertId = stageData.individual?.expertId ?? null;
+  const collectivePayload = stageData.hasUsableCollectiveEvaluation
+    ? stageData.collective?.payload
+    : null;
+  const criteria = stageData.renderer?.decisionContext?.leafCriteria || [];
   const emptyState = resolveEmptyStateContent({
     stage: stageData.stage,
     expertName,
@@ -162,10 +174,16 @@ const EvaluationPluginPanel = ({
         </Typography>
       ) : null}
 
-      {!hasActiveViewData && !useGroupCollectiveView ? <EvaluationEmptyState content={emptyState} /> : null}
+      {!hasActiveViewData ? <EvaluationEmptyState content={emptyState} /> : null}
 
-      {useGroupCollectiveView ? (
-        <GAHPSortCollectiveEvaluation presentation={stageData.collectiveGroupPresentation} />
+      {isAHPSortICriteriaWeighting ? (
+        <AHPSortICriteriaWeightSummary
+          criteria={criteria}
+          collectiveEvaluation={collectivePayload}
+          selectedExpertEmail={expertEmail}
+          selectedExpertId={selectedExpertId}
+          showCollective={showCollective}
+        />
       ) : null}
 
       {shouldRender ? (
@@ -174,16 +192,14 @@ const EvaluationPluginPanel = ({
             stage={stageData.renderer.stage}
             structureKey={stageData.renderer.structureKey}
             decisionContext={stageData.renderer.decisionContext}
-            evaluation={
-              showCollective && !stageData.hasUsableIndividualEvaluation
+            evaluation={showCollective && !stageData.hasUsableIndividualEvaluation && !isAHPSortI
+              ? stageData.renderer.collectiveEvaluation
+              : stageData.renderer.evaluation}
+            collectiveEvaluation={isAHPSortI
+              ? null
+              : showCollective
                 ? stageData.renderer.collectiveEvaluation
-                : stageData.renderer.evaluation
-            }
-            collectiveEvaluation={
-              showCollective
-                ? stageData.renderer.collectiveEvaluation
-                : null
-            }
+                : null}
             readOnly
           />
         </Box>
@@ -191,6 +207,13 @@ const EvaluationPluginPanel = ({
         <Box sx={evaluationPluginRendererViewportSx}>
           <UnsupportedEvaluationStructureAlert />
         </Box>
+      ) : null}
+
+      {showCollective && isAHPSortIAlternativeEvaluation ? (
+        <AHPSortICollectiveAssignments
+          presentation={stageData.collectiveGroupPresentation}
+          selectedExpertId={selectedExpertId}
+        />
       ) : null}
     </Box>
   );

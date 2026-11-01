@@ -567,9 +567,9 @@ const buildIndividualGroupEvidence = ({ result, execution, criteria, categories,
 };
 
 /**
- * Validate and present persisted GAHPSort group diagnostics without changing
- * sorting assignments or deriving replacement votes. Individual evidence is
- * checked against each expert's own stored category.
+ * Validate and present persisted AHPSort I collective-extension diagnostics
+ * without changing sorting assignments or deriving replacement votes.
+ * Individual evidence is checked against each expert's own stored category.
  */
 export const buildAHPSortIGroupEvidence = ({ result, execution, criteria } = {}) => {
   if (!isAHPSortIExecution(execution)) return null;

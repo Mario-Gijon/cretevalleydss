@@ -38,6 +38,8 @@ const EvaluationsView = ({ data, state, actions, collectiveResolutionStatus }) =
         <Box sx={evaluationsPluginGridSx(bothStages)}>
           <EvaluationPluginPanel
             stageData={data.criteriaWeighting}
+            modelApiKey={data.modelApiKey}
+            expertEmail={data.selectedExpertEmail}
             showCollective={state.showCollective}
             expertName={data.selectedExpertName}
             consensusEnabled={data.consensus.enabled}
@@ -62,6 +64,8 @@ const EvaluationsView = ({ data, state, actions, collectiveResolutionStatus }) =
 
           <EvaluationPluginPanel
             stageData={data.alternativeEvaluation}
+            modelApiKey={data.modelApiKey}
+            expertEmail={data.selectedExpertEmail}
             showCollective={state.showCollective}
             expertName={data.selectedExpertName}
             consensusEnabled={data.consensus.enabled}

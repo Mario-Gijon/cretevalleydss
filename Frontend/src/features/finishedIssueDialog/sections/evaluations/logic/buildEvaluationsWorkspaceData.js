@@ -58,6 +58,17 @@ const participantFor = (payload, expertId) =>
     (participant) => String(participant?.expert?.id) === String(expertId)
   ) || null;
 
+const modelApiKeyFor = (payload) =>
+  payload?.models?.base?.technical?.apiModelKey ||
+  payload?.models?.base?.apiModelKey ||
+  null;
+
+const canShowCollectiveFor = ({ payload, expertCount, criteria, alternative }) => {
+  const hasCollectiveEvidence = criteria.canShowCollective || alternative.canShowCollective;
+  if (!hasCollectiveEvidence) return false;
+  return modelApiKeyFor(payload) !== "ahp_sort_i" || expertCount > 1;
+};
+
 const expertOptionsFor = ({ payload, criteriaPhase, alternativePhase }) => {
   const records = asArray(payload?.evaluations?.individual).filter(
     (entry) =>
@@ -334,7 +345,12 @@ export const resolveEvaluationsWorkspaceSelection = ({
 
   return {
     selectedExpertId: selection.selectedExpertId,
-    canShowCollective: criteria.canShowCollective || alternative.canShowCollective,
+    canShowCollective: canShowCollectiveFor({
+      payload,
+      expertCount: selection.expertOptions.length,
+      criteria,
+      alternative,
+    }),
   };
 };
 
@@ -362,6 +378,10 @@ export const buildEvaluationsWorkspaceData = ({ payload, selection, selectedPhas
     alternativeStage: alternativeEvaluation,
   });
   const evidence = latestEvidence(payload, resolved.alternativePhase);
+  const modelApiKey = modelApiKeyFor(payload);
+  const selectedExpert = resolved.selectedExpertId
+    ? resolveFinishedExpertIdentity(payload, resolved.selectedExpertId)
+    : null;
 
   return {
     consensus: {
@@ -372,12 +392,17 @@ export const buildEvaluationsWorkspaceData = ({ payload, selection, selectedPhas
       selectedPhase: resolved.consensusEnabled ? resolved.alternativePhase : null,
     },
     expertOptions: resolved.expertOptions,
+    modelApiKey,
     selectedExpertId: resolved.selectedExpertId,
-    selectedExpertName: resolved.selectedExpertId
-      ? resolveFinishedExpertIdentity(payload, resolved.selectedExpertId).name
-      : null,
+    selectedExpertName: selectedExpert?.name || null,
+    selectedExpertEmail: selectedExpert?.email || null,
     canShowCollective:
-      criteriaWeighting.canShowCollective || alternativeEvaluation.canShowCollective,
+      canShowCollectiveFor({
+        payload,
+        expertCount: resolved.expertOptions.length,
+        criteria: criteriaWeighting,
+        alternative: alternativeEvaluation,
+      }),
     criteriaWeighting: {
       ...criteriaWeighting,
       title: "Criteria weighting",
