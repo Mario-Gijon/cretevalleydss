@@ -9,6 +9,9 @@ import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
 const RANKING_MOVEMENT_PLOT_LEFT = 58;
 const RANKING_MOVEMENT_EMBEDDED_PLOT_LEFT = 30;
 const RANKING_MOVEMENT_EMBEDDED_PLOT_RIGHT = 24;
+const truncateExecutionLabel = (label, maximumLength = 22) => label.length > maximumLength
+  ? `${label.slice(0, maximumLength - 1)}…`
+  : label;
 
 const movementChartHeight = (alternativeCount) => Math.min(520, 250 + Math.max(0, alternativeCount - 3) * 32);
 
@@ -47,7 +50,7 @@ const RankingMovementChart = ({ movement, title = "Ranking movement", subtitle =
     {embedded ? null : <Stack direction="row" spacing={1} alignItems="center"><TimelineRoundedIcon sx={{ color: "secondary.light" }} /><Box><Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>{title}</Typography><Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>{subtitle}</Typography></Box></Stack>}
     <Box ref={viewportRef} sx={{ ...movementChartViewportSx, ...(embedded ? { overflowX: "hidden", overflowY: "hidden" } : {}) }}>{width > 0 ? <svg width={chartWidth} height={height} viewBox={`0 0 ${chartWidth} ${height}`} role="img" aria-label="Ranking movement chart" style={{ display: "block", ...(embedded ? { maxWidth: "100%" } : {}) }}>
       {Array.from({ length: movement.maxPosition }, (_, index) => index + 1).map((position) => <g key={`grid-${position}`}><line x1={left} x2={chartWidth - right} y1={yFor(position)} y2={yFor(position)} stroke="rgba(255,255,255,0.10)" strokeDasharray="4 5" /><text x={left - 18} y={yFor(position) + 4} textAnchor="end" fill="rgba(255,255,255,0.65)" fontSize="12">{position}</text></g>)}
-      {movement.executions.map((execution, index) => <text key={execution.key} x={xFor(index)} y={height - 25} textAnchor={index === 0 ? "start" : index === movement.executions.length - 1 ? "end" : "middle"} fill="rgba(255,255,255,0.78)" fontSize="12">{execution.label}</text>)}
+      {movement.executions.map((execution, index) => <text key={execution.key} x={xFor(index)} y={height - 25} textAnchor={index === 0 ? "start" : index === movement.executions.length - 1 ? "end" : "middle"} fill="rgba(255,255,255,0.78)" fontSize="12" aria-label={`Execution: ${execution.label}`} title={execution.label}>{truncateExecutionLabel(execution.label)}</text>)}
       {movement.alternatives.map((alternative, alternativeIndex) => {
         const color = RANKING_ALTERNATIVE_COLORS[alternativeIndex % RANKING_ALTERNATIVE_COLORS.length];
         const points = alternative.positions.map((entry, index) => ({ x: xFor(index), y: yFor(entry.position), position: entry.position }));

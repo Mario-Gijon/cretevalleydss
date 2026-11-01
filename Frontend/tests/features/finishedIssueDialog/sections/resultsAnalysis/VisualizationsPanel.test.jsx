@@ -161,7 +161,7 @@ describe("VisualizationsPanel", () => {
             { key: "ahp-derived-priority-distribution", type: "scatter" },
             { key: "ahp-collective-criterion-importance", type: "bar" },
           ] },
-          { id: "ahp-consensus-adjustments", title: "Consensus adjustments", order: 1, presentation: { layout: "lead-full-width" }, visualizations: [
+          { id: "ahp-consensus-adjustments", title: "Consensus adjustments", order: 1, presentation: { layout: "lead-full-width", stackAt: "lg" }, visualizations: [
             { key: "ahp-mcc-adjustment-map", type: "heatmap" },
             { key: "ahp-mcc-adjustment-effort-by-expert", type: "bar" },
             { key: "ahp-mcc-adjustment-effort-by-criterion", type: "bar" },
@@ -184,6 +184,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByTestId("model-analysis-semantic-section")).toHaveLength(2);
     expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(4);
     expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
+    expect(screen.getAllByTestId("semantic-section-pane-row").map((row) => row.dataset.stackAt)).toContain("lg");
     expect(screen.queryByText("AHP criteria-weighting visualizations")).not.toBeInTheDocument();
   });
 
@@ -242,8 +243,48 @@ describe("VisualizationsPanel", () => {
     expect(within(card).getByText(/not numeric distances between evaluations/)).toBeInTheDocument();
     expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-key", "expert-collective-classification-match");
     expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-series-keys", '["exact-category-match"]');
+    expect(within(card).getByTestId("classification-relationship-charts")).toHaveAttribute("data-has-auxiliary-projection", "false");
     expect(screen.queryByRole("button", { name: "MAP" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "DISTANCES" })).not.toBeInTheDocument();
+  });
+
+  it("shows exact-match bars with an optional explicitly auxiliary categorical-pattern projection", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "ahp-sort-base",
+        displayLabel: "Base execution",
+        resultStructureKey: "sorting",
+        genericAnalysis: { facts: { expertCollectiveClassificationRelationship: {
+          metric: "exact_category_match_rate",
+          experts: [
+            { expertId: "expert-ada", name: "Ada", exactCategoryMatches: 2, totalAlternatives: 3, matchRate: 2 / 3, disagreements: [] },
+            { expertId: "expert-grace", name: "Grace", exactCategoryMatches: 1, totalAlternatives: 3, matchRate: 1 / 3, disagreements: [] },
+          ],
+          auxiliaryProjection: {
+            type: "auxiliary_categorical_agreement_projection",
+            dissimilarity: "normalized_hamming_category_mismatch",
+            stress: 0.04,
+            maximumStress: 0.15,
+            points: [
+              { kind: "expert", name: "Ada", x: -0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
+              { kind: "expert", name: "Grace", x: 0, y: 0.5, exactCategoryMatches: 1, totalAlternatives: 3 },
+              { kind: "expert", name: "Katherine", x: 0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
+              { kind: "collective", name: "Collective result", x: 0, y: -0.5, exactCategoryMatches: 3, totalAlternatives: 3 },
+            ],
+          },
+        } } },
+      }]}
+      visualizations={{ mode: "single", singleScatter: { available: false, unavailableReason: "missing_analytical_projection" }, canonicalProjections: [], consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const card = screen.getByTestId("expert-collective-classification-relationship");
+    expect(within(card).getByText(/optional 2D view is an approximate projection/)).toBeInTheDocument();
+    expect(within(card).getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
+      "expert-collective-classification-match",
+      "expert-collective-categorical-pattern-projection",
+    ]);
+    expect(within(card).getByTestId("classification-relationship-charts")).toHaveAttribute("data-has-auxiliary-projection", "true");
+    expect(within(card).getByText(/not an AHPSort distance or AHP priorities/)).toBeInTheDocument();
   });
 
   it("renders model-owned TOPSIS descriptors through the shared alternative-evaluation pipeline", () => {

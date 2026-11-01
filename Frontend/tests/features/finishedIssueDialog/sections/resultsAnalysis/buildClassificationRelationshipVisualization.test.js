@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildClassificationRelationshipVisualization } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildClassificationRelationshipVisualization.js";
+import { buildClassificationPatternProjectionVisualization, buildClassificationRelationshipVisualization } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildClassificationRelationshipVisualization.js";
 
 const execution = (overrides = {}) => ({
   genericAnalysis: {
@@ -67,5 +67,61 @@ describe("buildClassificationRelationshipVisualization", () => {
     ] } } } }],
   ])("omits the chart for %s", (_label, override) => {
     expect(buildClassificationRelationshipVisualization(execution(override))).toBeNull();
+  });
+});
+
+describe("buildClassificationPatternProjectionVisualization", () => {
+  const projectionExecution = () => execution({
+    genericAnalysis: {
+      facts: {
+        expertCollectiveClassificationRelationship: {
+          metric: "exact_category_match_rate",
+          experts: [],
+          auxiliaryProjection: {
+            type: "auxiliary_categorical_agreement_projection",
+            dissimilarity: "normalized_hamming_category_mismatch",
+            stress: 0.04,
+            maximumStress: 0.15,
+            points: [
+              { kind: "expert", name: "A long expert display name which should stay available in the graph", x: -0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
+              { kind: "expert", name: "Grace", x: 0, y: 0.5, exactCategoryMatches: 1, totalAlternatives: 3 },
+              { kind: "expert", name: "Katherine", x: 0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
+              { kind: "collective", name: "Collective result", x: 0, y: -0.5, exactCategoryMatches: 3, totalAlternatives: 3 },
+            ],
+          },
+        },
+      },
+    },
+  });
+
+  it("maps only a validated low-stress categorical pattern projection into an auxiliary scatter descriptor", () => {
+    const descriptor = buildClassificationPatternProjectionVisualization(projectionExecution());
+
+    expect(descriptor).toMatchObject({
+      key: "expert-collective-categorical-pattern-projection",
+      type: "scatter",
+      title: "Auxiliary categorical agreement-pattern projection",
+      xAxis: { hideTickLabels: true },
+      yAxis: { hideTickLabels: true },
+      presentation: { tooltip: { variant: "categorical-pattern-projection" } },
+    });
+    expect(descriptor.description).toContain("not AHPSort distance or AHP priorities");
+    expect(descriptor.data.series.map((series) => series.key)).toEqual(["experts", "collective"]);
+    expect(descriptor.data.series[0].points[0]).toEqual({
+      label: "A long expert display name which should stay available in the graph",
+      x: -0.5,
+      y: 0,
+      details: { exactCategoryMatches: 2, totalAlternatives: 3, categoryMismatchCount: 1 },
+    });
+    expect(JSON.stringify(descriptor)).not.toContain("expertId");
+  });
+
+  it.each([
+    ["stress above the supported limit", { stress: 0.2 }],
+    ["a missing collective", { points: [{ kind: "expert", name: "Only expert", x: 0, y: 0, exactCategoryMatches: 3, totalAlternatives: 3 }] }],
+  ])("omits an unreliable projection for %s", (_name, projectionOverride) => {
+    const facts = projectionExecution().genericAnalysis.facts.expertCollectiveClassificationRelationship;
+    facts.auxiliaryProjection = { ...facts.auxiliaryProjection, ...projectionOverride };
+    expect(buildClassificationPatternProjectionVisualization({ genericAnalysis: { facts } })).toBeNull();
   });
 });

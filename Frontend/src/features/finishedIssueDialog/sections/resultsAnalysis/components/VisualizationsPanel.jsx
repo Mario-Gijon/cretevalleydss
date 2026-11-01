@@ -33,7 +33,7 @@ import { filterSensitivityVisualization, getSensitivityAlternativeOptions, recom
 import { getVisualizationReadingGuide } from "../logic/visualizationReadingGuides.js";
 import { buildGeneralVisualizationsLayout } from "../logic/buildGeneralVisualizationsLayout.js";
 import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
-import { buildClassificationRelationshipVisualization } from "../logic/buildClassificationRelationshipVisualization.js";
+import { buildClassificationPatternProjectionVisualization, buildClassificationRelationshipVisualization } from "../logic/buildClassificationRelationshipVisualization.js";
 import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
@@ -634,21 +634,28 @@ const ExpertCollectiveRelationship = ({ visualizations, unavailableReason }) => 
   const toggleMode = hasMultipleExperts && mapAvailable && distancesAvailable;
   const classificationEntries = (visualizations.executions || []).flatMap((execution) => {
     const descriptor = buildClassificationRelationshipVisualization(execution);
-    return descriptor ? [{ execution, descriptor }] : [];
+    const projection = buildClassificationPatternProjectionVisualization(execution);
+    return descriptor ? [{ execution, descriptor, projection }] : [];
   });
   // A categorical AHPSort relationship is a valid replacement only when this
   // selection has no numerical projection. Keep TOPSIS MAP/DISTANCES intact,
   // including mixed comparisons where numeric evidence is available.
   if (classificationEntries.length && !mapAvailable && !distancesAvailable) {
+    const hasAuxiliaryProjection = classificationEntries.some((entry) => entry.projection !== null);
     return <Box sx={cardSx} data-testid="expert-collective-classification-relationship">
       <Header
         title="Expert–collective classification relationship"
-        subtitle="Each bar shows the share of exact category matches to the collective assignment. Category matches are not numeric distances between evaluations."
+        subtitle={hasAuxiliaryProjection
+          ? "Bars summarize exact category matches. The optional 2D view is an approximate projection of categorical agreement patterns, not an AHPSort distance or AHP priorities."
+          : "Each bar shows the share of exact category matches to the collective assignment. Category matches are not numeric distances between evaluations."}
       />
       <Stack spacing={1.2}>
-        {classificationEntries.map(({ execution, descriptor }) => <Box key={execution.key} sx={{ minWidth: 0 }}>
+        {classificationEntries.map(({ execution, descriptor, projection }) => <Box key={execution.key} sx={{ minWidth: 0 }}>
           {classificationEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 0.6, color: execution.color, fontWeight: 900 }}>{execution.displayLabel}</Typography> : null}
-          <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />
+          <Box data-testid="classification-relationship-charts" data-has-auxiliary-projection={projection ? "true" : "false"} sx={{ display: "grid", gridTemplateColumns: projection ? { xs: "minmax(0, 1fr)", lg: "minmax(0, 1.1fr) minmax(0, 1fr)" } : "minmax(0, 1fr)", columnGap: 1.6, rowGap: 1.4, minWidth: 0 }}>
+            <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />
+            {projection ? <AnalyticalGraph visualization={projection} /> : null}
+          </Box>
         </Box>)}
       </Stack>
     </Box>;
@@ -696,7 +703,7 @@ const VisualizationPane = ({ descriptor, execution, index, compactTitle, control
   </Box>;
 };
 
-const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidth = false, compactTitles = false, forceFullWidth = false, controls = null }) => {
+const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidth = false, compactTitles = false, forceFullWidth = false, stackAt = "md", controls = null }) => {
   const layouts = buildVisualizationLayout(visualizations);
   const rows = [];
   for (let index = 0; index < layouts.length; index += 1) {
@@ -711,9 +718,9 @@ const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidt
       index += 1;
     } else rows.push([current]);
   }
-  return <Stack spacing={1.4}>{rows.map((row, rowIndex) => row.length === 2 ? <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.2, minWidth: 0 }}>
+  return <Stack spacing={1.4}>{rows.map((row, rowIndex) => row.length === 2 ? <Box key={rowIndex} data-testid="semantic-section-pane-row" data-stack-at={stackAt} sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", [stackAt]: "minmax(0, 1fr) 1px minmax(0, 1fr)" }, columnGap: { xs: 0, [stackAt]: 1.4 }, rowGap: 1.2, minWidth: 0 }}>
     <VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex * 2} compactTitle={compactTitles} controls={rowIndex === 0 ? controls : null} />
-    <Box data-testid="semantic-section-pane-divider" aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
+    <Box data-testid="semantic-section-pane-divider" aria-hidden="true" sx={{ display: { xs: "none", [stackAt]: "block" }, width: 1, alignSelf: "stretch", bgcolor: "rgba(83,198,214,0.18)" }} />
     <VisualizationPane descriptor={row[1].visualization} execution={execution} index={rowIndex * 2 + 1} compactTitle={compactTitles} />
   </Box> : <Box key={rowIndex} data-testid="semantic-section-pane-row" sx={{ minWidth: 0, width: "100%" }}><VisualizationPane descriptor={row[0].visualization} execution={execution} index={rowIndex} compactTitle={compactTitles} controls={rowIndex === 0 ? controls : null} /></Box>)}</Stack>;
 };
@@ -755,6 +762,7 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const isSingleton = visibleEntries.length === 1 && visibleEntries[0].visualizations.length === 1;
   const stacked = section.presentation?.layout === "stacked";
   const leadFullWidth = section.presentation?.layout === "lead-full-width";
+  const stackAt = ["sm", "md", "lg", "xl"].includes(section.presentation?.stackAt) ? section.presentation.stackAt : "md";
   const scenarioColumns = visibleEntries.map(() => "minmax(360px, 1fr)").join(" 1px ");
   const updateAlternativeSelection = (event) => {
     const value = event.target.value;
@@ -832,7 +840,7 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
           <Box key={entry.execution.key} data-testid="semantic-section-scenario" sx={{ minWidth: 0 }}>
             {visibleEntries.length > 1 || showExecutionLabels ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}
             {entry.visualizations.length
-              ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} controls={index === controlTargetIndex ? visualizationControls : null} />
+              ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} stackAt={stackAt} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} controls={index === controlTargetIndex ? visualizationControls : null} />
             : section.presentation?.summaryMessage ? null : <VisualizationUnavailableState minHeight={150} />}
           </Box>,
           ...(index < visibleEntries.length - 1 ? [

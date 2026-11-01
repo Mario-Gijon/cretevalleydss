@@ -35,6 +35,7 @@ describe("ProjectedExpertDistances", () => {
 
     expect(screen.getByTestId("projected-distance-interpretation").textContent).toContain("no visible height");
     expect(screen.getByTestId("projected-distance-interpretation").textContent).toContain("not direct measures of agreement");
+    expect(screen.getByRole("group", { name: /Full expert labels: Shared name \(one@example.test\); Shared name \(two@example.test\)/ })).toBeInTheDocument();
     expect(chartState.props.series[0].data).toEqual([0, 0]);
     expect(chartState.props.barLabel({ value: 0, dataIndex: 0 })).toBe("0.000");
     expect(chartState.props.series[0].valueFormatter(0, { dataIndex: 1 })).toContain("two@example.test");

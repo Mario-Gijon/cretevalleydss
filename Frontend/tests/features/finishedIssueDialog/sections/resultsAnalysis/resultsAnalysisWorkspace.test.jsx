@@ -537,6 +537,29 @@ describe("Results analysis workspace", () => {
     window.ResizeObserver = originalResizeObserver;
   });
 
+  it("truncates long execution labels in the movement plot while exposing the full label", () => {
+    const originalResizeObserver = window.ResizeObserver;
+    const resizeCallbacks = [];
+    window.ResizeObserver = class ResizeObserver {
+      constructor(callback) { resizeCallbacks.push(callback); }
+      observe() {}
+      disconnect() {}
+    };
+    const fullLabel = "A very long baseline execution label for mobile screens";
+    const movement = {
+      available: true,
+      maxPosition: 2,
+      executions: [{ key: "base", label: fullLabel }, { key: "latest", label: "Latest" }],
+      alternatives: [{ id: "a", name: "Alternative A", positions: [{ position: 1 }, { position: 2 }] }],
+    };
+    const { container } = render(<ThemeProvider theme={createTheme()}><RankingMovementChart movement={movement} /></ThemeProvider>);
+    act(() => resizeCallbacks[0]([{ contentRect: { width: 360 } }]));
+    const tick = container.querySelector('svg text[aria-label="Execution: A very long baseline execution label for mobile screens"]');
+    expect(tick).toHaveTextContent(`${fullLabel.slice(0, 21)}…`);
+    expect(tick).toHaveAttribute("title", fullLabel);
+    window.ResizeObserver = originalResizeObserver;
+  });
+
   it("uses light outlined correlation cells while retaining semantic border colors", () => {
     expect(correlationCellSx(1)).toMatchObject({ borderColor: "rgba(111,220,104,0.72)", bgcolor: "rgba(111,220,104,0.055)" });
     expect(correlationCellSx(0.5)).toMatchObject({ borderColor: "rgba(39,213,228,0.62)", bgcolor: "rgba(39,213,228,0.035)" });

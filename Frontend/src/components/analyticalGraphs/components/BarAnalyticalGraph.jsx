@@ -2,7 +2,7 @@ import { Bar } from "react-chartjs-2";
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Tooltip } from "chart.js";
 
 import GraphUnavailable from "./GraphUnavailable.jsx";
-import { buildCartesianChartOptions, chartColor } from "../chartTheme.js";
+import { buildCartesianChartOptions, chartAccessibleLabel, chartColor } from "../chartTheme.js";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Legend, Tooltip);
 
@@ -14,7 +14,13 @@ const BarAnalyticalGraph = ({ visualization }) => {
   const series = validSeries(data?.series);
   if (!categories?.length || !series.length) return <GraphUnavailable />;
   const horizontal = visualization.orientation === "horizontal";
-  const chartOptions = buildCartesianChartOptions({ xAxis: visualization.xAxis, yAxis: visualization.yAxis, horizontal, stacked: Boolean(visualization.stacked) });
+  const categoryAxis = { categories: categories.map((label, value) => ({ value, label: String(label) })) };
+  const chartOptions = buildCartesianChartOptions({
+    xAxis: horizontal ? visualization.xAxis : { ...visualization.xAxis, ...categoryAxis },
+    yAxis: horizontal ? { ...visualization.yAxis, ...categoryAxis } : visualization.yAxis,
+    horizontal,
+    stacked: Boolean(visualization.stacked),
+  });
   const valueAxis = horizontal ? "x" : "y";
   const valueAxisDescriptor = horizontal ? visualization.xAxis : visualization.yAxis;
   if (typeof valueAxisDescriptor?.tickSuffix === "string" && valueAxisDescriptor.tickSuffix) {
@@ -58,6 +64,9 @@ const BarAnalyticalGraph = ({ visualization }) => {
         ...(visualization.stacked ? { stack: "total" } : {}),
       })),
     }}
+    role="img"
+    aria-label={chartAccessibleLabel(visualization, categories)}
+    title={chartAccessibleLabel(visualization, categories)}
     options={chartOptions}
   />;
 };

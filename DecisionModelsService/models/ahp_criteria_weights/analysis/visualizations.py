@@ -268,7 +268,7 @@ def build_visualization_sections(facts: dict[str, Any]) -> list[dict[str, Any]]:
             "ahp-mcc-adjustment-effort-by-criterion",
         )
         mcc_visualizations = [descriptors[key] for key in mcc_keys if key in descriptors]
-        presentation = {"layout": "lead-full-width"}
+        presentation = {"layout": "lead-full-width", "stackAt": "lg"}
         if not mcc.get("materialAdjustments"):
             presentation["summaryMessage"] = "No material MCC weight adjustments were needed."
         sections.append({

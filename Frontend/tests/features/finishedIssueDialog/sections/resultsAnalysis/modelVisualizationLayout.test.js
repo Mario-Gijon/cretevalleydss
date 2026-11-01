@@ -20,7 +20,7 @@ describe("getVisualizationLayout", () => {
     expect(layout.chartMinWidth).toBeUndefined();
   });
 
-  it("reserves readable width for long criterion labels in horizontal bars", () => {
+  it("keeps long horizontal-bar labels inside the chart viewport for ellipsis and full-label access", () => {
     const longestCriterion = "People at risk of poverty or social exclusion";
     const layout = getVisualizationLayout({
       key: "ahp-collective-criterion-importance",
@@ -29,7 +29,7 @@ describe("getVisualizationLayout", () => {
       data: { categories: [longestCriterion, "Life expectancy"] },
     });
 
-    expect(layout.chartMinWidth).toBe(longestCriterion.length * 7 + 240);
+    expect(layout.chartMinWidth).toBeUndefined();
   });
 
   it("keeps vertical bars compact while assigning dense categories an internal minimum width", () => {
@@ -165,9 +165,15 @@ describe("getVisualizationLayout", () => {
     expect(layout.chartHeight).toEqual({ xs: 300, sm: 320 });
     expect(layout.chartMinWidth).toBeGreaterThan(2 * 72);
     expect(layout.chartMinWidth).toBeLessThan(600);
+
+    const longLabelLayout = getVisualizationLayout({
+      ...descriptor,
+      yAxis: { categories: [{ value: 1, label: "A criterion with a deliberately long name that should not stretch the graph" }] },
+    });
+    expect(longLabelLayout.chartMinWidth).toBe(layout.chartMinWidth);
   });
 
-  it("keeps many alternative rows readable and reserves width for long alternative names", () => {
+  it("keeps many alternative rows readable without making width depend on long alternative names", () => {
     const categories = Array.from({ length: 50 }, (_, index) => ({
       value: index,
       label: `Alternative ${index}: a long environmental restoration proposal name`,
@@ -178,10 +184,10 @@ describe("getVisualizationLayout", () => {
     });
 
     expect(layout.chartHeight).toEqual({ xs: 1532, sm: 1532 });
-    expect(layout.chartMinWidth).toBeGreaterThan(600);
+    expect(layout.chartMinWidth).toBeUndefined();
   });
 
-  it("sizes AHP criterion-weight dots by row count and reserves width only for unusually long criterion labels", () => {
+  it("sizes AHP criterion-weight dots by row count without expanding for unusually long criterion labels", () => {
     const categories = Array.from({ length: 6 }, (_, index) => ({ value: index + 1, label: `Criterion ${index + 1}` }));
     expect(getVisualizationLayout({ type: "scatter", yAxis: { categories } })).toEqual({
       span: 1,
@@ -189,7 +195,10 @@ describe("getVisualizationLayout", () => {
     });
 
     const longCategories = [{ value: 1, label: "A criterion with an unusually long descriptive name that should remain readable" }];
-    expect(getVisualizationLayout({ type: "scatter", yAxis: { categories: longCategories } }).chartMinWidth).toBeGreaterThan(600);
+    expect(getVisualizationLayout({ type: "scatter", yAxis: { categories: longCategories } })).toMatchObject({
+      span: 1,
+      chartHeight: { xs: 320, sm: 320 },
+    });
   });
 
   it("uses the compact categorical scatter layout for historical AHP weight heatmaps", () => {

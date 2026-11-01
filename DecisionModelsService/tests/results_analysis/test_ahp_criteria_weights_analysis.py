@@ -191,7 +191,7 @@ def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
     assert len(result["sections"]) == 2
     assert result["sections"][0]["presentation"]["layout"] == "stacked"
     assert [item["key"] for item in result["sections"][0]["visualizations"]] == keys[:2]
-    assert result["sections"][1]["presentation"]["layout"] == "lead-full-width"
+    assert result["sections"][1]["presentation"] == {"layout": "lead-full-width", "stackAt": "lg"}
     assert [item["key"] for item in result["sections"][1]["visualizations"]] == keys[2:]
     assert result["visualizations"][3]["xAxis"]["label"].endswith("(percentage points)")
     assert result["visualizations"][3]["data"]["series"][0]["values"] == pytest.approx([

@@ -14,13 +14,27 @@ export const ANALYTICAL_LINE_STYLE = {
   tension: 0.25,
 };
 
+export const MAX_AXIS_LABEL_LENGTH = 26;
+
+export const truncateAxisLabel = (label, maximumLength = MAX_AXIS_LABEL_LENGTH) => {
+  const text = String(label ?? "");
+  return text.length > maximumLength ? `${text.slice(0, maximumLength - 1)}…` : text;
+};
+
+export const chartAccessibleLabel = (visualization, labels = []) => {
+  const title = typeof visualization?.title === "string" ? visualization.title.trim() : "Data visualization";
+  const description = typeof visualization?.description === "string" ? visualization.description.trim() : "";
+  const fullLabels = [...new Set(labels.filter((label) => typeof label === "string" && label.length > MAX_AXIS_LABEL_LENGTH))];
+  return [title, description, fullLabels.length ? `Full labels: ${fullLabels.join("; ")}` : ""].filter(Boolean).join(". ");
+};
+
 const categoryTickLabels = (categories) => {
   if (!Array.isArray(categories)) return null;
   const labels = new Map(categories.filter((entry) => Number.isFinite(entry?.value) && typeof entry?.label === "string" && entry.label.trim()).map((entry) => [entry.value, entry.label.trim()]));
   return labels.size ? labels : null;
 };
 
-const axis = ({ label, stacked = false, category = false, categories }) => {
+const axis = ({ label, stacked = false, category = false, categories, hideTickLabels = false }) => {
   const labels = categoryTickLabels(categories);
   return {
   stacked,
@@ -33,7 +47,15 @@ const axis = ({ label, stacked = false, category = false, categories }) => {
     color: "rgba(255,255,255,0.72)",
     maxRotation: 35,
     minRotation: 0,
-    ...(labels ? { callback: (value) => labels.get(Number(value)) ?? value } : {}),
+    display: !hideTickLabels,
+    ...(labels ? {
+      callback: (value) => truncateAxisLabel(labels.get(Number(value)) ?? value),
+    } : category ? {
+      callback(value) {
+        const fullLabel = this.getLabelForValue(value);
+        return typeof fullLabel === "string" ? truncateAxisLabel(fullLabel) : fullLabel;
+      },
+    } : {}),
   },
   title: label ? { display: true, text: label, color: "rgba(255,255,255,0.82)", font: { weight: "600" } } : { display: false },
   };
@@ -62,12 +84,12 @@ export const buildCartesianChartOptions = ({ xAxis = {}, yAxis = {}, horizontal 
   plugins: commonPlugins(tooltipLabel),
   scales: horizontal
     ? {
-        x: axis({ label: xAxis.label, stacked, categories: xAxis.categories }),
-        y: axis({ label: yAxis.label, stacked, category: true, categories: yAxis.categories }),
+        x: axis({ label: xAxis.label, stacked, categories: xAxis.categories, hideTickLabels: xAxis.hideTickLabels }),
+        y: axis({ label: yAxis.label, stacked, category: true, categories: yAxis.categories, hideTickLabels: yAxis.hideTickLabels }),
       }
     : {
-        x: axis({ label: xAxis.label, stacked, category: true, categories: xAxis.categories }),
-        y: axis({ label: yAxis.label, stacked, categories: yAxis.categories }),
+        x: axis({ label: xAxis.label, stacked, category: true, categories: xAxis.categories, hideTickLabels: xAxis.hideTickLabels }),
+        y: axis({ label: yAxis.label, stacked, categories: yAxis.categories, hideTickLabels: yAxis.hideTickLabels }),
       },
 });
 

@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 from .analytical_projection_reconstruction import reconstruct_sorting_projection
+from .categorical_agreement_projection import build_categorical_agreement_projection
 
 _SORTING_ORDER_SEMANTICS = "lower-order-is-less-preferred"
 
@@ -99,7 +100,35 @@ def _ahp_sort_classification_relationship(
         })
     if not experts or any(item["totalAlternatives"] == 0 for item in experts):
         return None
-    return {"metric": "exact_category_match_rate", "experts": experts}
+    relationship = {"metric": "exact_category_match_rate", "experts": experts}
+    alternative_ids = sorted(collective_by_alternative)
+    projection_participants = [
+        {
+            "kind": "expert",
+            "name": (
+                f"{expert_names[expert_id]} ({expert_id[-6:]})"
+                if expert_names[expert_id] in duplicate_names
+                else f"{expert_names[expert_id]} (expert)"
+                if expert_names[expert_id] == "Collective result"
+                else expert_names[expert_id]
+            ),
+            "categoryIds": [
+                (individual[expert_id]["resultsByAlternativeId"][alternative_id] or {}).get("categoryId")
+                for alternative_id in alternative_ids
+            ],
+        }
+        for expert_id in sorted(expert_names, key=lambda key: (key.casefold(), key))
+    ]
+    collective_pattern = [collective_by_alternative[alternative_id]["categoryId"] for alternative_id in alternative_ids]
+    projection_participants.append({
+        "kind": "collective",
+        "name": "Collective result",
+        "categoryIds": collective_pattern,
+    })
+    auxiliary_projection = build_categorical_agreement_projection(projection_participants)
+    if auxiliary_projection is not None:
+        relationship["auxiliaryProjection"] = auxiliary_projection
+    return relationship
 
 
 def _sorting_result_context(analysis_context: dict, standard_result: dict, execution: dict) -> dict:

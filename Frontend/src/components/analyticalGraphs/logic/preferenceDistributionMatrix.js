@@ -5,7 +5,7 @@ export const PREFERENCE_DISTRIBUTION_MARKER_DIAMETER_PX = 11;
 export const PREFERENCE_DISTRIBUTION_CLUSTER_SPACING_PX = 7;
 export const PREFERENCE_DISTRIBUTION_MIN_CELL_WIDTH_PX = 72;
 export const PREFERENCE_DISTRIBUTION_CELL_PADDING_PX = 8;
-export const PREFERENCE_DISTRIBUTION_AXIS_GUTTER_PX = 80;
+export const PREFERENCE_DISTRIBUTION_AXIS_GUTTER_PX = 160;
 
 const validSeriesPoints = (series) => (Array.isArray(series) ? series : []).flatMap((item, datasetIndex) =>
   (Array.isArray(item?.points) ? item.points : [])
@@ -93,8 +93,7 @@ export const getPreferenceDistributionMetrics = (visualization) => {
   const maxRank = Number.isFinite(visualization?.xAxis?.max) ? visualization.xAxis.max : Math.max(...xValues, minRank);
   const rankCount = Math.max(1, Math.floor(maxRank - minRank + 1));
   const criterionTotal = categoryCount(visualization, points);
-  const longestCriterionLabel = Math.max(0, ...(visualization?.yAxis?.categories || []).map((category) => String(category?.label || "").length));
-  const criterionLabelGutter = Math.max(PREFERENCE_DISTRIBUTION_AXIS_GUTTER_PX, longestCriterionLabel * 7 + 52);
+  const criterionLabelGutter = PREFERENCE_DISTRIBUTION_AXIS_GUTTER_PX;
   const clusterWidth = PREFERENCE_DISTRIBUTION_MARKER_DIAMETER_PX
     + Math.max(0, largestCollisionGroup - 1) * PREFERENCE_DISTRIBUTION_CLUSTER_SPACING_PX
     + PREFERENCE_DISTRIBUTION_CELL_PADDING_PX * 2;

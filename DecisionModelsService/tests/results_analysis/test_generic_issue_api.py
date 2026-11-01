@@ -177,6 +177,7 @@ def test_ahp_sort_expert_collective_classification_relationship_uses_saved_assig
     result = asyncio.run(analyze_generic_issue(context))["data"]
     relationship = result["facts"]["expertCollectiveClassificationRelationship"]
     assert relationship["metric"] == "exact_category_match_rate"
+    assert "auxiliaryProjection" not in relationship
     assert relationship["experts"] == [
         {
             "expertId": "expert-a",
@@ -206,6 +207,37 @@ def test_ahp_sort_expert_collective_classification_relationship_uses_saved_assig
     assert "### Decision process" not in result["interpretation"]
     assert result["visualizations"] == []
     assert "diagnostics" not in str(result)
+
+
+def test_ahp_sort_adds_only_a_categorical_projection_when_saved_patterns_support_it():
+    context = sorting_analysis_context()
+    context["semanticDirectory"]["expertsById"] = {
+        "expert-a": {"name": "Expert A"},
+        "expert-b": {"name": "Expert B"},
+        "expert-c": {"name": "Expert C"},
+    }
+    execution = context["rounds"][0]["selectedExecution"]
+    execution["input"]["evaluations"] = [
+        {"expert": {"id": expert_id, "name": f"Expert {expert_id[-1].upper()}"}}
+        for expert_id in ("expert-a", "expert-b", "expert-c")
+    ]
+    execution["result"]["standardResult"]["diagnostics"] = {
+        "modelKey": "ahp_sort_i",
+        "individualResultsByExpertId": {
+            "expert-a": {"resultsByAlternativeId": {"a": {"categoryId": "high"}, "b": {"categoryId": "high"}, "c": {"categoryId": "low"}}},
+            "expert-b": {"resultsByAlternativeId": {"a": {"categoryId": "low"}, "b": {"categoryId": "low"}, "c": {"categoryId": "low"}}},
+            "expert-c": {"resultsByAlternativeId": {"a": {"categoryId": "high"}, "b": {"categoryId": "high"}, "c": {"categoryId": "high"}}},
+        },
+    }
+
+    relationship = asyncio.run(analyze_generic_issue(context))["data"]["facts"]["expertCollectiveClassificationRelationship"]
+    projection = relationship["auxiliaryProjection"]
+    assert projection["type"] == "auxiliary_categorical_agreement_projection"
+    assert projection["dissimilarity"] == "normalized_hamming_category_mismatch"
+    assert projection["stress"] <= projection["maximumStress"]
+    assert [point["kind"] for point in projection["points"]].count("expert") == 3
+    assert [point["kind"] for point in projection["points"]].count("collective") == 1
+    assert all(set(point) == {"kind", "name", "x", "y", "exactCategoryMatches", "totalAlternatives"} for point in projection["points"])
 
 
 def test_generic_issue_endpoint_rebuilds_historical_sorting_projection_from_frozen_input():

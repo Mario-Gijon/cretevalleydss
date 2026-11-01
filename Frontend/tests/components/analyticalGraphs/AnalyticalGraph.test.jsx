@@ -5,31 +5,36 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 const scatterState = vi.hoisted(() => ({ data: null, options: null }));
 const lineState = vi.hoisted(() => ({ data: null, options: null, plugins: null }));
 const barState = vi.hoisted(() => ({ data: null, options: null }));
+const radarState = vi.hoisted(() => ({ data: null, options: null }));
 
 vi.mock("chart.js", () => ({
   Chart: { register: vi.fn() },
   ArcElement: {}, BarElement: {}, CategoryScale: {}, Filler: {}, Legend: {}, LineElement: {}, LinearScale: {}, PointElement: {}, RadialLinearScale: {}, ScatterController: {}, Tooltip: {},
 }));
 vi.mock("react-chartjs-2", () => ({
-  Bar: ({ data, options }) => {
+  Bar: ({ data, options, role, title, "aria-label": ariaLabel }) => {
     barState.data = data;
     barState.options = options;
-    return <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-min={options.scales.x.min} data-x-max={options.scales.x.max} />;
+    return <div role={role} aria-label={ariaLabel} title={title} data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-min={options.scales.x.min} data-x-max={options.scales.x.max} data-y-tick={options.scales.y.ticks.callback?.(0) || ""} />;
   },
-  Line: ({ data, options, plugins }) => {
+  Line: ({ data, options, plugins, role, title, "aria-label": ariaLabel }) => {
     lineState.data = data;
     lineState.options = options;
     lineState.plugins = plugins;
-    return <div data-testid="line-chart" data-series={data.datasets.length} data-point-radius={typeof data.datasets[0].pointRadius === "function" ? "scriptable" : data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-scale={options.scales.x.type || "category"} data-y-scale={options.scales.y.type || "category"} />;
+    return <div role={role} aria-label={ariaLabel} title={title} data-testid="line-chart" data-series={data.datasets.length} data-point-radius={typeof data.datasets[0].pointRadius === "function" ? "scriptable" : data.datasets[0].pointRadius} data-point-hover-radius={data.datasets[0].pointHoverRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-scale={options.scales.x.type || "category"} data-y-scale={options.scales.y.type || "category"} />;
   },
-  Scatter: ({ data, options }) => {
+  Scatter: ({ data, options, role, title, "aria-label": ariaLabel }) => {
     scatterState.data = data;
     scatterState.options = options;
-    return <div data-testid="scatter-chart" data-series={data.datasets.length} data-point-radius={typeof data.datasets[0].pointRadius === "function" ? "scriptable" : data.datasets[0].pointRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-tick={options.scales.x.ticks.callback?.(1) || ""} data-y-tick={options.scales.y.ticks.callback?.(1) || ""}>{options.plugins.tooltip.callbacks.label({ raw: data.datasets[0].data[0] })}</div>;
+    return <div role={role} aria-label={ariaLabel} title={title} data-testid="scatter-chart" data-series={data.datasets.length} data-point-radius={typeof data.datasets[0].pointRadius === "function" ? "scriptable" : data.datasets[0].pointRadius} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-tick={options.scales.x.ticks.callback?.call({ getLabelForValue: (value) => value }, 1) || ""} data-y-tick={options.scales.y.ticks.callback?.call({ getLabelForValue: (value) => value }, 1) || ""}>{options.plugins.tooltip.callbacks.label({ raw: data.datasets[0].data[0] })}</div>;
   },
   Pie: ({ data }) => <div data-testid="pie-chart" data-kind="pie" data-items={data.datasets[0].data.length} />,
   Doughnut: ({ data }) => <div data-testid="pie-chart" data-kind="doughnut" data-items={data.datasets[0].data.length} />,
-  Radar: ({ data }) => <div data-testid="radar-chart" data-metrics={data.labels.join(",")} data-series={data.datasets.length} />,
+  Radar: ({ data, options, role, title, "aria-label": ariaLabel }) => {
+    radarState.data = data;
+    radarState.options = options;
+    return <div role={role} aria-label={ariaLabel} title={title} data-testid="radar-chart" data-metrics={data.labels.join(",")} data-series={data.datasets.length} />;
+  },
 }));
 
 import { AnalyticalGraph, HeatmapAnalyticalGraph, analyticalGraphRegistry } from "../../../src/components/analyticalGraphs/index.js";
@@ -149,6 +154,54 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-axis", "Score");
   });
 
+  it("ellipsizes long bar-axis labels while keeping full labels available to assistive technology", () => {
+    const longLabel = "People at risk of poverty or social exclusion across regions";
+    render(<AnalyticalGraph visualization={{
+      type: "bar",
+      title: "Criterion importance",
+      orientation: "horizontal",
+      data: { categories: [longLabel], series: [{ key: "importance", label: "Importance", values: [0.5] }] },
+    }} />);
+
+    const chart = screen.getByTestId("bar-chart");
+    expect(chart).toHaveAttribute("data-y-tick", `${longLabel.slice(0, 25)}…`);
+    expect(chart).toHaveAttribute("aria-label", expect.stringContaining(longLabel));
+    expect(chart).toHaveAttribute("title", expect.stringContaining(longLabel));
+  });
+
+  it("ellipsizes long AHP criterion labels without losing their complete accessible name", () => {
+    const longCriterion = "Access to essential services in remote rural communities";
+    render(<AnalyticalGraph visualization={{
+      key: "ahp-derived-priority-long-label-test",
+      type: "scatter",
+      title: "AHP criterion priorities",
+      yAxis: { label: "Criterion", categories: [{ value: 1, label: longCriterion }] },
+      data: { series: [{ key: "expert-a", label: "Expert A", points: [{ label: longCriterion, x: 1, y: 1, details: { criterion: longCriterion } }] }] },
+    }} />);
+
+    const chart = screen.getByTestId("scatter-chart");
+    expect(chart).toHaveAttribute("data-y-tick", `${longCriterion.slice(0, 25)}…`);
+    expect(chart).toHaveAttribute("aria-label", expect.stringContaining(longCriterion));
+    expect(scatterState.options.plugins.tooltip.callbacks.title([{ raw: scatterState.data.datasets[0].data[0] }])).toBe(longCriterion);
+  });
+
+  it("shows categorical agreement projection tooltips without presenting coordinates as model measures", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "expert-collective-categorical-pattern-projection",
+      type: "scatter",
+      title: "Auxiliary categorical agreement-pattern projection",
+      presentation: { tooltip: { variant: "categorical-pattern-projection" } },
+      data: { series: [{ key: "experts", label: "Experts", points: [{ label: "Expert Ada", x: 0.12, y: -0.3, details: { exactCategoryMatches: 8, totalAlternatives: 10, categoryMismatchCount: 2 } }] }] },
+    }} />);
+
+    expect(scatterState.options.plugins.tooltip.callbacks.title([{ raw: scatterState.data.datasets[0].data[0] }])).toBe("Expert Ada");
+    expect(scatterState.options.plugins.tooltip.callbacks.label({ raw: scatterState.data.datasets[0].data[0] })).toEqual([
+      "Exact category matches: 8 of 10",
+      "Categories differing from collective: 2",
+    ]);
+    expect(screen.getByTestId("scatter-chart")).not.toHaveTextContent("0.12");
+  });
+
   it("renders the AHP-derived priority distribution with ordinal rank and original-weight tooltips", () => {
     render(<AnalyticalGraph visualization={{
       key: "ahp-derived-priority-distribution",
@@ -219,6 +272,18 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-series", "2");
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-point-radius", "0");
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-point-hover-radius", "5");
+  });
+
+  it("truncates long categorical line ticks while exposing their full labels accessibly", () => {
+    const longLabel = "A scenario with a long descriptive label for comparison";
+    render(<AnalyticalGraph visualization={{
+      type: "line",
+      title: "Scenario comparison",
+      data: { x: [longLabel], series: [{ key: "series", label: "Scenario", values: [0.5] }] },
+    }} />);
+
+    expect(lineState.options.scales.x.ticks.callback.call({ getLabelForValue: () => longLabel }, 0)).toBe(`${longLabel.slice(0, 25)}…`);
+    expect(screen.getByTestId("line-chart")).toHaveAttribute("aria-label", expect.stringContaining(longLabel));
   });
 
   it("renders numerical TOPSIS-Sort weight axes, hidden sample markers, dashed limits, and gaps", () => {
@@ -531,7 +596,7 @@ describe("AnalyticalGraph", () => {
   it("maps valid scatter category metadata to semantic numeric-axis ticks and ignores malformed entries", () => {
     const { rerender } = render(<AnalyticalGraph visualization={{ ...descriptors.scatter, yAxis: { label: "Criterion", categories: [{ value: 1, label: "Cost" }, { value: "bad", label: "Ignored" }] } }} />);
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-y-tick", "Cost");
-    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-tick", "");
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-tick", "1");
     rerender(<AnalyticalGraph visualization={{ ...descriptors.scatter, yAxis: { label: "Criterion", categories: [{}] } }} />);
     expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-y-tick", "");
   });
@@ -628,6 +693,18 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("pie-chart")).toHaveAttribute("data-kind", "doughnut");
     rerender(<AnalyticalGraph visualization={descriptors.radar} />);
     expect(screen.getByTestId("radar-chart")).toHaveAttribute("data-metrics", "C1,C2");
+  });
+
+  it("shortens long radar criterion labels and retains full labels for accessible reading", () => {
+    const longCriterion = "Access to essential services in remote rural communities";
+    render(<AnalyticalGraph visualization={{
+      type: "radar",
+      title: "Criterion profile",
+      data: { axes: [{ key: "c1", label: longCriterion }], series: [{ key: "a", label: "Alternative A", values: [0.8] }] },
+    }} />);
+
+    expect(radarState.options.scales.r.pointLabels.callback(longCriterion)).toBe(`${longCriterion.slice(0, 25)}…`);
+    expect(screen.getByTestId("radar-chart")).toHaveAttribute("aria-label", expect.stringContaining(longCriterion));
   });
 
   it("renders heatmap labels and values and a safe SVG image", () => {

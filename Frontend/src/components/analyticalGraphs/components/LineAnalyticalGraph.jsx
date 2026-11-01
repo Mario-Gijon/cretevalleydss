@@ -3,7 +3,7 @@ import { Line } from "react-chartjs-2";
 import { CategoryScale, Chart as ChartJS, Legend, LineElement, LinearScale, PointElement, Tooltip as ChartTooltip } from "chart.js";
 
 import GraphUnavailable from "./GraphUnavailable.jsx";
-import { ANALYTICAL_LINE_STYLE, buildCartesianChartOptions, chartColor, stableChartColor } from "../chartTheme.js";
+import { ANALYTICAL_LINE_STYLE, buildCartesianChartOptions, chartAccessibleLabel, chartColor, stableChartColor } from "../chartTheme.js";
 import { isAlternativeSensitivitySeries, resolveVisualizationPresentation } from "../../../features/finishedIssueDialog/sections/resultsAnalysis/logic/resolveVisualizationPresentation.js";
 
 ChartJS.register(CategoryScale, LineElement, LinearScale, PointElement, Legend, ChartTooltip);
@@ -158,7 +158,14 @@ const LineAnalyticalGraph = ({ visualization }) => {
     },
   } : baseOptions;
 
+  const accessibleLabel = chartAccessibleLabel(visualization, [
+    ...(!numericX ? data.x : []),
+    ...series.map((item) => item.label || item.key),
+  ]);
   const chart = <Line
+    role="img"
+    aria-label={accessibleLabel}
+    title={accessibleLabel}
     data-testid="line-analytical-graph"
     plugins={presentation.originalWeightMarker ? [originalWeightMarkerPlugin] : []}
     data={{

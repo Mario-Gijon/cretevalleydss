@@ -53,7 +53,7 @@ const DistanceChart = ({ projection, rows, phase, showLabel, chartHeight }) => {
       ? "Some projected distances are positive but smaller than the usual three-decimal display precision; their labels and tooltips show additional precision or scientific notation."
       : null;
   const minWidth = Math.max(360, rows.length * 98);
-  return <Box sx={{ minWidth: 0 }} data-phase={phase ?? ""}>
+  return <Box sx={{ minWidth: 0 }} data-phase={phase ?? ""} role="group" aria-label={`Projected expert-to-collective distances. Full expert labels: ${labels.join("; ")}`}>
     {showLabel ? <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 0.65, color: projection.color }}>{projection.displayLabel}</Typography> : null}
     <Box sx={{ overflowX: "auto", maxWidth: "100%", scrollbarWidth: "thin" }}><Box sx={{ minWidth, height: chartHeight }}>
       <BarChart height={chartHeight} xAxis={[{ scaleType: "band", data: axisLabels }]} series={[{ data: rows.map((row) => row.distance), label: "Projected distance", color: theme.palette.secondary.main, valueFormatter: (value, context) => `${labels[context.dataIndex] || "Expert"}: ${rows[context.dataIndex]?.formattedDistance ?? String(value)}` }]} hideLegend borderRadius={PERFORMANCE_BAR_TOKENS.radius} barLabel={(item) => Number.isFinite(item.value) ? rows[item.dataIndex]?.formattedDistance ?? String(item.value) : null} axisHighlight={{ x: "none", y: "none" }} grid={{ horizontal: true }} margin={{ top: 28, right: 20, bottom: 58, left: 62 }} slots={{ bar: (props) => <DistanceBar {...props} rows={rows} /> }} slotProps={{ barLabel: { style: { fill: theme.palette.text.primary, fontSize: 11, fontWeight: 700 } } }} />

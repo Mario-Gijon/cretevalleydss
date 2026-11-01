@@ -2,7 +2,7 @@ import { Scatter } from "react-chartjs-2";
 import { Chart as ChartJS, Legend, LinearScale, PointElement, ScatterController, Tooltip } from "chart.js";
 
 import GraphUnavailable from "./GraphUnavailable.jsx";
-import { buildCartesianChartOptions, chartColor, stableChartColor } from "../chartTheme.js";
+import { buildCartesianChartOptions, chartAccessibleLabel, chartColor, stableChartColor } from "../chartTheme.js";
 import { resolveVisualizationPresentation } from "../../../features/finishedIssueDialog/sections/resultsAnalysis/logic/resolveVisualizationPresentation.js";
 import {
   buildPreferenceDistributionDatasets,
@@ -35,6 +35,7 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
   const tooltipPresentation = presentation.tooltip;
   const usesClosenessBoundaryTooltip = tooltipPresentation?.variant === "closeness-boundaries";
   const usesPointDetailsTooltip = tooltipPresentation?.variant === "point-details";
+  const usesCategoricalPatternTooltip = tooltipPresentation?.variant === "categorical-pattern-projection";
   const hasNonInteractiveReferenceLines = presentation.referenceLines?.interactive === false;
   const closenessPrecision = Number.isInteger(tooltipPresentation?.precision)
     ? Math.min(20, Math.max(0, tooltipPresentation.precision))
@@ -232,7 +233,15 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
             } : {}),
             callbacks: {
               title: (contexts) => contexts[0]?.raw?.label || "",
-              label: usesPointDetailsTooltip
+              label: usesCategoricalPatternTooltip
+                ? (context) => {
+                    const details = context.raw?.details || {};
+                    return [
+                      `Exact category matches: ${details.exactCategoryMatches ?? "—"} of ${details.totalAlternatives ?? "—"}`,
+                      `Categories differing from collective: ${details.categoryMismatchCount ?? "—"}`,
+                    ];
+                  }
+                : usesPointDetailsTooltip
                 ? (context) => {
                     const details = Object.entries(context.raw?.details || {})
                       .filter(([, value]) => ["string", "number", "boolean"].includes(typeof value))
@@ -261,7 +270,9 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
         },
       };
 
-  return <Scatter data-testid="scatter-analytical-graph" data={{ datasets: normalized }} options={chartOptions} />;
+  const fullPointLabels = normalized.flatMap((item) => item.data.map((point) => point.label).filter((label) => typeof label === "string"));
+  const accessibleLabel = chartAccessibleLabel(visualization, fullPointLabels);
+  return <Scatter role="img" aria-label={accessibleLabel} title={accessibleLabel} data-testid="scatter-analytical-graph" data={{ datasets: normalized }} options={chartOptions} />;
 };
 
 export default ScatterAnalyticalGraph;
