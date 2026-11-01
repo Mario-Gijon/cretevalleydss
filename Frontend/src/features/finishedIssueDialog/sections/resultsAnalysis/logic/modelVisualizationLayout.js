@@ -92,7 +92,7 @@ export const getVisualizationLayout = (visualization) => {
   }
   if (visualization?.type === "heatmap") {
     const columnCount = collectionLength(data.columns);
-    const mccAdjustmentMap = visualization.key === "mcc-adjustment-map";
+    const mccAdjustmentMap = ["mcc-adjustment-map", "ahp-mcc-adjustment-map"].includes(visualization.key);
     const twoTupleHeatmap = TWO_TUPLE_HEATMAP_KEYS.has(visualization.key);
     const topsisProfile = TOPSIS_PROFILE_HEATMAP_KEYS.has(visualization.key);
     return {

@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from services.results_analysis.mcc_weight_analysis import build_mcc_adjustment_heatmap
+
 
 def _display(
     value: float | int,
@@ -317,164 +319,11 @@ def _collective_criterion_importance(
 def _mcc_adjustment_map(
     facts: dict[str, Any],
 ) -> dict[str, Any] | None:
-    mcc = facts["mcc"]
-
-    if not mcc.get(
-        "available"
-    ):
-        return None
-
-    experts = facts[
-        "experts"
-    ]["items"]
-
-    criteria = facts[
-        "criteria"
-    ]["items"]
-
-    by_cell = {
-        (
-            cell["expertKey"],
-            cell["criterionId"],
-        ): cell
-        for cell
-        in mcc["cells"]
-    }
-
-    values = []
-    details = []
-
-    for expert in experts:
-        value_row = []
-        detail_row = []
-
-        for criterion in criteria:
-            cell = by_cell[
-                (
-                    expert[
-                        "expertKey"
-                    ],
-                    criterion[
-                        "criterionId"
-                    ],
-                )
-            ]
-
-            value_row.append(
-                _display(
-                    cell["delta"]
-                )
-            )
-
-            detail_row.append(
-                {
-                    "originalWeight": (
-                        _display(
-                            cell[
-                                "originalWeight"
-                            ]
-                        )
-                    ),
-                    "adjustedWeight": (
-                        _display(
-                            cell[
-                                "adjustedWeight"
-                            ]
-                        )
-                    ),
-                    "collectiveWeight": (
-                        _display(
-                            cell[
-                                "collectiveWeight"
-                            ]
-                        )
-                    ),
-                    "delta": _display(
-                        cell[
-                            "delta"
-                        ]
-                    ),
-                }
-            )
-
-        values.append(
-            value_row
-        )
-
-        details.append(
-            detail_row
-        )
-
-    total = mcc[
-        "totalAbsoluteAdjustment"
-    ]
-
-    insight = (
-        "The calculation left the "
-        "original expert weights unchanged."
-        if abs(float(total)) <= 1e-6
-        else (
-            "The calculation adjusted "
-            "the expert weight profiles to "
-            "meet the configured maximum gap."
-        )
+    return build_mcc_adjustment_heatmap(
+        criteria=facts["criteria"]["items"],
+        experts=facts["experts"]["items"],
+        mcc=facts["mcc"],
     )
-
-    return {
-        "key": (
-            "mcc-adjustment-map"
-        ),
-        "type": "heatmap",
-        "title": (
-            "Weight changes by expert and criterion"
-        ),
-        "description": (
-            "How much the calculation "
-            "raised or lowered each expert's "
-            "original weight for each criterion."
-        ),
-        "insight": insight,
-        "scale": {
-            "kind": "diverging",
-            "center": 0,
-        },
-        "data": {
-            "rows": [
-                {
-                    "key": (
-                        expert[
-                            "expertKey"
-                        ]
-                    ),
-                    "label": (
-                        expert[
-                            "name"
-                        ]
-                    ),
-                }
-                for expert
-                in experts
-            ],
-            "columns": [
-                {
-                    "key": (
-                        criterion[
-                            "criterionId"
-                        ]
-                    ),
-                    "label": (
-                        criterion[
-                            "name"
-                        ]
-                    ),
-                }
-                for criterion
-                in criteria
-            ],
-            "values": values,
-            "details": details,
-        },
-    }
 
 
 def _mcc_effort_by_expert(

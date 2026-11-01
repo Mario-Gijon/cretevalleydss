@@ -94,7 +94,7 @@ describe("finished Issue execution analysis service", () => {
       phase: null,
       selectedExecution: {
         attemptId: "criteria-attempt",
-        modelContext: { apiModelKey: "criteria-model" },
+        modelContext: { apiModelKey: "ahp_criteria_weights" },
         input: { modelParameters: {}, evaluations: [{ payload: { order: ["a", "b"] } }], context: {} },
         result: { standardResult: { weights: { a: 0.6 } }, modelExecution: { duration: 1 }, rawOutput: { weights: [0.6, 0.4] } },
         application: { stageResultId: "criteria-result" },
@@ -113,9 +113,9 @@ describe("finished Issue execution analysis service", () => {
 
     const result = await getOrGenerateFinishedIssueExecutionAnalysis({ issueId, userId, executionKey: "base", ...dependencies, requestAnalysis, requestModelAnalysis });
 
-    expect(requestModelAnalysis).toHaveBeenNthCalledWith(1, { apiModelKey: "criteria-model", analysisContext: expect.objectContaining({ projectedFor: "base", rounds: [expect.objectContaining({ phase: null, selectedExecution: criteriaExecution.selectedExecution })] }) });
+    expect(requestModelAnalysis).toHaveBeenNthCalledWith(1, { apiModelKey: "ahp_criteria_weights", analysisContext: expect.objectContaining({ projectedFor: "base", rounds: [expect.objectContaining({ phase: null, selectedExecution: criteriaExecution.selectedExecution })] }) });
     expect(requestModelAnalysis).toHaveBeenNthCalledWith(2, { apiModelKey: "alternative-model", analysisContext: projected });
-    expect(result.stageAnalyses).toMatchObject({ criteriaWeighting: { apiModelKey: "criteria-model", analysis: { interpretation: "criteria-model:1" } }, alternativeEvaluation: { apiModelKey: "alternative-model", analysis: { interpretation: "alternative-model:1" } } });
+    expect(result.stageAnalyses).toMatchObject({ criteriaWeighting: { apiModelKey: "ahp_criteria_weights", analysis: { interpretation: "ahp_criteria_weights:1" } }, alternativeEvaluation: { apiModelKey: "alternative-model", analysis: { interpretation: "alternative-model:1" } } });
   });
 
   it("generates and persists generic analysis for sorting base and scenario executions when model analysis is absent", async () => {

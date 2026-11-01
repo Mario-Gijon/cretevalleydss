@@ -1,6 +1,18 @@
 const guide = (title, text) => Object.freeze({ title, text });
 
 export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
+  "ahp-criterion-importance": guide(
+    "Criterion importance",
+    "Each bar represents the final importance assigned to a criterion. Longer bars indicate greater importance in the weighting system. All criterion weights sum to 100%.",
+  ),
+  "ahp-individual-collective-weights": guide(
+    "Individual vs collective weights",
+    "Each row shows how an expert distributes importance across criteria. The collective row contains the final group weights. Compare values within each column to understand differences between individual and collective priorities.",
+  ),
+  "ahp-mcc-adjustment-map": guide(
+    "MCC weight adjustments",
+    "Positive values indicate that MCC increased an expert's original criterion weight; negative values indicate a reduction. Values near zero represent little or no adjustment.",
+  ),
   "individual-preference-distribution": guide(
     "Individual preference distribution",
     "Each row is a criterion, and each colored circle is one expert's preference; the legend identifies the experts. The horizontal position gives its rank, with 1 meaning most important; small side-to-side offsets separate circles with the same rank without changing their value.",

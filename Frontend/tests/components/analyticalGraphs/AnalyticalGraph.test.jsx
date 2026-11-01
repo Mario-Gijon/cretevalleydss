@@ -784,6 +784,29 @@ describe("AnalyticalGraph", () => {
       .toHaveTextContent("—");
   });
 
+  it("shows AHP individual and collective heatmap weights as percentages", () => {
+    const visualization = {
+      key: "ahp-individual-collective-weights",
+      type: "heatmap",
+      title: "Individual vs collective weights",
+      scale: { min: 0, max: 100, valuePrecision: 4, valueSuffix: "%" },
+      data: {
+        rows: [{ key: "expert-1", label: "Expert 1" }, { key: "collective", label: "Collective" }],
+        columns: [{ key: "c1", label: "Life expectancy" }],
+        values: [[27.78], [31.25]],
+        details: [[{ source: "Expert 1", valuePrecision: 4 }], [{ source: "Final MCC collective weights", valuePrecision: 4 }]],
+      },
+    };
+
+    render(<AnalyticalGraph visualization={visualization} />);
+
+    expect(screen.getByText("27.78%")).toBeInTheDocument();
+    expect(screen.getByText("31.25%")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Expert 1, Life expectancy: 27.78%/)).toHaveAttribute("aria-label", expect.stringContaining("Source: Expert 1"));
+    expect(screen.getByLabelText(/Collective, Life expectancy: 31.25%/)).toHaveAttribute("aria-label", expect.stringContaining("Source: Final MCC collective weights"));
+    expect(screen.getByTestId("visualization-reading-guide")).toHaveTextContent("The collective row contains the final group weights.");
+  });
+
   it("handles unsupported and malformed descriptors without crashing", () => {
     const { rerender } = render(<AnalyticalGraph visualization={{ key: "unknown", type: "surface", title: "Unknown", data: {} }} />);
     expect(screen.getByText("This visualization type is not supported.")).toBeInTheDocument();

@@ -153,6 +153,27 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["criteria-chart", "alternative-chart"]);
   });
 
+  it("renders AHP criteria-weighting charts in the shared model-analysis stage", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", stageAnalyses: {
+        criteriaWeighting: { apiModelKey: "ahp_criteria_weights", analysis: { sections: [
+          { id: "ahp-criterion-importance", title: "Criterion importance", order: 0, visualizations: [{ key: "ahp-criterion-importance", type: "bar" }] },
+          { id: "ahp-individual-collective-weights", title: "Individual vs collective weights", order: 1, visualizations: [{ key: "ahp-individual-collective-weights", type: "heatmap" }] },
+          { id: "ahp-mcc-adjustment-map", title: "MCC weight adjustments", order: 2, visualizations: [{ key: "ahp-mcc-adjustment-map", type: "heatmap" }] },
+        ] } },
+      } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByText("Criterion weighting visualizations")).toBeInTheDocument();
+    expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
+      "ahp-criterion-importance",
+      "ahp-individual-collective-weights",
+      "ahp-mcc-adjustment-map",
+    ]);
+    expect(screen.queryByText("AHP criteria-weighting visualizations")).not.toBeInTheDocument();
+  });
+
   it("renders model-owned TOPSIS descriptors through the shared alternative-evaluation pipeline", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{

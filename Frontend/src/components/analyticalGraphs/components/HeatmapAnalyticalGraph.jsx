@@ -30,10 +30,10 @@ const humanizeKey = (key) => String(key).replace(/([a-z0-9])([A-Z])/g, "$1 $2").
 const formatValue = (value, precision = 8) => typeof value === "number" && Number.isFinite(value) ? Number(value.toPrecision(precision)).toString() : String(value);
 const valuePrecision = (value) => Number.isInteger(value) && value >= 1 && value <= 15 ? value : 8;
 
-export const heatmapTooltipLines = ({ row, column, value, details }) => {
-  const precision = valuePrecision(details?.valuePrecision);
+export const heatmapTooltipLines = ({ row, column, value, details, valueSuffix = "", precision: precisionOverride }) => {
+  const precision = valuePrecision(details?.valuePrecision ?? precisionOverride);
   const note = typeof details?.note === "string" ? details.note : null;
-  const cellValue = Number.isFinite(value) ? formatValue(value, precision) : note || "Unavailable";
+  const cellValue = Number.isFinite(value) ? `${formatValue(value, precision)}${valueSuffix}` : note || "Unavailable";
   const lines = [`${row.label || row.key}, ${column.label || column.key}: ${cellValue}`];
   if (!details || typeof details !== "object" || Array.isArray(details)) return lines;
   Object.entries(details).forEach(([key, detail]) => {
@@ -51,7 +51,7 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
   const maximum = Number.isFinite(visualization?.scale?.max) ? visualization.scale.max : Math.max(...finiteValues);
   const diverging = visualization?.scale?.kind === "diverging";
   const truncateLabels = visualization?.truncateLabels === true;
-  const mccAdjustmentMap = visualization?.key === "mcc-adjustment-map";
+  const mccAdjustmentMap = ["mcc-adjustment-map", "ahp-mcc-adjustment-map"].includes(visualization?.key);
   const twoTupleHeatmap = TWO_TUPLE_HEATMAP_KEYS.has(visualization?.key);
   const topsisProfile = TOPSIS_PROFILE_HEATMAP_KEYS.has(visualization?.key);
   const alternativeRelationships = ALTERNATIVE_RELATIONSHIPS_HEATMAP_KEYS.has(visualization?.key);
@@ -70,6 +70,7 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
       ? `240px repeat(${data.columns.length}, 112px)`
       : `${labelColumn} repeat(${data.columns.length}, minmax(${criterionColumnMinWidth}px, 1fr))`;
   const precision = valuePrecision(visualization?.scale?.valuePrecision);
+  const valueSuffix = typeof visualization?.scale?.valueSuffix === "string" ? visualization.scale.valueSuffix : "";
   const center = Number.isFinite(visualization?.scale?.center) ? visualization.scale.center : 0;
   const magnitude = finiteValues.reduce((maximumDeviation, value) => Math.max(maximumDeviation, Math.abs(value - center)), 0);
   return <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", width: topsisProfile || alternativeRelationships ? "fit-content" : truncateLabels || mccAdjustmentMap || twoTupleHeatmap ? "100%" : undefined, gridTemplateColumns: columnTemplate, gap: 0.5 }}>
@@ -83,10 +84,10 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
       {data.columns.map((column, columnIndex) => {
         const value = data.values[rowIndex]?.[columnIndex];
         const details = data.details?.[rowIndex]?.[columnIndex];
-        const lines = heatmapTooltipLines({ row, column, value, details });
+        const lines = heatmapTooltipLines({ row, column, value, details, valueSuffix, precision });
         const label = lines.join("\n");
         const color = Number.isFinite(value) ? (diverging ? divergingColorFor(value, center, magnitude) : colorFor(value, minimum, maximum)) : "action.disabledBackground";
-        return <Tooltip key={column.key} title={label}><Box aria-label={label} data-color-scale={diverging ? "diverging" : "sequential"} data-cell-color={color} sx={{ minHeight: 42, display: "grid", placeItems: "center", borderRadius: 1, bgcolor: color, color: "rgba(255,255,255,0.94)", fontWeight: 700 }}>{Number.isFinite(value) ? formatValue(value, precision) : "—"}</Box></Tooltip>;
+        return <Tooltip key={column.key} title={label}><Box aria-label={label} data-color-scale={diverging ? "diverging" : "sequential"} data-cell-color={color} sx={{ minHeight: 42, display: "grid", placeItems: "center", borderRadius: 1, bgcolor: color, color: "rgba(255,255,255,0.94)", fontWeight: 700 }}>{Number.isFinite(value) ? `${formatValue(value, precision)}${valueSuffix}` : "—"}</Box></Tooltip>;
       })}
     </Box>)}
   </Box>;

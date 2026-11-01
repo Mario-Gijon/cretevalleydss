@@ -4,6 +4,8 @@ import math
 from statistics import mean, median
 from typing import Any
 
+from services.results_analysis.mcc_weight_analysis import build_mcc_weight_adjustment_facts
+
 from .evidence import (
     FLOAT_TOLERANCE,
     PreferenceOrderEvidence,
@@ -362,284 +364,22 @@ def _mcc_facts(
         }
 
     mcc = evidence.mcc
-
-    criterion_names = {
-        criterion.criterion_id: (
-            criterion.name
-        )
-        for criterion
-        in evidence.criteria
-    }
-
-    expert_names = {
-        expert.expert_key: (
-            expert.name
-        )
-        for expert
-        in evidence.experts
-    }
-
-    cells: list[
-        dict[str, Any]
-    ] = []
-
-    effort_by_expert: list[
-        dict[str, Any]
-    ] = []
-
-    effort_by_criterion: list[
-        dict[str, Any]
-    ] = []
-
-    for expert in evidence.experts:
-        expert_key = (
-            expert.expert_key
-        )
-
-        effort = 0.0
-
-        for criterion in evidence.criteria:
-            criterion_id = (
-                criterion.criterion_id
-            )
-
-            original = (
-                mcc
-                .original_weights_by_expert[
-                    expert_key
-                ][criterion_id]
-            )
-
-            adjusted = (
-                mcc
-                .adjusted_weights_by_expert[
-                    expert_key
-                ][criterion_id]
-            )
-
-            collective = (
-                mcc
-                .weights_by_criterion[
-                    criterion_id
-                ]
-            )
-
-            delta = (
-                adjusted
-                - original
-            )
-
-            absolute_delta = abs(
-                delta
-            )
-
-            effort += (
-                absolute_delta
-            )
-
-            cells.append(
-                {
-                    "expertKey": (
-                        expert_key
-                    ),
-                    "expertName": (
-                        expert.name
-                    ),
-                    "criterionId": (
-                        criterion_id
-                    ),
-                    "criterionName": (
-                        criterion.name
-                    ),
-                    "originalWeight": (
-                        original
-                    ),
-                    "adjustedWeight": (
-                        adjusted
-                    ),
-                    "collectiveWeight": (
-                        collective
-                    ),
-                    "delta": delta,
-                    "absoluteDelta": (
-                        absolute_delta
-                    ),
-                    "consensusDeviation": abs(
-                        adjusted
-                        - collective
-                    ),
-                }
-            )
-
-        effort_by_expert.append(
-            {
-                "expertKey": (
-                    expert_key
-                ),
-                "name": expert.name,
-                "effort": effort,
-            }
-        )
-
-    for criterion in evidence.criteria:
-        criterion_id = (
-            criterion.criterion_id
-        )
-
-        effort = sum(
-            cell["absoluteDelta"]
-            for cell in cells
-            if (
-                cell["criterionId"]
-                == criterion_id
-            )
-        )
-
-        effort_by_criterion.append(
-            {
-                "criterionId": (
-                    criterion_id
-                ),
-                "name": (
-                    criterion.name
-                ),
-                "effort": effort,
-            }
-        )
-
-    total_from_experts = sum(
-        item["effort"]
-        for item
-        in effort_by_expert
-    )
-
-    total_from_criteria = sum(
-        item["effort"]
-        for item
-        in effort_by_criterion
-    )
-
-    if not _close(
-        total_from_experts,
-        total_from_criteria,
-    ):
-        raise ValueError(
-            "MCC adjustment effort is "
-            "inconsistent between expert "
-            "and criterion aggregation"
-        )
-
-    if (
-        mcc.objective is not None
-        and not _close(
-            total_from_experts,
-            mcc.objective,
-        )
-    ):
-        raise ValueError(
-            "rawOutput.mcc.objective is "
-            "inconsistent with the executed "
-            "absolute MCC adjustments"
-        )
-
-    max_consensus_deviation = max(
-        (
-            cell[
-                "consensusDeviation"
-            ]
-            for cell in cells
-        ),
-        default=0.0,
-    )
-
-    if (
-        max_consensus_deviation
-        > (
-            mcc.eps
-            + FLOAT_TOLERANCE
-        )
-    ):
-        raise ValueError(
-            "Executed MCC adjusted weights "
-            "violate the stored epsilon "
-            "consensus bound"
-        )
-
-    largest_expert_effort = (
-        _max_group(
-            effort_by_expert,
-            "effort",
-        )
-    )
-
-    largest_criterion_effort = (
-        _max_group(
-            effort_by_criterion,
-            "effort",
-        )
-    )
-
-    return {
-        "available": True,
-        "status": mcc.status,
-        "epsilon": mcc.eps,
-        "objective": (
-            mcc.objective
-        ),
-        "totalAbsoluteAdjustment": (
-            total_from_experts
-        ),
-        "maxConsensusDeviation": (
-            max_consensus_deviation
-        ),
-        "cells": cells,
-        "effortByExpert": (
-            effort_by_expert
-        ),
-        "effortByCriterion": (
-            effort_by_criterion
-        ),
-        "largestEffortExperts": [
-            _identity(
-                item,
-                expert=True,
-            )
-            for item
-            in largest_expert_effort
+    return build_mcc_weight_adjustment_facts(
+        criteria=[
+            {"criterionId": item.criterion_id, "name": item.name}
+            for item in evidence.criteria
         ],
-        "largestEffortCriteria": [
-            _identity(item)
-            for item
-            in largest_criterion_effort
+        experts=[
+            {"expertKey": item.expert_key, "name": item.name}
+            for item in evidence.experts
         ],
-        "originalWeightsByExpert": {
-            expert_key: dict(weights)
-            for expert_key, weights
-            in (
-                mcc
-                .original_weights_by_expert
-                .items()
-            )
-        },
-        "adjustedWeightsByExpert": {
-            expert_key: dict(weights)
-            for expert_key, weights
-            in (
-                mcc
-                .adjusted_weights_by_expert
-                .items()
-            )
-        },
-        "collectiveWeightsByCriterion": dict(
-            mcc.weights_by_criterion
-        ),
-        "expertNamesByKey": (
-            expert_names
-        ),
-        "criterionNamesById": (
-            criterion_names
-        ),
-    }
+        original_weights_by_expert=mcc.original_weights_by_expert,
+        adjusted_weights_by_expert=mcc.adjusted_weights_by_expert,
+        collective_weights_by_criterion=mcc.weights_by_criterion,
+        epsilon=mcc.eps,
+        objective=mcc.objective,
+        status=mcc.status,
+    )
 
 
 def build_core_facts_from_evidence(

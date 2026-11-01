@@ -54,6 +54,21 @@ describe("InterpretationPanel", () => {
     expect(screen.getByText("Alternative interpretation")).toBeInTheDocument();
   });
 
+  it("renders AHP criteria-weighting interpretation in the shared criteria section", () => {
+    render(<InterpretationPanel executions={[{
+      key: "base", displayLabel: "Base", genericAnalysis: { interpretation: "General" },
+      stageAnalyses: {
+        criteriaWeighting: { apiModelKey: "ahp_criteria_weights", analysis: { interpretation: "### Criterion importance\n\nLife expectancy received the greatest final importance." } },
+      },
+    }]} />);
+
+    expect(screen.getByText("Criteria weighting")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Criterion importance" })).toBeInTheDocument();
+    expect(screen.getByText("Life expectancy received the greatest final importance.")).toBeInTheDocument();
+    expect(screen.queryByText("Alternative evaluation")).not.toBeInTheDocument();
+    expect(screen.queryByText("ahp_criteria_weights")).not.toBeInTheDocument();
+  });
+
   it("keeps General analysis visible and omits the optional section when model analysis is absent", () => {
     render(<InterpretationPanel executions={[
       { key: "base", displayLabel: "Base", modelName: "Base model", genericAnalysis: { interpretation: "Base general" }, alternativeEvaluationAnalysis: null },
