@@ -29,6 +29,13 @@ const TOPSIS_PROFILE_HEATMAP_KEYS = new Set(["topsis-collective-performance-prof
 
 const chartHeight = () => COMPACT_CHART_HEIGHT;
 const categoricalChartWidth = (itemCount, pixelsPerItem, threshold) => itemCount > threshold ? itemCount * pixelsPerItem : undefined;
+const horizontalBarChartWidth = (categories) => {
+  const longestLabelLength = categories.reduce(
+    (longest, category) => Math.max(longest, typeof category === "string" ? category.length : 0),
+    0,
+  );
+  return longestLabelLength > 38 ? Math.min(1200, longestLabelLength * 7 + 240) : undefined;
+};
 const dynamicChartHeight = (itemCount, pixelsPerItem, chromeHeight) => {
   const height = Math.min(
     DYNAMIC_CHART_MAX_HEIGHT,
@@ -69,6 +76,7 @@ export const getVisualizationLayout = (visualization) => {
   if (normalizedVisualization?.type === "bar") {
     const categoryCount = collectionLength(data.categories);
     if (normalizedVisualization.orientation === "horizontal") {
+      const chartMinWidth = horizontalBarChartWidth(data.categories);
       return {
         span: 1,
         chartHeight: dynamicChartHeight(
@@ -76,6 +84,7 @@ export const getVisualizationLayout = (visualization) => {
           HORIZONTAL_BAR_CATEGORY_HEIGHT,
           HORIZONTAL_BAR_CHROME_HEIGHT
         ),
+        ...(chartMinWidth ? { chartMinWidth } : {}),
       };
     }
     return { span: 1, chartHeight: chartHeight(), chartMinWidth: categoricalChartWidth(categoryCount, 72, 6) };

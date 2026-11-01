@@ -14,12 +14,15 @@ export const preferenceDistributionMatrixPlugin = {
       chart.data.datasets,
       options.clusterSpacingPx ?? PREFERENCE_DISTRIBUTION_CLUSTER_SPACING_PX
     );
+    const clusterAxis = options.clusterAxis === "y" ? "y" : "x";
     chart.data.datasets.forEach((dataset, datasetIndex) => {
       const elements = chart.getDatasetMeta(datasetIndex).data;
       (dataset.data || []).forEach((point, dataIndex) => {
         const element = elements[dataIndex];
-        if (!element || !Number.isFinite(point?.x)) return;
-        element.x = chart.scales.x.getPixelForValue(point.x) + (offsets.get(`${datasetIndex}:${dataIndex}`) || 0);
+        const axis = clusterAxis === "y" ? "y" : "x";
+        const coordinate = point?.[axis];
+        if (!element || !Number.isFinite(coordinate)) return;
+        element[axis] = chart.scales[axis].getPixelForValue(coordinate) + (offsets.get(`${datasetIndex}:${dataIndex}`) || 0);
       });
     });
   },

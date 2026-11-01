@@ -33,6 +33,7 @@ import { filterSensitivityVisualization, getSensitivityAlternativeOptions, recom
 import { getVisualizationReadingGuide } from "../logic/visualizationReadingGuides.js";
 import { buildGeneralVisualizationsLayout } from "../logic/buildGeneralVisualizationsLayout.js";
 import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
+import { buildClassificationRelationshipVisualization } from "../logic/buildClassificationRelationshipVisualization.js";
 import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
@@ -631,6 +632,27 @@ const ExpertCollectiveRelationship = ({ visualizations, unavailableReason }) => 
   const distancesAvailable = distanceProjections.length > 0;
   const hasMultipleExperts = representedExpertCount(visualizations) > 1;
   const toggleMode = hasMultipleExperts && mapAvailable && distancesAvailable;
+  const classificationEntries = (visualizations.executions || []).flatMap((execution) => {
+    const descriptor = buildClassificationRelationshipVisualization(execution);
+    return descriptor ? [{ execution, descriptor }] : [];
+  });
+  // A categorical AHPSort relationship is a valid replacement only when this
+  // selection has no numerical projection. Keep TOPSIS MAP/DISTANCES intact,
+  // including mixed comparisons where numeric evidence is available.
+  if (classificationEntries.length && !mapAvailable && !distancesAvailable) {
+    return <Box sx={cardSx} data-testid="expert-collective-classification-relationship">
+      <Header
+        title="Expert–collective classification relationship"
+        subtitle="Each bar shows the share of exact category matches to the collective assignment. Category matches are not numeric distances between evaluations."
+      />
+      <Stack spacing={1.2}>
+        {classificationEntries.map(({ execution, descriptor }) => <Box key={execution.key} sx={{ minWidth: 0 }}>
+          {classificationEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 0.6, color: execution.color, fontWeight: 900 }}>{execution.displayLabel}</Typography> : null}
+          <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />
+        </Box>)}
+      </Stack>
+    </Box>;
+  }
   const selectedRepresentation = toggleMode
     ? representation
     : mapAvailable
@@ -798,6 +820,11 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const controlTargetIndex = visibleEntries.findIndex((entry) => entry.visualizations.length > 0);
   return <Box data-testid="model-analysis-semantic-section" sx={cardSx}>
     {!isSingleton ? <Typography variant="h6" component="h3" sx={{ fontWeight: 900, mb: 1.4 }}>{section.title}</Typography> : null}
+    {typeof section.presentation?.summaryMessage === "string" && section.presentation.summaryMessage.trim()
+      ? <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: visibleEntries.some((entry) => entry.visualizations.length) ? 1 : 0 }}>
+          {section.presentation.summaryMessage.trim()}
+        </Typography>
+      : null}
     {alternativeSelector && effectiveSelectedAlternativeIds.length === 0 ? <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: 0.8 }}>No alternatives selected. The category boundaries remain visible.</Typography> : null}
     <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: visibleEntries.length > 1 ? scenarioColumns : "minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.4, minWidth: visibleEntries.length > 2 ? `${visibleEntries.length * 360}px` : 0 }}>
@@ -806,7 +833,7 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
             {visibleEntries.length > 1 || showExecutionLabels ? <Typography variant="subtitle1" sx={{ mb: 1, color: entry.execution.color, fontWeight: 900 }}>{entry.execution.displayLabel}</Typography> : null}
             {entry.visualizations.length
               ? <SectionPanes visualizations={entry.visualizations} execution={entry.execution} stacked={stacked} leadFullWidth={leadFullWidth} compactTitles={!isSingleton} forceFullWidth={visibleEntries.length > 1} controls={index === controlTargetIndex ? visualizationControls : null} />
-              : <VisualizationUnavailableState minHeight={150} />}
+            : section.presentation?.summaryMessage ? null : <VisualizationUnavailableState minHeight={150} />}
           </Box>,
           ...(index < visibleEntries.length - 1 ? [
             <Box key={`${entry.execution.key}-divider`} data-testid="semantic-section-scenario-divider" aria-hidden="true" sx={{ display: { xs: "none", md: "block" }, width: 1, bgcolor: "rgba(83,198,214,0.22)" }} />,
@@ -841,9 +868,12 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
   const sortingProjectionUnavailable = Boolean(
     sortingProjectionUnavailableReason,
   );
+  const classificationRelationshipAvailable = executions.some(
+    (execution) => buildClassificationRelationshipVisualization(execution) !== null,
+  );
   const expertCollectiveAvailable = hasRenderableExpertCollectiveMap(visualizations) ||
     renderableDistanceProjections(visualizations.canonicalProjections).length > 0 ||
-    sortingProjectionUnavailable;
+    sortingProjectionUnavailable || classificationRelationshipAvailable;
   const consensusIssueEnabled = visualizations.consensus?.issueEnabled === true;
   const consensusAvailable = consensusIssueEnabled && visualizations.consensus?.available === true;
   const alternativeRelationshipsAvailable =
@@ -859,7 +889,7 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
 
   const renderGeneralVisualization = (type) => {
     if (type === "expertCollective") {
-      return <ExpertCollectiveRelationship key={type} visualizations={visualizations} unavailableReason={sortingProjectionUnavailableReason} />;
+      return <ExpertCollectiveRelationship key={type} visualizations={{ ...visualizations, executions }} unavailableReason={sortingProjectionUnavailableReason} />;
     }
     if (type === "consensus") {
       return <ConsensusCard key={type} consensus={visualizations.consensus} />;

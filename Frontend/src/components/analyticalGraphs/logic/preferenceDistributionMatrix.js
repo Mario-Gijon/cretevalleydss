@@ -1,4 +1,5 @@
 export const INDIVIDUAL_PREFERENCE_DISTRIBUTION_KEY = "individual-preference-distribution";
+export const AHP_DERIVED_PRIORITY_DISTRIBUTION_KEY = "ahp-derived-priority-distribution";
 
 export const PREFERENCE_DISTRIBUTION_MARKER_DIAMETER_PX = 11;
 export const PREFERENCE_DISTRIBUTION_CLUSTER_SPACING_PX = 7;
@@ -18,7 +19,10 @@ const validSeriesPoints = (series) => (Array.isArray(series) ? series : []).flat
 const cellKey = (x, y) => JSON.stringify([x, y]);
 
 export const isIndividualPreferenceDistribution = (visualization) =>
-  visualization?.type === "scatter" && visualization?.key === INDIVIDUAL_PREFERENCE_DISTRIBUTION_KEY;
+  visualization?.type === "scatter" && [
+    INDIVIDUAL_PREFERENCE_DISTRIBUTION_KEY,
+    AHP_DERIVED_PRIORITY_DISTRIBUTION_KEY,
+  ].includes(visualization?.key);
 
 export const buildPreferenceDistributionDatasets = (series) => (Array.isArray(series) ? series : []).map((item, datasetIndex) => {
   const expertKey = String(item?.key ?? item?.label ?? datasetIndex);

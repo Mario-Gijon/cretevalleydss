@@ -23,7 +23,86 @@ def _result_structure(analysis_context: dict, execution: dict) -> dict:
     return {"key": key.strip(), "version": version}
 
 
-def _sorting_result_context(analysis_context: dict, standard_result: dict) -> dict:
+def _ahp_sort_classification_relationship(
+    analysis_context: dict,
+    execution: dict,
+    standard_result: dict,
+    categories: list[dict],
+    assignments: list[dict],
+) -> dict | None:
+    """Project saved AHPSort I individual/group categories to a safe summary."""
+    diagnostics = standard_result.get("diagnostics")
+    if not isinstance(diagnostics, dict) or diagnostics.get("modelKey") != "ahp_sort_i":
+        return None
+    individual = diagnostics.get("individualResultsByExpertId")
+    request_evaluations = (execution.get("input") or {}).get("evaluations")
+    if not isinstance(individual, dict) or len(individual) < 2 or not isinstance(request_evaluations, list):
+        return None
+
+    expert_names: dict[str, str] = {}
+    directory = (analysis_context.get("semanticDirectory") or {}).get("expertsById") or {}
+    if not isinstance(directory, dict):
+        return None
+    for evaluation in request_evaluations:
+        expert = evaluation.get("expert") if isinstance(evaluation, dict) else None
+        expert_id = expert.get("id") if isinstance(expert, dict) else None
+        if not isinstance(expert_id, str) or not expert_id.strip() or expert_id in expert_names:
+            return None
+        saved = directory.get(expert_id)
+        name = saved.get("name") if isinstance(saved, dict) else None
+        if not isinstance(name, str) or not name.strip():
+            name = expert.get("name") if isinstance(expert, dict) else None
+        if not isinstance(name, str) or not name.strip():
+            return None
+        expert_names[expert_id] = name.strip()
+
+    if set(individual) != set(expert_names):
+        return None
+    categories_by_id = {item["categoryId"]: item for item in categories}
+    collective_by_alternative = {item["alternativeId"]: item for item in assignments}
+    alternative_names = (analysis_context.get("semanticDirectory") or {}).get("alternativesById") or {}
+    experts = []
+    duplicate_names = {name for name in expert_names.values() if list(expert_names.values()).count(name) > 1}
+    for expert_id in sorted(expert_names, key=lambda key: (key.casefold(), key)):
+        result = individual.get(expert_id)
+        by_alternative = result.get("resultsByAlternativeId") if isinstance(result, dict) else None
+        if not isinstance(by_alternative, dict) or set(by_alternative) != set(collective_by_alternative):
+            return None
+        matches = 0
+        disagreements = []
+        for alternative_id, collective in collective_by_alternative.items():
+            individual_assignment = by_alternative.get(alternative_id)
+            category_id = individual_assignment.get("categoryId") if isinstance(individual_assignment, dict) else None
+            if category_id not in categories_by_id:
+                return None
+            if category_id == collective["categoryId"]:
+                matches += 1
+                continue
+            alternative = alternative_names.get(alternative_id) or {}
+            alternative_name = alternative.get("name") if isinstance(alternative, dict) else None
+            disagreements.append({
+                "alternative": alternative_name if isinstance(alternative_name, str) and alternative_name.strip() else alternative_id,
+                "individualCategory": categories_by_id[category_id]["label"],
+                "collectiveCategory": collective["categoryLabel"],
+            })
+        name = expert_names[expert_id]
+        if name in duplicate_names:
+            name = f"{name} ({expert_id[-6:]})"
+        total = len(collective_by_alternative)
+        experts.append({
+            "expertId": expert_id,
+            "name": name,
+            "exactCategoryMatches": matches,
+            "totalAlternatives": total,
+            "matchRate": matches / total if total else None,
+            "disagreements": disagreements,
+        })
+    if not experts or any(item["totalAlternatives"] == 0 for item in experts):
+        return None
+    return {"metric": "exact_category_match_rate", "experts": experts}
+
+
+def _sorting_result_context(analysis_context: dict, standard_result: dict, execution: dict) -> dict:
     categories = standard_result.get("categories")
     assignments = standard_result.get("assignments")
     alternatives_by_id = (analysis_context.get("semanticDirectory") or {}).get("alternativesById") or {}
@@ -99,11 +178,21 @@ def _sorting_result_context(analysis_context: dict, standard_result: dict) -> di
             }
         )
     normalized_assignments.sort(key=lambda assignment: (assignment["categoryOrder"], assignment["name"], assignment["alternativeId"]))
-    return {
+    projected = {
         "categories": normalized_categories,
         "categoryOrderSemantics": _SORTING_ORDER_SEMANTICS,
         "assignments": normalized_assignments,
     }
+    classification_relationship = _ahp_sort_classification_relationship(
+        analysis_context,
+        execution,
+        standard_result,
+        normalized_categories,
+        normalized_assignments,
+    )
+    if classification_relationship is not None:
+        projected["expertCollectiveClassificationRelationship"] = classification_relationship
+    return projected
 
 
 def build_generic_round_context(analysis_context: dict, round_entry: dict) -> dict:
@@ -122,7 +211,7 @@ def build_generic_round_context(analysis_context: dict, round_entry: dict) -> di
             for entry in standard_result.get("rankedAlternatives", [])
         ]
     elif result_structure["key"] == "sorting" and result_structure["version"] == 1:
-        projected_result.update(_sorting_result_context(analysis_context, standard_result))
+        projected_result.update(_sorting_result_context(analysis_context, standard_result, execution))
     else:
         raise ValueError(f"Generic Results Analysis does not support {result_structure['key']}@{result_structure['version']}")
     start = round_entry.get("start")

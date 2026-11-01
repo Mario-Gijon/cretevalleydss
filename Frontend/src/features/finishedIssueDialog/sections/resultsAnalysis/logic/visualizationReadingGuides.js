@@ -1,6 +1,26 @@
 const guide = (title, text) => Object.freeze({ title, text });
 
 export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
+  "ahp-derived-priority-distribution": guide(
+    "Individual AHP priority distribution",
+    "Each row is a criterion, and each colored point is an expert. Horizontal position is the ordinal position derived from the saved AHP weights: 1 is the greatest weight. Tied weights share a position; the tooltip shows the original weight. This is not a ranking declared by the expert.",
+  ),
+  "ahp-collective-criterion-importance": guide(
+    "Collective criterion importance",
+    "Each bar shows the final AHP or MCC weight assigned to a criterion as a percentage. Longer bars indicate greater final importance.",
+  ),
+  "ahp-mcc-adjustment-effort-by-expert": guide(
+    "Weight adjustment by expert",
+    "Each bar is the sum of absolute changes across one expert's criteria, in percentage points. Increases and reductions both add to the total; it is not a net transfer.",
+  ),
+  "ahp-mcc-adjustment-effort-by-criterion": guide(
+    "Weight adjustment by criterion",
+    "Each bar is the sum of absolute changes across experts for one criterion, in percentage points. Increases and reductions both add to the total; it is not a net transfer.",
+  ),
+  "expert-collective-classification-match": guide(
+    "Classification match by expert",
+    "Each bar shows the percentage of alternatives assigned the same category by one expert and the collective result. The tooltip gives the exact count and may list the alternatives with different categories. This categorical match rate is not a numeric distance or an MCC consensus measure.",
+  ),
   "ahp-criterion-importance": guide(
     "Criterion importance",
     "Each bar represents the final importance assigned to a criterion. Longer bars indicate greater importance in the weighting system. All criterion weights sum to 100%.",

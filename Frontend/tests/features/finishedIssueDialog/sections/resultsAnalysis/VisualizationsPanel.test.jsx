@@ -157,21 +157,47 @@ describe("VisualizationsPanel", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{ key: "base", displayLabel: "Base", stageAnalyses: {
         criteriaWeighting: { apiModelKey: "ahp_criteria_weights", analysis: { sections: [
-          { id: "ahp-criterion-importance", title: "Criterion importance", order: 0, visualizations: [{ key: "ahp-criterion-importance", type: "bar" }] },
-          { id: "ahp-individual-collective-weights", title: "Individual vs collective weights", order: 1, visualizations: [{ key: "ahp-individual-collective-weights", type: "scatter" }] },
-          { id: "ahp-mcc-adjustment-map", title: "MCC weight adjustments", order: 2, visualizations: [{ key: "ahp-mcc-adjustment-map", type: "heatmap" }] },
+          { id: "ahp-criterion-priorities-collective-weights", title: "AHP criterion priorities and collective weights", order: 0, presentation: { layout: "stacked" }, visualizations: [
+            { key: "ahp-derived-priority-distribution", type: "scatter" },
+            { key: "ahp-collective-criterion-importance", type: "bar" },
+          ] },
+          { id: "ahp-consensus-adjustments", title: "Consensus adjustments", order: 1, presentation: { layout: "lead-full-width" }, visualizations: [
+            { key: "ahp-mcc-adjustment-map", type: "heatmap" },
+            { key: "ahp-mcc-adjustment-effort-by-expert", type: "bar" },
+            { key: "ahp-mcc-adjustment-effort-by-criterion", type: "bar" },
+          ] },
         ] } },
       } }]}
       visualizations={{ mode: "single", consensus: { enabled: false } }}
     /></ThemeProvider>);
 
     expect(screen.getByText("Criterion weighting visualizations")).toBeInTheDocument();
+    expect(screen.getByText("AHP criterion priorities and collective weights")).toBeInTheDocument();
+    expect(screen.getByText("Consensus adjustments")).toBeInTheDocument();
     expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
-      "ahp-criterion-importance",
-      "ahp-individual-collective-weights",
+      "ahp-derived-priority-distribution",
+      "ahp-collective-criterion-importance",
       "ahp-mcc-adjustment-map",
+      "ahp-mcc-adjustment-effort-by-expert",
+      "ahp-mcc-adjustment-effort-by-criterion",
     ]);
+    expect(screen.getAllByTestId("model-analysis-semantic-section")).toHaveLength(2);
+    expect(screen.getAllByTestId("semantic-section-pane-row")).toHaveLength(4);
+    expect(screen.getAllByTestId("semantic-section-pane-divider")).toHaveLength(1);
     expect(screen.queryByText("AHP criteria-weighting visualizations")).not.toBeInTheDocument();
+  });
+
+  it("shows a compact MCC summary instead of empty charts when no material adjustments were needed", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", stageAnalyses: { criteriaWeighting: { apiModelKey: "ahp_criteria_weights", analysis: { sections: [
+        { id: "ahp-consensus-adjustments", title: "Consensus adjustments", order: 1, presentation: { layout: "lead-full-width", summaryMessage: "No material MCC weight adjustments were needed." }, visualizations: [] },
+      ] } } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByRole("status")).toHaveTextContent("No material MCC weight adjustments were needed.");
+    expect(screen.queryByTestId("visualization-unavailable-state")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("analytical-graph")).not.toBeInTheDocument();
   });
 
   it("omits the empty general relationship card when sorting has no analytical projection", () => {
@@ -192,6 +218,32 @@ describe("VisualizationsPanel", () => {
 
     expect(screen.getByTestId("expert-collective-relationship")).toBeInTheDocument();
     expect(screen.getByText("The frozen execution evaluations are incomplete or invalid, so no projection was generated.")).toBeInTheDocument();
+  });
+
+  it("renders AHPSort's saved expert-to-collective category matches without a numeric projection", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "ahp-sort-base",
+        displayLabel: "Base execution",
+        resultStructureKey: "sorting",
+        genericAnalysis: { facts: { expertCollectiveClassificationRelationship: {
+          metric: "exact_category_match_rate",
+          experts: [
+            { expertId: "expert-ada", name: "Ada", exactCategoryMatches: 2, totalAlternatives: 3, matchRate: 2 / 3, disagreements: [{ alternative: "Beta", individualCategory: "Medium", collectiveCategory: "Low" }] },
+            { expertId: "expert-grace", name: "Grace", exactCategoryMatches: 3, totalAlternatives: 3, matchRate: 1, disagreements: [] },
+          ],
+        } } },
+      }]}
+      visualizations={{ mode: "single", singleScatter: { available: false, unavailableReason: "missing_analytical_projection" }, canonicalProjections: [], consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const card = screen.getByTestId("expert-collective-classification-relationship");
+    expect(within(card).getByRole("heading", { name: "Expert–collective classification relationship" })).toBeInTheDocument();
+    expect(within(card).getByText(/not numeric distances between evaluations/)).toBeInTheDocument();
+    expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-key", "expert-collective-classification-match");
+    expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-series-keys", '["exact-category-match"]');
+    expect(screen.queryByRole("button", { name: "MAP" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "DISTANCES" })).not.toBeInTheDocument();
   });
 
   it("renders model-owned TOPSIS descriptors through the shared alternative-evaluation pipeline", () => {
@@ -736,14 +788,23 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
   });
 
-  it("keeps the sorting Expert–collective view without historical categorical relationships", () => {
+  it("preserves numeric sorting MAP/DISTANCES when category-match evidence is also present", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{
         key: "base",
         displayLabel: "Base",
         resultStructureKey: "sorting",
         genericAnalysis: {
-          facts: { alternativeRelationships: { phases: [] } },
+          facts: {
+            alternativeRelationships: { phases: [] },
+            expertCollectiveClassificationRelationship: {
+              metric: "exact_category_match_rate",
+              experts: [
+                { expertId: "expert-ada", name: "Ada", exactCategoryMatches: 1, totalAlternatives: 2, matchRate: 0.5, disagreements: [] },
+                { expertId: "expert-grace", name: "Grace", exactCategoryMatches: 2, totalAlternatives: 2, matchRate: 1, disagreements: [] },
+              ],
+            },
+          },
           visualizations: [{
             type: "alternativeRelationships",
             mode: "categorical",
@@ -775,6 +836,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByTestId("alternative-relationships-secondary-row")).not.toBeInTheDocument();
     expect(screen.queryByTestId("alternative-relationships-section")).not.toBeInTheDocument();
     expect(screen.queryByTestId("category-changes-secondary-row")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("expert-collective-classification-relationship")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "MAP" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "DISTANCES" }));

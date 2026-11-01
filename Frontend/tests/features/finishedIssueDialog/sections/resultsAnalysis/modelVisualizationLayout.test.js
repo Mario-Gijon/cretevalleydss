@@ -20,6 +20,18 @@ describe("getVisualizationLayout", () => {
     expect(layout.chartMinWidth).toBeUndefined();
   });
 
+  it("reserves readable width for long criterion labels in horizontal bars", () => {
+    const longestCriterion = "People at risk of poverty or social exclusion";
+    const layout = getVisualizationLayout({
+      key: "ahp-collective-criterion-importance",
+      type: "bar",
+      orientation: "horizontal",
+      data: { categories: [longestCriterion, "Life expectancy"] },
+    });
+
+    expect(layout.chartMinWidth).toBe(longestCriterion.length * 7 + 240);
+  });
+
   it("keeps vertical bars compact while assigning dense categories an internal minimum width", () => {
     expect(getVisualizationLayout({ type: "bar", data: { categories: ["a", "b"] } })).toMatchObject({ span: 1 });
     expect(getVisualizationLayout({ type: "bar", data: { categories: Array.from({ length: 10 }, (_, index) => index) } })).toEqual({ span: 1, chartHeight: { xs: 300, sm: 320 }, chartMinWidth: 720 });
@@ -135,6 +147,24 @@ describe("getVisualizationLayout", () => {
     expect(heavyCollision.chartHeight).toEqual({ xs: 300, sm: 320 });
     expect(heavyCollision.chartMinWidth).toBeGreaterThan(twoExperts.chartMinWidth);
     expect(getVisualizationLayout({ key: "another-scatter", type: "scatter" }).chartHeight).toEqual({ xs: 300, sm: 320 });
+  });
+
+  it("uses the shared rank-distribution layout for AHP positions derived from saved weights", () => {
+    const descriptor = {
+      key: "ahp-derived-priority-distribution",
+      type: "scatter",
+      xAxis: { min: 1, max: 3 },
+      yAxis: { categories: [{ value: 1, label: "Cost" }, { value: 2, label: "Quality" }] },
+      data: { series: [{ key: "expert-1", points: [
+        { x: 1, y: 1 },
+        { x: 2, y: 2 },
+      ] }] },
+    };
+
+    const layout = getVisualizationLayout(descriptor);
+    expect(layout.chartHeight).toEqual({ xs: 300, sm: 320 });
+    expect(layout.chartMinWidth).toBeGreaterThan(2 * 72);
+    expect(layout.chartMinWidth).toBeLessThan(600);
   });
 
   it("keeps many alternative rows readable and reserves width for long alternative names", () => {

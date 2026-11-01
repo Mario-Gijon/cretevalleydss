@@ -143,6 +143,66 @@ def test_generic_issue_endpoint_analyzes_sorting_assignments_without_ranking_or_
     assert "Sharing a category records the same classification, not identical evaluations." in result["interpretation"]
     assert "### Participation records" in result["interpretation"]
     assert "### Consensus" not in result["interpretation"]
+
+
+def test_ahp_sort_expert_collective_classification_relationship_uses_saved_assignments_only():
+    context = sorting_analysis_context()
+    context["semanticDirectory"]["expertsById"] = {
+        "expert-a": {"name": "Expert A"},
+        "expert-b": {"name": "Expert B"},
+    }
+    execution = context["rounds"][0]["selectedExecution"]
+    execution["input"]["evaluations"] = [
+        {"expert": {"id": "expert-a", "name": "Expert A"}},
+        {"expert": {"id": "expert-b", "name": "Expert B"}},
+    ]
+    standard = execution["result"]["standardResult"]
+    standard["diagnostics"] = {
+        "modelKey": "ahp_sort_i",
+        "aggregationMethod": "unweighted_plurality_vote",
+        "individualResultsByExpertId": {
+            "expert-a": {"resultsByAlternativeId": {
+                "a": {"categoryId": "high"},
+                "b": {"categoryId": "low"},
+                "c": {"categoryId": "low"},
+            }},
+            "expert-b": {"resultsByAlternativeId": {
+                "a": {"categoryId": "high"},
+                "b": {"categoryId": "high"},
+                "c": {"categoryId": "high"},
+            }},
+        },
+    }
+
+    result = asyncio.run(analyze_generic_issue(context))["data"]
+    relationship = result["facts"]["expertCollectiveClassificationRelationship"]
+    assert relationship["metric"] == "exact_category_match_rate"
+    assert relationship["experts"] == [
+        {
+            "expertId": "expert-a",
+            "name": "Expert A",
+            "exactCategoryMatches": 2,
+            "totalAlternatives": 3,
+            "matchRate": pytest.approx(2 / 3),
+            "disagreements": [{
+                "alternative": "Balanced",
+                "individualCategory": "Shared label",
+                "collectiveCategory": "High",
+            }],
+        },
+        {
+            "expertId": "expert-b",
+            "name": "Expert B",
+            "exactCategoryMatches": 2,
+            "totalAlternatives": 3,
+            "matchRate": pytest.approx(2 / 3),
+            "disagreements": [
+                {"alternative": "Budget", "individualCategory": "High", "collectiveCategory": "Shared label"},
+            ],
+        },
+    ]
+    assert "individualResultsByExpertId" not in result["facts"]
+    assert result["visualizations"] == []
     assert "### Decision process" not in result["interpretation"]
     assert result["visualizations"] == []
     assert "diagnostics" not in str(result)

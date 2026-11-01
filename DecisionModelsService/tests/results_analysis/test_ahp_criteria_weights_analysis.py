@@ -84,9 +84,50 @@ def test_single_expert_analysis_uses_frozen_weights_and_reports_persisted_consis
     assert facts["criteria"]["collectiveLeaders"] == ["c1"]
     assert facts["criteria"]["leastImportant"] == ["c3"]
     assert facts["mcc"]["available"] is False
-    assert [item["key"] for item in result["visualizations"]] == ["ahp-criterion-importance"]
-    assert result["visualizations"][0]["data"]["categories"] == ["Life expectancy", "Poverty risk", "NEET"]
-    assert result["visualizations"][0]["data"]["series"][0]["values"] == pytest.approx([60, 30, 10])
+    assert [item["key"] for item in result["visualizations"]] == [
+        "ahp-derived-priority-distribution",
+        "ahp-collective-criterion-importance",
+    ]
+    assert result["visualizations"][0]["data"]["series"][0]["points"] == [
+        {
+            "id": "expert-1@example.test:c1",
+            "label": "Life expectancy",
+            "x": 1,
+            "y": 1,
+            "details": {
+                "expert": "Expert 1",
+                "criterion": "Life expectancy",
+                "rank": 1,
+                "weightPercent": pytest.approx(60),
+            },
+        },
+        {
+            "id": "expert-1@example.test:c2",
+            "label": "Poverty risk",
+            "x": 2,
+            "y": 2,
+            "details": {
+                "expert": "Expert 1",
+                "criterion": "Poverty risk",
+                "rank": 2,
+                "weightPercent": pytest.approx(30),
+            },
+        },
+        {
+            "id": "expert-1@example.test:c3",
+            "label": "NEET",
+            "x": 3,
+            "y": 3,
+            "details": {
+                "expert": "Expert 1",
+                "criterion": "NEET",
+                "rank": 3,
+                "weightPercent": pytest.approx(10),
+            },
+        },
+    ]
+    assert result["visualizations"][1]["data"]["categories"] == ["Life expectancy", "Poverty risk", "NEET"]
+    assert result["visualizations"][1]["data"]["series"][0]["values"] == pytest.approx([60, 30, 10])
     assert facts["consistency"]["experts"][0]["consistencyStatus"] == "consistent"
     assert "Life expectancy" in result["interpretation"]
     assert "CR was **0.000**" in result["interpretation"]
@@ -101,30 +142,32 @@ def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
     assert facts["status"] == "available"
     assert facts["source"]["nExperts"] == 2
     assert facts["mcc"]["available"] is True
-    assert keys == ["ahp-criterion-importance", "ahp-individual-collective-weights", "ahp-mcc-adjustment-map"]
-    comparison = result["visualizations"][1]
-    assert comparison["type"] == "scatter"
-    assert comparison["presentation"] == {
-        "stableSeriesColors": True,
-        "pointStyleLegend": True,
-        "tooltip": {"variant": "point-details"},
-    }
-    assert comparison["xAxis"] == {"label": "Importance (%)", "min": 0, "max": 100, "tickSuffix": "%"}
-    assert [item["key"] for item in comparison["data"]["series"]] == ["expert-1@example.test", "expert-2@example.test", "mcc-collective"]
-    assert comparison["data"]["series"][-1]["pointStyle"] == "rectRot"
-    assert [item["y"] for item in comparison["data"]["series"][0]["points"]] == [1, 2, 3]
-    assert [item["label"] for item in comparison["yAxis"]["categories"]] == [
+    assert keys == [
+        "ahp-derived-priority-distribution",
+        "ahp-collective-criterion-importance",
+        "ahp-mcc-adjustment-map",
+        "ahp-mcc-adjustment-effort-by-expert",
+        "ahp-mcc-adjustment-effort-by-criterion",
+    ]
+    distribution = result["visualizations"][0]
+    assert distribution["type"] == "scatter"
+    assert distribution["xAxis"]["min"] == 1
+    assert distribution["xAxis"]["max"] == len(facts["criteria"]["items"])
+    assert distribution["presentation"]["preferenceDistribution"]["clusterAxis"] == "y"
+    assert [item["key"] for item in distribution["data"]["series"]] == ["expert-1@example.test", "expert-2@example.test"]
+    assert [item["label"] for item in distribution["yAxis"]["categories"]] == [
         criterion["name"] for criterion in facts["criteria"]["items"]
     ]
-    assert [point["x"] for point in comparison["data"]["series"][-1]["points"]] == pytest.approx(
-        [facts["finalWeightsByCriterion"][criterion["criterionId"]] * 100 for criterion in facts["criteria"]["items"]]
+    first_expert_points = distribution["data"]["series"][0]["points"]
+    first_expert_weights = facts["experts"]["items"][0]["weightsByCriterion"]
+    assert [point["x"] for point in first_expert_points] == [1, 2, 3]
+    assert [point["details"]["weightPercent"] for point in first_expert_points] == pytest.approx(
+        [first_expert_weights[item["criterionId"]] * 100 for item in facts["criteria"]["items"]]
     )
-    assert comparison["data"]["series"][0]["points"][0]["details"]["Expert"] == "Expert 1"
-    assert comparison["data"]["series"][0]["points"][0]["details"]["Source"] == "Individual AHP"
-    assert comparison["data"]["series"][-1]["points"][0]["details"]["Source"] == "MCC collective result"
-    assert comparison["data"]["series"][0]["points"][0]["x"] == pytest.approx(
-        facts["experts"]["items"][0]["weightsByCriterion"]["c1"] * 100
-    )
+    importance = result["visualizations"][1]
+    ordered_criteria = sorted(facts["criteria"]["items"], key=lambda item: (-item["collectiveWeight"], item["name"].casefold(), item["criterionId"]))
+    assert importance["data"]["categories"] == [item["name"] for item in ordered_criteria]
+    assert importance["data"]["series"][0]["values"] == pytest.approx([item["collectiveWeight"] * 100 for item in ordered_criteria])
     adjustment = result["visualizations"][2]
     assert adjustment["scale"] == {
         "kind": "diverging",
@@ -136,7 +179,7 @@ def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
     }
     assert adjustment["presentation"] == {"heatmapStyle": "adjustment"}
     assert "insight" not in adjustment
-    assert "Positive values indicate" in adjustment["description"]
+    assert "Positive values are increases" in adjustment["description"]
     assert adjustment["data"]["values"][0][0] == pytest.approx(round(facts["mcc"]["cells"][0]["delta"] * 100, 4))
     assert adjustment["data"]["details"][0][0] == {
         "Original weight": f"{facts['mcc']['cells'][0]['originalWeight'] * 100}%",
@@ -145,7 +188,18 @@ def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
         "Change": f"{facts['mcc']['cells'][0]['delta'] * 100} pp",
     }
     assert adjustment["data"]["columns"][0]["label"] == "Life expectancy"
-    assert len(result["sections"]) == 3
+    assert len(result["sections"]) == 2
+    assert result["sections"][0]["presentation"]["layout"] == "stacked"
+    assert [item["key"] for item in result["sections"][0]["visualizations"]] == keys[:2]
+    assert result["sections"][1]["presentation"]["layout"] == "lead-full-width"
+    assert [item["key"] for item in result["sections"][1]["visualizations"]] == keys[2:]
+    assert result["visualizations"][3]["xAxis"]["label"].endswith("(percentage points)")
+    assert result["visualizations"][3]["data"]["series"][0]["values"] == pytest.approx([
+        item["effort"] * 100 for item in sorted(facts["mcc"]["effortByExpert"], key=lambda item: (-item["effort"], item["name"].casefold(), item["expertKey"]))
+    ])
+    assert result["visualizations"][4]["data"]["series"][0]["values"] == pytest.approx([
+        item["effort"] * 100 for item in sorted(facts["mcc"]["effortByCriterion"], key=lambda item: (-item["effort"], item["name"].casefold(), item["criterionId"]))
+    ])
     assert all("final importance" not in visualization.get("insight", "") for visualization in result["visualizations"])
     assert "percentage points" in result["interpretation"]
     assert "does not measure agreement" in result["interpretation"]
@@ -157,33 +211,40 @@ def test_mcc_with_no_material_adjustments_has_no_adjustment_heatmap():
     assert result["facts"]["mcc"]["available"] is True
     assert result["facts"]["mcc"]["materialAdjustments"] is False
     assert [item["key"] for item in result["visualizations"]] == [
-        "ahp-criterion-importance",
-        "ahp-individual-collective-weights",
+        "ahp-derived-priority-distribution",
+        "ahp-collective-criterion-importance",
     ]
+    assert len(result["sections"]) == 2
+    assert result["sections"][1]["visualizations"] == []
+    assert result["sections"][1]["presentation"]["summaryMessage"] == "No material MCC weight adjustments were needed."
     assert "no material numerical adjustments" in result["interpretation"]
-    comparison = result["visualizations"][1]
-    first, second, collective = comparison["data"]["series"]
-    assert first["points"][0]["x"] == pytest.approx(second["points"][0]["x"])
-    assert first["points"][0]["x"] == pytest.approx(collective["points"][0]["x"])
-    assert first["points"][0]["details"]["Coincident with"] == "Expert 2, Collective"
-    assert collective["points"][0]["details"]["Coincident with"] == "Expert 1, Expert 2"
+    distribution = result["visualizations"][0]
+    first, second = distribution["data"]["series"]
+    assert first["points"][0]["x"] == second["points"][0]["x"]
+    assert first["points"][0]["details"]["weightPercent"] == pytest.approx(second["points"][0]["details"]["weightPercent"])
 
 
-def test_individual_collective_dotplot_uses_stable_expert_order_and_keeps_unrounded_weights():
+def test_individual_priority_distribution_uses_stable_expert_order_and_shares_tied_positions():
     result = _run([_other_consistent_evaluation(), _consistent_evaluation()])
-    descriptor = result["visualizations"][1]
+    descriptor = result["visualizations"][0]
 
     assert [series["key"] for series in descriptor["data"]["series"]] == [
-        "expert-1@example.test", "expert-2@example.test", "mcc-collective"
+        "expert-1@example.test", "expert-2@example.test"
     ]
-    for criterion_index, criterion in enumerate(result["facts"]["criteria"]["items"], start=1):
+    criteria = result["facts"]["criteria"]["items"]
+    for criterion_index, criterion in enumerate(criteria, start=1):
         assert all(point["y"] == criterion_index for series in descriptor["data"]["series"] for point in series["points"] if point["label"] == criterion["name"])
-        expert_one_point = descriptor["data"]["series"][0]["points"][criterion_index - 1]
-        raw_weight = result["facts"]["experts"]["items"][1]["weightsByCriterion"][criterion["criterionId"]]
-        assert expert_one_point["x"] == raw_weight * 100
-    assert descriptor["yAxis"]["reverse"] is True
-    assert descriptor["xAxis"]["min"] == 0
-    assert descriptor["xAxis"]["max"] == 100
+        for expert_index, series in enumerate(descriptor["data"]["series"]):
+            point = series["points"][criterion_index - 1]
+            expert = next(item for item in result["facts"]["experts"]["items"] if item["expertKey"] == series["key"])
+            raw_weight = expert["weightsByCriterion"][criterion["criterionId"]]
+            assert point["details"]["weightPercent"] == pytest.approx(raw_weight * 100)
+    assert [point["x"] for point in descriptor["data"]["series"][0]["points"]] == [1, 2, 3]
+    assert [point["x"] for point in descriptor["data"]["series"][1]["points"]] == [2, 1, 2]
+    assert descriptor["data"]["series"][1]["points"][0]["details"]["sharedPositionWith"] == "NEET"
+    assert descriptor["data"]["series"][1]["points"][2]["details"]["sharedPositionWith"] == "Life expectancy"
+    assert descriptor["xAxis"]["min"] == 1
+    assert descriptor["xAxis"]["max"] == len(result["facts"]["criteria"]["items"])
 
 
 def test_invalid_diagnostic_does_not_hide_valid_weight_visualizations():
@@ -209,7 +270,10 @@ def test_invalid_diagnostic_does_not_hide_valid_weight_visualizations():
         }}],
     })
 
-    assert [item["key"] for item in result["visualizations"]] == ["ahp-criterion-importance"]
+    assert [item["key"] for item in result["visualizations"]] == [
+        "ahp-derived-priority-distribution",
+        "ahp-collective-criterion-importance",
+    ]
     assert result["facts"]["consistency"]["experts"][0]["available"] is False
     assert "valid stored consistency diagnostic is unavailable" in result["interpretation"]
 

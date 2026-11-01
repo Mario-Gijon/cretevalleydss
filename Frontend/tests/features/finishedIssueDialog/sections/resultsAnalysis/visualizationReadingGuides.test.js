@@ -7,6 +7,11 @@ import {
 } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/visualizationReadingGuides.js";
 
 const MODEL_CHART_KEYS = [
+  "ahp-derived-priority-distribution",
+  "ahp-collective-criterion-importance",
+  "ahp-mcc-adjustment-effort-by-expert",
+  "ahp-mcc-adjustment-effort-by-criterion",
+  "expert-collective-classification-match",
   "ahp-criterion-importance",
   "ahp-individual-collective-weights",
   "ahp-mcc-adjustment-map",
@@ -98,6 +103,8 @@ describe("visualization reading guides", () => {
   });
 
   it("explains linguistic scale, MCC direction, TOPSIS reference positions, and distance contributions", () => {
+    expect(getVisualizationReadingGuide({ key: "ahp-derived-priority-distribution" }).text).toContain("not a ranking declared by the expert");
+    expect(getVisualizationReadingGuide({ key: "expert-collective-classification-match" }).text).toContain("not a numeric distance or an MCC consensus measure");
     expect(getVisualizationReadingGuide({ key: "individual-preference-distribution" }).text).toContain("side-to-side offsets");
     expect(getVisualizationReadingGuide({ key: "mcc-adjustment-map" }).text).toContain("negative means lowered");
     const ahpDotPlotGuide = getVisualizationReadingGuide({ key: "ahp-individual-collective-weights" }).text;

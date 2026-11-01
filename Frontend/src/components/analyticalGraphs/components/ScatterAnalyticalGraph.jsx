@@ -8,6 +8,7 @@ import {
   buildPreferenceDistributionDatasets,
   getPreferenceDistributionMetrics,
   isIndividualPreferenceDistribution,
+  AHP_DERIVED_PRIORITY_DISTRIBUTION_KEY,
   PREFERENCE_DISTRIBUTION_CLUSTER_SPACING_PX,
 } from "../logic/preferenceDistributionMatrix.js";
 import { preferenceDistributionMatrixPlugin } from "../logic/preferenceDistributionMatrixPlugin.js";
@@ -29,6 +30,7 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
   const series = visualization?.data?.series;
   if (!Array.isArray(series) || !series.length) return <GraphUnavailable />;
   const isPreferenceDistribution = isIndividualPreferenceDistribution(visualization);
+  const isAHPDerivedPriorityDistribution = visualization?.key === AHP_DERIVED_PRIORITY_DISTRIBUTION_KEY;
   const presentation = resolveVisualizationPresentation(visualization);
   const tooltipPresentation = presentation.tooltip;
   const usesClosenessBoundaryTooltip = tooltipPresentation?.variant === "closeness-boundaries";
@@ -99,6 +101,7 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
           preferenceDistributionMatrix: {
             enabled: true,
             clusterSpacingPx: PREFERENCE_DISTRIBUTION_CLUSTER_SPACING_PX,
+            clusterAxis: isAHPDerivedPriorityDistribution && visualization.presentation?.preferenceDistribution?.clusterAxis === "y" ? "y" : "x",
           },
           legend: {
             ...baseOptions.plugins.legend,
@@ -132,6 +135,18 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
                 const { details = {} } = context.raw;
                 const rank = details.rank ?? context.raw.x;
                 const rankCount = Number.isFinite(maxRank) ? maxRank - minRank + 1 : null;
+                if (isAHPDerivedPriorityDistribution) {
+                  const weightPercent = details.weightPercent;
+                  const weightText = Number.isFinite(weightPercent)
+                    ? `${Number(weightPercent.toPrecision(8))}%`
+                    : "—";
+                  return [
+                    `Criterion: ${details.criterion || "—"}`,
+                    `Derived AHP position: ${rank}${Number.isFinite(rankCount) ? ` of ${rankCount}` : ""}`,
+                    `Original AHP weight: ${weightText}`,
+                    ...(details.sharedPositionWith ? [`Shared position with: ${details.sharedPositionWith}`] : []),
+                  ];
+                }
                 return [
                   `Criterion: ${details.criterion || "—"}`,
                   `Preference rank: ${rank}${Number.isFinite(rankCount) ? ` of ${rankCount}` : ""}`,

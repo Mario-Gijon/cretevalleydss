@@ -229,6 +229,9 @@ def _analyze_sorting_issue(context, issue, rounds):
             or (None if expert_collective_projection else "missing_analytical_projection"),
         },
     }
+    classification_relationship = final_phase.get("expertCollectiveClassificationRelationship") if final_phase else None
+    if isinstance(classification_relationship, dict):
+        facts["expertCollectiveClassificationRelationship"] = classification_relationship
     return normalize_analysis_result(
         {
             "facts": facts,

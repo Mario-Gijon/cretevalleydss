@@ -36,6 +36,11 @@ def categorical_alternative_relationships(rounds):
                 "categories": categories,
                 "alternatives": alternatives,
                 "groups": groups,
+                **(
+                    {"expertCollectiveClassificationRelationship": execution["expertCollectiveClassificationRelationship"]}
+                    if isinstance(execution.get("expertCollectiveClassificationRelationship"), dict)
+                    else {}
+                ),
             }
         )
 

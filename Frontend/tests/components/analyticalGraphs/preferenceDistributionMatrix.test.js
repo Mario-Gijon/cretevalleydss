@@ -74,6 +74,25 @@ describe("preferenceDistributionMatrix", () => {
     expect(datasets.map((dataset) => dataset.data[0].x)).toEqual([2, 2, 2, 2, 2]);
   });
 
+  it("clusters AHP experts vertically while preserving ordinal rank coordinates", () => {
+    const datasets = chartDatasets(Array.from({ length: 5 }, (_, index) => expertSeries(`expert-${index}`, 1, 2)));
+    const elements = datasets.map((dataset) => dataset.data.map(() => ({ x: 0, y: 0 })));
+    const chart = {
+      data: { datasets },
+      scales: {
+        x: { getPixelForValue: (value) => value * 100 },
+        y: { getPixelForValue: (value) => value * 80 },
+      },
+      getDatasetMeta: (datasetIndex) => ({ data: elements[datasetIndex] }),
+    };
+
+    preferenceDistributionMatrixPlugin.afterDatasetsUpdate(chart, {}, { enabled: true, clusterAxis: "y" });
+
+    expect(elements.map((dataset) => dataset[0].x)).toEqual([0, 0, 0, 0, 0]);
+    expect(elements.map((dataset) => dataset[0].y)).toEqual([146, 153, 160, 167, 174]);
+    expect(datasets.map((dataset) => dataset.data[0].x)).toEqual([1, 1, 1, 1, 1]);
+  });
+
   it("uses stable expert identifiers when series order changes", () => {
     const source = [expertSeries("bruno"), expertSeries("carla"), expertSeries("ana")];
     const reordered = [source[2], source[0], source[1]];

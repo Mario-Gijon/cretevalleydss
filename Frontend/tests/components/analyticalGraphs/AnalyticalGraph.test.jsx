@@ -4,13 +4,18 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 
 const scatterState = vi.hoisted(() => ({ data: null, options: null }));
 const lineState = vi.hoisted(() => ({ data: null, options: null, plugins: null }));
+const barState = vi.hoisted(() => ({ data: null, options: null }));
 
 vi.mock("chart.js", () => ({
   Chart: { register: vi.fn() },
   ArcElement: {}, BarElement: {}, CategoryScale: {}, Filler: {}, Legend: {}, LineElement: {}, LinearScale: {}, PointElement: {}, RadialLinearScale: {}, ScatterController: {}, Tooltip: {},
 }));
 vi.mock("react-chartjs-2", () => ({
-  Bar: ({ data, options }) => <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-min={options.scales.x.min} data-x-max={options.scales.x.max} />,
+  Bar: ({ data, options }) => {
+    barState.data = data;
+    barState.options = options;
+    return <div data-testid="bar-chart" data-index-axis={options.indexAxis} data-series={data.datasets.length} data-stack={data.datasets[0].stack} data-x-axis={options.scales.x.title.text} data-y-axis={options.scales.y.title.text} data-x-min={options.scales.x.min} data-x-max={options.scales.x.max} />;
+  },
   Line: ({ data, options, plugins }) => {
     lineState.data = data;
     lineState.options = options;
@@ -142,6 +147,64 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-series", "1");
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-stack", "total");
     expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-axis", "Score");
+  });
+
+  it("renders the AHP-derived priority distribution with ordinal rank and original-weight tooltips", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "ahp-derived-priority-distribution",
+      type: "scatter",
+      title: "Individual AHP priority distribution",
+      presentation: { preferenceDistribution: { clusterAxis: "y" } },
+      xAxis: { label: "Derived AHP position · 1 = greatest weight", min: 1, max: 3 },
+      yAxis: { label: "Criterion", categories: [
+        { value: 1, label: "Cost" },
+        { value: 2, label: "Quality" },
+        { value: 3, label: "Reliability" },
+      ] },
+      data: { series: [{ key: "expert-ada", label: "Ada", points: [
+        { id: "expert-ada:cost", label: "Cost", x: 1, y: 1, details: { expert: "Ada", criterion: "Cost", rank: 1, weightPercent: 50, sharedPositionWith: "Quality" } },
+        { id: "expert-ada:quality", label: "Quality", x: 1, y: 2, details: { expert: "Ada", criterion: "Quality", rank: 1, weightPercent: 50, sharedPositionWith: "Cost" } },
+        { id: "expert-ada:reliability", label: "Reliability", x: 3, y: 3, details: { expert: "Ada", criterion: "Reliability", rank: 3, weightPercent: 20 } },
+      ] }] },
+    }} />);
+
+    expect(screen.getByTestId("scatter-chart")).toHaveAttribute("data-x-axis", "Derived AHP position · 1 = greatest weight");
+    expect(screen.getByTestId("scatter-chart")).toHaveTextContent("Criterion: Cost");
+    expect(screen.getByTestId("scatter-chart")).toHaveTextContent("Derived AHP position: 1 of 3");
+    expect(screen.getByTestId("scatter-chart")).toHaveTextContent("Original AHP weight: 50%");
+    expect(screen.getByTestId("scatter-chart")).toHaveTextContent("Shared position with: Quality");
+    expect(scatterState.options.scales.x.min).toBe(0.5);
+    expect(scatterState.options.scales.x.max).toBe(3.5);
+    expect(scatterState.options.plugins.preferenceDistributionMatrix.clusterAxis).toBe("y");
+    expect(scatterState.data.datasets[0].data.map(({ x }) => x)).toEqual([1, 1, 3]);
+  });
+
+  it("formats exact category-match bars with a percent axis and saved disagreement details", () => {
+    render(<AnalyticalGraph visualization={{
+      key: "expert-collective-classification-match",
+      type: "bar",
+      orientation: "horizontal",
+      xAxis: { label: "Alternatives matching collective category (%)", tickSuffix: "%" },
+      yAxis: { label: "Expert" },
+      valueAxis: { min: 0, max: 100 },
+      presentation: { tooltip: { variant: "exact-category-match" } },
+      data: {
+        categories: ["Ada"],
+        series: [{ key: "match", label: "Exact category matches (%)", values: [66.6667] }],
+        details: [{ exactCategoryMatches: 2, totalAlternatives: 3, disagreements: [
+          { alternative: "Beta", individualCategory: "Medium", collectiveCategory: "Low" },
+        ] }],
+      },
+    }} />);
+
+    expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-min", "0");
+    expect(screen.getByTestId("bar-chart")).toHaveAttribute("data-x-max", "100");
+    expect(barState.options.scales.x.ticks.callback(66)).toBe("66%");
+    expect(barState.options.plugins.tooltip.callbacks.title([{ dataIndex: 0 }])).toBe("Ada");
+    expect(barState.options.plugins.tooltip.callbacks.label({ parsed: { x: 66.6667 }, dataIndex: 0 })).toEqual([
+      "Exact category matches: 2 of 3 (66.67%)",
+      "Beta: Medium → Low",
+    ]);
   });
 
   it("applies explicit value-axis bounds only when a descriptor supplies them", () => {
