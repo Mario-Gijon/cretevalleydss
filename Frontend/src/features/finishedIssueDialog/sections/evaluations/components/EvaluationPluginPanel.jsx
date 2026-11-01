@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Box,
   Stack,
@@ -99,25 +100,36 @@ const EvaluationPluginPanel = ({
   showCollective,
   expertName,
   consensusEnabled,
+  collectiveResolutionStatus,
 }) => {
+  const [selectedCriterionId, setSelectedCriterionId] = useState("");
   if (!stageData.available) return null;
   const isAHPSortI = modelApiKey === "ahp_sort_i";
   const isAHPSortICriteriaWeighting = isAHPSortI && stageData.stage === "criteriaWeighting";
   const isAHPSortIAlternativeEvaluation = isAHPSortI && stageData.stage === "alternativeEvaluation";
   const hasAHPSortIIndividualEvaluation = isAHPSortI && stageData.hasUsableIndividualEvaluation;
-  const hasAHPSortIGroupAssignment = isAHPSortIAlternativeEvaluation &&
-    stageData.collectiveGroupPresentation?.status === "available";
+  const hasAHPSortICollectivePending = isAHPSortIAlternativeEvaluation &&
+    showCollective && collectiveResolutionStatus === "pending";
+  const hasAHPSortICollectiveView = isAHPSortICriteriaWeighting
+    ? stageData.hasUsableCollectiveEvaluation
+    : isAHPSortIAlternativeEvaluation
+      ? Boolean(stageData.collectiveGroupPresentation) && !hasAHPSortICollectivePending
+      : stageData.hasUsableCollectiveEvaluation;
   const hasActiveViewData = showCollective
     ? isAHPSortI
-      ? hasAHPSortIIndividualEvaluation || hasAHPSortIGroupAssignment
+      ? hasAHPSortICollectiveView
       : stageData.hasUsableCollectiveEvaluation
     : stageData.hasUsableIndividualEvaluation;
   const shouldRender = Boolean(stageData.renderer?.structureKey) &&
-    (isAHPSortI ? stageData.hasUsableIndividualEvaluation : hasActiveViewData);
+    (isAHPSortI
+      ? !showCollective && hasAHPSortIIndividualEvaluation
+      : hasActiveViewData);
   const title = stageData.title;
-  const subtitle = stageData.subtitle;
+  const subtitle = isAHPSortIAlternativeEvaluation && showCollective
+    ? null
+    : stageData.subtitle;
   const submittedAt = stageData.individual?.submittedAt;
-  const hasExpertSubmissionTimestamp = Boolean(submittedAt);
+  const hasExpertSubmissionTimestamp = Boolean(submittedAt) && (!isAHPSortI || !showCollective);
   const selectedExpertId = stageData.individual?.expertId ?? null;
   const collectivePayload = stageData.hasUsableCollectiveEvaluation
     ? stageData.collective?.payload
@@ -128,6 +140,7 @@ const EvaluationPluginPanel = ({
     expertName,
     consensusEnabled,
     showCollective,
+    collectiveResolutionStatus,
   });
 
   return (
@@ -152,14 +165,16 @@ const EvaluationPluginPanel = ({
           </Typography>
           <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 16, flexShrink: 0 }} />
         </Stack>
-        <Typography variant="body2"
-          sx={{
-            mt: 0.25,
-            color: "text.secondary",
-          }}
-        >
-          {subtitle}
-        </Typography>
+        {subtitle ? (
+          <Typography variant="body2"
+            sx={{
+              mt: 0.25,
+              color: "text.secondary",
+            }}
+          >
+            {subtitle}
+          </Typography>
+        ) : null}
       </Box>
 
       {hasExpertSubmissionTimestamp ? (
@@ -176,13 +191,12 @@ const EvaluationPluginPanel = ({
 
       {!hasActiveViewData ? <EvaluationEmptyState content={emptyState} /> : null}
 
-      {isAHPSortICriteriaWeighting ? (
+      {isAHPSortICriteriaWeighting && showCollective && hasActiveViewData ? (
         <AHPSortICriteriaWeightSummary
           criteria={criteria}
           collectiveEvaluation={collectivePayload}
           selectedExpertEmail={expertEmail}
           selectedExpertId={selectedExpertId}
-          showCollective={showCollective}
         />
       ) : null}
 
@@ -200,6 +214,9 @@ const EvaluationPluginPanel = ({
               : showCollective
                 ? stageData.renderer.collectiveEvaluation
                 : null}
+            viewProps={isAHPSortIAlternativeEvaluation
+              ? { selectedCriterionId, onSelectedCriterionIdChange: setSelectedCriterionId }
+              : undefined}
             readOnly
           />
         </Box>
@@ -209,7 +226,7 @@ const EvaluationPluginPanel = ({
         </Box>
       ) : null}
 
-      {showCollective && isAHPSortIAlternativeEvaluation ? (
+      {showCollective && isAHPSortIAlternativeEvaluation && hasActiveViewData ? (
         <AHPSortICollectiveAssignments
           presentation={stageData.collectiveGroupPresentation}
           selectedExpertId={selectedExpertId}

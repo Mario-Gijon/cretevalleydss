@@ -16,6 +16,7 @@ const EvaluationStructureRenderer = ({
   structureKey,
   evaluation: providedEvaluation = null,
   collectiveEvaluation = null,
+  viewProps = {},
   readOnly = false,
   loading = false,
 }) => {
@@ -66,6 +67,7 @@ const EvaluationStructureRenderer = ({
   return (
     <Box sx={{ width: "100%", minWidth: 0 }}>
       <View
+        {...viewProps}
         decisionContext={decisionContext}
         evaluation={providedEvaluation}
         setEvaluation={READ_ONLY_SET_EVALUATION}

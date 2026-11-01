@@ -38,7 +38,7 @@ const AHPSortICollectiveAssignments = ({ presentation, selectedExpertId }) => {
         data-testid="ahpsort-i-collective-integrity-warning"
         sx={{ mt: 1.15 }}
       >
-        The saved collective assignment could not be verified. Individual comparisons are still shown.
+        The saved collective assignment could not be verified.
       </Alert>
     );
   }

@@ -370,6 +370,25 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
     expect(latestEvaluation.alternativeProfileComparisons[0].criterionId).toBe("criterion-quality");
   });
 
+  it("accepts a preserved criterion selection from the read-only host", async () => {
+    const user = userEvent.setup();
+    const onSelectedCriterionIdChange = vi.fn();
+    renderWithProviders(
+      <AHPSortAlternativeProfilesView
+        decisionContext={limitingDecisionContext()}
+        evaluation={buildCompleteEvaluation(limitingDecisionContext())}
+        setEvaluation={vi.fn()}
+        readOnly
+        selectedCriterionId="criterion-cost"
+        onSelectedCriterionIdChange={onSelectedCriterionIdChange}
+      />
+    );
+
+    expect(screen.getByRole("tab", { name: "Cost" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Quality" }));
+    expect(onSelectedCriterionIdChange).toHaveBeenCalledWith("criterion-quality");
+  });
+
   it("shows one alternative-by-profile grid and hides empty profile comparisons for one profile", () => {
     const context = limitingDecisionContext();
     context.leafCriteria = [context.leafCriteria[0]];

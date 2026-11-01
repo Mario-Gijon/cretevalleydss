@@ -375,6 +375,9 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
       await loginAsUser(page, OWNER);
       const dialog = await openFinishedIssue(page, demo.name);
       await dialog.getByRole("tab", { name: "Evaluations", exact: true }).click();
+      if (demo.key === "supplier") {
+        await expect(dialog.getByLabel("Show collective values")).toHaveCount(0);
+      }
       await verifyEvaluationScrollAcrossViewports(page, dialog, {
         requireCriteriaWeighting: demo.hasCriteriaWeighting === true,
       });
@@ -401,6 +404,8 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
     const alternativePanel = dialog.getByTestId("evaluation-stage-panel-alternativeEvaluation");
     await expect(criteriaPanel).toBeVisible();
     await expect(alternativePanel).toBeVisible();
+    await expect(criteriaPanel.getByRole("heading", { name: "Criteria comparisons" })).toBeVisible();
+    await expect(alternativePanel.getByRole("heading", { name: "Alternative comparisons" })).toBeVisible();
     const criteriaGrid = criteriaPanel.locator(".MuiDataGrid-root").first();
     await expect(criteriaGrid).toBeVisible();
     expect(await criteriaGrid.locator("[aria-label]").count()).toBeGreaterThan(0);
@@ -431,6 +436,48 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
     expect(povertyMatrix).not.toEqual(lifeExpectancyMatrix);
     expect(povertyMatrix.some((value) => value.includes("1/"))).toBe(true);
 
+    const collectiveToggle = dialog.getByRole("button", { name: "Show collective values" });
+    const selectedExpertBeforeToggle = (await expertSelector.innerText()).trim();
+    await collectiveToggle.click();
+
+    const weightsTable = criteriaPanel.getByRole("table", { name: "Criterion weights" });
+    await expect(weightsTable).toBeVisible();
+    await expect(weightsTable.getByRole("columnheader", { name: "Selected expert" })).toBeVisible();
+    await expect(weightsTable.getByRole("columnheader", { name: "Collective (MCC)" })).toBeVisible();
+    await expect(criteriaPanel.locator(".MuiDataGrid-root")).toHaveCount(0);
+    await expect(alternativePanel.locator(".MuiDataGrid-root")).toHaveCount(0);
+    await expect(alternativePanel.getByRole("tablist", { name: "Choose a criterion to evaluate" })).toHaveCount(0);
+
+    const collectiveAssignments = alternativePanel.getByTestId("ahpsort-i-collective-assignments");
+    await expect(collectiveAssignments).toBeVisible();
+    const readAssignmentColumns = async () => collectiveAssignments
+      .getByTestId("ahpsort-i-collective-assignment-row")
+      .evaluateAll((rows) => rows.map((row) => [...row.querySelectorAll("th, td")].slice(1).map((cell) => cell.textContent.trim())));
+    const selectedAssignmentsByExpert = [];
+    let persistedCollectiveAssignments = null;
+    for (let expertIndex = 0; expertIndex < 3; expertIndex += 1) {
+      await expertSelector.click();
+      const options = page.getByRole("option");
+      await expect(options).toHaveCount(3);
+      await options.nth(expertIndex).click();
+      const assignments = await readAssignmentColumns();
+      selectedAssignmentsByExpert.push(assignments.map(([selected]) => selected));
+      const currentCollectiveAssignments = assignments.map(([, collective]) => collective);
+      if (persistedCollectiveAssignments === null) persistedCollectiveAssignments = currentCollectiveAssignments;
+      else expect(currentCollectiveAssignments).toEqual(persistedCollectiveAssignments);
+    }
+    expect(new Set(selectedAssignmentsByExpert.map((assignments) => assignments.join("\n"))).size).toBeGreaterThan(1);
+
+    await collectiveToggle.click();
+    await expect(criteriaPanel.locator(".MuiDataGrid-root").first()).toBeVisible();
+    await expect(criteriaPanel.getByRole("table", { name: "Criterion weights" })).toHaveCount(0);
+    await expect(alternativePanel.getByRole("tablist", { name: "Choose a criterion to evaluate" })).toBeVisible();
+    await expect(alternativePanel.getByTestId("ahpsort-i-collective-assignments")).toHaveCount(0);
+    await expect(criteriaPanel.getByRole("heading", { name: "Criteria comparisons" })).toBeVisible();
+    await expect(alternativePanel.getByRole("heading", { name: "Alternative comparisons" })).toBeVisible();
+    await expect(expertSelector).toHaveText(selectedExpertBeforeToggle);
+    await expect(criterionTabs.nth(2)).toHaveAttribute("aria-selected", "true");
+
     await dialog.getByRole("tab", { name: "Analysis", exact: true }).click();
     await expect(dialog.getByText("General visualizations", { exact: true })).toBeVisible();
     await dialog.getByRole("tab", { name: "Interpretation", exact: true }).click();
@@ -447,6 +494,14 @@ test.describe("AHPSort I development demonstration Finished Issues", () => {
       await expectNoHorizontalOverflow(page);
       await expectDialogOnlyVerticalScroll(dialog, { requireOverflow: false });
     }
+    await dialog.getByRole("tab", { name: "Evaluations", exact: true }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expectNoHorizontalOverflow(page);
+    await dialog.getByRole("button", { name: "Show collective values" }).click();
+    await expect(dialog.getByTestId("ahpsort-i-collective-assignments")).toBeVisible();
+    await expect(dialog.getByTestId("evaluation-stage-panel-criteriaWeighting").locator(".MuiDataGrid-root")).toHaveCount(0);
+    await expect(dialog.getByTestId("evaluation-stage-panel-alternativeEvaluation").locator(".MuiDataGrid-root")).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
     expect(pageErrors).toEqual([]);
   });
 

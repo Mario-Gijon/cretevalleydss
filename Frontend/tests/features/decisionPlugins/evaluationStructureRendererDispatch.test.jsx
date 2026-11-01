@@ -18,6 +18,8 @@ const FuturePluginView = ({
   setEvaluation,
   collectiveEvaluation,
   readOnly,
+  selectedCriterionId,
+  onSelectedCriterionIdChange,
 }) => {
   mockViewState.lastProps = {
     decisionContext,
@@ -25,6 +27,8 @@ const FuturePluginView = ({
     setEvaluation,
     collectiveEvaluation,
     readOnly,
+    selectedCriterionId,
+    onSelectedCriterionIdChange,
   };
 
   return (
@@ -58,6 +62,10 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
         structureKey="futureStructure"
         evaluation={{ value: "individual-payload" }}
         collectiveEvaluation={{ collective: "collective-payload" }}
+        viewProps={{
+          selectedCriterionId: "criterion-cost",
+          onSelectedCriterionIdChange: vi.fn(),
+        }}
         readOnly
       />
     );
@@ -71,6 +79,8 @@ describe("EvaluationStructureRenderer registry dispatch", () => {
     expect(screen.getByText("individual-payload")).toBeInTheDocument();
     expect(screen.getByText("collective-payload")).toBeInTheDocument();
     expect(screen.getByText("true")).toBeInTheDocument();
+    expect(mockViewState.lastProps.selectedCriterionId).toBe("criterion-cost");
+    expect(mockViewState.lastProps.onSelectedCriterionIdChange).toEqual(expect.any(Function));
     expect(mockViewState.lastProps).not.toHaveProperty("loading");
     expect(() =>
       mockViewState.lastProps.setEvaluation({ complete: true })

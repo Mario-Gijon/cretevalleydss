@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../../../src/features/issueEvaluation/rendering/index.js", () => ({
@@ -8,7 +8,14 @@ vi.mock("../../../../../src/features/issueEvaluation/rendering/index.js", () => 
       data-testid={`evaluation-renderer-${props.stage}`}
       data-evaluation={JSON.stringify(props.evaluation)}
       data-collective-evaluation={JSON.stringify(props.collectiveEvaluation)}
-    />
+      data-selected-criterion-id={props.viewProps?.selectedCriterionId || ""}
+    >
+      {props.viewProps?.onSelectedCriterionIdChange ? (
+        <button onClick={() => props.viewProps.onSelectedCriterionIdChange("criterion-cost")}>
+          Select saved criterion
+        </button>
+      ) : null}
+    </div>
   ),
 }));
 
@@ -32,7 +39,7 @@ const renderView = (data, state) => render(
 );
 
 describe("AHPSort I collective presentation in Finished Issues", () => {
-  it("keeps the selected expert matrices and adds compact collective assignments", () => {
+  it("switches both AHPSort I stages between individual matrices and collective summaries", () => {
     const payload = buildAHPSortIGroupFinishedIssueFixture();
     const data = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 0 });
 
@@ -43,6 +50,11 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     expect(within(alternativePanel).getByText("Performance of alternatives on each criterion.")).toBeInTheDocument();
     expect(screen.queryByTestId("ahpsort-i-collective-assignments")).not.toBeInTheDocument();
     expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
+    const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    expect(within(criteriaPanel).getByTestId("evaluation-renderer-criteriaWeighting")).toBeInTheDocument();
+    expect(within(criteriaPanel).queryByTestId("ahpsort-i-criteria-weight-summary")).not.toBeInTheDocument();
+    expect(within(alternativePanel).getByRole("button", { name: "Select saved criterion" })).toBeInTheDocument();
+    fireEvent.click(within(alternativePanel).getByRole("button", { name: "Select saved criterion" }));
 
     const collectiveState = { ...selection, showCollective: true };
     rendered.rerender(
@@ -53,6 +65,8 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
 
     expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
     expect(within(alternativePanel).getByRole("heading", { name: "Collective assignment" })).toBeInTheDocument();
+    expect(within(alternativePanel).queryByText("Performance of alternatives on each criterion.")).not.toBeInTheDocument();
+    expect(within(alternativePanel).queryByText(/^Submitted:/)).not.toBeInTheDocument();
     const table = screen.getByTestId("ahpsort-i-collective-assignments");
     expect(window.getComputedStyle(table).overflowX).toBe("auto");
     expect(window.getComputedStyle(table).overflowY).toBe("hidden");
@@ -71,15 +85,16 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     expect(rows[4]).toHaveTextContent("ModerateModerate");
     expect(table.textContent).not.toMatch(/expert-[a-z]|cat-(bad|moderate|good)|united-kingdom|votes/i);
 
-    const selectedExpertMatrix = within(alternativePanel).getByTestId("evaluation-renderer-alternativeEvaluation");
-    expect(selectedExpertMatrix).toHaveAttribute("data-collective-evaluation", "null");
-    expect(selectedExpertMatrix.getAttribute("data-evaluation")).toContain("individualSaatyMatrix");
+    expect(within(alternativePanel).queryByTestId("evaluation-renderer-alternativeEvaluation")).not.toBeInTheDocument();
+    expect(within(alternativePanel).queryByRole("tablist", { name: "Choose a criterion to evaluate" })).not.toBeInTheDocument();
     expect(data.criteriaWeighting.renderer).toMatchObject({
       collectiveEvaluation: expect.objectContaining({ weightsByCriterion: { "criterion-quality": 0.55, "criterion-cost": 0.45 } }),
       readOnly: true,
     });
 
     const collectiveCriteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    expect(within(collectiveCriteriaPanel).queryByTestId("evaluation-renderer-criteriaWeighting")).not.toBeInTheDocument();
+    expect(within(collectiveCriteriaPanel).queryByText(/^Submitted:/)).not.toBeInTheDocument();
     const weightsTable = within(collectiveCriteriaPanel).getByRole("table", { name: "Criterion weights" });
     expect(window.getComputedStyle(weightsTable).minWidth).toBe("560px");
     expect(window.getComputedStyle(weightsTable.parentElement).overflowX).toBe("auto");
@@ -89,8 +104,7 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     const weightRows = within(weightsTable).getAllByRole("row");
     expect(weightRows[1]).toHaveTextContent("Quality70.00%55.00%");
     expect(weightRows[2]).toHaveTextContent("Cost30.00%45.00%");
-    expect(within(collectiveCriteriaPanel).queryByText("Individual priorities and consistency")).not.toBeInTheDocument();
-    expect(within(collectiveCriteriaPanel).queryByRole("button", { name: /Expert [ABC]/ })).not.toBeInTheDocument();
+    expect(within(collectiveCriteriaPanel).queryByText("Selected expert priorities")).not.toBeInTheDocument();
     expect(screen.queryByText(/GAHPSort/i)).not.toBeInTheDocument();
 
     rendered.rerender(
@@ -101,7 +115,11 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
     expect(within(alternativePanel).getByText("Performance of alternatives on each criterion.")).toBeInTheDocument();
     expect(screen.queryByTestId("ahpsort-i-collective-assignments")).not.toBeInTheDocument();
-    expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
+    const restoredAlternativeMatrix = screen.getByTestId("evaluation-renderer-alternativeEvaluation");
+    expect(restoredAlternativeMatrix).toBeInTheDocument();
+    expect(restoredAlternativeMatrix).toHaveAttribute("data-selected-criterion-id", "criterion-cost");
+    expect(within(criteriaPanel).getByTestId("evaluation-renderer-criteriaWeighting")).toBeInTheDocument();
+    expect(within(criteriaPanel).queryByTestId("ahpsort-i-criteria-weight-summary")).not.toBeInTheDocument();
   });
 
   it("updates the selected expert's assignment while collective output remains global by alternative", () => {
@@ -146,7 +164,7 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     });
   });
 
-  it("keeps the individual matrix visible and hides collective details on integrity failure", () => {
+  it("shows only the integrity warning when collective assignments cannot be verified", () => {
     const payload = buildAHPSortIGroupFinishedIssueFixture();
     payload.phaseResults[0].standardizedOutput.diagnostics.resultsByAlternativeId.spain.votesByCategoryId["cat-bad"] = 99;
     const state = { ...selection, showCollective: true };
@@ -156,7 +174,7 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     renderView(data, state);
 
     expect(screen.getByTestId("ahpsort-i-collective-integrity-warning")).toHaveTextContent("could not be verified");
-    expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
+    expect(screen.queryByTestId("evaluation-renderer-alternativeEvaluation")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahpsort-i-collective-assignments")).not.toBeInTheDocument();
   });
 
@@ -170,7 +188,7 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     renderView(data, state);
 
     expect(screen.getByTestId("ahpsort-i-collective-unavailable")).toHaveTextContent("Collective assignments are unavailable");
-    expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
+    expect(screen.queryByTestId("evaluation-renderer-alternativeEvaluation")).not.toBeInTheDocument();
     expect(screen.queryByText(/collective saaty/i)).not.toBeInTheDocument();
   });
 
@@ -187,6 +205,7 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
 
     expect(screen.queryByLabelText("Show collective values")).not.toBeInTheDocument();
     expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
-    expect(screen.getByTestId("ahpsort-i-criteria-weight-summary")).toBeInTheDocument();
+    expect(screen.queryByTestId("ahpsort-i-criteria-weight-summary")).not.toBeInTheDocument();
+    expect(screen.getByTestId("evaluation-renderer-criteriaWeighting")).toBeInTheDocument();
   });
 });

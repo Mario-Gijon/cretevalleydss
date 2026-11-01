@@ -25,8 +25,10 @@ const AHPSortAlternativeProfilesView = ({
   setEvaluation,
   collectiveEvaluation,
   readOnly,
+  selectedCriterionId: preservedCriterionId,
+  onSelectedCriterionIdChange,
 }) => {
-  const [selectedCriterionId, setSelectedCriterionId] = useState("");
+  const [localSelectedCriterionId, setLocalSelectedCriterionId] = useState("");
   const contextResolution = useMemo(() => {
     try {
       return {
@@ -55,6 +57,7 @@ const AHPSortAlternativeProfilesView = ({
     return <Alert severity="error">{contextResolution.message}</Alert>;
   }
 
+  const selectedCriterionId = preservedCriterionId || localSelectedCriterionId;
   const selectedCriterion = context.criteria.find(({ id }) => id === selectedCriterionId)
     || context.criteria[0];
   const activeCriterionId = selectedCriterion.id;
@@ -79,7 +82,10 @@ const AHPSortAlternativeProfilesView = ({
 
       <Tabs
         value={activeCriterionId}
-        onChange={(_event, value) => setSelectedCriterionId(value)}
+        onChange={(_event, value) => {
+          setLocalSelectedCriterionId(value);
+          onSelectedCriterionIdChange?.(value);
+        }}
         variant="scrollable"
         textColor="secondary"
         indicatorColor="secondary"

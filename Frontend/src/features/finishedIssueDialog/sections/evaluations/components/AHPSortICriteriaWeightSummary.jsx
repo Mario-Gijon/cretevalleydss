@@ -14,12 +14,6 @@ const formatWeight = (value) =>
     ? `${(value * 100).toFixed(2)}%`
     : "—";
 
-const statusLabel = (status) => {
-  if (status === "consistent") return "Consistent";
-  if (status === "review") return "Review suggested";
-  return null;
-};
-
 const expertEntry = (collection, { expertId, expertEmail }) => {
   if (!collection || typeof collection !== "object" || Array.isArray(collection)) {
     return undefined;
@@ -33,17 +27,6 @@ const expertEntry = (collection, { expertId, expertEmail }) => {
     (key) => key.trim().toLocaleLowerCase() === normalizedEmail,
   );
   return matchingKey ? collection[matchingKey] : undefined;
-};
-
-const formatDiagnostic = (diagnostic) => {
-  if (!diagnostic || typeof diagnostic !== "object") return null;
-  const label = statusLabel(diagnostic.consistencyStatus);
-  const ratio = diagnostic.consistencyRatio;
-  const cr = typeof ratio === "number" && Number.isFinite(ratio)
-    ? `CR ${ratio.toFixed(3)}`
-    : null;
-
-  return [label, cr].filter(Boolean).join(" · ") || null;
 };
 
 const tableSx = {
@@ -67,7 +50,6 @@ const AHPSortICriteriaWeightSummary = ({
   collectiveEvaluation,
   selectedExpertId,
   selectedExpertEmail,
-  showCollective,
 }) => {
   const expertIdentity = { expertId: selectedExpertId, expertEmail: selectedExpertEmail };
   const selectedExpertWeights = expertEntry(
@@ -75,21 +57,12 @@ const AHPSortICriteriaWeightSummary = ({
     expertIdentity,
   );
   const collectiveWeights = collectiveEvaluation?.weightsByCriterion;
-  const diagnostics = expertEntry(
-    collectiveEvaluation?.expertDiagnosticsByExpert,
-    expertIdentity,
-  );
-  const diagnosticText = formatDiagnostic(diagnostics);
-  const hasSelectedWeights = criteria.some((criterion) =>
-    typeof selectedExpertWeights?.[criterion.id] === "number" &&
-    Number.isFinite(selectedExpertWeights[criterion.id]),
-  );
   const hasCollectiveWeights = criteria.some((criterion) =>
     typeof collectiveWeights?.[criterion.id] === "number" &&
     Number.isFinite(collectiveWeights[criterion.id]),
   );
 
-  if (showCollective && !hasCollectiveWeights) {
+  if (!hasCollectiveWeights) {
     return (
       <Typography
         variant="caption"
@@ -103,32 +76,23 @@ const AHPSortICriteriaWeightSummary = ({
     );
   }
 
-  if (!showCollective && !hasSelectedWeights && !diagnosticText) return null;
-
   return (
     <Box sx={{ mb: 1.25, width: "100%", minWidth: 0 }} data-testid="ahpsort-i-criteria-weight-summary">
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1, mb: 0.55, flexWrap: "wrap" }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-          {showCollective ? "Criterion weights" : "Selected expert priorities"}
-        </Typography>
-        {diagnosticText ? (
-          <Typography variant="caption" color="text.secondary" data-testid="ahpsort-i-selected-expert-consistency">
-            {diagnosticText}
-          </Typography>
-        ) : null}
-      </Box>
+      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.55 }}>
+        Criterion weights
+      </Typography>
       <TableContainer
         role="region"
-        aria-label={showCollective ? "Selected expert and collective criterion weights" : "Selected expert criterion priorities"}
+        aria-label="Selected expert and collective criterion weights"
         tabIndex={0}
         sx={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "auto", overflowY: "hidden" }}
       >
         <Table
           size="small"
-          aria-label={showCollective ? "Criterion weights" : "Selected expert priorities"}
+          aria-label="Criterion weights"
           sx={{
             ...tableSx,
-            minWidth: showCollective ? 560 : 430,
+            minWidth: 560,
             "& th:not(:first-of-type)": { whiteSpace: "nowrap" },
           }}
         >
@@ -136,9 +100,7 @@ const AHPSortICriteriaWeightSummary = ({
             <TableRow>
               <TableCell component="th" scope="col">Criterion</TableCell>
               <TableCell component="th" scope="col">Selected expert</TableCell>
-              {showCollective ? (
-                <TableCell component="th" scope="col">Collective (MCC)</TableCell>
-              ) : null}
+              <TableCell component="th" scope="col">Collective (MCC)</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -150,11 +112,9 @@ const AHPSortICriteriaWeightSummary = ({
                 <TableCell>
                   {formatWeight(selectedExpertWeights?.[criterion.id])}
                 </TableCell>
-                {showCollective ? (
-                  <TableCell sx={{ color: "secondary.light", fontWeight: 700 }}>
-                    {formatWeight(collectiveWeights?.[criterion.id])}
-                  </TableCell>
-                ) : null}
+                <TableCell sx={{ color: "secondary.light", fontWeight: 700 }}>
+                  {formatWeight(collectiveWeights?.[criterion.id])}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
