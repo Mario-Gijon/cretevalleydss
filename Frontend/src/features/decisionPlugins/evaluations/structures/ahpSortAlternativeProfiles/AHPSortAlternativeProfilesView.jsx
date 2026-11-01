@@ -118,10 +118,6 @@ const AHPSortAlternativeProfilesView = ({
         })}
       </Tabs>
 
-      <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-        {selectedCriterion.name}
-      </Typography>
-
       <Stack component="section" aria-labelledby="alternative-profile-heading" spacing={0.8} sx={{ minWidth: 0 }}>
         <Box>
           <Typography id="alternative-profile-heading" variant="subtitle2" sx={{ fontWeight: 800 }}>

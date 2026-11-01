@@ -362,7 +362,8 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
     });
 
     await user.click(screen.getByRole("tab", { name: "Cost" }));
-    expect(screen.getByRole("heading", { name: "Cost" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Cost" })).not.toBeInTheDocument();
+    expect(screen.getByRole("grid", { name: "Cost alternative to profile comparisons" })).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Quality" }));
     expect(screen.getByRole("combobox", {
       name: "Compare Premium option with Low → Medium for Quality",
@@ -385,6 +386,8 @@ describe("AHPSort I alternative-profile evaluation structure", () => {
     );
 
     expect(screen.getByRole("tab", { name: "Cost" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("heading", { name: "Cost" })).not.toBeInTheDocument();
+    expect(screen.getByRole("grid", { name: "Cost alternative to profile comparisons" })).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Quality" }));
     expect(onSelectedCriterionIdChange).toHaveBeenCalledWith("criterion-quality");
   });

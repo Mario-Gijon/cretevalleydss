@@ -148,16 +148,22 @@ describe("EvaluationsView", () => {
     expect(screen.queryByText("Review stored expert inputs and collective values.")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Criteria weighting" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
+    const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
+    const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
+    expect(within(criteriaPanel).getByText("(read-only)")).toBeInTheDocument();
+    expect(within(alternativePanel).getByText("(read-only)")).toBeInTheDocument();
+    expect(within(criteriaPanel).queryByText("Weights assigned to criteria by the selected expert.")).not.toBeInTheDocument();
+    expect(within(alternativePanel).queryByText("Performance of alternatives on each criterion.")).not.toBeInTheDocument();
+    expect(within(criteriaPanel).getByRole("heading", { name: "Criteria weighting" }).parentElement.querySelector("svg")).toBeNull();
+    expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" }).parentElement.querySelector("svg")).toBeNull();
     expect(screen.getAllByLabelText("Expert")).toHaveLength(1);
     expect(screen.queryByLabelText("Consensus round")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Show collective values")).toBeInTheDocument();
-    const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
     const expectedSubmittedAt = new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date("2026-01-02T00:00:00.000Z"));
     expect(within(alternativePanel).getByText(`Submitted: ${expectedSubmittedAt}`)).toBeInTheDocument();
-    const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
     const expectedCriteriaSubmittedAt = new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium",
       timeStyle: "short",

@@ -4,7 +4,6 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 
@@ -125,9 +124,6 @@ const EvaluationPluginPanel = ({
       ? !showCollective && hasAHPSortIIndividualEvaluation
       : hasActiveViewData);
   const title = stageData.title;
-  const subtitle = isAHPSortIAlternativeEvaluation && showCollective
-    ? null
-    : stageData.subtitle;
   const submittedAt = stageData.individual?.submittedAt;
   const hasExpertSubmissionTimestamp = Boolean(submittedAt) && (!isAHPSortI || !showCollective);
   const selectedExpertId = stageData.individual?.expertId ?? null;
@@ -156,25 +152,10 @@ const EvaluationPluginPanel = ({
           <Typography variant="h6" component="h2">
             {title}
           </Typography>
-          <Typography variant="caption"
-            sx={{
-              color: "text.secondary",
-            }}
-          >
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             (read-only)
           </Typography>
-          <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 16, flexShrink: 0 }} />
         </Stack>
-        {subtitle ? (
-          <Typography variant="body2"
-            sx={{
-              mt: 0.25,
-              color: "text.secondary",
-            }}
-          >
-            {subtitle}
-          </Typography>
-        ) : null}
       </Box>
 
       {hasExpertSubmissionTimestamp ? (

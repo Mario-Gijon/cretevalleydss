@@ -47,7 +47,7 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     const rendered = renderView(data, selection);
     const alternativePanel = screen.getByTestId("evaluation-stage-panel-alternativeEvaluation");
     expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
-    expect(within(alternativePanel).getByText("Performance of alternatives on each criterion.")).toBeInTheDocument();
+    expect(within(alternativePanel).queryByText("Performance of alternatives on each criterion.")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahpsort-i-collective-assignments")).not.toBeInTheDocument();
     expect(screen.getByTestId("evaluation-renderer-alternativeEvaluation")).toBeInTheDocument();
     const criteriaPanel = screen.getByTestId("evaluation-stage-panel-criteriaWeighting");
@@ -64,6 +64,9 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
     );
 
     expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
+    expect(within(alternativePanel).getByText("(read-only)")).toBeInTheDocument();
+    expect(within(alternativePanel).queryByText("Performance of alternatives on each criterion.")).not.toBeInTheDocument();
+    expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" }).parentElement.querySelector("svg")).toBeNull();
     expect(within(alternativePanel).getByRole("heading", { name: "Collective assignment" })).toBeInTheDocument();
     expect(within(alternativePanel).queryByText("Performance of alternatives on each criterion.")).not.toBeInTheDocument();
     expect(within(alternativePanel).queryByText(/^Submitted:/)).not.toBeInTheDocument();
@@ -113,7 +116,7 @@ describe("AHPSort I collective presentation in Finished Issues", () => {
       </ThemeProvider>
     );
     expect(within(alternativePanel).getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
-    expect(within(alternativePanel).getByText("Performance of alternatives on each criterion.")).toBeInTheDocument();
+    expect(within(alternativePanel).queryByText("Performance of alternatives on each criterion.")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahpsort-i-collective-assignments")).not.toBeInTheDocument();
     const restoredAlternativeMatrix = screen.getByTestId("evaluation-renderer-alternativeEvaluation");
     expect(restoredAlternativeMatrix).toBeInTheDocument();
