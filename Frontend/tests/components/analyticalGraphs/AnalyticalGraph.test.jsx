@@ -58,16 +58,16 @@ const expertSeries = (key, label) => ({
   points: [{ id: `${key}:criterion`, label: `${label} · Cost`, x: 1, y: 1, details: { expert: label, criterion: "Cost", rank: 1, utility: 0.5 } }],
 });
 
-const mccAdjustmentMap = (columnCount) => {
+const mccAdjustmentMap = (columnCount, expertCount = 2) => {
   const longExpertName = "Expert Alexandria Papatheodorou with a deliberately long display name";
   const columns = Array.from({ length: columnCount }, (_, index) => ({
     key: `criterion-${index + 1}`,
     label: `Criterion ${index + 1}: ${"long criterion name ".repeat(5).trim()}`,
   }));
-  const rows = [
-    { key: "expert-long", label: longExpertName },
-    { key: "expert-short", label: "Expert B" },
-  ];
+  const rows = Array.from({ length: expertCount }, (_, index) => ({
+    key: `expert-${index + 1}`,
+    label: index === 0 ? longExpertName : `Expert ${String.fromCharCode(65 + index)}`,
+  }));
 
   return {
     key: "mcc-adjustment-map",
@@ -721,10 +721,10 @@ describe("AnalyticalGraph", () => {
   });
 
   it.each([
-    { mode: "light", containerWidth: 320, columnCount: 15 },
-    { mode: "dark", containerWidth: 1600, columnCount: 3 },
-  ])("keeps the MCC matrix aligned across themes and container widths", ({ mode, containerWidth, columnCount }) => {
-    const visualization = mccAdjustmentMap(columnCount);
+    { mode: "light", containerWidth: 320, columnCount: 6, expertCount: 3, expectedHeight: 164 },
+    { mode: "dark", containerWidth: 1600, columnCount: 6, expertCount: 14, expectedHeight: 648 },
+  ])("keeps the MCC matrix aligned across themes and container widths", ({ mode, containerWidth, columnCount, expertCount, expectedHeight }) => {
+    const visualization = mccAdjustmentMap(columnCount, expertCount);
     const layout = getVisualizationLayout(visualization);
     render(
       <ThemeProvider theme={createTheme({ palette: { mode } })}>
@@ -746,6 +746,7 @@ describe("AnalyticalGraph", () => {
     const longCriterionName = visualization.data.columns.at(-1).label;
     const longExpertName = visualization.data.rows[0].label;
 
+    expect(layout.chartHeight).toEqual({ xs: expectedHeight, sm: expectedHeight });
     expect(window.getComputedStyle(container).width).toBe(`${containerWidth}px`);
     expect(gridTemplateColumns).toContain("minmax(180px, 240px)");
     expect(gridTemplateColumns).toContain("minmax(150px, 1fr)");
@@ -757,6 +758,7 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText(longExpertName)).toBeInTheDocument();
     expect(screen.getByText(longExpertName)).not.toHaveClass("MuiTypography-noWrap");
     expect(screen.getByLabelText(`${longExpertName}, ${longCriterionName}: 0.5`)).toBeInTheDocument();
+    expect(grid.querySelectorAll("[data-color-scale]")).toHaveLength(expertCount * columnCount);
     expect(viewport.contains(screen.getByRole("heading", { name: "MCC adjustment map" }))).toBe(false);
     expect(viewport.contains(screen.getByTestId("visualization-reading-guide"))).toBe(false);
   });

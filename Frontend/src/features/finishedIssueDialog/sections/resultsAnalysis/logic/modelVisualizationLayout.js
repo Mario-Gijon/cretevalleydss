@@ -14,6 +14,14 @@ const HORIZONTAL_BAR_CATEGORY_HEIGHT = 32;
 const HORIZONTAL_BAR_CHROME_HEIGHT = 104;
 const HEATMAP_ROW_HEIGHT = 34;
 const HEATMAP_CHROME_HEIGHT = 124;
+// Keep these MCC-only metrics aligned with HeatmapAnalyticalGraph's 36px
+// adjustment cells, 20px captions, 8px grid gap and optional legend spacing.
+const MCC_ADJUSTMENT_CELL_HEIGHT = 36;
+const HEATMAP_CAPTION_LINE_HEIGHT = 20;
+const HEATMAP_GRID_GAP = 8;
+const MCC_ADJUSTMENT_LEGEND_MARGIN = 6.4;
+// AnalyticalGraph reserves this bottom gutter inside every chart viewport.
+const GRAPH_VIEWPORT_SCROLLBAR_GUTTER = 12;
 const MCC_ADJUSTMENT_LABEL_COLUMN_MIN_WIDTH = 180;
 const MCC_ADJUSTMENT_CRITERION_COLUMN_MIN_WIDTH = 150;
 const TWO_TUPLE_LABEL_COLUMN_MIN_WIDTH = 240;
@@ -33,6 +41,18 @@ const dynamicChartHeight = (itemCount, pixelsPerItem, chromeHeight) => {
   const height = Math.min(
     DYNAMIC_CHART_MAX_HEIGHT,
     Math.max(DYNAMIC_CHART_MIN_HEIGHT, itemCount * pixelsPerItem + chromeHeight)
+  );
+
+  return { xs: height, sm: height };
+};
+const mccAdjustmentChartHeight = (rowCount, hasLegend) => {
+  const legendHeight = hasLegend
+    ? HEATMAP_CAPTION_LINE_HEIGHT + MCC_ADJUSTMENT_LEGEND_MARGIN
+    : 0;
+  const headingHeight = HEATMAP_CAPTION_LINE_HEIGHT;
+  const rowsHeight = rowCount * (MCC_ADJUSTMENT_CELL_HEIGHT + HEATMAP_GRID_GAP);
+  const height = Math.ceil(
+    legendHeight + headingHeight + rowsHeight + GRAPH_VIEWPORT_SCROLLBAR_GUTTER
   );
 
   return { xs: height, sm: height };
@@ -83,13 +103,21 @@ export const getVisualizationLayout = (visualization) => {
     const mccAdjustmentMap = ["mcc-adjustment-map", "ahp-mcc-adjustment-map"].includes(normalizedVisualization.key);
     const twoTupleHeatmap = TWO_TUPLE_HEATMAP_KEYS.has(normalizedVisualization.key);
     const topsisProfile = TOPSIS_PROFILE_HEATMAP_KEYS.has(normalizedVisualization.key);
+    const legacyAHPAdjustmentLegend = normalizedVisualization.key === "ahp-mcc-adjustment-map"
+      && normalizedVisualization.presentation?.heatmapStyle !== "adjustment"
+      && normalizedVisualization.scale?.valueSuffix !== " pp";
+    const hasMccAdjustmentLegend = typeof normalizedVisualization.scale?.label === "string"
+      || (normalizedVisualization.scale?.legend && typeof normalizedVisualization.scale.legend === "object")
+      || legacyAHPAdjustmentLegend;
     return {
       span: 1,
-      chartHeight: dynamicChartHeight(
-        collectionLength(data.rows),
-        HEATMAP_ROW_HEIGHT,
-        HEATMAP_CHROME_HEIGHT
-      ),
+      chartHeight: mccAdjustmentMap
+        ? mccAdjustmentChartHeight(collectionLength(data.rows), hasMccAdjustmentLegend)
+        : dynamicChartHeight(
+          collectionLength(data.rows),
+          HEATMAP_ROW_HEIGHT,
+          HEATMAP_CHROME_HEIGHT
+        ),
       chartMinWidth: mccAdjustmentMap
         ? MCC_ADJUSTMENT_LABEL_COLUMN_MIN_WIDTH
           + columnCount * (MCC_ADJUSTMENT_CRITERION_COLUMN_MIN_WIDTH + HEATMAP_COLUMN_GAP)

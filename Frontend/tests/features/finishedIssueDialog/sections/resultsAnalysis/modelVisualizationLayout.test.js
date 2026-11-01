@@ -61,6 +61,35 @@ describe("getVisualizationLayout", () => {
   });
 
   it.each([
+    ["mcc-adjustment-map", 3, undefined, 164],
+    ["ahp-mcc-adjustment-map", 3, { heatmapStyle: "adjustment" }, 191],
+    ["mcc-adjustment-map", 14, undefined, 648],
+    ["ahp-mcc-adjustment-map", 14, { heatmapStyle: "adjustment" }, 675],
+  ])("sizes %s from its %i expert rows", (key, expertCount, presentation, height) => {
+    const layout = getVisualizationLayout({
+      key,
+      type: "heatmap",
+      presentation,
+      scale: presentation ? { label: "Change (percentage points)", legend: { negative: "Decrease", center: "0", positive: "Increase" } } : { kind: "diverging", center: 0 },
+      data: {
+        rows: Array.from({ length: expertCount }, (_, index) => ({ key: `expert-${index}`, label: `Expert ${index + 1}` })),
+        columns: [{ key: "quality", label: "Quality" }, { key: "cost", label: "Cost" }],
+        values: Array.from({ length: expertCount }, () => [0.01, -0.01]),
+      },
+    });
+
+    expect(layout.chartHeight).toEqual({ xs: height, sm: height });
+  });
+
+  it("retains the global minimum height for non-MCC heatmaps", () => {
+    expect(getVisualizationLayout({
+      key: "topsis-collective-performance-profile",
+      type: "heatmap",
+      data: { rows: [{ key: "one", label: "Alternative" }], columns: [{ key: "c1", label: "Criterion" }] },
+    }).chartHeight).toEqual({ xs: 320, sm: 320 });
+  });
+
+  it.each([
     ["two-tuple-collective-profile", 5],
     ["two-tuple-collective-profile", 13],
     ["two-tuple-collective-profile", 18],
