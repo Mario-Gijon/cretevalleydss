@@ -37,10 +37,16 @@ const expertsShareOriginalMatrix = (expertIds, identicalEvaluationGroups = []) =
 const explainEqualityEvidence = ({
   experts,
   hasCollective,
+  isCategoricalPatternProjection,
   hasEvaluationEqualityEvidence,
   identicalEvaluationGroups,
   collectiveIdenticalExpertIds,
 }) => {
+  if (isCategoricalPatternProjection) {
+    return hasCollective
+      ? "These experts and the collective share the same stored categorical-projection coordinates; the overlap does not establish identical classification patterns."
+      : "These experts share the same stored categorical-projection coordinates; the overlap does not establish identical classification patterns.";
+  }
   if (!hasEvaluationEqualityEvidence) {
     return "This coincidence in the 2D projection does not establish that the original evaluations are identical.";
   }
@@ -79,6 +85,7 @@ const explainEqualityEvidence = ({
 export const buildExpertCollectiveOverlapGroups = ({
   expertPoints = [],
   collectivePoint = null,
+  isCategoricalPatternProjection = false,
   hasEvaluationEqualityEvidence = false,
   identicalEvaluationGroups = [],
   collectiveIdenticalExpertIds = [],
@@ -120,15 +127,19 @@ export const buildExpertCollectiveOverlapGroups = ({
         return identityLabel(expert, labelCounts.get(label) > 1);
       });
       if (group.hasCollective) labels.push("the collective");
+      const explanation = explainEqualityEvidence({
+        experts: group.experts,
+        hasCollective: group.hasCollective,
+        isCategoricalPatternProjection,
+        hasEvaluationEqualityEvidence,
+        identicalEvaluationGroups,
+        collectiveIdenticalExpertIds,
+      });
       return {
         ...group,
-        message: `Overlapping projections: ${englishList(labels)} occupy the same stored position. ${explainEqualityEvidence({
-          experts: group.experts,
-          hasCollective: group.hasCollective,
-          hasEvaluationEqualityEvidence,
-          identicalEvaluationGroups,
-          collectiveIdenticalExpertIds,
-        })}`,
+        message: isCategoricalPatternProjection
+          ? `Categorical projection overlap: ${englishList(labels)} occupy the same stored position. ${explanation}`
+          : `Overlapping projections: ${englishList(labels)} occupy the same stored position. ${explanation}`,
       };
     });
 };

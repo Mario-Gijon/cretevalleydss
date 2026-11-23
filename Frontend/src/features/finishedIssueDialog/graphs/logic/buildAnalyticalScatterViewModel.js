@@ -53,6 +53,7 @@ const buildCanonicalExpertPoints = (current) => {
             id: entry?.identity,
             index,
           }),
+          ...(entry?.details && typeof entry.details === "object" ? { details: entry.details } : {}),
         };
       })
       .filter(Boolean);
@@ -128,6 +129,13 @@ const buildCollectivePoint = (current) => {
         }
       : null;
 
+  if (current.projectionSemantics === "categorical-pattern" && parsedCollective) {
+    return {
+      ...parsedCollective,
+      ...(normalizedText(collectiveCandidate?.label) ? { label: normalizedText(collectiveCandidate.label) } : {}),
+      ...(collectiveCandidate?.details && typeof collectiveCandidate.details === "object" ? { details: collectiveCandidate.details } : {}),
+    };
+  }
   return parsedCollective || { x: 0, y: 0 };
 };
 
@@ -173,6 +181,7 @@ export const buildAnalyticalScatterViewModel = ({ data, phase }) => {
       current.hasEvaluationEqualityEvidence === true,
     identicalEvaluationGroups: current.identicalEvaluationGroups,
     collectiveIdenticalExpertIds: current.collectiveIdenticalExpertIds,
+    isCategoricalPatternProjection: current.projectionSemantics === "categorical-pattern",
   });
 
   return {

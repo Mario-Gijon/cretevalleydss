@@ -98,6 +98,23 @@ const EXPERT_COLLECTIVE_DISTANCES_GUIDE = "Each bar measures the distance from o
 const RANKING_STABILITY_GUIDE = getVisualizationReadingGuide({ type: "rankingStability" });
 const RANKING_AGREEMENT_GUIDE = getVisualizationReadingGuide({ type: "rankingAgreement" });
 const finitePoint = (point) => Number.isFinite(point?.x) && Number.isFinite(point?.y);
+const buildCategoricalProjectionScatterData = (projection) => {
+  const expertSeries = projection.data.series.find((series) => series.key === "experts");
+  const collectiveSeries = projection.data.series.find((series) => series.key === "collective");
+  return {
+    0: {
+      projectionSemantics: "categorical-pattern",
+      expertPoints: expertSeries.points.map((point) => ({
+        x: point.x,
+        y: point.y,
+        label: point.label,
+        identity: point.label,
+        details: point.details,
+      })),
+      collectivePoint: collectiveSeries.points[0],
+    },
+  };
+};
 
 const renderableDistanceProjections = (projections) =>
   (Array.isArray(projections) ? projections : []).filter(
@@ -652,7 +669,19 @@ const ExpertCollectiveRelationship = ({ visualizations, unavailableReason }) => 
           {classificationEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 0.6, color: execution.color, fontWeight: 900 }}>{execution.displayLabel}</Typography> : null}
           <Box data-testid="classification-relationship-visualization" data-representation={projection ? "categorical-projection" : "exact-match-fallback"} sx={{ width: "100%", minWidth: 0 }}>
             {projection
-              ? <Box sx={{ width: "100%", maxWidth: 1100, mx: "auto", minWidth: 0 }}><AnalyticalGraph visualization={projection} chartHeight={expertChartFrameSx.height} /></Box>
+              ? <Box sx={{ width: "100%", maxWidth: 1100, mx: "auto", minWidth: 0 }}>
+                <Typography component="h3" variant="h6">{projection.title}</Typography>
+                <VisualizationReadingGuide>{getVisualizationReadingGuide(projection).text}</VisualizationReadingGuide>
+                <Box sx={{ height: expertChartFrameSx.height, minHeight: 0, width: "100%" }}>
+                  <AnalyticalScatterChart
+                    data={buildCategoricalProjectionScatterData(projection)}
+                    phase={0}
+                    color={RESULTS_ANALYSIS_SLOT_COLORS[0]}
+                    variant="categorical"
+                    showConnectors={false}
+                  />
+                </Box>
+              </Box>
               : <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />}
           </Box>
         </Box>)}

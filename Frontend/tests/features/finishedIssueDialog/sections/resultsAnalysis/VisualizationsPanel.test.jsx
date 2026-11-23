@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalScatterChart", () => ({
-  AnalyticalScatterChart: ({ phase }) => <div data-testid="analytical-scatter" data-phase={phase} />,
+  AnalyticalScatterChart: ({ phase, variant, showConnectors, data }) => <div data-testid="analytical-scatter" data-phase={phase} data-variant={variant || "numeric"} data-show-connectors={showConnectors} data-experts={JSON.stringify(data?.[phase]?.expertPoints?.map((point) => point.label) || [])} data-collective-label={data?.[phase]?.collectivePoint?.label || "Collective"} />,
 }));
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/ComparativeAnalyticalScatterChart", () => ({
   ComparativeAnalyticalScatterChart: ({ groups }) => <div data-testid="comparative-scatter">{groups.length}</div>,
@@ -277,13 +277,14 @@ describe("VisualizationsPanel", () => {
     const card = screen.getByTestId("expert-collective-classification-relationship");
     expect(within(card).getByRole("heading", { name: "Expert–collective relationship" })).toBeInTheDocument();
     expect(within(card).getByText(/positions summarize saved category-assignment patterns/)).toBeInTheDocument();
-    expect(within(card).getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
-      "expert-collective-categorical-pattern-projection",
-    ]);
-    expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-chart-height", JSON.stringify({ xs: 320, sm: 360, md: 420, xl: 430 }));
-    expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-series-point-styles", '["circle","rectRot"]');
+    expect(within(card).queryByTestId("analytical-graph")).not.toBeInTheDocument();
+    expect(within(card).getAllByTestId("analytical-scatter")).toHaveLength(1);
+    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-variant", "categorical");
+    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-show-connectors", "false");
+    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-experts", '["Ada","Grace","Katherine"]');
+    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-collective-label", "Collective result");
     expect(within(card).getByTestId("classification-relationship-visualization")).toHaveAttribute("data-representation", "categorical-projection");
-    expect(within(card).getByText(/not represent AHP distances or numeric priorities/)).toBeInTheDocument();
+    expect(within(card).getAllByTestId("visualization-reading-guide").at(-1)).toHaveTextContent(/not represent AHP distances or numeric priorities/);
 
     unmount();
     const execution = (key, displayLabel, xOffset) => ({
@@ -311,10 +312,7 @@ describe("VisualizationsPanel", () => {
     /></ThemeProvider>);
 
     const comparisonCard = screen.getByTestId("expert-collective-classification-relationship");
-    expect(within(comparisonCard).getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
-      "expert-collective-categorical-pattern-projection",
-      "expert-collective-categorical-pattern-projection",
-    ]);
+    expect(within(comparisonCard).getAllByTestId("analytical-scatter")).toHaveLength(2);
     expect(within(comparisonCard).getAllByTestId("classification-relationship-visualization")).toHaveLength(2);
     expect(within(comparisonCard).getByText("Base")).toBeInTheDocument();
     expect(within(comparisonCard).getByText("Scenario")).toBeInTheDocument();
