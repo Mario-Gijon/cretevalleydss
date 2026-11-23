@@ -190,9 +190,16 @@ const ScatterAnalyticalGraph = ({ visualization }) => {
             type: visualization.xAxis?.scaleType || "linear",
             min: visualization.xAxis?.min,
             max: visualization.xAxis?.max,
+            afterBuildTicks: visualization.xAxis?.categories?.length
+              ? (scale) => {
+                  scale.ticks = visualization.xAxis.categories.map((category) => ({ value: category.value }));
+                }
+              : undefined,
             grid: { display: true, color: "rgba(255,255,255,0.10)" },
             ticks: {
               ...baseOptions.scales.x.ticks,
+              stepSize: visualization.xAxis?.categories?.length ? 1 : undefined,
+              autoSkip: visualization.xAxis?.categories?.length ? false : undefined,
               ...(typeof visualization.xAxis?.tickSuffix === "string" && visualization.xAxis.tickSuffix
                 ? { callback: (value) => `${value}${visualization.xAxis.tickSuffix}` }
                 : {}),

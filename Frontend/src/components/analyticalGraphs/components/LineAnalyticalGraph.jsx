@@ -40,7 +40,9 @@ const withOpacity = (color, opacity) => {
   return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
 };
 
-const seriesRole = (series) => isAlternativeSensitivitySeries(series) ? "alternative" : "boundary";
+const seriesRole = (series) => series?.resultType === "collective"
+  ? "collective"
+  : isAlternativeSensitivitySeries(series) ? "alternative" : "boundary";
 const seriesColor = (series, index, presentation) => series.style?.color
   || (presentation.stableSeriesColors ? stableChartColor(series.key) : chartColor(index));
 
@@ -71,13 +73,15 @@ const buildSeriesDisplayLabels = (series) => {
 const SensitivityLegend = ({ series, presentation, displayLabels }) => {
   if (!presentation.compactLegend) return null;
   const alternatives = series.filter((item) => seriesRole(item) === "alternative");
+  const collectives = series.filter((item) => seriesRole(item) === "collective");
   const boundaries = series.filter((item) => seriesRole(item) === "boundary");
-  const renderEntries = (items, role) => items.length ? <Box component="ul" aria-label={role === "alternative" ? "Visible alternatives" : "Visible category boundaries"} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.8, rowGap: 0.8, width: "100%", listStyle: "none", p: 0, m: 0 }}>
+  const renderEntries = (items, role) => items.length ? <Box component="ul" aria-label={role === "alternative" ? "Visible alternatives" : role === "collective" ? "Visible collective results" : "Visible category boundaries"} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.8, rowGap: 0.8, width: "100%", listStyle: "none", p: 0, m: 0 }}>
     {items.map((item) => {
       const color = seriesColor(item, series.indexOf(item), presentation);
       const label = displayLabels.get(String(item.key)) || item.label || item.key;
       const dashed = role === "boundary" || item.style?.borderDash?.length;
-      return <Box component="li" key={item.key} aria-label={`${role === "alternative" ? "Alternative" : "Boundary"}: ${label}`} sx={{ display: "flex", alignItems: "center", gap: 0.65, flex: "0 1 auto", minWidth: 0, maxWidth: "100%" }}>
+      const legendRole = role === "alternative" ? "Individual result" : role === "collective" ? "Collective result" : "Boundary";
+      return <Box component="li" key={item.key} aria-label={`${legendRole}: ${label}`} sx={{ display: "flex", alignItems: "center", gap: 0.65, flex: "0 1 auto", minWidth: 0, maxWidth: "100%" }}>
         <Box aria-hidden="true" sx={{ width: 22, flex: "0 0 22px", borderTop: `${role === "alternative" ? 3 : 1.5}px ${dashed ? "dashed" : "solid"} ${color}`, opacity: role === "boundary" ? 0.78 : 1 }} />
         <Tooltip title={item.label || item.key} placement="top" arrow>
           <Typography variant="caption" component="span" sx={{ minWidth: 0, maxWidth: { xs: "calc(100vw - 110px)", sm: 360 }, overflowWrap: "anywhere", lineHeight: 1.25 }}>{label}</Typography>
@@ -88,6 +92,7 @@ const SensitivityLegend = ({ series, presentation, displayLabels }) => {
 
   return <Stack spacing={1} sx={{ width: "100%", minWidth: 0, mb: 0.8 }}>
     {alternatives.length ? <Box component="section" aria-label="Alternatives legend" sx={{ width: "100%", minWidth: 0 }}><Typography variant="overline" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2, mb: 0.4 }}>ALTERNATIVES</Typography>{renderEntries(alternatives, "alternative")}</Box> : null}
+    {collectives.length ? <Box component="section" aria-label="Collective results legend" sx={{ width: "100%", minWidth: 0 }}><Typography variant="overline" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2, mb: 0.4 }}>COLLECTIVE RESULTS</Typography>{renderEntries(collectives, "collective")}</Box> : null}
     {boundaries.length ? <Box component="section" aria-label="Category boundaries legend" sx={{ width: "100%", minWidth: 0 }}><Typography variant="overline" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2, mb: 0.4 }}>CATEGORY BOUNDARIES</Typography>{renderEntries(boundaries, "boundary")}</Box> : null}
   </Stack>;
 };
@@ -105,6 +110,10 @@ const LineAnalyticalGraph = ({ visualization }) => {
   const isStyledSensitivity = Boolean(presentation.stableSeriesColors || presentation.compactLegend);
   const configuredWeight = Number.isFinite(data.configuredWeight) ? data.configuredWeight : null;
   const showOriginalWeight = presentation.originalWeightMarker && configuredWeight !== null;
+  const originalWeightLabel = presentation.originalWeightLabel
+    || "Collective effective weight calculated by MCC";
+  const originalWeightAriaLabel = presentation.originalWeightAriaLabel
+    || "Original collective effective weight";
   const baseOptions = buildCartesianChartOptions({ xAxis: visualization.xAxis, yAxis: visualization.yAxis });
   const chartOptions = numericX ? {
     ...baseOptions,
@@ -153,6 +162,16 @@ const LineAnalyticalGraph = ({ visualization }) => {
         min: visualization.yAxis?.min,
         max: visualization.yAxis?.max,
         category: false,
+        afterBuildTicks: visualization.yAxis?.categories?.length
+          ? (scale) => {
+              scale.ticks = visualization.yAxis.categories.map((category) => ({ value: category.value }));
+            }
+          : undefined,
+        ticks: {
+          ...baseOptions.scales.y.ticks,
+          stepSize: visualization.yAxis?.categories?.length ? 1 : undefined,
+          autoSkip: visualization.yAxis?.categories?.length ? false : undefined,
+        },
         grid: { display: true, color: "rgba(255,255,255,0.10)" },
       },
     },
@@ -193,6 +212,7 @@ const LineAnalyticalGraph = ({ visualization }) => {
             spanGaps: false,
             borderDash: item.style?.borderDash,
             borderWidth: item.style?.borderWidth ?? (isStyledSensitivity ? (role === "boundary" ? 1.5 : 3) : ANALYTICAL_LINE_STYLE.borderWidth),
+            stepped: item.style?.stepped,
             pointRadius: isStyledSensitivity ? 0 : (context) => {
               if (context.raw?.isConfiguredWeight) return Math.max(3.5, item.style?.pointRadius ?? 2.5);
               return configuredPointRadius;
@@ -212,8 +232,8 @@ const LineAnalyticalGraph = ({ visualization }) => {
   return <Box sx={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}>
     <SensitivityLegend series={series} presentation={presentation} displayLabels={displayLabels} />
     {showOriginalWeight ? <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ minHeight: 28, mb: 0.25 }}>
-      <Tooltip title={`Collective effective weight calculated by MCC (full precision): ${String(configuredWeight)}`} arrow>
-        <Typography component="span" tabIndex={0} aria-label={`Original collective effective weight ${String(configuredWeight)}`} variant="caption" sx={{ color: "rgba(255,255,255,0.82)", borderBottom: "1px dotted rgba(245,173,92,0.8)" }}>
+      <Tooltip title={`${originalWeightLabel} (full precision): ${String(configuredWeight)}`} arrow>
+        <Typography component="span" tabIndex={0} aria-label={`${originalWeightAriaLabel} ${String(configuredWeight)}`} variant="caption" sx={{ color: "rgba(255,255,255,0.82)", borderBottom: "1px dotted rgba(245,173,92,0.8)" }}>
           Original weight: {configuredWeight.toFixed(3)}
         </Typography>
       </Tooltip>

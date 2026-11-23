@@ -41,6 +41,11 @@ import { AnalyticalGraph, HeatmapAnalyticalGraph, analyticalGraphRegistry } from
 import { preferenceDistributionMatrixPlugin } from "../../../src/components/analyticalGraphs/logic/preferenceDistributionMatrixPlugin.js";
 import { chartColor, stableChartColor } from "../../../src/components/analyticalGraphs/chartTheme.js";
 import { getVisualizationLayout } from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/modelVisualizationLayout.js";
+import {
+  filterSensitivityVisualization,
+  getSensitivityAlternativeOptions,
+  recommendSensitivityAlternativeIds,
+} from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/resolveVisualizationPresentation.js";
 
 const descriptors = {
   bar: { key: "bar", type: "bar", title: "Bar", data: { categories: ["Alt 1", "Alt 2"], series: [{ key: "c1", label: "C1", values: [0.2, 0.5] }] } },
@@ -420,6 +425,92 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByRole("region", { name: "Alternatives legend" })).toContainElement(screen.getByText("Premium option with a long local display name"));
     expect(screen.getByRole("region", { name: "Category boundaries legend" })).toContainElement(screen.getByText("Low / Medium boundary"));
     expect(screen.getByText("ALTERNATIVES").compareDocumentPosition(screen.getByText("CATEGORY BOUNDARIES")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders AHPSort ordinal categories, sampled gaps, and grouped expert/collective selectors", () => {
+    const scatter = {
+      key: "ahp-sort-i-original-classifications",
+      type: "scatter",
+      title: "AHPSort I classifications",
+      xAxis: {
+        label: "Assigned category",
+        min: -0.5,
+        max: 1.5,
+        scaleType: "linear",
+        categories: [{ value: 0, label: "Low" }, { value: 1, label: "High" }],
+      },
+      yAxis: { label: "Alternative", categories: [{ value: 0, label: "Alpha" }] },
+      data: { series: [{ key: "expert-a", label: "Individual · Expert A", role: "individual", points: [
+        { label: "Expert A · Alpha", x: 1, y: 0, details: { Classification: "High" } },
+      ] }] },
+    };
+    const { unmount } = render(<AnalyticalGraph visualization={scatter} />);
+    const xScale = scatterState.options.scales.x;
+    const categoryTicks = { ticks: [] };
+    xScale.afterBuildTicks(categoryTicks);
+    expect(categoryTicks.ticks).toEqual([{ value: 0 }, { value: 1 }]);
+    expect(xScale.ticks.callback(1)).toBe("High");
+    expect(scatterState.data.datasets[0].data[0].x).toBe(1);
+    unmount();
+
+    const sensitivity = {
+      key: "ahp-sort-i-criterion-weight-sensitivity-quality",
+      type: "line",
+      title: "AHPSort I weight sensitivity",
+      presentation: {
+        stableSeriesColors: true,
+        compactLegend: true,
+        originalWeightMarker: true,
+        originalWeightLabel: "Original criterion weight",
+        originalWeightAriaLabel: "Original criterion weight",
+      },
+      xAxis: { label: "Varied weight", min: 0, max: 1, scaleType: "linear" },
+      yAxis: {
+        label: "Category",
+        min: -0.5,
+        max: 1.5,
+        scaleType: "linear",
+        categories: [{ value: 0, label: "Low" }, { value: 1, label: "High" }],
+      },
+      data: {
+        xScaleType: "linear",
+        x: [0, 0.5, 1],
+        configuredWeight: 0.5,
+        series: [
+          { key: "individual:expert-a:alpha", label: "Individual · A · Alpha", role: "alternative", resultType: "individual", alternativeId: "alpha", alternativeName: "Alpha", values: [
+            { x: 0, y: 0, category: "Low" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: null, category: null },
+          ], style: { stepped: "after" } },
+          { key: "collective:alpha", label: "Collective · Alpha", role: "alternative", resultType: "collective", alternativeId: "alpha", alternativeName: "Alpha", values: [
+            { x: 0, y: 0, category: "Low" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: null, category: null },
+          ], style: { stepped: "after", borderDash: [7, 4] } },
+          { key: "individual:expert-a:beta", label: "Individual · A · Beta", role: "alternative", resultType: "individual", alternativeId: "beta", alternativeName: "Beta", values: [
+            { x: 0, y: 1, category: "High" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: 0, category: "Low" },
+          ], style: { stepped: "after" } },
+        ],
+      },
+    };
+    const options = getSensitivityAlternativeOptions([sensitivity]);
+    expect(options.map(({ id, label }) => ({ id, label }))).toEqual([
+      { id: "alpha", label: "Alpha" },
+      { id: "beta", label: "Beta" },
+    ]);
+    expect(recommendSensitivityAlternativeIds(sensitivity, 3)).toContain("alpha");
+    expect(filterSensitivityVisualization(sensitivity, ["alpha"]).data.series.map((series) => series.key)).toEqual([
+      "individual:expert-a:alpha",
+      "collective:alpha",
+    ]);
+
+    render(<AnalyticalGraph visualization={sensitivity} />);
+    const yScale = lineState.options.scales.y;
+    const categoryLineTicks = { ticks: [] };
+    yScale.afterBuildTicks(categoryLineTicks);
+    expect(categoryLineTicks.ticks).toEqual([{ value: 0 }, { value: 1 }]);
+    expect(lineState.data.datasets[0].stepped).toBe("after");
+    expect(lineState.data.datasets[0].spanGaps).toBe(false);
+    expect(lineState.data.datasets[0].data[2].y).toBeNull();
+    expect(lineState.data.datasets[1].borderDash).toEqual([7, 4]);
+    expect(screen.getByText("COLLECTIVE RESULTS")).toBeInTheDocument();
+    expect(screen.getByLabelText("Original criterion weight 0.5")).toBeInTheDocument();
   });
 
   it("keeps valid closeness at an indeterminate category sample and labels it only in the tooltip", () => {

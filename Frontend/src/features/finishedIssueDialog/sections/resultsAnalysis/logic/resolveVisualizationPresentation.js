@@ -47,9 +47,13 @@ export const getSensitivityAlternativeOptions = (visualizations) => {
   const optionsById = new Map();
   (Array.isArray(visualizations) ? visualizations : []).forEach((visualization) => {
     (Array.isArray(visualization?.data?.series) ? visualization.data.series : []).forEach((series) => {
-      const id = seriesId(series);
+      const id = typeof series?.alternativeId === "string" && series.alternativeId.trim()
+        ? series.alternativeId.trim()
+        : seriesId(series);
       if (!id || !isAlternativeSensitivitySeries(series) || optionsById.has(id)) return;
-      const label = typeof series.label === "string" && series.label.trim() ? series.label.trim() : "Unnamed alternative";
+      const label = typeof series.alternativeName === "string" && series.alternativeName.trim()
+        ? series.alternativeName.trim()
+        : (typeof series.label === "string" && series.label.trim() ? series.label.trim() : "Unnamed alternative");
       optionsById.set(id, { id, label });
     });
   });
@@ -91,7 +95,9 @@ const recommendationForSeries = (series, configuredWeight) => {
     });
   }
   return {
-    id: seriesId(series),
+    id: typeof series?.alternativeId === "string" && series.alternativeId.trim()
+      ? series.alternativeId.trim()
+      : seriesId(series),
     hasCategoryChange: Number.isFinite(nearestChange),
     nearestChange,
   };
@@ -101,9 +107,17 @@ export const recommendSensitivityAlternativeIds = (visualization, maximum = 3) =
   const series = (Array.isArray(visualization?.data?.series) ? visualization.data.series : [])
     .filter(isAlternativeSensitivitySeries);
   const configuredWeight = visualization?.data?.configuredWeight;
-  return series
-    .map((item) => recommendationForSeries(item, configuredWeight))
-    .filter((item) => item.id)
+  const grouped = new Map();
+  series.forEach((item) => {
+    const recommendation = recommendationForSeries(item, configuredWeight);
+    if (!recommendation.id) return;
+    const existing = grouped.get(recommendation.id);
+    if (!existing || (recommendation.hasCategoryChange && !existing.hasCategoryChange)
+      || (recommendation.hasCategoryChange === existing.hasCategoryChange && recommendation.nearestChange < existing.nearestChange)) {
+      grouped.set(recommendation.id, recommendation);
+    }
+  });
+  return [...grouped.values()]
     .sort((left, right) =>
       Number(right.hasCategoryChange) - Number(left.hasCategoryChange)
       || left.nearestChange - right.nearestChange
@@ -120,7 +134,11 @@ export const filterSensitivityVisualization = (visualization, selectedIds) => {
     data: {
       ...visualization.data,
       series: visualization.data.series.filter((series) =>
-        !isAlternativeSensitivitySeries(series) || selected.has(seriesId(series))),
+        !isAlternativeSensitivitySeries(series) || selected.has(
+          typeof series?.alternativeId === "string" && series.alternativeId.trim()
+            ? series.alternativeId.trim()
+            : seriesId(series),
+        )),
     },
   };
 };
