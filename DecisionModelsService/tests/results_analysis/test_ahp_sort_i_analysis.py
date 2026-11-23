@@ -149,9 +149,14 @@ def test_sensitivity_interpretation_uses_observed_changes_and_reports_invalid_sa
     assert "Criterion weight sensitivity" in interpretation
     assert "redistributing the remaining weight proportionally" in interpretation
     assert "category changes were observed" in interpretation
+    assert "Low** → **Middle" in interpretation
+    assert "20 percentage points away" in interpretation
+    assert "% percentage points away" not in interpretation
+    assert "another category" not in interpretation
     assert "not an exact switching threshold" in interpretation
     assert "invalid ordering of limiting profiles" in interpretation
     assert "matches the validated original execution" in interpretation
+    assert "collective plurality votes" not in interpretation
 
 
 def test_collective_interpretation_separates_experts_and_plurality_without_score():
@@ -162,6 +167,7 @@ def test_collective_interpretation_separates_experts_and_plurality_without_score
     assert "collective classifications" in interpretation
     assert "plurality" in interpretation
     assert "No collective numeric priority is calculated" in interpretation
+    assert "collective plurality votes" in interpretation
     assert "Plurality ties were resolved" in interpretation
     assert "pessimistic policy" in interpretation
     assert "collective priority:" not in interpretation

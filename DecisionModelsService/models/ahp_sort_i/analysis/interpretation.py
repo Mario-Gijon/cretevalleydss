@@ -33,6 +33,13 @@ def _percent(value: Any) -> str | None:
     return f"{number * 100:.2f}".rstrip("0").rstrip(".") + "%"
 
 
+def _percentage_points(value: Any) -> str | None:
+    number = _number(value)
+    if number is None:
+        return None
+    return f"{number * 100:.2f}".rstrip("0").rstrip(".")
+
+
 def _number_text(value: Any) -> str | None:
     number = _number(value)
     return f"{number:.4f}" if number is not None else None
@@ -400,13 +407,38 @@ def _change_description(
         str(change.get("alternativeId")),
         str(change.get("alternativeName") or "an alternative"),
     )
-    source = category_labels.get(
-        str(change.get("fromCategoryId")), str(change.get("fromCategory") or "another category")
-    )
-    target = category_labels.get(
-        str(change.get("toCategoryId")), str(change.get("toCategory") or "another category")
-    )
-    detail = f"{_bold(name)}: {_bold(source)} → {_bold(target)}"
+    source_id = change.get("fromCategoryId")
+    target_id = change.get("toCategoryId")
+    if source_id is not None or target_id is not None:
+        source = category_labels.get(
+            str(source_id), str(change.get("fromCategory") or "another category")
+        )
+        target = category_labels.get(
+            str(target_id), str(change.get("toCategory") or "another category")
+        )
+        transitions = [f"{_bold(source)} → {_bold(target)}"]
+    else:
+        transitions = []
+        seen = set()
+        for sample in change.get("samples") or []:
+            if not isinstance(sample, dict):
+                continue
+            source_id = sample.get("fromCategoryId")
+            target_id = sample.get("toCategoryId")
+            if source_id is None or target_id is None:
+                continue
+            source = category_labels.get(str(source_id), str(source_id))
+            target = category_labels.get(str(target_id), str(target_id))
+            transition = (source, target)
+            if transition in seen:
+                continue
+            seen.add(transition)
+            transitions.append(f"{_bold(source)} → {_bold(target)}")
+            if len(transitions) == 3:
+                break
+        if not transitions:
+            transitions = ["another category → another category"]
+    detail = f"{_bold(name)}: " + "; ".join(transitions)
     expert_id = change.get("expertId")
     if expert_id is not None:
         detail += f" for {_bold(expert_names.get(str(expert_id), expert_id))}"
@@ -540,7 +572,7 @@ def _criterion_sensitivity(facts: dict[str, Any]) -> list[str]:
                         if isinstance(point, dict) and _percent(point.get("variedWeight"))
                     }
                 )
-                delta = _percent(nearest.get("absoluteWeightDifference"))
+                delta = _percentage_points(nearest.get("absoluteWeightDifference"))
                 if weights:
                     lines.append(
                         f"The nearest observed change to the original {name} weight "
@@ -602,11 +634,21 @@ def _criterion_sensitivity(facts: dict[str, Any]) -> list[str]:
             "the sampled grid and is not a guarantee of absolute stability."
         )
     if baseline_matches and len(baseline_matches) == len(items) and not baseline_unconfirmed:
+        reproduced_evidence = [
+            "individual classifications and priorities",
+            "alternative-specific profile evidence",
+        ]
+        if facts.get("profileMode") == "central":
+            reproduced_evidence.append("central-profile tie handling")
+        if len(experts) > 1:
+            reproduced_evidence.append("collective plurality votes")
+        evidence_text = ", ".join(reproduced_evidence[:-1])
+        if len(reproduced_evidence) > 1:
+            evidence_text += f", and {reproduced_evidence[-1]}"
         lines.append(
             "For each criterion, the recomputed sample at its exact configured weight "
-            "matches the validated original execution, including applicable "
-            "individual priorities, "
-            "profile evidence, and collective votes."
+            "matches the validated original execution, including "
+            f"{evidence_text}."
         )
     elif baseline_matches:
         lines.append(
