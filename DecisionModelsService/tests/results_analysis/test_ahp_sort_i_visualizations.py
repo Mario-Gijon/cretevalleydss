@@ -121,6 +121,11 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     ]
     assert "selected alternative–expert matrix" in weight_sensitivity["yAxis"]["label"]
     assert weight_sensitivity["presentation"]["profileLegendTitle"] == "LIMITING PROFILES"
+    assert weight_sensitivity["presentation"]["alternativeSelector"] == {"recommendedCount": 3}
+    assert weight_sensitivity["presentation"]["smallMultiplesByAlternative"] is True
+    assert weight_sensitivity["presentation"]["collectiveCompanionKey"] == (
+        "ahp-sort-i-criterion-collective-sensitivity-quality"
+    )
 
     sections = build_visualization_sections(facts)
     assert [section["id"] for section in sections] == [
@@ -226,5 +231,5 @@ def test_unavailable_weight_samples_are_gaps_and_report_the_reason():
     )
     assert baseline["y"] is not None
     assert next(value for value in profile_series["values"] if value["x"] == 0.95)["y"] is None
-    assert sensitivity["presentation"]["alternativeSelector"]["selectionMode"] == "single"
+    assert sensitivity["presentation"]["alternativeSelector"]["recommendedCount"] == 3
     assert sensitivity["presentation"]["expertSelector"]["selectionMode"] == "single"

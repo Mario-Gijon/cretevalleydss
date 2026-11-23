@@ -469,13 +469,13 @@ def _priority_sensitivity_visualization(
         "type": "line",
         "title": f"AHP priorities · {item['criterionName']}",
         "description": (
-            "Priorities are recalculated for one selected alternative–expert AHP matrix. "
-            "Profile curves belong to that same matrix; compare them only with the selected alternative. "
-            "Invalid samples appear as gaps."
+            "Each panel shows priorities from one alternative–expert AHP matrix. "
+            "Compare an alternative only with its own profile curves in that panel; "
+            "priorities are not comparable across panels. Invalid samples appear as gaps."
         ),
         "insight": (
-            "The curves show the selected alternative's global priority and its own profile priorities. "
-            "They are not shared thresholds across alternatives or experts."
+            "Each panel shows one selected expert's global priority for an alternative and that matrix's "
+            "own profile priorities. The compact category strip below shows the collective plurality result."
         ),
         "scope": {
             "dimension": "criterion",
@@ -511,8 +511,12 @@ def _priority_sensitivity_visualization(
             "originalWeightMarker": True,
             "originalWeightLabel": "Original criterion weight",
             "originalWeightAriaLabel": "Original criterion weight",
-            "alternativeSelector": {"recommendedCount": 1, "selectionMode": "single"},
+            "alternativeSelector": {"recommendedCount": 3},
             "expertSelector": {"selectionMode": "single"},
+            "smallMultiplesByAlternative": True,
+            "collectiveCompanionKey": (
+                f"ahp-sort-i-criterion-collective-sensitivity-{item['criterionId']}"
+            ),
         },
     }
 
@@ -637,13 +641,13 @@ def _collective_category_sensitivity_visualization(
             "series": series,
         },
         "presentation": {
-            "chartHeight": {"xs": 360, "sm": 420, "md": 480},
+            "chartHeight": {"xs": 170, "sm": 180, "md": 190},
             "stableSeriesColors": True,
             "compactLegend": True,
             "originalWeightMarker": True,
             "originalWeightLabel": "Original criterion weight",
             "originalWeightAriaLabel": "Original criterion weight",
-            "alternativeSelector": {"recommendedCount": 1, "selectionMode": "single"},
+            "compactCategoryCompanion": True,
         },
     }
 

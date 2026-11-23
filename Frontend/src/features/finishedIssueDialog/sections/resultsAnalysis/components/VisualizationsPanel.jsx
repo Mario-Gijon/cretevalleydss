@@ -703,7 +703,116 @@ const VisualizationPane = ({ descriptor, execution, index, compactTitle, control
   </Box>;
 };
 
+const AHPSortISensitivitySmallMultiples = ({ visualizations, controls }) => {
+  const priorities = visualizations.find(
+    (visualization) => visualization?.presentation?.smallMultiplesByAlternative === true,
+  );
+  if (!priorities) return null;
+
+  const collectiveKey = priorities.presentation.collectiveCompanionKey;
+  const collective = visualizations.find((visualization) => visualization?.key === collectiveKey);
+  const alternativeSeries = priorities.data?.series?.filter(
+    (series) => series?.role === "alternative" && series?.resultType === "individual",
+  ) || [];
+  const sortedAlternatives = [...alternativeSeries].sort((left, right) =>
+    (left.alternativeName || left.label || left.key).localeCompare(
+      right.alternativeName || right.label || right.key,
+      "en",
+    ),
+  );
+
+  return (
+    <Stack spacing={1.2} data-testid="ahp-sort-i-sensitivity-small-multiples">
+      {controls ? <Box data-testid="analytical-graph-controls">{controls}</Box> : null}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" },
+          gap: 1.4,
+          minWidth: 0,
+        }}
+      >
+        {sortedAlternatives.map((alternative) => {
+          const alternativeId = alternative.alternativeId;
+          const matrixSeries = [
+            alternative,
+            ...(priorities.data?.series || []).filter((series) =>
+              series?.role === "boundary"
+              && series?.alternativeId === alternativeId
+              && series?.expertId === alternative.expertId,
+            ),
+          ].map((series) => ({
+            ...series,
+            label: series.role === "alternative"
+              ? "Alternative global priority"
+              : series.profileName || series.label,
+          }));
+          const priorityCard = {
+            ...priorities,
+            title: `AHP priorities · ${alternative.alternativeName}`,
+            data: { ...priorities.data, series: matrixSeries },
+          };
+          const collectiveSeries = collective?.data?.series?.find(
+            (series) => series?.role === "collective" && series?.alternativeId === alternativeId,
+          );
+          const collectiveCard = collectiveSeries ? {
+            ...collective,
+            title: `Collective category · ${alternative.alternativeName}`,
+            description: "Plurality-vote category at each sampled weight. Categories are categorical results; AHPSort I calculates no collective priority.",
+            data: { ...collective.data, series: [collectiveSeries] },
+          } : null;
+
+          return (
+            <Box
+              key={alternative.key}
+              data-testid="ahp-sort-i-sensitivity-card"
+              data-alternative-id={alternativeId}
+              sx={{
+                border: "1px solid rgba(83,198,214,0.2)",
+                bgcolor: "rgba(8,18,29,0.52)",
+                borderRadius: 2.5,
+                p: { xs: 1.1, sm: 1.4 },
+                minWidth: 0,
+              }}
+            >
+              <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap" sx={{ mb: 0.5 }}>
+                <Typography component="h4" variant="subtitle1" sx={{ fontWeight: 900 }}>
+                  {alternative.alternativeName || alternative.label}
+                </Typography>
+                <Chip size="small" color="secondary" variant="outlined" label={`Individual · ${alternative.expertName}`} />
+              </Stack>
+              <Box data-testid="ahp-sort-i-priority-chart" data-expert-id={alternative.expertId}>
+                <AnalyticalGraph
+                  visualization={priorityCard}
+                  chartHeight={{ xs: 360, sm: 390, md: 410 }}
+                  titleVariant="subtitle2"
+                />
+              </Box>
+              {collectiveCard ? (
+                <Box
+                  data-testid="ahp-sort-i-collective-category-chart"
+                  data-y-axis-label={collectiveCard.yAxis?.label || ""}
+                  sx={{ mt: 1, pt: 0.8, borderTop: "1px solid rgba(83,198,214,0.16)" }}
+                >
+                  <AnalyticalGraph
+                    visualization={collectiveCard}
+                    chartHeight={{ xs: 160, sm: 170, md: 180 }}
+                    titleVariant="subtitle2"
+                  />
+                </Box>
+              ) : null}
+            </Box>
+          );
+        })}
+      </Box>
+    </Stack>
+  );
+};
+
 const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidth = false, compactTitles = false, forceFullWidth = false, stackAt = "md", controls = null }) => {
+  if (visualizations.some((visualization) => visualization?.presentation?.smallMultiplesByAlternative === true)) {
+    return <AHPSortISensitivitySmallMultiples visualizations={visualizations} controls={controls} />;
+  }
   const layouts = buildVisualizationLayout(visualizations);
   const rows = [];
   for (let index = 0; index < layouts.length; index += 1) {
