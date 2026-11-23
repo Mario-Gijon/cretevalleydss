@@ -418,6 +418,7 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     usesExpertWeights: manifestModel?.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
+    sortingHasNumericValues: manifestModel?.sortingHasNumericValues === true,
     supportedExpressionDomains: normalizeSupportedExpressionDomains(
       manifestModel?.supportedExpressionDomains
     ),

@@ -15,6 +15,7 @@ const model = (overrides = {}) => ({
   resultStructureVersion: 1,
   supportsConsensus: false,
   supportsConsensusSimulation: false,
+  sortingHasNumericValues: false,
   parameters: [],
   supportedExpressionDomains: [],
   ...overrides,
@@ -42,6 +43,7 @@ describe("Finished Issue model compatibility serialization", () => {
           apiModelKey: "topsis_sort_2016",
           resultStructureKey: "sorting",
           supportsConsensus: false,
+          sortingHasNumericValues: true,
         }),
         model({
           _id: "model-sorting-unauthorized",
@@ -68,5 +70,8 @@ describe("Finished Issue model compatibility serialization", () => {
       "model-ranking-compatible",
       "model-topsis-sort",
     ]);
+    expect(payload.compatible.find((entry) => entry.id === "model-topsis-sort")?.capabilities)
+      .toMatchObject({ sortingHasNumericValues: true });
+    expect(payload.base.capabilities).toMatchObject({ sortingHasNumericValues: false });
   });
 });

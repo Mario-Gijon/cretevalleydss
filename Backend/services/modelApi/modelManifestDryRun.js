@@ -296,6 +296,10 @@ const buildModelRow = ({
       manifestProjection?.usesCriterionTypes ??
       mongoModel?.usesCriterionTypes ??
       null,
+    sortingHasNumericValues:
+      manifestProjection?.sortingHasNumericValues ??
+      mongoModel?.sortingHasNumericValues ??
+      null,
     supportedExpressionDomains: manifestProjection
       ? normalizeSupportedExpressionDomains(
         manifestProjection.supportedExpressionDomains

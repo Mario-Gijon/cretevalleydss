@@ -46,6 +46,7 @@ const issueManifestModel = (overrides = {}) => ({
   usesExpertWeights: false,
   usesFuzzyCriteriaWeights: false,
   usesCriterionTypes: false,
+  sortingHasNumericValues: false,
   supportedExpressionDomains: [],
   parameters: [],
   request: { example: null },
@@ -147,6 +148,7 @@ describe("result structure metadata in manifest synchronization", () => {
       issueExecutionAuthorized: true,
       supportsConsensus: false,
       supportsConsensusSimulation: false,
+      sortingHasNumericValues: true,
     });
     fetchModelManifest.mockResolvedValue({ models: [readyManifestModel] });
 
@@ -162,6 +164,7 @@ describe("result structure metadata in manifest synchronization", () => {
         "implementationStatus",
         "publicUsable",
         "issueExecutionAuthorized",
+        "sortingHasNumericValues",
       ])
     );
     expect(persisted).toMatchObject({
@@ -175,6 +178,7 @@ describe("result structure metadata in manifest synchronization", () => {
       visibleInIssueCreation: false,
       supportsConsensus: false,
       supportsConsensusSimulation: false,
+      sortingHasNumericValues: true,
       manifestSync: { isStale: false },
     });
   });

@@ -20,6 +20,7 @@ const serializeCapabilities = (model) => ({
   usesExpertWeights: model.usesExpertWeights === true,
   usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
   usesCriterionTypes: model.usesCriterionTypes === true,
+  sortingHasNumericValues: model.sortingHasNumericValues === true,
   isMultiCriteria: model.isMultiCriteria === true,
   supportedExpressionDomains: cloneSerializable(model.supportedExpressionDomains, []),
 });

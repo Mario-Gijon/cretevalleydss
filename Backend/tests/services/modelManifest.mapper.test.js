@@ -45,6 +45,7 @@ const buildManifest = (parameters, overrides = {}) => ({
   usesExpertWeights: false,
   usesFuzzyCriteriaWeights: false,
   usesCriterionTypes: false,
+  sortingHasNumericValues: false,
   supportsConsensusSimulation: false,
   requiresHomogeneousExpressionDomains: false,
   parameters,
@@ -94,6 +95,15 @@ const buildSelectCriterion = (overrides = {}) => ({
 });
 
 describe("model manifest parameter mapping", () => {
+  it("projects the sorting numeric-values capability and defaults it to false", () => {
+    expect(buildManifestTechnicalProjection(buildManifest([]))).toMatchObject({
+      sortingHasNumericValues: false,
+    });
+    expect(buildManifestTechnicalProjection(buildManifest([], { sortingHasNumericValues: true }))).toMatchObject({
+      sortingHasNumericValues: true,
+    });
+  });
+
   it("preserves every canonical numberGlobal metadata field", () => {
     expect(
       normalizeParameter({

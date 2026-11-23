@@ -233,6 +233,10 @@ const issueModelSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  sortingHasNumericValues: {
+    type: Boolean,
+    default: false,
+  },
   supportedExpressionDomains: {
     type: [
       new Schema(

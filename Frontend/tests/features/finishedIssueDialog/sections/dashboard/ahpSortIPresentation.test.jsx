@@ -87,7 +87,7 @@ const limitingExecution = ({
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" } },
+    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" }, capabilities: { sortingHasNumericValues: true } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters: params,
     ...(requestSnapshot ? { requestSnapshot } : {}),
@@ -159,7 +159,7 @@ const binaryLimitingExecution = (values) => {
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" } },
+    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" }, capabilities: { sortingHasNumericValues: true } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters,
     requestSnapshot: { modelParameters, context: { criteria: criterionNames } },
@@ -223,7 +223,7 @@ const centralExecution = ({ policy = "optimistic", tied = true, assignedCategory
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I" },
+    model: { name: "AHPSort I", capabilities: { sortingHasNumericValues: true } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters: modelParameters || {
       orderedCategories: categories,
@@ -397,7 +397,7 @@ const centralGroupExecution = ({ profileTiePolicy, groupTiePolicy }) => {
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I" },
+    model: { name: "AHPSort I", capabilities: { sortingHasNumericValues: true } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters,
     requestSnapshot: { modelParameters, context: { criteria: criterionNames } },
@@ -978,13 +978,18 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const payload = {
       alternatives,
       criteria,
-      models: { base: { effectiveParameters: { ahpSortProfiles: { mode: "central", profiles: [] } } } },
+      models: {
+        base: { effectiveParameters: { ahpSortProfiles: { mode: "central", profiles: [] } }, capabilities: { sortingHasNumericValues: true } },
+        compatible: [{ id: "model-ahp", capabilities: { sortingHasNumericValues: true } }],
+      },
       scenarios: [scenario],
     };
     const selected = selectFinishedIssueExecution(payload, "scenario-ahp", 0);
     expect(selected.requestSnapshot).toEqual(scenario.phaseResults[0].requestSnapshot);
+    expect(selected.model.capabilities.sortingHasNumericValues).toBe(true);
     expect(selected.modelParameters).toEqual(saved.modelParameters);
     const data = buildDashboardData({ payload, selectedExecution: selected });
+    expect(data.result.metric?.label).toBe("Global AHP priority");
     expect(data.result.ahpSortI.alternativesById["alt-a"].status).toBe("available");
     expect(data.result.ahpSortI.alternativesById["alt-a"].category.label).toBe("High");
   });

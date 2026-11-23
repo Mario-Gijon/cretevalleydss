@@ -36,7 +36,17 @@ def test_valid_issue_model_definition():
     assert definition.issue_execution_authorized is False
     assert definition.result_structure_key == "ranking"
     assert definition.result_structure_version == 1
+    assert definition.sorting_has_numeric_values is False
     assert definition.diagnostic_handler is None
+
+
+def test_model_definition_accepts_declared_sorting_numeric_values_capability():
+    assert _build_definition(sorting_has_numeric_values=True).sorting_has_numeric_values is True
+
+
+def test_model_definition_rejects_non_boolean_sorting_numeric_values_capability():
+    with pytest.raises(ValueError, match="sorting_has_numeric_values"):
+        _build_definition(sorting_has_numeric_values="true")
 
 
 def test_model_definition_accepts_optional_callable_diagnostic_handler():

@@ -50,6 +50,7 @@ class ModelDefinition:
     uses_expert_weights: bool = False
     uses_fuzzy_criteria_weights: bool = False
     uses_criterion_types: bool = False
+    sorting_has_numeric_values: bool = False
 
     supported_expression_domains: list[dict[str, Any]] = field(default_factory=list)
     parameters: list[dict[str, Any]] = field(default_factory=list)
@@ -170,6 +171,12 @@ class ModelDefinition:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
                 "requires_homogeneous_expression_domains to be boolean."
+            )
+
+        if not isinstance(self.sorting_has_numeric_values, bool):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires boolean "
+                "sorting_has_numeric_values."
             )
 
         if not isinstance(self.issue_execution_authorized, bool):

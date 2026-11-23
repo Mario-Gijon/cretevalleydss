@@ -50,7 +50,11 @@ const topsisExecution = ({ assignments, diagnostics, categories } = {}) => {
   delete baseOutput.diagnostics;
   return {
     ...base,
-    model: { name: "TOPSIS-SORT", technical: { apiModelKey: "topsis_sort_2016" } },
+    model: {
+      name: "TOPSIS-SORT",
+      technical: { apiModelKey: "topsis_sort_2016" },
+      capabilities: { sortingHasNumericValues: true },
+    },
     modelParameters: {
       boundaryProfiles: { profiles: [
         { profileId: "profile-medium", categoryId: "cat-medium" },
@@ -121,7 +125,15 @@ const renderDashboard = (execution = sortingExecution()) => {
 
 describe("sorting@1 Finished Issue presentation", () => {
   it("shows configured categories from highest to lowest preference and resolves alternatives by ID", () => {
-    const data = renderDashboard();
+    const execution = sortingExecution({
+      model: { capabilities: { sortingHasNumericValues: false } },
+    });
+    execution.standardizedOutput.diagnostics.closeness_by_alternative_id = {
+      "mongo-a": 0.71,
+      "mongo-b": 0.54,
+      "mongo-c": 0.22,
+    };
+    const data = renderDashboard(execution);
     const result = screen.getByRole("list", { name: "Final sorting by category" });
     const categoryCards = within(result).getAllByTestId("sorting-final-category");
     expect(categoryCards).toHaveLength(3);
@@ -151,7 +163,11 @@ describe("sorting@1 Finished Issue presentation", () => {
 
   it("renders a synthetic sorting@1 model with the shared view and compatible optional metric", () => {
     const execution = topsisExecution({ diagnostics: topsisDiagnostics() });
-    execution.model = { name: "Synthetic classifier", technical: { apiModelKey: "future_sorting_model" } };
+    execution.model = {
+      name: "Synthetic classifier",
+      technical: { apiModelKey: "future_sorting_model" },
+      capabilities: { sortingHasNumericValues: true },
+    };
     execution.modelSpecificOutput = { apiModelKey: "future_sorting_model" };
     renderTopsisDashboard(execution);
 
@@ -163,6 +179,25 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.getByText("Sorting summary")).toBeInTheDocument();
     expect(screen.queryByTestId("topsis-sort-category-list")).not.toBeInTheDocument();
     expect(screen.queryByText(/ranking|winner/i)).not.toBeInTheDocument();
+  });
+
+  it("omits an optional metric when the plugin allows values but this execution has none valid", () => {
+    const execution = topsisExecution({
+      diagnostics: topsisDiagnostics({
+        closeness_by_alternative_id: {
+          "mongo-a": Number.NaN,
+          "mongo-b": -0.2,
+          "mongo-c": "0.22",
+        },
+      }),
+    });
+    const data = buildDashboardData({ payload: { alternatives: topsisAlternatives }, selectedExecution: execution });
+
+    expect(data.result.metric).toBe(null);
+    expect(data.result.categories.flatMap((category) => category.alternatives).every((alternative) => alternative.metricValue === null)).toBe(true);
+    render(<ThemeProvider theme={createTheme()}><DashboardView data={data} /></ThemeProvider>);
+    expect(screen.queryByTestId("sorting-metric-label")).not.toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Final sorting by category" })).toBeInTheDocument();
   });
 
   it("renders future Sorting metrics from declared metadata without inventing a scale or order", () => {
@@ -832,7 +867,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     const modelParameters = topsisExecution().modelParameters;
     const basePayload = {
       alternatives: topsisAlternatives,
-      models: { base: { name: "TOPSIS-SORT", technical: { apiModelKey: "topsis_sort_2016" }, effectiveParameters: modelParameters } },
+      models: { base: { name: "TOPSIS-SORT", technical: { apiModelKey: "topsis_sort_2016" }, capabilities: { sortingHasNumericValues: true }, effectiveParameters: modelParameters } },
       phaseResults: [{
         stage: "alternativeEvaluation", phase: 0, standardizedOutput: output,
         resultStructureKey: "sorting", resultStructureVersion: 1,
@@ -859,7 +894,7 @@ describe("sorting@1 Finished Issue presentation", () => {
 
     const scenarioPayload = {
       alternatives: topsisAlternatives,
-      models: { base: { name: "Other model" }, compatible: [{ id: "model-1", name: "TOPSIS-SORT" }] },
+      models: { base: { name: "Other model" }, compatible: [{ id: "model-1", name: "TOPSIS-SORT", capabilities: { sortingHasNumericValues: true } }] },
       scenarios: [{
         id: "scenario-1", name: "TOPSIS-SORT scenario",
         targetModel: { id: "model-1", name: "TOPSIS-SORT" },
@@ -873,6 +908,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     };
     const scenarioExecution = selectFinishedIssueExecution(scenarioPayload, "scenario-1");
     expect(scenarioExecution.model.technical?.apiModelKey).toBeUndefined();
+    expect(scenarioExecution.model.capabilities.sortingHasNumericValues).toBe(true);
     expect(scenarioExecution.modelSpecificOutput.apiModelKey).toBe("topsis_sort_2016");
     const scenarioDashboard = buildDashboardData({ payload: scenarioPayload, selectedExecution: scenarioExecution });
     expect(scenarioDashboard.findings).toHaveLength(3);

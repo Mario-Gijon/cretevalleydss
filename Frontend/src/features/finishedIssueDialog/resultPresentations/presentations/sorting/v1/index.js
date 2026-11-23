@@ -213,12 +213,16 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
   const ahpSortIEvidence = ahpSortI
     ? buildAHPSortIEvidence({ result: { categories, assignmentCount: assignedIds.size }, execution, criteria })
     : null;
+  const hasCategoricalVoteAggregation = output.diagnostics?.aggregationMethod === "unweighted_plurality_vote";
+  const canPresentNumericValues = execution?.model?.capabilities?.sortingHasNumericValues === true
+    && !hasCategoricalVoteAggregation;
   const relativeClosenessByAlternativeId = output.diagnostics?.closeness_by_alternative_id;
   const metricValueFor = (alternativeId) => {
+    if (!canPresentNumericValues) return null;
     const value = relativeClosenessByAlternativeId?.[alternativeId];
     return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
   };
-  const categoryIntervals = isRecord(relativeClosenessByAlternativeId)
+  const categoryIntervals = canPresentNumericValues && isRecord(relativeClosenessByAlternativeId)
     ? buildTopsisSortCategoryIntervals({ categories, assignmentCount: assignedIds.size }, execution)
     : null;
   for (const category of categories) {
@@ -234,7 +238,7 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
   const hasAHPSortDiagnosticIdentity = rawAHPSortDiagnostics?.modelKey === "ahp_sort_i" &&
     ["limiting", "central"].includes(rawAHPSortDiagnostics.profileMode) &&
     isRecord(rawAHPSortDiagnostics.resultsByAlternativeId);
-  let ahpMetricAvailable = assignedIds.size > 0 && !ahpSortIGroup && ahpSortIEvidence !== null;
+  let ahpMetricAvailable = canPresentNumericValues && assignedIds.size > 0 && ahpSortIEvidence !== null;
   let hasContextualProfileReferences = false;
   if (ahpMetricAvailable) {
     for (const category of categories) {
@@ -301,7 +305,7 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
       ordering: "descending-within-category",
     }
     : null;
-  const metric = ahpSortIGroup ? null : ahpSortI ? ahpMetric : relativeClosenessMetric;
+  const metric = ahpMetricAvailable ? ahpMetric : relativeClosenessMetric;
   if (ahpMetricAvailable) {
     for (const category of categories) {
       category.alternatives = category.alternatives.map((alternative) => ({

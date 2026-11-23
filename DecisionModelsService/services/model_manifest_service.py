@@ -83,6 +83,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "usesExpertWeights": model.uses_expert_weights,
         "usesFuzzyCriteriaWeights": model.uses_fuzzy_criteria_weights,
         "usesCriterionTypes": model.uses_criterion_types,
+        "sortingHasNumericValues": model.sorting_has_numeric_values,
         "supportedExpressionDomains": _build_supported_expression_domains(model),
         "parameters": _build_parameters(model),
         "request": {

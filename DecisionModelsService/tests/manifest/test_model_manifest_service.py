@@ -165,6 +165,7 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
         implementation_status="ready",
         supports_consensus=True,
         supports_consensus_simulation=True,
+        sorting_has_numeric_values=True,
         uses_criteria_weights=True,
         uses_expert_weights=True,
         supported_expression_domains=[
@@ -202,6 +203,7 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
     assert manifest_entry["issueExecutionAuthorized"] is False
     assert manifest_entry["supportsConsensus"] is True
     assert manifest_entry["supportsConsensusSimulation"] is True
+    assert manifest_entry["sortingHasNumericValues"] is True
     assert manifest_entry["usesCriteriaWeights"] is True
     assert manifest_entry["usesExpertWeights"] is True
     assert manifest_entry["supportedExpressionDomains"] == [
