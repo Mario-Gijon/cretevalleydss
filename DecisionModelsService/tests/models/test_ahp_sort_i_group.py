@@ -106,6 +106,7 @@ def test_limiting_group_vote_patterns_and_tie_policies(
         "categoryOrderSemantics",
         "assignments",
         "diagnostics",
+        "numericMetrics",
     }
     assert result["assignments"] == [
         {"alternativeId": "supplier-low", "categoryId": selected}
@@ -177,6 +178,7 @@ def test_one_expert_output_keeps_the_existing_sorting_v1_projection():
         "categoryOrderSemantics",
         "assignments",
         "diagnostics",
+        "numericMetrics",
     }
     assert result["categories"] == expected["data"]["categories"]
     assert result["assignments"] == expected["data"]["assignments"]

@@ -139,6 +139,161 @@ const normalizePlotsGraphic = (value) => {
   return normalized;
 };
 
+const normalizeFiniteNumber = (value, field) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throwInvalid(`${field} must be a finite number`, field);
+  }
+  return value;
+};
+
+const normalizeNumericMetrics = (value, authorizedAlternativeIds) => {
+  if (!Array.isArray(value) || value.length === 0) {
+    throwInvalid("Sorting numericMetrics must be a non-empty array", "result.numericMetrics");
+  }
+
+  const authorizedIds = new Set(authorizedAlternativeIds);
+  const identities = new Set();
+  return value.map((metric, metricIndex) => {
+    const field = `result.numericMetrics[${metricIndex}]`;
+    if (!isPlainObject(metric)) {
+      throwInvalid("Each sorting numeric metric must be an object", field);
+    }
+    const allowedFields = new Set([
+      "metricId",
+      "name",
+      "domain",
+      "comparability",
+      "valuesByAlternativeId",
+      "referencesByAlternativeId",
+      "scope",
+    ]);
+    if (Object.keys(metric).some((key) => !allowedFields.has(key))) {
+      throwInvalid("Sorting numeric metric contains unsupported fields", field);
+    }
+
+    const metricId = normalizeRequiredId(
+      metric.metricId,
+      "Each sorting numeric metric requires a non-empty metricId",
+      `${field}.metricId`,
+    );
+    const name = normalizeNonEmptyString(metric.name);
+    if (!name) throwInvalid("Each sorting numeric metric requires a non-empty name", `${field}.name`);
+    if (!isPlainObject(metric.domain) || Object.keys(metric.domain).some((key) => !["min", "max"].includes(key))) {
+      throwInvalid("Sorting numeric metric domain must contain min and max only", `${field}.domain`);
+    }
+    const minimum = normalizeFiniteNumber(metric.domain.min, `${field}.domain.min`);
+    const maximum = normalizeFiniteNumber(metric.domain.max, `${field}.domain.max`);
+    if (minimum >= maximum) {
+      throwInvalid("Sorting numeric metric domain.min must be less than domain.max", `${field}.domain`);
+    }
+
+    if (!["acrossAlternatives", "alternativeSpecific"].includes(metric.comparability)) {
+      throwInvalid(
+        "Sorting numeric metric comparability must be 'acrossAlternatives' or 'alternativeSpecific'",
+        `${field}.comparability`,
+      );
+    }
+    if (!isPlainObject(metric.valuesByAlternativeId)) {
+      throwInvalid("Sorting numeric metric valuesByAlternativeId must be an object", `${field}.valuesByAlternativeId`);
+    }
+    const valueIds = Object.keys(metric.valuesByAlternativeId);
+    if (valueIds.length !== authorizedAlternativeIds.length || valueIds.some((id) => !authorizedIds.has(id))) {
+      throwInvalid(
+        "Sorting numeric metric values must cover every Backend-authorized alternative exactly once",
+        `${field}.valuesByAlternativeId`,
+      );
+    }
+    const valuesByAlternativeId = Object.fromEntries(authorizedAlternativeIds.map((alternativeId) => {
+      const numericValue = normalizeFiniteNumber(
+        metric.valuesByAlternativeId[alternativeId],
+        `${field}.valuesByAlternativeId.${alternativeId}`,
+      );
+      if (numericValue < minimum || numericValue > maximum) {
+        throwInvalid(
+          "Sorting numeric metric value must be within its declared domain",
+          `${field}.valuesByAlternativeId.${alternativeId}`,
+        );
+      }
+      return [alternativeId, numericValue];
+    }));
+
+    let scope;
+    if (Object.hasOwn(metric, "scope")) {
+      if (!isPlainObject(metric.scope) || Object.keys(metric.scope).some((key) => !["kind", "id"].includes(key))) {
+        throwInvalid("Sorting numeric metric scope must contain kind and id only", `${field}.scope`);
+      }
+      const kind = normalizeNonEmptyString(metric.scope.kind);
+      const id = normalizeNonEmptyString(metric.scope.id);
+      if (!kind || !id) throwInvalid("Sorting numeric metric scope requires non-empty kind and id", `${field}.scope`);
+      scope = { kind, id };
+    }
+    const identity = JSON.stringify([metricId, scope?.kind ?? null, scope?.id ?? null]);
+    if (identities.has(identity)) {
+      throwInvalid("Sorting numeric metric identity and scope must be unique", field);
+    }
+    identities.add(identity);
+
+    let referencesByAlternativeId;
+    if (Object.hasOwn(metric, "referencesByAlternativeId")) {
+      if (!isPlainObject(metric.referencesByAlternativeId)) {
+        throwInvalid("Sorting numeric metric referencesByAlternativeId must be an object", `${field}.referencesByAlternativeId`);
+      }
+      const referenceAlternativeIds = Object.keys(metric.referencesByAlternativeId);
+      if (referenceAlternativeIds.length !== authorizedAlternativeIds.length || referenceAlternativeIds.some((id) => !authorizedIds.has(id))) {
+        throwInvalid(
+          "Sorting numeric metric references must cover every Backend-authorized alternative exactly once",
+          `${field}.referencesByAlternativeId`,
+        );
+      }
+      referencesByAlternativeId = Object.fromEntries(authorizedAlternativeIds.map((alternativeId) => {
+        const rawReferences = metric.referencesByAlternativeId[alternativeId];
+        const referenceField = `${field}.referencesByAlternativeId.${alternativeId}`;
+        if (!Array.isArray(rawReferences) || rawReferences.length === 0) {
+          throwInvalid("Each alternative must have at least one numeric metric reference", referenceField);
+        }
+        const referenceIds = new Set();
+        const references = rawReferences.map((reference, referenceIndex) => {
+          const itemField = `${referenceField}[${referenceIndex}]`;
+          if (!isPlainObject(reference) || Object.keys(reference).some((key) => !["referenceId", "name", "value"].includes(key))) {
+            throwInvalid("Each numeric metric reference must contain referenceId, optional name, and value", itemField);
+          }
+          const referenceId = normalizeRequiredId(
+            reference.referenceId,
+            "Each numeric metric reference requires a non-empty referenceId",
+            `${itemField}.referenceId`,
+          );
+          if (referenceIds.has(referenceId)) {
+            throwInvalid("Numeric metric reference IDs must be unique per alternative", `${itemField}.referenceId`);
+          }
+          referenceIds.add(referenceId);
+          const numericValue = normalizeFiniteNumber(reference.value, `${itemField}.value`);
+          if (numericValue < minimum || numericValue > maximum) {
+            throwInvalid("Numeric metric reference value must be within its metric domain", `${itemField}.value`);
+          }
+          const normalizedReference = { referenceId, value: numericValue };
+          if (Object.hasOwn(reference, "name")) {
+            const referenceName = normalizeNonEmptyString(reference.name);
+            if (!referenceName) throwInvalid("Numeric metric reference name must be non-empty", `${itemField}.name`);
+            normalizedReference.name = referenceName;
+          }
+          return normalizedReference;
+        });
+        return [alternativeId, references];
+      }));
+    }
+
+    return {
+      metricId,
+      name,
+      domain: { min: minimum, max: maximum },
+      comparability: metric.comparability,
+      valuesByAlternativeId,
+      ...(referencesByAlternativeId ? { referencesByAlternativeId } : {}),
+      ...(scope ? { scope } : {}),
+    };
+  });
+};
+
 const resolveAuthorizedAlternativeIds = (context) => {
   if (!Array.isArray(context?.authorizedAlternativeIds)) {
     throwInvalid(
@@ -320,6 +475,9 @@ export const normalizeSortingResult = ({ result, context }) => {
   const plotsGraphic = Object.hasOwn(result, "plotsGraphic")
     ? normalizePlotsGraphic(result.plotsGraphic)
     : undefined;
+  const numericMetrics = Object.hasOwn(result, "numericMetrics")
+    ? normalizeNumericMetrics(result.numericMetrics, authorizedAlternativeIds)
+    : undefined;
 
   return {
     categories,
@@ -329,5 +487,6 @@ export const normalizeSortingResult = ({ result, context }) => {
       ? { diagnostics: result.diagnostics }
       : {}),
     ...(plotsGraphic !== undefined ? { plotsGraphic } : {}),
+    ...(numericMetrics !== undefined ? { numericMetrics } : {}),
   };
 };

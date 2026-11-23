@@ -115,6 +115,7 @@ def test_internal_adapter_transforms_result_to_sorting_v1_without_ranking_fields
         "categoryOrderSemantics",
         "assignments",
         "diagnostics",
+        "numericMetrics",
         "plotsGraphic",
     }
     assert data["categoryOrderSemantics"] == "lower-order-is-less-preferred"
@@ -127,6 +128,13 @@ def test_internal_adapter_transforms_result_to_sorting_v1_without_ranking_fields
         {"alternativeId": "alt-a", "categoryId": "high"},
         {"alternativeId": "alt-b", "categoryId": "middle"},
         {"alternativeId": "alt-c", "categoryId": "low"},
+    ]
+    metric = data["numericMetrics"][0]
+    assert metric["metricId"] == "relative_closeness"
+    assert metric["domain"] == {"min": 0.0, "max": 1.0}
+    assert metric["comparability"] == "acrossAlternatives"
+    assert metric["valuesByAlternativeId"] == data["diagnostics"][
+        "closeness_by_alternative_id"
     ]
     assert data["plotsGraphic"] == {
         "expert_points": [[0.0, 0.0]],

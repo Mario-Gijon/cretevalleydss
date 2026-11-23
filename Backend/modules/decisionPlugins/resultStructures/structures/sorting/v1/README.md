@@ -11,6 +11,15 @@ The normalized result has:
 - `assignments`: exactly one `{ alternativeId, categoryId }` assignment for
   every alternative authorized by the Backend execution context.
 - Optional `diagnostics`: an opaque object for model-specific diagnostic data.
+- Optional `numericMetrics`: a non-empty list of validated numeric measures.
+  Each measure has a stable `metricId`, display `name`, finite `{ min, max }`
+  domain, `comparability` (`acrossAlternatives` or `alternativeSpecific`),
+  and a finite `valuesByAlternativeId` entry for every authorized alternative.
+  A measure may have a `{ kind, id }` scope, such as one expert, and may provide
+  `referencesByAlternativeId` when its references are specific to each
+  alternative. Each reference has a `referenceId`, numeric `value`, and an
+  optional display `name`. Values and references must lie within the declared
+  domain. Omitting numeric metrics remains valid for categorical-only results.
 
 Category IDs identify categories; labels are display text and may repeat.
 Assignments always reference `categoryId`, so labels never resolve identity.
@@ -35,10 +44,10 @@ not infer authorization from the categories returned by the executor. This
 context is only required while validating a new execution result; projections
 of already-persisted historical results continue to use their stored data.
 
-Category profiles, thresholds, reference alternatives, and their parameters
-are outside this result contract. They belong to model parameters and issue
-configuration; profile requirements vary between sorting methods and are
-documented with the `orderedCategories` parameter structure.
+Profiles and thresholds that define assignments remain model parameters.
+Optional metric references carry only the values needed to interpret a metric
+for a particular alternative; they do not replace the configured profiles or
+assignment parameters.
 
 This result structure supports issue execution and the system's generic Results
 Analysis. Consensus remains disabled. Generic analysis uses only the configured

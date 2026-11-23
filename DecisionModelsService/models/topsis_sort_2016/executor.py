@@ -398,6 +398,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
 
 def _output(run_result: Mapping[str, Any]) -> dict[str, Any]:
+    diagnostics = run_result["diagnostics"]
     return {
         "categories": [
             {
@@ -415,7 +416,18 @@ def _output(run_result: Mapping[str, Any]) -> dict[str, Any]:
             }
             for assignment in run_result["assignments"]
         ],
-        "diagnostics": run_result["diagnostics"],
+        "diagnostics": diagnostics,
+        "numericMetrics": [
+            {
+                "metricId": "relative_closeness",
+                "name": "Relative closeness",
+                "domain": {"min": 0.0, "max": 1.0},
+                "comparability": "acrossAlternatives",
+                "valuesByAlternativeId": diagnostics[
+                    "closeness_by_alternative_id"
+                ],
+            }
+        ],
     }
 
 

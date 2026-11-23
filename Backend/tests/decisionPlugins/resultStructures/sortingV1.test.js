@@ -91,6 +91,54 @@ describe("sorting@1 result contract", () => {
     expect(normalized).not.toHaveProperty("rankedAlternatives");
   });
 
+  it("validates, scopes, and projects optional numeric metrics while keeping the field optional", () => {
+    const metric = {
+      metricId: "global_priority",
+      name: "Global AHP priority",
+      domain: { min: 0, max: 1 },
+      comparability: "alternativeSpecific",
+      scope: { kind: "expert", id: "expert-1" },
+      valuesByAlternativeId: {
+        [authorizedAlternativeIds[0]]: 0.25,
+        [authorizedAlternativeIds[1]]: 0.75,
+      },
+      referencesByAlternativeId: {
+        [authorizedAlternativeIds[0]]: [{ referenceId: "profile-a", value: 0.2 }],
+        [authorizedAlternativeIds[1]]: [{ referenceId: "profile-a", value: 0.7 }],
+      },
+    };
+    const normalized = normalize(validResult({ numericMetrics: [metric] }));
+
+    expect(normalized.numericMetrics).toEqual([metric]);
+    expect(normalize(validResult())).not.toHaveProperty("numericMetrics");
+    for (const target of ["stagePersistence", "activeIssueResponse"]) {
+      expect(projectNormalizedResultOrThrow({
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        result: normalized,
+        target,
+      }).numericMetrics).toEqual([metric]);
+    }
+    expect(projectNormalizedResultOrThrow({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      result: normalized,
+      target: "finishedIssuePhaseResult",
+    }).standardizedOutput.numericMetrics).toEqual([metric]);
+
+    expect(() => normalize(validResult({ numericMetrics: [{
+      ...metric,
+      valuesByAlternativeId: { [authorizedAlternativeIds[0]]: 0.25 },
+    }] }))).toThrow("cover every Backend-authorized alternative");
+    expect(() => normalize(validResult({ numericMetrics: [{
+      ...metric,
+      valuesByAlternativeId: {
+        ...metric.valuesByAlternativeId,
+        [authorizedAlternativeIds[1]]: 1.1,
+      },
+    }] }))).toThrow("within its declared domain");
+  });
+
   it.each([1, 2, 5])("accepts a variable category count of %i", (count) => {
     const categories = Array.from({ length: count }, (_, order) => ({
       categoryId: `category-${order}`,

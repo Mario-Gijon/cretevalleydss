@@ -71,6 +71,7 @@ def test_adapter_output_matches_core_categories_assignments_and_full_precision_d
         "categoryOrderSemantics",
         "assignments",
         "diagnostics",
+        "numericMetrics",
     }
     assert result["categories"] == execution_input["resultCategories"]
     assert result["categoryOrderSemantics"] == "lower-order-is-less-preferred"
@@ -107,6 +108,27 @@ def test_adapter_output_matches_core_categories_assignments_and_full_precision_d
             "consistency" in criterion_diagnostics
             for criterion_diagnostics in diagnostics["localPrioritiesByCriterion"].values()
         )
+
+    metric = result["numericMetrics"][0]
+    assert metric["metricId"] == "ahp_global_priority"
+    assert metric["comparability"] == "alternativeSpecific"
+    assert metric["scope"] == {
+        "kind": "expert",
+        "id": execution_input["expertEvaluations"][0]["expertId"],
+    }
+    assert metric["valuesByAlternativeId"] == {
+        alternative_id: assignment["globalPriority"]
+        for alternative_id, assignment in expected_core["resultsByAlternative"].items()
+    }
+    for alternative_id, assignment in expected_core["resultsByAlternative"].items():
+        priorities = (
+            assignment.get("profileGlobalPrioritiesById")
+            or assignment.get("centralProfilePrioritiesById")
+        )
+        assert {
+            reference["referenceId"]: reference["value"]
+            for reference in metric["referencesByAlternativeId"][alternative_id]
+        } == priorities
 
 
 def test_adapter_resolves_weights_categories_and_profiles_by_ids_not_input_positions():
@@ -307,6 +329,14 @@ def test_multiple_expert_evaluations_are_all_executed_and_aggregated():
         "supplier-low",
         "supplier-high",
     }
+    metrics = result["numericMetrics"]
+    assert {metric["scope"]["id"] for metric in metrics} == {
+        "expert-1",
+        "expert-2",
+    }
+    assert all(metric["scope"]["kind"] == "expert" for metric in metrics)
+    assert all(metric["comparability"] == "alternativeSpecific" for metric in metrics)
+    assert not any(metric["scope"].get("kind") == "collective" for metric in metrics)
 
 
 def test_missing_evaluation_and_malformed_profiles_return_validation_errors():

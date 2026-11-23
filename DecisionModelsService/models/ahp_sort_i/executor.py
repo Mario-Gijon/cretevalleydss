@@ -263,10 +263,15 @@ def _execution_input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
 
 def _sorting_result(
-    execution_input: Mapping[str, Any], core_result: Mapping[str, Any]
+    execution_input: Mapping[str, Any],
+    core_result: Mapping[str, Any],
+    *,
+    expert_id: str,
 ) -> dict[str, Any]:
     assignments = core_result["resultsByAlternative"]
     diagnostics_by_alternative: dict[str, Any] = {}
+    priorities_by_alternative_id: dict[str, float] = {}
+    references_by_alternative_id: dict[str, list[dict[str, Any]]] = {}
     for alternative in execution_input["alternatives"]:
         alternative_id = alternative["id"]
         assignment = assignments[alternative_id]
@@ -299,6 +304,14 @@ def _sorting_result(
             "localPrioritiesByCriterion": assignment["localPrioritiesByCriterion"],
             "classification": classification,
         }
+        priorities_by_alternative_id[alternative_id] = assignment["globalPriority"]
+        references_by_alternative_id[alternative_id] = [
+            {
+                "referenceId": profile["profileId"],
+                "value": profile_priorities[profile["profileId"]],
+            }
+            for profile in execution_input["profiles"]
+        ]
 
     diagnostics = {
         "modelKey": "ahp_sort_i",
@@ -319,6 +332,17 @@ def _sorting_result(
             for alternative in execution_input["alternatives"]
         ],
         "diagnostics": diagnostics,
+        "numericMetrics": [
+            {
+                "metricId": "ahp_global_priority",
+                "name": "Global AHP priority",
+                "domain": {"min": 0.0, "max": 1.0},
+                "comparability": "alternativeSpecific",
+                "scope": {"kind": "expert", "id": expert_id},
+                "valuesByAlternativeId": priorities_by_alternative_id,
+                "referencesByAlternativeId": references_by_alternative_id,
+            }
+        ],
     }
 
 
@@ -354,7 +378,9 @@ def execute_ahp_sort_i(
                     profile_comparisons=expert_evaluation["profileComparisons"],
                     tie_policy=execution_input["tiePolicy"],
                 )
-            expert_results[expert_id] = _sorting_result(execution_input, core_result)
+            expert_results[expert_id] = _sorting_result(
+                execution_input, core_result, expert_id=expert_id
+            )
             category_by_expert_and_alternative[expert_id] = {
                 alternative_id: assignment["categoryId"]
                 for alternative_id, assignment in core_result[
@@ -389,6 +415,14 @@ def execute_ahp_sort_i(
                 "categoryOrderSemantics": CATEGORY_ORDER_SEMANTICS,
                 "assignments": assignments,
                 "diagnostics": diagnostics,
+                # Plurality assigns categories only. Keep expert-specific AHP
+                # metrics scoped to their source expert; do not synthesize a
+                # collective numeric measure.
+                "numericMetrics": [
+                    metric
+                    for expert_id in sorted(expert_results)
+                    for metric in expert_results[expert_id]["numericMetrics"]
+                ],
             }
         return success_response(
             "AHPSort I executed successfully",
