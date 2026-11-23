@@ -427,7 +427,7 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText("ALTERNATIVES").compareDocumentPosition(screen.getByText("CATEGORY BOUNDARIES")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("renders AHPSort sensitivity as continuous horizontal sample intervals with category bands and real gaps", () => {
+  it("renders AHPSort sensitivity with continuous intervals, neutral separators, and real gaps", () => {
     const scatter = {
       key: "ahp-sort-i-original-classifications",
       type: "scatter",
@@ -546,20 +546,35 @@ describe("AnalyticalGraph", () => {
     expect(lineState.options.scales.x.grid.display).toBe(false);
     expect(lineState.options.scales.y.grid.display).toBe(false);
     expect(lineState.options.animation).toBe(false);
-    expect(lineState.options.plugins.categoricalCategoryBands).toMatchObject({ enabled: true });
-    const categoryBandPlugin = lineState.plugins.find((plugin) => plugin.id === "categoricalCategoryBands");
-    const bandContext = { fillRect: vi.fn(), save: vi.fn(), restore: vi.fn() };
-    categoryBandPlugin.beforeDatasetsDraw({
-      options: { plugins: { categoricalCategoryBands: lineState.options.plugins.categoricalCategoryBands } },
+    expect(lineState.options.plugins.categoricalCategorySeparators).toMatchObject({ enabled: true });
+    const categorySeparatorPlugin = lineState.plugins.find((plugin) => plugin.id === "categoricalCategorySeparators");
+    const separatorContext = {
+      beginPath: vi.fn(),
+      fillRect: vi.fn(),
+      lineTo: vi.fn(),
+      moveTo: vi.fn(),
+      restore: vi.fn(),
+      save: vi.fn(),
+      stroke: vi.fn(),
+    };
+    categorySeparatorPlugin.beforeDatasetsDraw({
+      options: { plugins: { categoricalCategorySeparators: lineState.options.plugins.categoricalCategorySeparators } },
       scales: { y: { getPixelForValue: (value) => ({ 0: 90, 1: 60, 2: 30 })[value] } },
       chartArea: { left: 10, right: 210, top: 10, bottom: 110 },
-      ctx: bandContext,
+      ctx: separatorContext,
     });
-    expect(bandContext.fillRect.mock.calls).toEqual([
-      [10, 75, 200, 35],
-      [10, 45, 200, 30],
-      [10, 10, 200, 35],
+    expect(separatorContext.moveTo.mock.calls).toEqual([
+      [10, 75],
+      [10, 45],
     ]);
+    expect(separatorContext.lineTo.mock.calls).toEqual([
+      [210, 75],
+      [210, 45],
+    ]);
+    expect(separatorContext.strokeStyle).toBe("rgba(255,255,255,0.10)");
+    expect(separatorContext.lineWidth).toBe(1);
+    expect(separatorContext.stroke).toHaveBeenCalledOnce();
+    expect(separatorContext.fillRect).not.toHaveBeenCalled();
     expect(lineState.options.plugins.originalWeightMarker).toMatchObject({ value: 0.5, mode: "axis-tick" });
     expect(screen.getByText("ALTERNATIVES")).toBeInTheDocument();
     expect(screen.getByLabelText("Original criterion weight 0.5")).toBeInTheDocument();

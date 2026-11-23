@@ -35,38 +35,31 @@ const originalWeightMarkerPlugin = {
   },
 };
 
-const categoryBandBackgroundPlugin = {
-  id: "categoricalCategoryBands",
+const categoryBandSeparatorsPlugin = {
+  id: "categoricalCategorySeparators",
   beforeDatasetsDraw(chart) {
-    const bandOptions = chart.options?.plugins?.categoricalCategoryBands;
+    const separatorOptions = chart.options?.plugins?.categoricalCategorySeparators;
     const yScale = chart.scales?.y;
     const chartArea = chart.chartArea;
-    if (!bandOptions?.enabled || !Array.isArray(bandOptions.categories) || !yScale || !chartArea) return;
+    if (!separatorOptions?.enabled || !Array.isArray(separatorOptions.categories) || !yScale || !chartArea) return;
 
-    const categories = bandOptions.categories
+    const categories = separatorOptions.categories
       .filter((category) => Number.isFinite(category?.value))
       .sort((left, right) => left.value - right.value);
-    if (!categories.length) return;
+    if (categories.length < 2) return;
 
     const centers = categories.map((category) => yScale.getPixelForValue(category.value));
-    const fills = [
-      "rgba(239, 83, 80, 0.07)",
-      "rgba(255, 255, 255, 0.04)",
-      "rgba(102, 187, 106, 0.06)",
-    ];
     const { ctx } = chart;
     ctx.save();
-    categories.forEach((category, index) => {
-      const center = centers[index];
-      const top = index === categories.length - 1
-        ? chartArea.top
-        : (center + centers[index + 1]) / 2;
-      const bottom = index === 0
-        ? chartArea.bottom
-        : (centers[index - 1] + center) / 2;
-      ctx.fillStyle = fills[index % fills.length];
-      ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, Math.max(0, bottom - top));
-    });
+    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let index = 0; index < centers.length - 1; index += 1) {
+      const y = (centers[index] + centers[index + 1]) / 2;
+      ctx.moveTo(chartArea.left, y);
+      ctx.lineTo(chartArea.right, y);
+    }
+    ctx.stroke();
     ctx.restore();
   },
 };
@@ -288,7 +281,7 @@ const LineAnalyticalGraph = ({ visualization }) => {
         },
       } : {}),
       ...(presentation.categoryLineSegments ? {
-        categoricalCategoryBands: {
+        categoricalCategorySeparators: {
           enabled: true,
           categories: visualization.yAxis?.categories || [],
         },
@@ -356,7 +349,7 @@ const LineAnalyticalGraph = ({ visualization }) => {
     title={accessibleLabel}
     data-testid="line-analytical-graph"
     plugins={[
-      ...(presentation.categoryLineSegments ? [categoryBandBackgroundPlugin] : []),
+      ...(presentation.categoryLineSegments ? [categoryBandSeparatorsPlugin] : []),
       ...(presentation.originalWeightMarker ? [originalWeightMarkerPlugin] : []),
     ]}
     data={{
