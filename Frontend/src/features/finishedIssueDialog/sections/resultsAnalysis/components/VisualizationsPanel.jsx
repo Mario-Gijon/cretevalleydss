@@ -29,7 +29,7 @@ import { buildGenericRankingMovement } from "../logic/buildGenericRankingMovemen
 import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js";
 import { buildVisualizationLayout } from "../logic/modelVisualizationLayout.js";
 import { buildModelAnalysisSections, scopedEntities, visualizationsForScope } from "../logic/modelAnalysisSections.js";
-import { filterSensitivityVisualization, filterSensitivityVisualizationByExpert, getSensitivityAlternativeOptions, getSensitivityExpertOptions, recommendSensitivityAlternativeIds, resolveVisualizationPresentation } from "../logic/resolveVisualizationPresentation.js";
+import { filterSensitivityVisualization, filterSensitivityVisualizationByExpert, filterSensitivityVisualizationByResult, getSensitivityAlternativeOptions, getSensitivityExpertOptions, recommendSensitivityAlternativeIds, resolveVisualizationPresentation } from "../logic/resolveVisualizationPresentation.js";
 import { getVisualizationReadingGuide } from "../logic/visualizationReadingGuides.js";
 import { buildGeneralVisualizationsLayout } from "../logic/buildGeneralVisualizationsLayout.js";
 import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
@@ -703,116 +703,7 @@ const VisualizationPane = ({ descriptor, execution, index, compactTitle, control
   </Box>;
 };
 
-const AHPSortISensitivitySmallMultiples = ({ visualizations, controls }) => {
-  const priorities = visualizations.find(
-    (visualization) => visualization?.presentation?.smallMultiplesByAlternative === true,
-  );
-  if (!priorities) return null;
-
-  const collectiveKey = priorities.presentation.collectiveCompanionKey;
-  const collective = visualizations.find((visualization) => visualization?.key === collectiveKey);
-  const alternativeSeries = priorities.data?.series?.filter(
-    (series) => series?.role === "alternative" && series?.resultType === "individual",
-  ) || [];
-  const sortedAlternatives = [...alternativeSeries].sort((left, right) =>
-    (left.alternativeName || left.label || left.key).localeCompare(
-      right.alternativeName || right.label || right.key,
-      "en",
-    ),
-  );
-
-  return (
-    <Stack spacing={1.2} data-testid="ahp-sort-i-sensitivity-small-multiples">
-      {controls ? <Box data-testid="analytical-graph-controls">{controls}</Box> : null}
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" },
-          gap: 1.4,
-          minWidth: 0,
-        }}
-      >
-        {sortedAlternatives.map((alternative) => {
-          const alternativeId = alternative.alternativeId;
-          const matrixSeries = [
-            alternative,
-            ...(priorities.data?.series || []).filter((series) =>
-              series?.role === "boundary"
-              && series?.alternativeId === alternativeId
-              && series?.expertId === alternative.expertId,
-            ),
-          ].map((series) => ({
-            ...series,
-            label: series.role === "alternative"
-              ? "Alternative global priority"
-              : series.profileName || series.label,
-          }));
-          const priorityCard = {
-            ...priorities,
-            title: `AHP priorities · ${alternative.alternativeName}`,
-            data: { ...priorities.data, series: matrixSeries },
-          };
-          const collectiveSeries = collective?.data?.series?.find(
-            (series) => series?.role === "collective" && series?.alternativeId === alternativeId,
-          );
-          const collectiveCard = collectiveSeries ? {
-            ...collective,
-            title: `Collective category · ${alternative.alternativeName}`,
-            description: "Plurality-vote category at each sampled weight. Categories are categorical results; AHPSort I calculates no collective priority.",
-            data: { ...collective.data, series: [collectiveSeries] },
-          } : null;
-
-          return (
-            <Box
-              key={alternative.key}
-              data-testid="ahp-sort-i-sensitivity-card"
-              data-alternative-id={alternativeId}
-              sx={{
-                border: "1px solid rgba(83,198,214,0.2)",
-                bgcolor: "rgba(8,18,29,0.52)",
-                borderRadius: 2.5,
-                p: { xs: 1.1, sm: 1.4 },
-                minWidth: 0,
-              }}
-            >
-              <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap" sx={{ mb: 0.5 }}>
-                <Typography component="h4" variant="subtitle1" sx={{ fontWeight: 900 }}>
-                  {alternative.alternativeName || alternative.label}
-                </Typography>
-                <Chip size="small" color="secondary" variant="outlined" label={`Individual · ${alternative.expertName}`} />
-              </Stack>
-              <Box data-testid="ahp-sort-i-priority-chart" data-expert-id={alternative.expertId}>
-                <AnalyticalGraph
-                  visualization={priorityCard}
-                  chartHeight={{ xs: 360, sm: 390, md: 410 }}
-                  titleVariant="subtitle2"
-                />
-              </Box>
-              {collectiveCard ? (
-                <Box
-                  data-testid="ahp-sort-i-collective-category-chart"
-                  data-y-axis-label={collectiveCard.yAxis?.label || ""}
-                  sx={{ mt: 1, pt: 0.8, borderTop: "1px solid rgba(83,198,214,0.16)" }}
-                >
-                  <AnalyticalGraph
-                    visualization={collectiveCard}
-                    chartHeight={{ xs: 160, sm: 170, md: 180 }}
-                    titleVariant="subtitle2"
-                  />
-                </Box>
-              ) : null}
-            </Box>
-          );
-        })}
-      </Box>
-    </Stack>
-  );
-};
-
 const SectionPanes = ({ visualizations, execution, stacked = false, leadFullWidth = false, compactTitles = false, forceFullWidth = false, stackAt = "md", controls = null }) => {
-  if (visualizations.some((visualization) => visualization?.presentation?.smallMultiplesByAlternative === true)) {
-    return <AHPSortISensitivitySmallMultiples visualizations={visualizations} controls={controls} />;
-  }
   const layouts = buildVisualizationLayout(visualizations);
   const rows = [];
   for (let index = 0; index < layouts.length; index += 1) {
@@ -849,6 +740,19 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const expertSelector = scopedVisualizations
     .map((visualization) => resolveVisualizationPresentation(visualization).expertSelector)
     .find((config) => config && typeof config === "object");
+  const resultSelector = scopedVisualizations
+    .map((visualization) => resolveVisualizationPresentation(visualization).resultSelector)
+    .find((config) => config && typeof config === "object");
+  const resultOptions = Array.isArray(resultSelector?.options)
+    ? resultSelector.options.flatMap((option) => {
+        if (typeof option === "string") {
+          return [{ value: option, label: `${option[0]?.toUpperCase() || ""}${option.slice(1)}` }];
+        }
+        return typeof option?.value === "string" && typeof option?.label === "string"
+          ? [option]
+          : [];
+      })
+    : [];
   const alternativeOptions = alternativeSelector ? getSensitivityAlternativeOptions(scopedVisualizations) : [];
   const expertOptions = expertSelector ? getSensitivityExpertOptions(scopedVisualizations) : [];
   const firstScopedVisualization = scopedEntries.flatMap((entry) => entry.visualizations)[0] || null;
@@ -866,6 +770,11 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const effectiveSelectedAlternativeIds = usesRecommendedSelection || shouldUseScopeRecommendation
     ? recommendedAlternativeIds
     : applicableSelectedAlternativeIds || [];
+  const [selectedResultType, setSelectedResultType] = useState(null);
+  const defaultResultType = resultSelector?.defaultValue || resultOptions[0]?.value || null;
+  const effectiveSelectedResultType = resultOptions.some((option) => option.value === selectedResultType)
+    ? selectedResultType
+    : defaultResultType;
   const [selectedExpertId, setSelectedExpertId] = useState(null);
   const effectiveSelectedExpertId = expertOptions.some((option) => option.id === selectedExpertId)
     ? selectedExpertId
@@ -876,9 +785,12 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
       const filteredAlternatives = alternativeSelector
         ? filterSensitivityVisualization(visualization, effectiveSelectedAlternativeIds)
         : visualization;
-      return expertSelector
-        ? filterSensitivityVisualizationByExpert(filteredAlternatives, effectiveSelectedExpertId)
+      const filteredResult = resultSelector
+        ? filterSensitivityVisualizationByResult(filteredAlternatives, effectiveSelectedResultType)
         : filteredAlternatives;
+      return expertSelector
+        ? filterSensitivityVisualizationByExpert(filteredResult, effectiveSelectedExpertId)
+        : filteredResult;
     }),
   }));
   const isSingleton = visibleEntries.length === 1 && visibleEntries[0].visualizations.length === 1;
@@ -896,7 +808,7 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const scopeLabel = selectedEntity?.dimension
     ? `${selectedEntity.dimension[0].toUpperCase()}${selectedEntity.dimension.slice(1)}`
     : "Entity";
-  const visualizationControls = selectable || alternativeSelector || (expertSelector && expertOptions.length > 1) ? (
+  const visualizationControls = selectable || alternativeSelector || resultOptions.length > 1 || (expertSelector && expertOptions.length > 1) ? (
     <Stack
       direction={{ xs: "column", sm: "row" }}
       spacing={1}
@@ -949,7 +861,15 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
             </Stack> : null}
         </Stack>
       ) : null}
-      {expertSelector && expertOptions.length > 1 ? (
+      {resultOptions.length > 1 ? (
+        <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 150 } }}>
+          <InputLabel color="secondary" id={`${section.id}-result-label`}>Result</InputLabel>
+          <Select size="small" color="secondary" labelId={`${section.id}-result-label`} label="Result" value={effectiveSelectedResultType || ""} onChange={(event) => setSelectedResultType(event.target.value)}>
+            {resultOptions.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+          </Select>
+        </FormControl>
+      ) : null}
+      {effectiveSelectedResultType !== "collective" && expertSelector && expertOptions.length > 1 ? (
         <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 190 } }}>
           <InputLabel color="secondary" id={`${section.id}-expert-label`}>Expert</InputLabel>
           <Select size="small" color="secondary" labelId={`${section.id}-expert-label`} label="Expert" value={effectiveSelectedExpertId || ""} onChange={(event) => setSelectedExpertId(event.target.value)}>

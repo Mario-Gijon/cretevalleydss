@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 
@@ -281,39 +280,6 @@ def _baseline_match(point: dict[str, Any], *, collective: bool) -> bool | None:
     return all(value is True for value in values) if values else None
 
 
-def _add_central_assignment_details(
-    facts: dict[str, Any],
-    result: dict[str, Any],
-    *,
-    details: dict[str, Any],
-) -> None:
-    if facts["profileMode"] != "central":
-        return
-    classification = result.get("classification") or {}
-    profile_labels = _profile_labels(facts)
-    selected_id = classification.get("selectedCenterProfileId")
-    details["Selected central profile"] = profile_labels.get(selected_id, selected_id)
-    details["Distance to selected central profile"] = classification.get(
-        "distanceToSelectedCenter"
-    )
-    details["Central profile tie detected"] = classification.get("tieDetected")
-    tied_ids = classification.get("tiedCenterProfileIds") or []
-    if tied_ids:
-        details["Tied central profiles"] = ", ".join(
-            profile_labels.get(profile_id, profile_id) for profile_id in tied_ids
-        )
-    details["Central profile tie policy"] = classification.get("tiePolicy")
-
-
-def _is_finite_number(value: Any) -> bool:
-    if not isinstance(value, (int, float)) or isinstance(value, bool):
-        return False
-    try:
-        return math.isfinite(value)
-    except OverflowError:
-        return False
-
-
 def _available_sensitivity_result(
     point: dict[str, Any], expert_id: str, alternative_id: str
 ) -> tuple[dict[str, Any] | None, str | None]:
@@ -333,51 +299,61 @@ def _available_sensitivity_result(
     return (result, None) if isinstance(result, dict) else (None, "alternative_result_unavailable")
 
 
-def _priority_sensitivity_visualization(
+def _category_sensitivity_visualization(
     facts: dict[str, Any], item: dict[str, Any], points: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    experts = {
-        expert["expertId"]: _name(expert, "name", expert["expertId"])
-        for expert in facts["experts"]
+    experts = facts["experts"]
+    alternatives = facts["alternatives"]
+    categories = sorted(facts["categories"], key=lambda category: category["order"])
+    category_order = {category["categoryId"]: index for index, category in enumerate(categories)}
+    category_labels = {category["categoryId"]: category["label"] for category in categories}
+    offset_spread = 0.24
+    alternative_offsets = {
+        alternative["alternativeId"]: (
+            offset_spread * (index / (len(alternatives) - 1) - 0.5)
+            if len(alternatives) > 1
+            else 0.0
+        )
+        for index, alternative in enumerate(alternatives)
     }
-    alternatives = {alt["alternativeId"]: alt for alt in facts["alternatives"]}
-    profile_labels = _profile_labels(facts)
-    categories = {category["categoryId"]: category["label"] for category in facts["categories"]}
     series = []
 
-    for expert_id, expert_name in experts.items():
-        for alternative_id, alternative in alternatives.items():
+    for expert in experts:
+        expert_id = expert["expertId"]
+        expert_name = _name(expert, "name", expert_id)
+        for alternative in alternatives:
+            alternative_id = alternative["alternativeId"]
             values = []
             for point in points:
                 result, unavailable_reason = _available_sensitivity_result(
                     point, expert_id, alternative_id
                 )
-                priority = (result or {}).get("globalPriority")
                 category_id = (result or {}).get("categoryId")
-                available = (
-                    _is_finite_number(priority)
-                    and categories.get(category_id) is not None
-                )
+                available = category_id in category_order
                 details = _weight_details(
                     point,
-                    category=categories.get(category_id) if available else None,
+                    category=category_labels.get(category_id) if available else None,
                     changed=(result.get("changedFromBaseline") if available else None),
                     unavailable_reason=(
                         unavailable_reason
-                        or (None if available else "alternative_priority_unavailable")
+                        or (None if available else "individual_classification_unavailable")
                     ),
                 )
-                if result is not None:
-                    details["Alternative priority"] = priority if available else None
-                    _add_central_assignment_details(facts, result, details=details)
+                if available:
+                    details["Result type"] = "Individual classification"
+                    details["Expert"] = expert_name
                     if point.get("baselineComparison") is not None:
-                        details["Original-weight result matches validated baseline"] = (
-                            _baseline_match(point, collective=False)
+                        details["Original-weight result matches validated baseline"] = _baseline_match(
+                            point, collective=False
                         )
                 values.append(
                     {
                         "x": point["variedWeight"],
-                        "y": priority if available else None,
+                        "y": (
+                            category_order[category_id] + alternative_offsets[alternative_id]
+                            if available
+                            else None
+                        ),
                         "details": details,
                         "isConfiguredWeight": point["variedWeight"]
                         == item.get("configuredWeight"),
@@ -385,8 +361,8 @@ def _priority_sensitivity_visualization(
                 )
             series.append(
                 {
-                    "key": f"alternative:{expert_id}:{alternative_id}",
-                    "label": f"Alternative · {alternative['name']} · {expert_name}",
+                    "key": f"individual:{expert_id}:{alternative_id}",
+                    "label": alternative["name"],
                     "role": "alternative",
                     "resultType": "individual",
                     "alternativeId": alternative_id,
@@ -394,69 +370,97 @@ def _priority_sensitivity_visualization(
                     "expertId": expert_id,
                     "expertName": expert_name,
                     "values": values,
-                    "style": {"borderWidth": 3, "pointRadius": 2.5},
+                    "style": {"stepped": "after", "borderWidth": 3, "pointRadius": 0},
                 }
             )
 
-            for profile_id, profile_label in profile_labels.items():
-                profile_values = []
-                for point in points:
-                    result, unavailable_reason = _available_sensitivity_result(
-                        point, expert_id, alternative_id
-                    )
-                    profile_priority = ((result or {}).get("profilePrioritiesById") or {}).get(profile_id)
-                    category_id = (result or {}).get("categoryId")
-                    available = (
-                        result is not None
-                        and _is_finite_number(profile_priority)
-                        and categories.get(category_id) is not None
-                    )
-                    details = _weight_details(
-                        point,
-                        category=categories.get(category_id) if available else None,
-                        changed=(result.get("changedFromBaseline") if available else None),
-                        unavailable_reason=(
-                            unavailable_reason
-                            or (None if available else "profile_priority_unavailable")
-                        ),
-                    )
+    multi_expert = len(experts) > 1
+    if multi_expert:
+        for alternative in alternatives:
+            alternative_id = alternative["alternativeId"]
+            values = []
+            for point in points:
+                collective = point.get("collectiveClassification") or {}
+                category_id = (
+                    (collective.get("assignmentsByAlternativeId") or {}).get(alternative_id)
+                    if point.get("available") is True
+                    else None
+                )
+                available = category_id in category_order
+                aggregate = (collective.get("resultsByAlternativeId") or {}).get(
+                    alternative_id, {}
+                )
+                details = _weight_details(
+                    point,
+                    category=category_labels.get(category_id) if available else None,
+                    changed=(
+                        category_id != facts["executedAssignments"].get(alternative_id)
+                        if available
+                        else None
+                    ),
+                    unavailable_reason=(
+                        None
+                        if available
+                        else point.get("reason") or "collective_classification_unavailable"
+                    ),
+                )
+                if available:
                     details.update(
                         {
-                            "Alternative priority · same matrix": (
-                                (result or {}).get("globalPriority")
-                                if _is_finite_number((result or {}).get("globalPriority"))
-                                else None
-                            ),
-                            "Profile priority": (
-                                profile_priority if available else None
-                            ),
+                            "Result type": "Collective plurality vote",
+                            "Vote outcome": aggregate.get("aggregationStatus"),
+                            "Tie detected": aggregate.get("tieDetected"),
+                            "Tie policy": aggregate.get("tiePolicy"),
                         }
                     )
-                    profile_values.append(
-                        {
-                            "x": point["variedWeight"],
-                            "y": profile_priority if available else None,
-                            "details": details,
-                            "isConfiguredWeight": point["variedWeight"]
-                            == item.get("configuredWeight"),
-                        }
-                    )
-                series.append(
+                    for vote_category_id, count in (
+                        aggregate.get("votesByCategoryId") or {}
+                    ).items():
+                        if vote_category_id in category_labels:
+                            details[f"Votes · {category_labels[vote_category_id]}"] = count
+                    for expert_id, expert_category_id in (
+                        aggregate.get("classificationsByExpertId") or {}
+                    ).items():
+                        expert_name = next(
+                            (
+                                _name(expert, "name", expert_id)
+                                for expert in experts
+                                if expert["expertId"] == expert_id
+                            ),
+                            expert_id,
+                        )
+                        details[f"Individual vote · {expert_name}"] = category_labels.get(
+                            expert_category_id, expert_category_id
+                        )
+                    if point.get("baselineComparison") is not None:
+                        details["Original-weight result matches validated baseline"] = (
+                            _baseline_match(point, collective=True)
+                        )
+                values.append(
                     {
-                        "key": f"profile:{expert_id}:{alternative_id}:{profile_id}",
-                        "label": f"{profile_label} · {alternative['name']} · {expert_name}",
-                        "role": "boundary",
-                        "resultType": "individual-profile",
-                        "alternativeId": alternative_id,
-                        "alternativeName": alternative["name"],
-                        "expertId": expert_id,
-                        "expertName": expert_name,
-                        "profileId": profile_id,
-                        "profileName": profile_label,
-                        "values": profile_values,
-                        "style": {"borderDash": [6, 4], "borderWidth": 1.8, "opacity": 0.9},
+                        "x": point["variedWeight"],
+                        "y": (
+                            category_order[category_id] + alternative_offsets[alternative_id]
+                            if available
+                            else None
+                        ),
+                        "details": details,
+                        "isConfiguredWeight": point["variedWeight"]
+                        == item.get("configuredWeight"),
                     }
                 )
+            series.append(
+                {
+                    "key": f"collective:{alternative_id}",
+                    "label": alternative["name"],
+                    "role": "collective",
+                    "resultType": "collective",
+                    "alternativeId": alternative_id,
+                    "alternativeName": alternative["name"],
+                    "values": values,
+                    "style": {"stepped": "after", "borderWidth": 3, "pointRadius": 0},
+                }
+            )
 
     if not series:
         return {}
@@ -464,152 +468,38 @@ def _priority_sensitivity_visualization(
         (point for point in points if point.get("variedWeight") == item.get("configuredWeight")),
         None,
     )
+    presentation: dict[str, Any] = {
+        "chartHeight": {"xs": 420, "sm": 500, "md": 580},
+        "stableSeriesColors": True,
+        "compactLegend": True,
+        "originalWeightMarker": True,
+        "originalWeightLabel": "Original criterion weight",
+        "originalWeightAriaLabel": "Original criterion weight",
+        "alternativeSelector": {"recommendedCount": 3},
+        "colorByAlternativeId": True,
+    }
+    if multi_expert:
+        presentation["resultSelector"] = {
+            "defaultValue": "individual",
+            "options": [
+                {"value": "individual", "label": "Individual"},
+                {"value": "collective", "label": "Collective"},
+            ],
+        }
+        presentation["expertSelector"] = {"selectionMode": "single"}
     return {
-        "key": f"ahp-sort-i-criterion-priority-sensitivity-{item['criterionId']}",
+        "key": f"ahp-sort-i-criterion-weight-sensitivity-{item['criterionId']}",
         "type": "line",
-        "title": f"AHP priorities · {item['criterionName']}",
+        "title": f"Criterion weight sensitivity · {item['criterionName']}",
         "description": (
-            "Each panel shows priorities from one alternative–expert AHP matrix. "
-            "Compare an alternative only with its own profile curves in that panel; "
-            "priorities are not comparable across panels. Invalid samples appear as gaps."
+            "Lines show the assigned category at each sampled criterion weight. "
+            "Each alternative has a stable visual offset within its category band; "
+            "the real assigned category is shown in the tooltip."
         ),
         "insight": (
-            "Each panel shows one selected expert's global priority for an alternative and that matrix's "
-            "own profile priorities. The compact category strip below shows the collective plurality result."
+            "Stepped segments connect sampled categories and do not estimate exact switching weights. "
+            "Individual and collective results are selected separately; collective assignments use plurality votes."
         ),
-        "scope": {
-            "dimension": "criterion",
-            "id": item["criterionId"],
-            "label": item["criterionName"],
-            "order": item.get("criterionIndex", 0),
-        },
-        "xAxis": {"label": "Varied criterion weight", "min": 0, "max": 1, "scaleType": "linear"},
-        "yAxis": {"label": "AHP priority · selected alternative–expert matrix", "scaleType": "linear"},
-        "data": {
-            "xScaleType": "linear",
-            "x": [point["variedWeight"] for point in points],
-            "configuredWeight": item.get("configuredWeight"),
-            "originalWeightBaselineComparison": (
-                configured_point.get("baselineComparison") if configured_point else None
-            ),
-            "unavailableSamples": [
-                {"weight": point.get("variedWeight"), "reason": point.get("reason")}
-                for point in points if point.get("available") is not True
-            ],
-            "series": series,
-        },
-        "presentation": {
-            "chartHeight": {"xs": 440, "sm": 520, "md": 600},
-            "stableSeriesColors": True,
-            "compactLegend": True,
-            "profileLegendTitle": (
-                "LIMITING PROFILES" if facts["profileMode"] == "limiting" else "CENTRAL PROFILES"
-            ),
-            "profileLegendItemTitle": (
-                "Limiting profile" if facts["profileMode"] == "limiting" else "Central profile"
-            ),
-            "originalWeightMarker": True,
-            "originalWeightLabel": "Original criterion weight",
-            "originalWeightAriaLabel": "Original criterion weight",
-            "alternativeSelector": {"recommendedCount": 3},
-            "expertSelector": {"selectionMode": "single"},
-            "smallMultiplesByAlternative": True,
-            "collectiveCompanionKey": (
-                f"ahp-sort-i-criterion-collective-sensitivity-{item['criterionId']}"
-            ),
-        },
-    }
-
-
-def _collective_category_sensitivity_visualization(
-    facts: dict[str, Any], item: dict[str, Any], points: list[dict[str, Any]]
-) -> dict[str, Any] | None:
-    if len(facts["experts"]) < 2:
-        return None
-    categories = sorted(facts["categories"], key=lambda category: category["order"])
-    category_order = {category["categoryId"]: index for index, category in enumerate(categories)}
-    category_labels = {category["categoryId"]: category["label"] for category in categories}
-    series = []
-    for alternative in facts["alternatives"]:
-        alternative_id = alternative["alternativeId"]
-        values = []
-        for point in points:
-            collective = point.get("collectiveClassification") or {}
-            category_id = (
-                (collective.get("assignmentsByAlternativeId") or {}).get(alternative_id)
-                if point.get("available") is True else None
-            )
-            available = category_id in category_order
-            aggregate = (collective.get("resultsByAlternativeId") or {}).get(alternative_id, {})
-            details = _weight_details(
-                point,
-                category=category_labels.get(category_id) if available else None,
-                changed=(
-                    category_id != facts["executedAssignments"].get(alternative_id)
-                    if available else None
-                ),
-                unavailable_reason=(
-                    None if available else point.get("reason") or "collective_classification_unavailable"
-                ),
-            )
-            if available:
-                details.update(
-                    {
-                        "Result type": "Collective plurality vote",
-                        "Vote outcome": aggregate.get("aggregationStatus"),
-                        "Tie detected": aggregate.get("tieDetected"),
-                        "Tie policy": aggregate.get("tiePolicy"),
-                    }
-                )
-                for category_id_for_votes, count in (aggregate.get("votesByCategoryId") or {}).items():
-                    if category_id_for_votes in category_labels:
-                        details[f"Votes · {category_labels[category_id_for_votes]}"] = count
-                expert_names = {
-                    expert["expertId"]: _name(expert, "name", expert["expertId"])
-                    for expert in facts["experts"]
-                }
-                for expert_id, expert_category_id in (aggregate.get("classificationsByExpertId") or {}).items():
-                    details[f"Individual vote · {expert_names.get(expert_id, expert_id)}"] = category_labels.get(
-                        expert_category_id, expert_category_id
-                    )
-                configured = point.get("baselineComparison")
-                if configured is not None:
-                    details["Original-weight result matches validated baseline"] = _baseline_match(
-                        point, collective=True
-                    )
-            values.append(
-                {
-                    "x": point["variedWeight"],
-                    "y": category_order[category_id] if available else None,
-                    "details": details,
-                    "isConfiguredWeight": point["variedWeight"] == item.get("configuredWeight"),
-                }
-            )
-        series.append(
-            {
-                "key": f"collective:{alternative_id}",
-                "label": f"Collective · {alternative['name']}",
-                "role": "collective",
-                "resultType": "collective",
-                "alternativeId": alternative_id,
-                "alternativeName": alternative["name"],
-                "values": values,
-                "style": {"stepped": "after", "borderDash": [7, 4], "highlightConfiguredWeight": True},
-            }
-        )
-    configured_point = next(
-        (point for point in points if point.get("variedWeight") == item.get("configuredWeight")),
-        None,
-    )
-    return {
-        "key": f"ahp-sort-i-criterion-collective-sensitivity-{item['criterionId']}",
-        "type": "line",
-        "title": f"Collective category changes · {item['criterionName']}",
-        "description": (
-            "The collective result is a categorical plurality vote. Step segments connect sampled "
-            "categories only; they do not estimate an exact switching threshold. Invalid samples are gaps."
-        ),
-        "insight": "No collective numeric priority is calculated by AHPSort I.",
         "scope": {
             "dimension": "criterion",
             "id": item["criterionId"],
@@ -618,7 +508,7 @@ def _collective_category_sensitivity_visualization(
         },
         "xAxis": {"label": "Varied criterion weight", "min": 0, "max": 1, "scaleType": "linear"},
         "yAxis": {
-            "label": "Collective category · plurality vote",
+            "label": "Assigned category · configured order",
             "min": -0.5,
             "max": max(0.5, len(categories) - 0.5),
             "scaleType": "linear",
@@ -634,21 +524,14 @@ def _collective_category_sensitivity_visualization(
             "originalWeightBaselineComparison": (
                 configured_point.get("baselineComparison") if configured_point else None
             ),
+            "categoryDisplayOffsets": alternative_offsets,
             "unavailableSamples": [
                 {"weight": point.get("variedWeight"), "reason": point.get("reason")}
                 for point in points if point.get("available") is not True
             ],
             "series": series,
         },
-        "presentation": {
-            "chartHeight": {"xs": 170, "sm": 180, "md": 190},
-            "stableSeriesColors": True,
-            "compactLegend": True,
-            "originalWeightMarker": True,
-            "originalWeightLabel": "Original criterion weight",
-            "originalWeightAriaLabel": "Original criterion weight",
-            "compactCategoryCompanion": True,
-        },
+        "presentation": presentation,
     }
 
 
@@ -662,12 +545,9 @@ def _sensitivity_lines(
         points = item.get("points") or []
         if not points:
             continue
-        priority_graph = _priority_sensitivity_visualization(facts, item, points)
-        if priority_graph:
-            visualizations.append(priority_graph)
-        collective_graph = _collective_category_sensitivity_visualization(facts, item, points)
-        if collective_graph:
-            visualizations.append(collective_graph)
+        sensitivity_graph = _category_sensitivity_visualization(facts, item, points)
+        if sensitivity_graph:
+            visualizations.append(sensitivity_graph)
     return visualizations
 
 

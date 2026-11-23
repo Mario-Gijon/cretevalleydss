@@ -463,6 +463,7 @@ describe("AnalyticalGraph", () => {
         originalWeightMarker: true,
         originalWeightLabel: "Original criterion weight",
         originalWeightAriaLabel: "Original criterion weight",
+        colorByAlternativeId: true,
       },
       xAxis: { label: "Varied weight", min: 0, max: 1, scaleType: "linear" },
       yAxis: {
@@ -480,9 +481,9 @@ describe("AnalyticalGraph", () => {
           { key: "individual:expert-a:alpha", label: "Individual · A · Alpha", role: "alternative", resultType: "individual", alternativeId: "alpha", alternativeName: "Alpha", values: [
             { x: 0, y: 0, category: "Low" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: null, category: null },
           ], style: { stepped: "after" } },
-          { key: "collective:alpha", label: "Collective · Alpha", role: "alternative", resultType: "collective", alternativeId: "alpha", alternativeName: "Alpha", values: [
+          { key: "collective:alpha", label: "Alpha", role: "collective", resultType: "collective", alternativeId: "alpha", alternativeName: "Alpha", values: [
             { x: 0, y: 0, category: "Low" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: null, category: null },
-          ], style: { stepped: "after", borderDash: [7, 4] } },
+          ], style: { stepped: "after" } },
           { key: "individual:expert-a:beta", label: "Individual · A · Beta", role: "alternative", resultType: "individual", alternativeId: "beta", alternativeName: "Beta", values: [
             { x: 0, y: 1, category: "High" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: 0, category: "Low" },
           ], style: { stepped: "after" } },
@@ -508,7 +509,9 @@ describe("AnalyticalGraph", () => {
     expect(lineState.data.datasets[0].stepped).toBe("after");
     expect(lineState.data.datasets[0].spanGaps).toBe(false);
     expect(lineState.data.datasets[0].data[2].y).toBeNull();
-    expect(lineState.data.datasets[1].borderDash).toEqual([7, 4]);
+    expect(lineState.data.datasets[0].borderColor).toBe(stableChartColor("alternative:alpha"));
+    expect(lineState.data.datasets[1].borderColor).toBe(stableChartColor("alternative:alpha"));
+    expect(lineState.data.datasets[1].borderDash).toBeUndefined();
     expect(screen.getByText("COLLECTIVE RESULTS")).toBeInTheDocument();
     expect(screen.getByLabelText("Original criterion weight 0.5")).toBeInTheDocument();
   });

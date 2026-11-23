@@ -44,7 +44,11 @@ const seriesRole = (series) => series?.resultType === "collective"
   ? "collective"
   : isAlternativeSensitivitySeries(series) ? "alternative" : "boundary";
 const seriesColor = (series, index, presentation) => series.style?.color
-  || (presentation.stableSeriesColors ? stableChartColor(series.key) : chartColor(index));
+  || (presentation.stableSeriesColors
+    ? stableChartColor(presentation.colorByAlternativeId && series.alternativeId
+      ? `alternative:${series.alternativeId}`
+      : series.key)
+    : chartColor(index));
 
 const buildSeriesDisplayLabels = (series) => {
   const counts = new Map();

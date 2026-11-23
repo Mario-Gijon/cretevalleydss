@@ -179,3 +179,16 @@ export const filterSensitivityVisualizationByExpert = (visualization, selectedEx
     },
   };
 };
+
+export const filterSensitivityVisualizationByResult = (visualization, selectedResult) => {
+  if (typeof selectedResult !== "string" || !Array.isArray(visualization?.data?.series)) return visualization;
+  return {
+    ...visualization,
+    data: {
+      ...visualization.data,
+      series: visualization.data.series.filter((series) =>
+        !series?.resultType || series.resultType === selectedResult,
+      ),
+    },
+  };
+};

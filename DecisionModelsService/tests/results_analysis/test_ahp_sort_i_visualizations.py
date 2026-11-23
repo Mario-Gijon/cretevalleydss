@@ -87,7 +87,7 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     }
     weight_sensitivity = next(
         item for item in visualizations
-        if item["key"] == "ahp-sort-i-criterion-priority-sensitivity-quality"
+        if item["key"] == "ahp-sort-i-criterion-weight-sensitivity-quality"
     )
     assert weight_sensitivity["data"]["originalWeightBaselineComparison"][
         "individualAssignmentsMatch"
@@ -95,10 +95,6 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     alternative_series = next(
         series for series in weight_sensitivity["data"]["series"]
         if series["role"] == "alternative"
-    )
-    profile_series = next(
-        series for series in weight_sensitivity["data"]["series"]
-        if series["role"] == "boundary"
     )
     configured_sample = next(
         value
@@ -109,23 +105,24 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
         "Original-weight result matches validated baseline"
     ] is True
     assert "Alternative priority · this expert and alternative matrix" in point["details"]
-    assert any(key.startswith("Profile priority ·") for key in point["details"])
-    assert alternative_series["expertId"] == profile_series["expertId"]
-    assert alternative_series["alternativeId"] == profile_series["alternativeId"]
-    assert configured_sample["y"] == configured_sample["details"][
-        "Alternative priority"
-    ]
-    assert profile_series["profileName"] in profile_series["label"]
-    assert profile_series["values"][0]["y"] == profile_series["values"][0]["details"][
-        "Profile priority"
-    ]
-    assert "selected alternative–expert matrix" in weight_sensitivity["yAxis"]["label"]
-    assert weight_sensitivity["presentation"]["profileLegendTitle"] == "LIMITING PROFILES"
-    assert weight_sensitivity["presentation"]["alternativeSelector"] == {"recommendedCount": 3}
-    assert weight_sensitivity["presentation"]["smallMultiplesByAlternative"] is True
-    assert weight_sensitivity["presentation"]["collectiveCompanionKey"] == (
-        "ahp-sort-i-criterion-collective-sensitivity-quality"
+    assert "Profile priority ·" in " ".join(point["details"])
+    assert alternative_series["resultType"] == "individual"
+    assert alternative_series["style"]["stepped"] == "after"
+    assert not any(series["role"] == "boundary" for series in weight_sensitivity["data"]["series"])
+    category_index = next(
+        index for index, category in enumerate(weight_sensitivity["yAxis"]["categories"])
+        if category["label"] == configured_sample["details"]["Assigned category"]
     )
+    offset = weight_sensitivity["data"]["categoryDisplayOffsets"][alternative_series["alternativeId"]]
+    assert configured_sample["y"] == category_index + offset
+    assert abs(offset) <= 0.12
+    assert weight_sensitivity["presentation"]["alternativeSelector"] == {"recommendedCount": 3}
+    assert "resultSelector" not in weight_sensitivity["presentation"]
+    assert not any("priority" in key.lower() for key in configured_sample["details"])
+    assert len([
+        item for item in visualizations
+        if item["type"] == "line" and item["scope"]["id"] == "quality"
+    ]) == 1
 
     sections = build_visualization_sections(facts)
     assert [section["id"] for section in sections] == [
@@ -149,7 +146,7 @@ def test_central_sensitivity_keeps_central_categories_and_tie_evidence():
     point = original["data"]["series"][0]["points"][0]
     sensitivity = next(
         item for item in visualizations
-        if item["key"] == "ahp-sort-i-criterion-priority-sensitivity-quality"
+        if item["key"] == "ahp-sort-i-criterion-weight-sensitivity-quality"
     )
     alternative_series = next(
         series for series in sensitivity["data"]["series"] if series["role"] == "alternative"
@@ -166,10 +163,9 @@ def test_central_sensitivity_keeps_central_categories_and_tie_evidence():
     assert configured["details"]["Assigned category"] in {
         category["label"] for category in evidence.categories
     }
-    assert "Selected central profile" in configured["details"]
-    assert any(series["profileName"].endswith("central profile") for series in sensitivity["data"]["series"] if series["role"] == "boundary")
-    assert "categories" not in sensitivity["yAxis"]
-    assert sensitivity["presentation"]["profileLegendTitle"] == "CENTRAL PROFILES"
+    assert "Selected central profile" in point["details"]
+    assert sensitivity["yAxis"]["categories"]
+    assert all(series["style"]["stepped"] == "after" for series in sensitivity["data"]["series"])
 
 
 def test_collective_visualizations_separate_experts_and_plurality_without_priority():
@@ -183,13 +179,12 @@ def test_collective_visualizations_separate_experts_and_plurality_without_priori
     collective_details = collective["points"][0]["details"]
     sensitivity = next(
         item for item in visualizations
-        if item["key"] == "ahp-sort-i-criterion-priority-sensitivity-quality"
+        if item["key"] == "ahp-sort-i-criterion-weight-sensitivity-quality"
     )
-    collective_sensitivity = next(
-        item for item in visualizations
-        if item["key"] == "ahp-sort-i-criterion-collective-sensitivity-quality"
+    sensitivity_collective = next(
+        series for series in sensitivity["data"]["series"]
+        if series["resultType"] == "collective"
     )
-    sensitivity_collective = collective_sensitivity["data"]["series"][0]
 
     assert len(individual) == 2
     assert {series["label"] for series in individual} == {
@@ -199,11 +194,20 @@ def test_collective_visualizations_separate_experts_and_plurality_without_priori
     assert collective_details["Result type"] == "Collective plurality vote"
     assert "Votes · Low" in collective_details
     assert not any("priority" in key.lower() for key in collective_details)
-    assert not any(series["resultType"] == "collective" for series in sensitivity["data"]["series"])
-    assert sensitivity_collective["style"]["borderDash"]
-    assert sensitivity_collective["values"][0]["y"] in range(len(collective_sensitivity["yAxis"]["categories"]))
-    assert "plurality vote" in collective_sensitivity["yAxis"]["label"]
+    assert len([
+        item for item in visualizations
+        if item["type"] == "line" and item["scope"]["id"] == "quality"
+    ]) == 1
+    assert sensitivity["presentation"]["resultSelector"]["defaultValue"] == "individual"
+    assert sensitivity["presentation"]["resultSelector"]["options"] == [
+        {"value": "individual", "label": "Individual"},
+        {"value": "collective", "label": "Collective"},
+    ]
+    assert sensitivity_collective["style"]["stepped"] == "after"
+    assert any("Votes ·" in key for key in sensitivity_collective["values"][0]["details"])
+    assert any("Individual vote ·" in key for key in sensitivity_collective["values"][0]["details"])
     assert not any("priority" in key.lower() for key in sensitivity_collective["values"][0]["details"])
+    assert all(series["resultType"] in {"individual", "collective"} for series in sensitivity["data"]["series"])
 
 
 def test_unavailable_weight_samples_are_gaps_and_report_the_reason():
@@ -213,10 +217,9 @@ def test_unavailable_weight_samples_are_gaps_and_report_the_reason():
     _facts, visualizations = _visualizations(evidence)
     sensitivity = next(
         item for item in visualizations
-        if item["key"] == "ahp-sort-i-criterion-priority-sensitivity-quality"
+        if item["key"] == "ahp-sort-i-criterion-weight-sensitivity-quality"
     )
     series = next(series for series in sensitivity["data"]["series"] if series["role"] == "alternative")
-    profile_series = next(series for series in sensitivity["data"]["series"] if series["role"] == "boundary")
     unavailable = next(value for value in series["values"] if value["x"] == 0.95)
     baseline = next(value for value in series["values"] if value["isConfiguredWeight"])
 
@@ -230,6 +233,7 @@ def test_unavailable_weight_samples_are_gaps_and_report_the_reason():
         for sample in sensitivity["data"]["unavailableSamples"]
     )
     assert baseline["y"] is not None
-    assert next(value for value in profile_series["values"] if value["x"] == 0.95)["y"] is None
+    assert all(item["resultType"] == "individual" for item in sensitivity["data"]["series"])
     assert sensitivity["presentation"]["alternativeSelector"]["recommendedCount"] == 3
-    assert sensitivity["presentation"]["expertSelector"]["selectionMode"] == "single"
+    assert "expertSelector" not in sensitivity["presentation"]
+    assert "resultSelector" not in sensitivity["presentation"]
