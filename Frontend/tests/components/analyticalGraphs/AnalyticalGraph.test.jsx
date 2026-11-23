@@ -427,7 +427,7 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText("ALTERNATIVES").compareDocumentPosition(screen.getByText("CATEGORY BOUNDARIES")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("renders AHPSort category sensitivity as horizontal-only segments with stable colors and real gaps", () => {
+  it("renders AHPSort sensitivity as continuous horizontal sample intervals with category bands and real gaps", () => {
     const scatter = {
       key: "ahp-sort-i-original-classifications",
       type: "scatter",
@@ -517,21 +517,49 @@ describe("AnalyticalGraph", () => {
     expect(categoryLineTicks.ticks).toEqual([{ value: 0 }, { value: 1 }, { value: 2 }]);
     const alphaSegments = lineState.data.datasets.filter((dataset) => dataset.alternativeId === "alpha");
     const betaSegments = lineState.data.datasets.filter((dataset) => dataset.alternativeId === "beta");
-    expect(alphaSegments).toHaveLength(3);
+    expect(alphaSegments).toHaveLength(1);
     expect(betaSegments).toHaveLength(2);
-    expect(alphaSegments.map((dataset) => dataset.showLine)).toEqual([true, false, false]);
     expect(betaSegments.map((dataset) => dataset.showLine)).toEqual([true, true]);
-    expect(alphaSegments.slice(1).every((dataset) => dataset.pointStyle === "circle")).toBe(true);
     expect(lineState.data.datasets.every((dataset) => new Set(dataset.data.map((point) => point.y)).size === 1)).toBe(true);
-    expect(alphaSegments.map((dataset) => dataset.data.map((point) => point.x))).toEqual([[0, 0.25], [0.5], [1]]);
+    expect(alphaSegments[0].data.map((point) => point.x)).toEqual([0, 0.25, 0.5]);
+    expect(betaSegments.map((dataset) => dataset.data.map((point) => point.x))).toEqual([
+      [0, 0.25, 0.5, 0.75],
+      [0.75, 1],
+    ]);
+    expect(betaSegments[0].data.at(-1).x).toBe(betaSegments[1].data[0].x);
+    expect(betaSegments.map((dataset) => [dataset.data[0].x, dataset.data.at(-1).x])).toEqual([
+      [0, 0.75],
+      [0.75, 1],
+    ]);
     expect(alphaSegments[0].data[0].details["Assigned category"]).toBe("Bad");
-    expect(alphaSegments[1].data[0].y).toBeCloseTo(0.88);
-    expect(alphaSegments[1].data[0].details["Assigned category"]).toBe("Moderate");
-    expect(alphaSegments[1].borderColor).toBe("#56B4E9");
-    expect(betaSegments[0].borderColor).toBe("#E69F00");
-    expect(alphaSegments[1].borderColor).not.toBe(betaSegments[0].borderColor);
+    expect(alphaSegments[0].data.at(-1).details["Segment category"]).toBe("Bad");
+    expect(alphaSegments[0].data.at(-1).details["Assigned category"]).toBe("Moderate");
+    expect(alphaSegments[0].pointRadius).toBe(0);
+    expect(alphaSegments[0].borderColor).toBe("#56B4E9");
+    expect(betaSegments[1].borderColor).toBe("#E69F00");
+    expect(betaSegments[0].data.at(-1).details["Segment category"]).toBe("Moderate");
+    expect(betaSegments[0].data.at(-1).details["Assigned category"]).toBe("Good");
+    expect(betaSegments[1].data[0].details["Segment category"]).toBe("Good");
+    expect(alphaSegments[0].data.at(-1).x).toBe(0.5);
+    expect(alphaSegments[0].data.some((point) => point.x >= 0.75)).toBe(false);
+    expect(alphaSegments[0].borderColor).not.toBe(betaSegments[0].borderColor);
     expect(lineState.options.scales.x.grid.display).toBe(false);
-    expect(lineState.options.scales.y.grid.display).toBe(true);
+    expect(lineState.options.scales.y.grid.display).toBe(false);
+    expect(lineState.options.animation).toBe(false);
+    expect(lineState.options.plugins.categoricalCategoryBands).toMatchObject({ enabled: true });
+    const categoryBandPlugin = lineState.plugins.find((plugin) => plugin.id === "categoricalCategoryBands");
+    const bandContext = { fillRect: vi.fn(), save: vi.fn(), restore: vi.fn() };
+    categoryBandPlugin.beforeDatasetsDraw({
+      options: { plugins: { categoricalCategoryBands: lineState.options.plugins.categoricalCategoryBands } },
+      scales: { y: { getPixelForValue: (value) => ({ 0: 90, 1: 60, 2: 30 })[value] } },
+      chartArea: { left: 10, right: 210, top: 10, bottom: 110 },
+      ctx: bandContext,
+    });
+    expect(bandContext.fillRect.mock.calls).toEqual([
+      [10, 75, 200, 35],
+      [10, 45, 200, 30],
+      [10, 10, 200, 35],
+    ]);
     expect(lineState.options.plugins.originalWeightMarker).toMatchObject({ value: 0.5, mode: "axis-tick" });
     expect(screen.getByText("ALTERNATIVES")).toBeInTheDocument();
     expect(screen.getByLabelText("Original criterion weight 0.5")).toBeInTheDocument();

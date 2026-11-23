@@ -35,6 +35,42 @@ const originalWeightMarkerPlugin = {
   },
 };
 
+const categoryBandBackgroundPlugin = {
+  id: "categoricalCategoryBands",
+  beforeDatasetsDraw(chart) {
+    const bandOptions = chart.options?.plugins?.categoricalCategoryBands;
+    const yScale = chart.scales?.y;
+    const chartArea = chart.chartArea;
+    if (!bandOptions?.enabled || !Array.isArray(bandOptions.categories) || !yScale || !chartArea) return;
+
+    const categories = bandOptions.categories
+      .filter((category) => Number.isFinite(category?.value))
+      .sort((left, right) => left.value - right.value);
+    if (!categories.length) return;
+
+    const centers = categories.map((category) => yScale.getPixelForValue(category.value));
+    const fills = [
+      "rgba(239, 83, 80, 0.07)",
+      "rgba(255, 255, 255, 0.04)",
+      "rgba(102, 187, 106, 0.06)",
+    ];
+    const { ctx } = chart;
+    ctx.save();
+    categories.forEach((category, index) => {
+      const center = centers[index];
+      const top = index === categories.length - 1
+        ? chartArea.top
+        : (center + centers[index + 1]) / 2;
+      const bottom = index === 0
+        ? chartArea.bottom
+        : (centers[index - 1] + center) / 2;
+      ctx.fillStyle = fills[index % fills.length];
+      ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, Math.max(0, bottom - top));
+    });
+    ctx.restore();
+  },
+};
+
 const CATEGORICAL_SENSITIVITY_COLORS = [
   "#56B4E9",
   "#E69F00",
@@ -95,37 +131,65 @@ const categoryOffset = (series, data, presentation) => {
   return ((index / (alternativeIds.length - 1)) * 2 - 1) * range;
 };
 
-const splitCategoryLineSegments = (series, data, presentation, displayLabels) => series.flatMap((item) => {
+const splitCategoryLineSegments = (series, data, presentation, displayLabels, categories) => series.flatMap((item) => {
   const values = Array.isArray(item.values) ? item.values : [];
   const runs = [];
-  let currentRun = [];
+  let currentRun = null;
   const saveRun = () => {
-    if (currentRun.length) runs.push(currentRun);
-    currentRun = [];
+    if (currentRun) runs.push(currentRun);
+    currentRun = null;
   };
 
-  values.forEach((value) => {
-    if (!value || typeof value !== "object" || !Number.isFinite(value.x) || !Number.isFinite(value.y)) {
-      saveRun();
-      return;
-    }
-    if (currentRun.length && value.y !== currentRun[currentRun.length - 1].y) saveRun();
-    currentRun.push(value);
-  });
-  saveRun();
-
+  const isValidSample = (value) => value
+    && typeof value === "object"
+    && Number.isFinite(value.x)
+    && Number.isFinite(value.y);
   const offset = categoryOffset(item, data, presentation);
   const displayLabel = displayLabels.get(String(item.key)) || item.label || item.key;
-  return runs.map((points, segmentIndex) => ({
+  const categoryLabel = (value) => categories.find((category) => category.value === value)?.label ?? String(value);
+  const makeIntervalPoint = (sample, intervalStart, intervalEnd, intervalCategory) => ({
+    ...sample,
+    y: intervalCategory.value + offset,
+    label: displayLabel,
+    details: {
+      ...(sample.details && typeof sample.details === "object" ? sample.details : {}),
+      "Rendered interval": `${intervalStart.x}–${intervalEnd.x}`,
+      "Segment category": categoryLabel(intervalCategory.value),
+    },
+  });
+
+  for (let index = 0; index < values.length - 1; index += 1) {
+    const left = values[index];
+    const right = values[index + 1];
+    if (!isValidSample(left) || !isValidSample(right) || right.x <= left.x) {
+      saveRun();
+      continue;
+    }
+
+    const intervalCategory = { value: left.y };
+    if (currentRun && currentRun.categoryValue === left.y && currentRun.values.at(-1).x === left.x) {
+      currentRun.values.push(makeIntervalPoint(right, left, right, intervalCategory));
+      continue;
+    }
+
+    saveRun();
+    currentRun = {
+      categoryValue: left.y,
+      values: [
+        makeIntervalPoint(left, left, right, intervalCategory),
+        makeIntervalPoint(right, left, right, intervalCategory),
+      ],
+    };
+  }
+  saveRun();
+
+  return runs.map((run, segmentIndex) => ({
     source: item,
     segmentIndex,
-    showLine: points.length > 1,
-    pointRadius: points.length > 1 ? 0 : 3.25,
-    values: points.map((point) => ({
-      ...point,
-      y: point.y + offset,
-      label: displayLabel,
-    })),
+    showLine: true,
+    pointRadius: 0,
+    pointHoverRadius: 0,
+    values: run.values,
   }));
 });
 
@@ -196,7 +260,7 @@ const LineAnalyticalGraph = ({ visualization }) => {
   const configuredWeight = Number.isFinite(data.configuredWeight) ? data.configuredWeight : null;
   const alternativeColors = buildAlternativeColors(data, series, presentation);
   const categoryLineSegments = presentation.categoryLineSegments
-    ? splitCategoryLineSegments(series, data, presentation, displayLabels)
+    ? splitCategoryLineSegments(series, data, presentation, displayLabels, visualization.yAxis?.categories || [])
     : null;
   const showOriginalWeight = presentation.originalWeightMarker && configuredWeight !== null;
   const originalWeightLabel = presentation.originalWeightLabel
@@ -206,6 +270,7 @@ const LineAnalyticalGraph = ({ visualization }) => {
   const baseOptions = buildCartesianChartOptions({ xAxis: visualization.xAxis, yAxis: visualization.yAxis });
   const chartOptions = numericX ? {
     ...baseOptions,
+    animation: presentation.categoryLineSegments ? false : baseOptions.animation,
     interaction: { mode: "nearest", intersect: false },
     plugins: {
       ...baseOptions.plugins,
@@ -220,6 +285,12 @@ const LineAnalyticalGraph = ({ visualization }) => {
           enabled: showOriginalWeight,
           value: configuredWeight,
           mode: presentation.originalWeightMarkerMode,
+        },
+      } : {}),
+      ...(presentation.categoryLineSegments ? {
+        categoricalCategoryBands: {
+          enabled: true,
+          categories: visualization.yAxis?.categories || [],
         },
       } : {}),
       tooltip: {
@@ -267,7 +338,10 @@ const LineAnalyticalGraph = ({ visualization }) => {
           stepSize: visualization.yAxis?.categories?.length ? 1 : undefined,
           autoSkip: visualization.yAxis?.categories?.length ? false : undefined,
         },
-        grid: { display: true, color: "rgba(255,255,255,0.10)" },
+        grid: {
+          display: !presentation.categoryLineSegments,
+          color: "rgba(255,255,255,0.10)",
+        },
       },
     },
   } : baseOptions;
@@ -281,7 +355,10 @@ const LineAnalyticalGraph = ({ visualization }) => {
     aria-label={accessibleLabel}
     title={accessibleLabel}
     data-testid="line-analytical-graph"
-    plugins={presentation.originalWeightMarker ? [originalWeightMarkerPlugin] : []}
+    plugins={[
+      ...(presentation.categoryLineSegments ? [categoryBandBackgroundPlugin] : []),
+      ...(presentation.originalWeightMarker ? [originalWeightMarkerPlugin] : []),
+    ]}
     data={{
       ...(numericX ? {} : { labels: data.x }),
       datasets: (categoryLineSegments || series.map((item) => ({ source: item, values: item.values }))).map((renderItem, index) => {
@@ -317,9 +394,9 @@ const LineAnalyticalGraph = ({ visualization }) => {
               if (context.raw?.isConfiguredWeight) return Math.max(3.5, item.style?.pointRadius ?? 2.5);
               return configuredPointRadius;
             },
-            pointStyle: categoryLineSegments ? "circle" : undefined,
+            pointHoverRadius: categoryLineSegments ? renderItem.pointHoverRadius : item.style?.pointHoverRadius ?? (isStyledSensitivity ? 4 : 5),
+            pointStyle: undefined,
             rotation: 0,
-            pointHoverRadius: item.style?.pointHoverRadius ?? (isStyledSensitivity ? 4 : 5),
             pointHitRadius: item.style?.pointHitRadius ?? (isStyledSensitivity ? (role === "boundary" ? 8 : 12) : undefined),
             tension: 0,
           } : {}),

@@ -489,9 +489,10 @@ def _category_sensitivity_visualization(
             "Stable colors identify alternatives."
         ),
         "insight": (
-            "Horizontal segments connect only consecutive available samples with the same category. "
-            "Category changes are left unconnected, and missing samples remain gaps; no exact switching "
-            "thresholds are inferred. "
+            "Each valid sample interval carries the category at its left sample and ends at "
+            "the next sampled weight. Category changes are left unconnected and begin at "
+            "that weight; missing samples leave gaps, and no exact switching thresholds "
+            "are inferred. "
             "Individual and collective results are selected separately; collective assignments use plurality votes."
         ),
         "scope": {
