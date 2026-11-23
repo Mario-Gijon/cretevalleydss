@@ -555,23 +555,25 @@ describe("AnalyticalGraph", () => {
       moveTo: vi.fn(),
       restore: vi.fn(),
       save: vi.fn(),
+      setLineDash: vi.fn(),
       stroke: vi.fn(),
     };
-    categorySeparatorPlugin.beforeDatasetsDraw({
+    categorySeparatorPlugin.afterDatasetsDraw({
       options: { plugins: { categoricalCategorySeparators: lineState.options.plugins.categoricalCategorySeparators } },
       scales: { y: { getPixelForValue: (value) => ({ 0: 90, 1: 60, 2: 30 })[value] } },
       chartArea: { left: 10, right: 210, top: 10, bottom: 110 },
+      currentDevicePixelRatio: 1,
       ctx: separatorContext,
     });
     expect(separatorContext.moveTo.mock.calls).toEqual([
-      [10, 75],
-      [10, 45],
+      [10, 75.5],
+      [10, 45.5],
     ]);
     expect(separatorContext.lineTo.mock.calls).toEqual([
-      [210, 75],
-      [210, 45],
+      [210, 75.5],
+      [210, 45.5],
     ]);
-    expect(separatorContext.strokeStyle).toBe("rgba(255,255,255,0.10)");
+    expect(separatorContext.strokeStyle).toBe("rgba(160,175,190,0.30)");
     expect(separatorContext.lineWidth).toBe(1);
     expect(separatorContext.stroke).toHaveBeenCalledOnce();
     expect(separatorContext.fillRect).not.toHaveBeenCalled();

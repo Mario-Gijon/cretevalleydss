@@ -37,7 +37,7 @@ const originalWeightMarkerPlugin = {
 
 const categoryBandSeparatorsPlugin = {
   id: "categoricalCategorySeparators",
-  beforeDatasetsDraw(chart) {
+  afterDatasetsDraw(chart) {
     const separatorOptions = chart.options?.plugins?.categoricalCategorySeparators;
     const yScale = chart.scales?.y;
     const chartArea = chart.chartArea;
@@ -51,11 +51,16 @@ const categoryBandSeparatorsPlugin = {
     const centers = categories.map((category) => yScale.getPixelForValue(category.value));
     const { ctx } = chart;
     ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+    ctx.strokeStyle = "rgba(160,175,190,0.30)";
     ctx.lineWidth = 1;
+    ctx.setLineDash([]);
     ctx.beginPath();
     for (let index = 0; index < centers.length - 1; index += 1) {
-      const y = (centers[index] + centers[index + 1]) / 2;
+      const midpoint = (centers[index] + centers[index + 1]) / 2;
+      const pixelRatio = chart.currentDevicePixelRatio || 1;
+      const physicalLineWidth = Math.max(1, Math.round(ctx.lineWidth * pixelRatio));
+      const halfPixel = physicalLineWidth % 2 ? 0.5 / pixelRatio : 0;
+      const y = Math.round(midpoint * pixelRatio) / pixelRatio + halfPixel;
       ctx.moveTo(chartArea.left, y);
       ctx.lineTo(chartArea.right, y);
     }
