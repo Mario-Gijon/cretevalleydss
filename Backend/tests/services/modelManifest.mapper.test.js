@@ -46,6 +46,7 @@ const buildManifest = (parameters, overrides = {}) => ({
   usesFuzzyCriteriaWeights: false,
   usesCriterionTypes: false,
   sortingHasNumericValues: false,
+  sortingHasComparableValues: false,
   supportsConsensusSimulation: false,
   requiresHomogeneousExpressionDomains: false,
   parameters,
@@ -102,6 +103,19 @@ describe("model manifest parameter mapping", () => {
     expect(buildManifestTechnicalProjection(buildManifest([], { sortingHasNumericValues: true }))).toMatchObject({
       sortingHasNumericValues: true,
     });
+  });
+
+  it("projects comparable-values metadata and preserves legacy absence", () => {
+    expect(buildManifestTechnicalProjection(buildManifest([]))).toMatchObject({
+      sortingHasComparableValues: false,
+    });
+    expect(buildManifestTechnicalProjection(buildManifest([], { sortingHasComparableValues: true }))).toMatchObject({
+      sortingHasComparableValues: true,
+    });
+    const historicalManifest = buildManifest([]);
+    delete historicalManifest.sortingHasComparableValues;
+    expect(buildManifestTechnicalProjection(historicalManifest))
+      .not.toHaveProperty("sortingHasComparableValues");
   });
 
   it("preserves every canonical numberGlobal metadata field", () => {

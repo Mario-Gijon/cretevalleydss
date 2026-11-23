@@ -16,6 +16,7 @@ const model = (overrides = {}) => ({
   supportsConsensus: false,
   supportsConsensusSimulation: false,
   sortingHasNumericValues: false,
+  sortingHasComparableValues: false,
   parameters: [],
   supportedExpressionDomains: [],
   ...overrides,
@@ -44,6 +45,7 @@ describe("Finished Issue model compatibility serialization", () => {
           resultStructureKey: "sorting",
           supportsConsensus: false,
           sortingHasNumericValues: true,
+          sortingHasComparableValues: true,
         }),
         model({
           _id: "model-sorting-unauthorized",
@@ -71,7 +73,34 @@ describe("Finished Issue model compatibility serialization", () => {
       "model-topsis-sort",
     ]);
     expect(payload.compatible.find((entry) => entry.id === "model-topsis-sort")?.capabilities)
-      .toMatchObject({ sortingHasNumericValues: true });
+      .toMatchObject({ sortingHasNumericValues: true, sortingHasComparableValues: true });
     expect(payload.base.capabilities).toMatchObject({ sortingHasNumericValues: false });
+  });
+
+  it("omits sortingHasComparableValues from historical model metadata when it was absent", () => {
+    const historicalModel = model({
+      _id: "model-historical-sort",
+      resultStructureKey: "sorting",
+      sortingHasNumericValues: true,
+    });
+    delete historicalModel.sortingHasComparableValues;
+    const payload = serializeModels({
+      issue: {
+        model: historicalModel,
+        modelParameters: {},
+        criteriaWeightingModel: null,
+        apiModelKey: "historical-sort",
+        apiEndpoint: { path: "/sorting" },
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        evaluationStructureKey: "alternativeCriteriaMatrix",
+        isConsensus: false,
+      },
+      compatibleModels: [],
+      expressionDomains: [],
+      criteria: { nodes: [{ isLeaf: true }] },
+    });
+
+    expect(payload.base.capabilities).not.toHaveProperty("sortingHasComparableValues");
   });
 });

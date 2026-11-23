@@ -58,6 +58,7 @@ export const mapIssueModelCatalogItem = (model) => {
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model.usesCriterionTypes === true,
     sortingHasNumericValues: model.sortingHasNumericValues === true,
+    sortingHasComparableValues: model.sortingHasComparableValues === true,
     supportsConsensus: model.supportsConsensus === true && consensusEnabled,
     supportsConsensusSimulation:
       model.supportsConsensusSimulation === true && consensusEnabled,

@@ -51,6 +51,7 @@ class ModelDefinition:
     uses_fuzzy_criteria_weights: bool = False
     uses_criterion_types: bool = False
     sorting_has_numeric_values: bool = False
+    sorting_has_comparable_values: bool = False
 
     supported_expression_domains: list[dict[str, Any]] = field(default_factory=list)
     parameters: list[dict[str, Any]] = field(default_factory=list)
@@ -177,6 +178,22 @@ class ModelDefinition:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires boolean "
                 "sorting_has_numeric_values."
+            )
+
+        if not isinstance(self.sorting_has_comparable_values, bool):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires boolean "
+                "sorting_has_comparable_values."
+            )
+
+        if self.sorting_has_comparable_values and (
+            self.model_kind != "issue"
+            or self.result_structure_key != "sorting"
+            or self.result_structure_version != 1
+        ):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' may declare "
+                "sorting_has_comparable_values only with sorting@1."
             )
 
         if not isinstance(self.issue_execution_authorized, bool):

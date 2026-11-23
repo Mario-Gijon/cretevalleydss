@@ -87,7 +87,7 @@ const limitingExecution = ({
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" }, capabilities: { sortingHasNumericValues: true } },
+    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" }, capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: false } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters: params,
     ...(requestSnapshot ? { requestSnapshot } : {}),
@@ -159,7 +159,7 @@ const binaryLimitingExecution = (values) => {
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" }, capabilities: { sortingHasNumericValues: true } },
+    model: { name: "AHPSort I", technical: { apiModelKey: "ahp_sort_i" }, capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: false } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters,
     requestSnapshot: { modelParameters, context: { criteria: criterionNames } },
@@ -223,7 +223,7 @@ const centralExecution = ({ policy = "optimistic", tied = true, assignedCategory
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I", capabilities: { sortingHasNumericValues: true } },
+    model: { name: "AHPSort I", capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: false } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters: modelParameters || {
       orderedCategories: categories,
@@ -397,7 +397,7 @@ const centralGroupExecution = ({ profileTiePolicy, groupTiePolicy }) => {
   return {
     resultStructureKey: "sorting",
     resultStructureVersion: 1,
-    model: { name: "AHPSort I", capabilities: { sortingHasNumericValues: true } },
+    model: { name: "AHPSort I", capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: false } },
     modelSpecificOutput: { apiModelKey: "ahp_sort_i" },
     modelParameters,
     requestSnapshot: { modelParameters, context: { criteria: criterionNames } },
@@ -489,37 +489,11 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const above = renderSelected(limitingExecution());
     expect(screen.getByRole("list", { name: "Final sorting by category" })).toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toHaveTextContent("Supplier A");
-    expect(above.data.result.metric).toMatchObject({
-      key: "globalPriority",
-      label: "Global AHP priority",
-      minimum: 0,
-      maximum: 1,
-      comparableAcrossAlternatives: false,
-      visualization: "contextual-reference",
-      referenceScope: "alternative",
-      ordering: "preserve",
-    });
-    expect(screen.getByTestId("sorting-metric-label")).toHaveTextContent("Global AHP priority");
-    expect(screen.getByTestId("sorting-metric-label")).toHaveAttribute(
-      "aria-label",
-      "Global AHP priority; values use alternative-specific reference profiles",
-    );
-    expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.7100");
-    expect(screen.getByTestId("sorting-metric-value")).toHaveAttribute("aria-label", "Global AHP priority 0.7100");
-    expect(screen.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-minimum", "0");
-    expect(screen.getByTestId("sorting-metric-scale")).toHaveAttribute("data-domain-maximum", "1");
-    expect(screen.getByTestId("sorting-metric-scale")).toHaveAccessibleName(
-      "Global AHP priority 0.7100 on a 0 to 1 scale; reference profiles: Low / Medium boundary 0.3000, Medium / High boundary 0.6000",
-    );
-    expect(screen.getAllByTestId("sorting-metric-reference").map((reference) => [
-      reference.getAttribute("data-metric-reference-label"),
-      reference.getAttribute("data-reference-value"),
-      reference.style.left,
-    ])).toEqual([
-      ["Low / Medium boundary", "0.3", "30%"],
-      ["Medium / High boundary", "0.6", "60%"],
-    ]);
-    expect(screen.getByTestId("sorting-metric-point")).toHaveStyle({ left: "71%" });
+    expect(above.data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-label")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahp-sort-i-assignment-explanation")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ahp-sort-i-mathematical-details")).not.toBeInTheDocument();
     expect(above.data.result.ahpSortI.alternativesById["alt-a"].explanation).toMatch(/AHP priority \(0\.7100\).*Medium \/ High limiting profile \(0\.6000\)/);
@@ -551,20 +525,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(overlappingData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
   });
 
-  it("consumes an individual AHPSort numeric metric with its own alternative profile references", () => {
+  it("keeps individual AHPSort I priorities and profile references out of Final Result", () => {
     const execution = limitingExecution();
-    const historicalData = buildDashboardData({
-      payload: { alternatives, criteria },
-      selectedExecution: execution,
-    });
-    expect(historicalData.result.metric).toMatchObject({
-      key: "globalPriority",
-      visualization: "contextual-reference",
-      comparableAcrossAlternatives: false,
-    });
-    expect(historicalData.result.categories.flatMap((category) => category.alternatives)
-      .find((alternative) => alternative.id === "alt-a").metricValue).toBe(0.71);
-
     execution.expertRoster = [{ id: "expert-1", name: "Expert One" }];
     execution.standardizedOutput.numericMetrics = [{
       metricId: "ahp_global_priority",
@@ -583,22 +545,16 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
 
     const { data } = renderSelected(execution);
 
-    expect(data.result.metric).toMatchObject({
-      key: "ahp_global_priority",
-      label: "Global AHP priority",
-      minimum: 0,
-      maximum: 1,
-      comparableAcrossAlternatives: false,
-      visualization: "contextual-reference",
-      referenceScope: "alternative",
-      ordering: "preserve",
-      scope: { kind: "expert", id: "expert-1", label: "Expert One" },
+    expect(data.result.metric).toBe(null);
+    expect(data.result.categories.flatMap((category) => category.alternatives)
+      .find((alternative) => alternative.id === "alt-a")).toMatchObject({
+      name: "Supplier A",
+      metricValue: null,
+      metricReferences: [],
     });
-    expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.7100");
-    expect(screen.getByTestId("sorting-metric-label")).toHaveAttribute("data-metric-scope-id", "expert-1");
-    expect(screen.getByTestId("sorting-metric-label")).toHaveAttribute("title", "Values are calculated relative to each alternative's own reference profiles. expert: Expert One.");
-    expect(screen.getAllByTestId("sorting-metric-reference").map((reference) => reference.getAttribute("data-reference-value")))
-      .toEqual(["0.3", "0.6"]);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toHaveTextContent("Supplier A");
   });
 
   it("keeps plural-vote AHPSort results categorical when only expert-scoped metrics exist", () => {
@@ -626,7 +582,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByTestId("sorting-metric-label")).not.toBeInTheDocument();
   });
 
-  it("shows the shared 0.5 line and descending AHP priority order for validated binary limiting results", () => {
+  it("keeps binary AHPSort I results categorical and preserves assignment order", () => {
     const suppliers = [
       ["supplier-a", "Supplier A", 0.9],
       ["supplier-b", "Supplier B", 0.9],
@@ -647,38 +603,16 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       selectedExecution: execution,
     });
 
-    expect(data.result.metric).toMatchObject({
-      key: "globalPriority",
-      label: "Global AHP priority",
-      minimum: 0,
-      maximum: 1,
-      precision: 4,
-      comparableAcrossAlternatives: true,
-      visualization: "bounded-position",
-      referenceScope: "shared-decision-threshold",
-      threshold: 0.5,
-      ordering: "descending-within-category",
-    });
+    expect(data.result.metric).toBe(null);
     render(<ThemeProvider theme={createTheme()}><DashboardView data={data} /></ThemeProvider>);
-
-    expect(screen.getByTestId("sorting-metric-legend-priority")).toHaveTextContent("Global AHP priority");
-    expect(screen.getByTestId("sorting-metric-legend-threshold")).toHaveTextContent("Decision threshold · 0.5");
-    const thresholds = screen.getAllByTestId("sorting-metric-threshold");
-    expect(thresholds).toHaveLength(12);
-    expect(thresholds.map((element) => element.style.left)).toEqual(Array(12).fill("50%"));
-    expect(screen.queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
-
     const accepted = screen.getByRole("listitem", { name: "Accepted: 7 alternatives" });
     expect([...accepted.querySelector("ul").children].map((row) => row.querySelector("p")?.textContent)).toEqual([
-      "Supplier A", "Supplier B", "Supplier C", "Supplier D", "Supplier E", "Supplier G", "Supplier F",
-    ]);
-    expect(within(accepted).getAllByTestId("sorting-metric-value").map((element) => element.textContent)).toEqual([
-      "0.9000", "0.9000", "0.8937", "0.8112", "0.7927", "0.7487", "0.6131",
+      "Supplier A", "Supplier B", "Supplier C", "Supplier D", "Supplier E", "Supplier F", "Supplier G",
     ]);
     const rejected = screen.getByRole("listitem", { name: "Rejected: 5 alternatives" });
-    expect(within(rejected).getAllByTestId("sorting-metric-value").map((element) => element.textContent)).toEqual([
-      "0.3690", "0.3302", "0.2419", "0.2078", "0.1000",
-    ]);
+    expect([...rejected.querySelector("ul").children].map((row) => row.querySelector("p")?.textContent))
+      .toEqual(["Supplier H", "Supplier I", "Supplier J", "Supplier K", "Supplier L"]);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
   });
 
   it("keeps conservative historical rendering when binary evidence is incomplete or fails complementarity", () => {
@@ -692,15 +626,9 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       payload: { alternatives: suppliers.map(({ id, name }) => ({ id, name })), criteria },
       selectedExecution: incomplete,
     });
-    expect(incompleteData.result.metric).toMatchObject({
-      comparableAcrossAlternatives: false,
-      visualization: "contextual-reference",
-      referenceScope: "alternative",
-      ordering: "preserve",
-    });
+    expect(incompleteData.result.metric).toBe(null);
     render(<ThemeProvider theme={createTheme()}><DashboardView data={incompleteData} /></ThemeProvider>);
-    expect(screen.queryByTestId("sorting-metric-threshold")).not.toBeInTheDocument();
-    expect(screen.getAllByTestId("sorting-metric-reference")).toHaveLength(1);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
     expect([...screen.getByRole("listitem", { name: "Accepted: 2 alternatives" }).querySelector("ul").children]
       .map((row) => row.querySelector("p")?.textContent)).toEqual(["Configured first", "Configured second"]);
 
@@ -712,15 +640,9 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       payload: { alternatives: suppliers.map(({ id, name }) => ({ id, name })), criteria },
       selectedExecution: nonComplementary,
     });
-    expect(nonComparableData.result.metric).toMatchObject({
-      comparableAcrossAlternatives: false,
-      visualization: "contextual-reference",
-      referenceScope: "alternative",
-      ordering: "preserve",
-    });
+    expect(nonComparableData.result.metric).toBe(null);
     render(<ThemeProvider theme={createTheme()}><DashboardView data={nonComparableData} /></ThemeProvider>);
-    expect(screen.queryByTestId("sorting-metric-threshold")).not.toBeInTheDocument();
-    expect(screen.getAllByTestId("sorting-metric-reference")).toHaveLength(2);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
     expect([...screen.getByRole("listitem", { name: "Accepted: 2 alternatives" }).querySelector("ul").children]
       .map((row) => row.querySelector("p")?.textContent)).toEqual(["Configured first", "Configured second"]);
 
@@ -739,14 +661,9 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       payload: { alternatives: suppliers.map(({ id, name }) => ({ id, name })), criteria },
       selectedExecution: differentWeights,
     });
-    expect(differentWeightsData.result.metric).toMatchObject({
-      comparableAcrossAlternatives: false,
-      visualization: "contextual-reference",
-      referenceScope: "alternative",
-      ordering: "preserve",
-    });
+    expect(differentWeightsData.result.metric).toBe(null);
     render(<ThemeProvider theme={createTheme()}><DashboardView data={differentWeightsData} /></ThemeProvider>);
-    expect(screen.queryByTestId("sorting-metric-threshold")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
     expect([...screen.getByRole("listitem", { name: "Accepted: 2 alternatives" }).querySelector("ul").children]
       .map((row) => row.querySelector("p")?.textContent)).toEqual(["Configured first", "Configured second"]);
   });
@@ -790,7 +707,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       selectedExecution: centralExecution({ tied: false }),
     });
     expect(closest.result.ahpSortI.alternativesById["alt-a"].explanation).toContain("closest to the High center (0.3500; distance 0.2000)");
-    expect(closest.result.metric?.label).toBe("Global AHP priority");
+    expect(closest.result.metric).toBe(null);
   });
 
   it("flags central-profile evidence whose priorities or stored distances contradict the selected run", () => {
@@ -920,13 +837,13 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     const highCategory = screen.getByRole("listitem", { name: "High: 2 alternatives" });
     const alternativeRows = [...highCategory.querySelector("ul").children];
     expect(alternativeRows.map((row) => row.querySelector("p")?.textContent)).toEqual(["Supplier A", "Supplier Z"]);
-    expect(within(highCategory).getAllByTestId("sorting-metric-value").map((value) => value.textContent)).toEqual(["0.7100", "0.9900"]);
-    expect(within(highCategory).getAllByTestId("sorting-metric-scale")).toHaveLength(2);
-    expect(within(highCategory).getAllByTestId("sorting-metric-reference")).toHaveLength(4);
+    expect(within(highCategory).queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+    expect(within(highCategory).queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
+    expect(within(highCategory).queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
     expect(screen.queryByText(/rank|probability|confidence/i)).not.toBeInTheDocument();
   });
 
-  it("shows central-profile priorities against each alternative's own profiles and preserves configured order", () => {
+  it("keeps central-profile classifications categorical and preserves configured order", () => {
     const execution = centralExecution({ tied: false });
     execution.requestSnapshot = { modelParameters: execution.modelParameters, context: { criteria: criterionNames } };
     const secondDiagnostics = structuredClone(execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"]);
@@ -963,46 +880,23 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-z"] = secondDiagnostics;
     const { data } = renderSelected(execution, { payload: { alternatives: [...alternatives, { id: "alt-z", name: "Supplier Z" }] } });
 
-    expect(data.result.metric).toMatchObject({
-      label: "Global AHP priority",
-      comparableAcrossAlternatives: false,
-      visualization: "contextual-reference",
-      referenceScope: "alternative",
-      ordering: "preserve",
-    });
+    expect(data.result.metric).toBe(null);
     const high = screen.getByRole("listitem", { name: "High: 1 alternative" });
     const low = screen.getByRole("listitem", { name: "Low: 1 alternative" });
-    expect(within(high).getByText("0.5500")).toBeInTheDocument();
-    expect(within(low).getByText("0.0500")).toBeInTheDocument();
-    expect(screen.getAllByTestId("sorting-metric-scale")).toHaveLength(2);
-    expect(within(high).getAllByTestId("sorting-metric-reference").map((reference) => [
-      reference.getAttribute("data-metric-reference-label"), reference.getAttribute("data-reference-value"), reference.style.left,
-    ])).toEqual([
-      ["Low center", "0.1", "10%"],
-      ["High center", "0.35", "35%"],
-    ]);
-    expect(within(low).getAllByTestId("sorting-metric-reference").map((reference) => [
-      reference.getAttribute("data-metric-reference-label"), reference.getAttribute("data-reference-value"), reference.style.left,
-    ])).toEqual([
-      ["Low center", "0.4", "40%"],
-      ["High center", "0.55", "55%"],
-    ]);
-    expect(screen.queryByText(/Global AHP priority.*relative position/i)).not.toBeInTheDocument();
+    expect(within(high).getByText("Supplier A")).toBeInTheDocument();
+    expect(within(low).getByText("Supplier Z")).toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
   });
 
-  it("keeps the saved AHP priority visible without drawing a scale when profile references are unavailable", () => {
+  it("keeps AHPSort I categorically presented when profile references are unavailable", () => {
     const execution = limitingExecution();
     delete execution.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"].profileGlobalPrioritiesById;
 
     const { data } = renderSelected(execution);
 
-    expect(data.result.metric).toMatchObject({
-      key: "globalPriority",
-      visualization: "value-only",
-      comparableAcrossAlternatives: false,
-      ordering: "preserve",
-    });
-    expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.7100");
+    expect(data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
     expect(screen.queryByTestId("sorting-metric-scale")).not.toBeInTheDocument();
   });
 
@@ -1054,8 +948,8 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       alternatives,
       criteria,
       models: {
-        base: { effectiveParameters: { ahpSortProfiles: { mode: "central", profiles: [] } }, capabilities: { sortingHasNumericValues: true } },
-        compatible: [{ id: "model-ahp", capabilities: { sortingHasNumericValues: true } }],
+        base: { effectiveParameters: { ahpSortProfiles: { mode: "central", profiles: [] } }, capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: false } },
+        compatible: [{ id: "model-ahp", capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: false } }],
       },
       scenarios: [scenario],
     };
@@ -1064,7 +958,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(selected.model.capabilities.sortingHasNumericValues).toBe(true);
     expect(selected.modelParameters).toEqual(saved.modelParameters);
     const data = buildDashboardData({ payload, selectedExecution: selected });
-    expect(data.result.metric?.label).toBe("Global AHP priority");
+    expect(data.result.metric).toBe(null);
     expect(data.result.ahpSortI.alternativesById["alt-a"].status).toBe("available");
     expect(data.result.ahpSortI.alternativesById["alt-a"].category.label).toBe("High");
   });

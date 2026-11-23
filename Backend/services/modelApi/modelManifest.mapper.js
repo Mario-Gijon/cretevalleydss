@@ -353,6 +353,12 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof manifestModel?.usesCriterionTypes !== "boolean") {
     missingFields.push("usesCriterionTypes");
   }
+  if (
+    manifestModel?.sortingHasComparableValues !== undefined &&
+    typeof manifestModel.sortingHasComparableValues !== "boolean"
+  ) {
+    missingFields.push("sortingHasComparableValues (must be boolean when provided)");
+  }
   if (typeof manifestModel?.supportsConsensusSimulation !== "boolean") {
     missingFields.push("supportsConsensusSimulation");
   }
@@ -426,6 +432,10 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     request: normalizeDynamicObject(manifestModel?.request),
     response: normalizeDynamicObject(manifestModel?.response),
   };
+
+  if (typeof manifestModel?.sortingHasComparableValues === "boolean") {
+    projection.sortingHasComparableValues = manifestModel.sortingHasComparableValues;
+  }
 
   if (modelKind === "issue") {
     projection.issueExecutionAuthorized =

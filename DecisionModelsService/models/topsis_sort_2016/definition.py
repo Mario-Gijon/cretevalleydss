@@ -77,6 +77,7 @@ MODEL_DEFINITION = ModelDefinition(
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=True,
     sorting_has_numeric_values=True,
+    sorting_has_comparable_values=True,
     supported_expression_domains=[
         {"typeKey": "numericContinuous"},
         {"typeKey": "numericDiscrete"},

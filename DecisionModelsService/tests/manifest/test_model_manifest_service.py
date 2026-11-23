@@ -166,6 +166,7 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
         supports_consensus=True,
         supports_consensus_simulation=True,
         sorting_has_numeric_values=True,
+        sorting_has_comparable_values=False,
         uses_criteria_weights=True,
         uses_expert_weights=True,
         supported_expression_domains=[
@@ -204,6 +205,7 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
     assert manifest_entry["supportsConsensus"] is True
     assert manifest_entry["supportsConsensusSimulation"] is True
     assert manifest_entry["sortingHasNumericValues"] is True
+    assert manifest_entry["sortingHasComparableValues"] is False
     assert manifest_entry["usesCriteriaWeights"] is True
     assert manifest_entry["usesExpertWeights"] is True
     assert manifest_entry["supportedExpressionDomains"] == [
@@ -255,6 +257,8 @@ def test_ready_issue_model_definitions_explicitly_authorize_models_individually(
     assert all(model.issue_execution_authorized is True for model in ready_models)
     assert sorting_model.implementation_status == "ready"
     assert sorting_model.issue_execution_authorized is True
+    assert sorting_model.sorting_has_numeric_values is True
+    assert sorting_model.sorting_has_comparable_values is True
     sorting_models = [
         model
         for model in issue_models
@@ -265,6 +269,8 @@ def test_ready_issue_model_definitions_explicitly_authorize_models_individually(
     assert all(model.issue_execution_authorized is True for model in sorting_models)
     assert ahp_sort_model.implementation_status == "scaffold"
     assert ahp_sort_model.issue_execution_authorized is False
+    assert ahp_sort_model.sorting_has_numeric_values is True
+    assert ahp_sort_model.sorting_has_comparable_values is False
     ahp_sort_manifest = _build_manifest_entry(ahp_sort_model)
     assert ahp_sort_manifest["publicUsable"] is False
     assert ahp_sort_manifest["issueExecutionAuthorized"] is False

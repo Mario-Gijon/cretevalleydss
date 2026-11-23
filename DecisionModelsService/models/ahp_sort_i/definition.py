@@ -106,6 +106,7 @@ MODEL_DEFINITION = ModelDefinition(
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=False,
     sorting_has_numeric_values=True,
+    sorting_has_comparable_values=False,
     # The shared Issue creation flow requires a global domain snapshot for every
     # leaf criterion. New Issues use the fixed, immutable 17-value Saaty scale.
     supported_expression_domains=[

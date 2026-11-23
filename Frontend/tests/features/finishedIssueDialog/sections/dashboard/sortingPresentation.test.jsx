@@ -53,7 +53,7 @@ const topsisExecution = ({ assignments, diagnostics, categories, numericMetrics 
     model: {
       name: "TOPSIS-SORT",
       technical: { apiModelKey: "topsis_sort_2016" },
-      capabilities: { sortingHasNumericValues: true },
+      capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: true },
     },
     modelParameters: {
       boundaryProfiles: { profiles: [
@@ -167,7 +167,7 @@ describe("sorting@1 Finished Issue presentation", () => {
       model: {
         name: "Synthetic classifier",
         technical: { apiModelKey: "future_sorting_model" },
-        capabilities: { sortingHasNumericValues: true },
+        capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: true },
       },
       modelSpecificOutput: { apiModelKey: "future_sorting_model" },
       standardizedOutput: {
@@ -213,6 +213,48 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByText(/ranking|winner/i)).not.toBeInTheDocument();
   });
 
+  it("keeps sorting values categorical when the plugin declares them non-comparable", () => {
+    const execution = sortingExecution({
+      model: {
+        name: "Alternative-specific sorting model",
+        capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: false },
+      },
+    });
+    execution.standardizedOutput.numericMetrics = [{
+      metricId: "local_priority",
+      name: "Local priority",
+      domain: { min: 0, max: 1 },
+      comparability: "acrossAlternatives",
+      valuesByAlternativeId: { "mongo-a": 0.8, "mongo-b": 0.4, "mongo-c": 0.2 },
+    }];
+    const data = renderDashboard(execution);
+
+    expect(data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Final sorting by category" })).toBeInTheDocument();
+
+    const scopedCollective = sortingExecution({
+      model: {
+        name: "Comparable sorting model",
+        capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: true },
+      },
+    });
+    scopedCollective.expertRoster = [{ id: "expert-a", name: "Expert A" }];
+    scopedCollective.standardizedOutput.diagnostics = {
+      aggregationMethod: "unweighted_plurality_vote",
+    };
+    scopedCollective.standardizedOutput.numericMetrics = [{
+      metricId: "expert_score",
+      name: "Expert score",
+      domain: { min: 0, max: 1 },
+      comparability: "acrossAlternatives",
+      scope: { kind: "expert", id: "expert-a" },
+      valuesByAlternativeId: { "mongo-a": 0.8, "mongo-b": 0.4, "mongo-c": 0.2 },
+    }];
+    const collectiveData = buildDashboardData({ payload: { alternatives }, selectedExecution: scopedCollective });
+    expect(collectiveData.result.metric).toBe(null);
+  });
+
   it("uses generic TOPSIS relative-closeness metrics and retains validated profile boundaries", () => {
     const diagnostics = topsisDiagnostics();
     const execution = topsisExecution({
@@ -240,6 +282,29 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(data.result.categories.find(({ id }) => id === "cat-medium").metricRange)
       .toEqual({ lower: 0.5, upper: 0.7 });
     expect(screen.getAllByTestId("sorting-metric-reference")).toHaveLength(4);
+  });
+
+  it("preserves a historical comparable metric when an older snapshot lacks the comparable capability", () => {
+    const diagnostics = topsisDiagnostics();
+    const execution = topsisExecution({
+      diagnostics,
+      numericMetrics: [{
+        metricId: "relative_closeness",
+        name: "Relative closeness",
+        domain: { min: 0, max: 1 },
+        comparability: "acrossAlternatives",
+        valuesByAlternativeId: diagnostics.closeness_by_alternative_id,
+      }],
+    });
+    delete execution.model.capabilities.sortingHasComparableValues;
+
+    const data = renderTopsisDashboard(execution);
+
+    expect(data.result.metric).toMatchObject({
+      key: "relative_closeness",
+      comparableAcrossAlternatives: true,
+    });
+    expect(screen.getAllByTestId("sorting-metric-value")).toHaveLength(3);
   });
 
   it("does not fall back to legacy diagnostics when declared numeric metrics are invalid or ambiguous", () => {
@@ -968,7 +1033,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     const modelParameters = topsisExecution().modelParameters;
     const basePayload = {
       alternatives: topsisAlternatives,
-      models: { base: { name: "TOPSIS-SORT", technical: { apiModelKey: "topsis_sort_2016" }, capabilities: { sortingHasNumericValues: true }, effectiveParameters: modelParameters } },
+      models: { base: { name: "TOPSIS-SORT", technical: { apiModelKey: "topsis_sort_2016" }, capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: true }, effectiveParameters: modelParameters } },
       phaseResults: [{
         stage: "alternativeEvaluation", phase: 0, standardizedOutput: output,
         resultStructureKey: "sorting", resultStructureVersion: 1,
@@ -995,7 +1060,7 @@ describe("sorting@1 Finished Issue presentation", () => {
 
     const scenarioPayload = {
       alternatives: topsisAlternatives,
-      models: { base: { name: "Other model" }, compatible: [{ id: "model-1", name: "TOPSIS-SORT", capabilities: { sortingHasNumericValues: true } }] },
+      models: { base: { name: "Other model" }, compatible: [{ id: "model-1", name: "TOPSIS-SORT", capabilities: { sortingHasNumericValues: true, sortingHasComparableValues: true } }] },
       scenarios: [{
         id: "scenario-1", name: "TOPSIS-SORT scenario",
         targetModel: { id: "model-1", name: "TOPSIS-SORT" },
@@ -1010,6 +1075,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     const scenarioExecution = selectFinishedIssueExecution(scenarioPayload, "scenario-1");
     expect(scenarioExecution.model.technical?.apiModelKey).toBeUndefined();
     expect(scenarioExecution.model.capabilities.sortingHasNumericValues).toBe(true);
+    expect(scenarioExecution.model.capabilities.sortingHasComparableValues).toBe(true);
     expect(scenarioExecution.modelSpecificOutput.apiModelKey).toBe("topsis_sort_2016");
     const scenarioDashboard = buildDashboardData({ payload: scenarioPayload, selectedExecution: scenarioExecution });
     expect(scenarioDashboard.findings).toHaveLength(3);

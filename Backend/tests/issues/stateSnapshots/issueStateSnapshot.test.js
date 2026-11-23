@@ -4,6 +4,7 @@ import { Alternative } from "../../../models/Alternatives.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
+import { IssueModel } from "../../../models/IssueModels.js";
 import { Participation } from "../../../models/Participations.js";
 import { IssueStateSnapshot } from "../../../models/IssueStateSnapshots.js";
 import { User } from "../../../models/Users.js";
@@ -60,11 +61,30 @@ describe("IssueStateSnapshot", () => {
       resultStructureKey: "ranking",
       resultStructureVersion: 1,
     });
+    expect(creation.state.model).not.toHaveProperty("sortingHasComparableValues");
     await expect(write(issue, "creation")).rejects.toMatchObject({ code: 11000 });
     await write(issue, "consensusPhaseStart", 0);
     await write(issue, "consensusPhaseStart", 1);
     await expect(write(issue, "consensusPhaseStart", 0)).rejects.toMatchObject({ code: 11000 });
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(3);
+  });
+
+  it("copies the comparable sorting capability into new snapshots while keeping older omissions absent", async () => {
+    const issue = await createIssue();
+    await IssueModel.updateOne(
+      { _id: issue.model },
+      { $set: { sortingHasComparableValues: false } },
+    );
+
+    const currentSnapshot = await buildIssueStateSnapshot({ issue, snapshotType: "creation" });
+    expect(currentSnapshot.state.model.sortingHasComparableValues).toBe(false);
+
+    await IssueModel.updateOne(
+      { _id: issue.model },
+      { $unset: { sortingHasComparableValues: 1 } },
+    );
+    const historicalShape = await buildIssueStateSnapshot({ issue, snapshotType: "creation" });
+    expect(historicalShape.state.model).not.toHaveProperty("sortingHasComparableValues");
   });
 
   it("preserves AHPSort I profile parameters and evaluation payloads in Issue snapshots", async () => {

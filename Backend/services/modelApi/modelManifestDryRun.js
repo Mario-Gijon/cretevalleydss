@@ -300,6 +300,10 @@ const buildModelRow = ({
       manifestProjection?.sortingHasNumericValues ??
       mongoModel?.sortingHasNumericValues ??
       null,
+    sortingHasComparableValues:
+      manifestProjection?.sortingHasComparableValues ??
+      mongoModel?.sortingHasComparableValues ??
+      null,
     supportedExpressionDomains: manifestProjection
       ? normalizeSupportedExpressionDomains(
         manifestProjection.supportedExpressionDomains
