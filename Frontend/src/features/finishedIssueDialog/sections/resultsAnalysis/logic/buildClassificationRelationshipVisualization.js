@@ -57,7 +57,7 @@ export const buildClassificationRelationshipVisualization = (execution) => {
   };
 };
 
-/** Build an optional scatter view from a validated categorical-pattern projection. */
+/** Build a scatter view only from a validated, stored categorical-pattern projection. */
 export const buildClassificationPatternProjectionVisualization = (execution) => {
   const projection = execution?.genericAnalysis?.facts?.expertCollectiveClassificationRelationship?.auxiliaryProjection;
   const points = projection?.points;
@@ -100,8 +100,8 @@ export const buildClassificationPatternProjectionVisualization = (execution) => 
   return {
     key: "expert-collective-categorical-pattern-projection",
     type: "scatter",
-    title: "Auxiliary categorical agreement-pattern projection",
-    description: "This auxiliary 2D view uses saved category assignments only. Position reflects normalized category mismatches, not AHPSort distance or AHP priorities; it is shown only when the 2D fit is sufficiently solid.",
+    title: "Categorical agreement-pattern projection",
+    description: "Position is derived from saved category-assignment patterns only; it does not represent AHP distances or numeric priorities.",
     xAxis: { label: "Projection dimension 1", hideTickLabels: true },
     yAxis: { label: "Projection dimension 2", hideTickLabels: true },
     presentation: {

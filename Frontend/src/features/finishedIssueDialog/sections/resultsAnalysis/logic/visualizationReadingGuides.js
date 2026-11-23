@@ -22,8 +22,8 @@ export const MODEL_VISUALIZATION_READING_GUIDES = Object.freeze({
     "Each bar shows the percentage of alternatives assigned the same category by one expert and the collective result. The tooltip gives the exact count and may list the alternatives with different categories. This categorical match rate is not a numeric distance or an MCC consensus measure.",
   ),
   "expert-collective-categorical-pattern-projection": guide(
-    "Auxiliary categorical agreement-pattern projection",
-    "This approximate 2D view is derived only from saved category assignments. Points shown closer generally have more matching categories across alternatives; it is not an AHPSort distance or a view of AHP priorities.",
+    "Categorical agreement-pattern projection",
+    "This 2D position is derived only from saved category-assignment patterns. It does not represent AHP distances or numeric priorities.",
   ),
   "ahp-criterion-importance": guide(
     "Criterion importance",

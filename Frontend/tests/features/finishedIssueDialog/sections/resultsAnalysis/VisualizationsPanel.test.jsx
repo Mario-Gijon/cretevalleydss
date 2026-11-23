@@ -15,7 +15,7 @@ vi.mock("@mui/x-charts/BarChart", () => ({
   BarChart: ({ height, xAxis, series }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} data-values={series[0].data.join("|")} />,
 }));
 vi.mock("../../../../../src/components/analyticalGraphs", () => ({
-  AnalyticalGraph: ({ visualization, titleVariant, controls }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-type={visualization?.type} data-title-variant={titleVariant} data-y-axis-label={visualization?.yAxis?.label} data-series-keys={JSON.stringify(visualization?.data?.series?.map((series) => series.key) || [])} data-series-values={JSON.stringify(visualization?.data?.series?.map((series) => series.values) || [])}>{controls ? <><h3>{visualization?.title || visualization?.key || "Visualization"}</h3><p data-testid="mock-visualization-description">{visualization?.description || "Visualization description"}</p><div data-testid="analytical-graph-controls">{controls}</div><div data-testid="mock-visualization-legend">Legend</div><div data-testid="mock-visualization-chart">Chart</div></> : null}{visualization?.key}</div>,
+  AnalyticalGraph: ({ visualization, titleVariant, controls, chartHeight }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-type={visualization?.type} data-title-variant={titleVariant} data-chart-height={JSON.stringify(chartHeight)} data-y-axis-label={visualization?.yAxis?.label} data-series-keys={JSON.stringify(visualization?.data?.series?.map((series) => series.key) || [])} data-series-point-styles={JSON.stringify(visualization?.data?.series?.map((series) => series.pointStyle || "circle") || [])} data-series-values={JSON.stringify(visualization?.data?.series?.map((series) => series.values) || [])}>{controls ? <><h3>{visualization?.title || visualization?.key || "Visualization"}</h3><p data-testid="mock-visualization-description">{visualization?.description || "Visualization description"}</p><div data-testid="analytical-graph-controls">{controls}</div><div data-testid="mock-visualization-legend">Legend</div><div data-testid="mock-visualization-chart">Chart</div></> : null}{visualization?.key}</div>,
   HeatmapAnalyticalGraph: ({ visualization }) => <div data-testid="alternative-relationships-heatmap" data-phase={visualization?.phase} data-values={JSON.stringify(visualization?.data?.values)} data-labels={JSON.stringify(visualization?.data?.rows?.map((row) => row.label))}>{visualization?.data?.rows?.map((row) => row.label).join("|")}</div>,
 }));
 
@@ -239,27 +239,24 @@ describe("VisualizationsPanel", () => {
     /></ThemeProvider>);
 
     const card = screen.getByTestId("expert-collective-classification-relationship");
-    expect(within(card).getByRole("heading", { name: "Expert–collective classification relationship" })).toBeInTheDocument();
-    expect(within(card).getByText(/not numeric distances between evaluations/)).toBeInTheDocument();
+    expect(within(card).getByRole("heading", { name: "Expert–collective relationship" })).toBeInTheDocument();
+    expect(within(card).getByText(/do not represent AHP distances or numeric priorities/)).toBeInTheDocument();
     expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-key", "expert-collective-classification-match");
     expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-series-keys", '["exact-category-match"]');
-    expect(within(card).getByTestId("classification-relationship-charts")).toHaveAttribute("data-has-auxiliary-projection", "false");
+    expect(within(card).getByTestId("classification-relationship-visualization")).toHaveAttribute("data-representation", "exact-match-fallback");
     expect(screen.queryByRole("button", { name: "MAP" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "DISTANCES" })).not.toBeInTheDocument();
   });
 
-  it("shows exact-match bars with an optional explicitly auxiliary categorical-pattern projection", () => {
-    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+  it("uses only the validated full-width categorical projection when available", () => {
+    const { unmount } = render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{
         key: "ahp-sort-base",
         displayLabel: "Base execution",
         resultStructureKey: "sorting",
         genericAnalysis: { facts: { expertCollectiveClassificationRelationship: {
           metric: "exact_category_match_rate",
-          experts: [
-            { expertId: "expert-ada", name: "Ada", exactCategoryMatches: 2, totalAlternatives: 3, matchRate: 2 / 3, disagreements: [] },
-            { expertId: "expert-grace", name: "Grace", exactCategoryMatches: 1, totalAlternatives: 3, matchRate: 1 / 3, disagreements: [] },
-          ],
+          experts: [],
           auxiliaryProjection: {
             type: "auxiliary_categorical_agreement_projection",
             dissimilarity: "normalized_hamming_category_mismatch",
@@ -278,13 +275,49 @@ describe("VisualizationsPanel", () => {
     /></ThemeProvider>);
 
     const card = screen.getByTestId("expert-collective-classification-relationship");
-    expect(within(card).getByText(/optional 2D view is an approximate projection/)).toBeInTheDocument();
+    expect(within(card).getByRole("heading", { name: "Expert–collective relationship" })).toBeInTheDocument();
+    expect(within(card).getByText(/positions summarize saved category-assignment patterns/)).toBeInTheDocument();
     expect(within(card).getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
-      "expert-collective-classification-match",
       "expert-collective-categorical-pattern-projection",
     ]);
-    expect(within(card).getByTestId("classification-relationship-charts")).toHaveAttribute("data-has-auxiliary-projection", "true");
-    expect(within(card).getByText(/not an AHPSort distance or AHP priorities/)).toBeInTheDocument();
+    expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-chart-height", JSON.stringify({ xs: 320, sm: 360, md: 420, xl: 430 }));
+    expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-series-point-styles", '["circle","rectRot"]');
+    expect(within(card).getByTestId("classification-relationship-visualization")).toHaveAttribute("data-representation", "categorical-projection");
+    expect(within(card).getByText(/not represent AHP distances or numeric priorities/)).toBeInTheDocument();
+
+    unmount();
+    const execution = (key, displayLabel, xOffset) => ({
+      key,
+      displayLabel,
+      resultStructureKey: "sorting",
+      genericAnalysis: { facts: { expertCollectiveClassificationRelationship: {
+        auxiliaryProjection: {
+          type: "auxiliary_categorical_agreement_projection",
+          dissimilarity: "normalized_hamming_category_mismatch",
+          stress: 0.04,
+          maximumStress: 0.15,
+          points: [
+            { kind: "expert", name: "Ada", x: xOffset - 0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
+            { kind: "expert", name: "Grace", x: xOffset, y: 0.5, exactCategoryMatches: 1, totalAlternatives: 3 },
+            { kind: "expert", name: "Katherine", x: xOffset + 0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
+            { kind: "collective", name: "Collective result", x: xOffset, y: -0.5, exactCategoryMatches: 3, totalAlternatives: 3 },
+          ],
+        },
+      } } },
+    });
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[execution("base", "Base", 0), execution("scenario", "Scenario", 2)]}
+      visualizations={{ mode: "comparison", canonicalProjections: [], consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    const comparisonCard = screen.getByTestId("expert-collective-classification-relationship");
+    expect(within(comparisonCard).getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual([
+      "expert-collective-categorical-pattern-projection",
+      "expert-collective-categorical-pattern-projection",
+    ]);
+    expect(within(comparisonCard).getAllByTestId("classification-relationship-visualization")).toHaveLength(2);
+    expect(within(comparisonCard).getByText("Base")).toBeInTheDocument();
+    expect(within(comparisonCard).getByText("Scenario")).toBeInTheDocument();
   });
 
   it("renders model-owned TOPSIS descriptors through the shared alternative-evaluation pipeline", () => {

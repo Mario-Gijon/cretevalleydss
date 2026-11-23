@@ -636,26 +636,24 @@ const ExpertCollectiveRelationship = ({ visualizations, unavailableReason }) => 
   const classificationEntries = (visualizations.executions || []).flatMap((execution) => {
     const descriptor = buildClassificationRelationshipVisualization(execution);
     const projection = buildClassificationPatternProjectionVisualization(execution);
-    return descriptor ? [{ execution, descriptor, projection }] : [];
+    return descriptor || projection ? [{ execution, descriptor, projection }] : [];
   });
   // A categorical AHPSort relationship is a valid replacement only when this
   // selection has no numerical projection. Keep TOPSIS MAP/DISTANCES intact,
   // including mixed comparisons where numeric evidence is available.
   if (classificationEntries.length && !mapAvailable && !distancesAvailable) {
-    const hasAuxiliaryProjection = classificationEntries.some((entry) => entry.projection !== null);
     return <Box sx={cardSx} data-testid="expert-collective-classification-relationship">
       <Header
-        title="Expert–collective classification relationship"
-        subtitle={hasAuxiliaryProjection
-          ? "Bars summarize exact category matches. The optional 2D view is an approximate projection of categorical agreement patterns, not an AHPSort distance or AHP priorities."
-          : "Each bar shows the share of exact category matches to the collective assignment. Category matches are not numeric distances between evaluations."}
+        title="Expert–collective relationship"
+        subtitle="When available, positions summarize saved category-assignment patterns; they do not represent AHP distances or numeric priorities. Exact-match bars are used only when no valid projection exists."
       />
       <Stack spacing={1.2}>
         {classificationEntries.map(({ execution, descriptor, projection }) => <Box key={execution.key} sx={{ minWidth: 0 }}>
           {classificationEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 0.6, color: execution.color, fontWeight: 900 }}>{execution.displayLabel}</Typography> : null}
-          <Box data-testid="classification-relationship-charts" data-has-auxiliary-projection={projection ? "true" : "false"} sx={{ display: "grid", gridTemplateColumns: projection ? { xs: "minmax(0, 1fr)", lg: "minmax(0, 1.1fr) minmax(0, 1fr)" } : "minmax(0, 1fr)", columnGap: 1.6, rowGap: 1.4, minWidth: 0 }}>
-            <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />
-            {projection ? <AnalyticalGraph visualization={projection} /> : null}
+          <Box data-testid="classification-relationship-visualization" data-representation={projection ? "categorical-projection" : "exact-match-fallback"} sx={{ width: "100%", minWidth: 0 }}>
+            {projection
+              ? <Box sx={{ width: "100%", maxWidth: 1100, mx: "auto", minWidth: 0 }}><AnalyticalGraph visualization={projection} chartHeight={expertChartFrameSx.height} /></Box>
+              : <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />}
           </Box>
         </Box>)}
       </Stack>
@@ -961,7 +959,8 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
     sortingProjectionUnavailableReason,
   );
   const classificationRelationshipAvailable = executions.some(
-    (execution) => buildClassificationRelationshipVisualization(execution) !== null,
+    (execution) => buildClassificationPatternProjectionVisualization(execution) !== null ||
+      buildClassificationRelationshipVisualization(execution) !== null,
   );
   const expertCollectiveAvailable = hasRenderableExpertCollectiveMap(visualizations) ||
     renderableDistanceProjections(visualizations.canonicalProjections).length > 0 ||

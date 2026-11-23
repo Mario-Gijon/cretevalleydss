@@ -94,19 +94,21 @@ describe("buildClassificationPatternProjectionVisualization", () => {
     },
   });
 
-  it("maps only a validated low-stress categorical pattern projection into an auxiliary scatter descriptor", () => {
+  it("maps only a validated low-stress stored categorical pattern projection into a scatter descriptor", () => {
     const descriptor = buildClassificationPatternProjectionVisualization(projectionExecution());
 
     expect(descriptor).toMatchObject({
       key: "expert-collective-categorical-pattern-projection",
       type: "scatter",
-      title: "Auxiliary categorical agreement-pattern projection",
+      title: "Categorical agreement-pattern projection",
       xAxis: { hideTickLabels: true },
       yAxis: { hideTickLabels: true },
       presentation: { tooltip: { variant: "categorical-pattern-projection" } },
     });
-    expect(descriptor.description).toContain("not AHPSort distance or AHP priorities");
+    expect(descriptor.description).toContain("not represent AHP distances or numeric priorities");
     expect(descriptor.data.series.map((series) => series.key)).toEqual(["experts", "collective"]);
+    expect(descriptor.data.series[0].pointStyle).toBeUndefined();
+    expect(descriptor.data.series[1].pointStyle).toBe("rectRot");
     expect(descriptor.data.series[0].points[0]).toEqual({
       label: "A long expert display name which should stay available in the graph",
       x: -0.5,
