@@ -185,6 +185,7 @@ export const buildAnalyticalScatterViewModel = ({ data, phase }) => {
   });
 
   return {
+    projectionSemantics: current.projectionSemantics || "numeric",
     expertPoints,
     expertMarkerGroups: markerGroups,
     collectivePoint,

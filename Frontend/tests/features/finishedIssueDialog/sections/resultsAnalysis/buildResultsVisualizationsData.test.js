@@ -80,6 +80,47 @@ const topsisSortingExecution = ({
   };
 };
 
+const categoricalPatternExecution = ({ key = "base", offset = 0, names = ["Ada", "Grace", "Katherine"] } = {}) => ({
+  key,
+  name: key,
+  displayLabel: key,
+  modelName: "Categorical sorting model",
+  resultStructureKey: "sorting",
+  resultStructureVersion: 1,
+  color: colors[0],
+  standardizedOutput: { plotsGraphic: {} },
+  genericAnalysis: {
+    facts: {
+      expertCollectiveRelationship: {
+        projection: { reason: "missing_analytical_projection" },
+        unavailableReason: "missing_analytical_projection",
+      },
+      expertCollectiveClassificationRelationship: {
+        metric: "exact_category_match_rate",
+        experts: names.map((name, index) => ({
+          expertId: `expert-${index + 1}`,
+          name,
+          exactCategoryMatches: index + 1,
+          totalAlternatives: 3,
+          matchRate: (index + 1) / 3,
+        })),
+        auxiliaryProjection: {
+          type: "auxiliary_categorical_agreement_projection",
+          dissimilarity: "normalized_hamming_category_mismatch",
+          stress: 0.04,
+          maximumStress: 0.15,
+          points: [
+            { kind: "expert", name: names[0], x: offset, y: 0, exactCategoryMatches: 1, totalAlternatives: 3 },
+            { kind: "expert", name: names[1], x: 3 + offset, y: 4, exactCategoryMatches: 2, totalAlternatives: 3 },
+            { kind: "expert", name: names[2], x: offset, y: 4, exactCategoryMatches: 3, totalAlternatives: 3 },
+            { kind: "collective", name: "Collective result", x: offset, y: 0, exactCategoryMatches: 3, totalAlternatives: 3 },
+          ],
+        },
+      },
+    },
+  },
+});
+
 describe("Results Analysis analytical projection comparison", () => {
   it("uses issue consensus configuration and available generic phase data for the consensus chart", () => {
     const withConsensusFacts = {
@@ -291,6 +332,53 @@ describe("Results Analysis analytical projection comparison", () => {
     expect(buildCanonicalAnalyticalProjection({ execution: scenario })).toMatchObject({
       projectionSource: "reconstructed",
       expertPoints: [expect.objectContaining({ x: 1.86419754, y: 0.888888987 }), expect.objectContaining({ x: 1.86419754, y: 0.888888987 })],
+    });
+  });
+
+  it("adapts and compares validated categorical coordinates through shared MAP and geometric DISTANCES", () => {
+    const selected = categoricalPatternExecution({ key: "categorical-base" });
+    const result = buildResultsVisualizationsData({ payload, executions: [selected] });
+
+    expect(result.expertCollective).toMatchObject({
+      available: true,
+      projectionSource: "categorical-pattern",
+      projectionSemantics: "categorical-pattern",
+      expertPoints: [
+        expect.objectContaining({ identity: "expert-1", label: "Ada", x: 0, y: 0 }),
+        expect.objectContaining({ identity: "expert-2", label: "Grace", x: 3, y: 4 }),
+        expect.objectContaining({ identity: "expert-3", label: "Katherine", x: 0, y: 4 }),
+      ],
+      collectivePoint: { x: 0, y: 0, label: "Collective result" },
+    });
+    expect(result.singleScatter.data[0]).toMatchObject({
+      projectionSemantics: "categorical-pattern",
+      expertPoints: result.expertCollective.expertPoints,
+      collectivePoint: result.expertCollective.collectivePoint,
+    });
+    expect(result.expertCollectiveRelationshipProjections).toEqual([result.expertCollective]);
+    expect(buildProjectedExpertDistances(result.expertCollective).map(({ identity, distance }) => [identity, distance])).toEqual([
+      ["expert-1", 0],
+      ["expert-3", 4],
+      ["expert-2", 5],
+    ]);
+
+    const comparison = buildResultsVisualizationsData({
+      payload,
+      executions: [
+        categoricalPatternExecution({ key: "base" }),
+        categoricalPatternExecution({ key: "scenario-a", offset: 10 }),
+      ],
+    });
+
+    expect(comparison.expertCollectiveComparison).toMatchObject({
+      available: true,
+      presentation: "aligned-overlay",
+    });
+    expect(comparison.expertCollectiveRelationshipProjections).toBe(comparison.expertCollectiveComparison.alignedExecutions);
+    expect(comparison.expertCollectiveRelationshipProjections).toHaveLength(2);
+    comparison.expertCollectiveRelationshipProjections.forEach((projection) => {
+      expect(projection.projectionSemantics).toBe("categorical-pattern");
+      expect(buildProjectedExpertDistances(projection)).toHaveLength(3);
     });
   });
 

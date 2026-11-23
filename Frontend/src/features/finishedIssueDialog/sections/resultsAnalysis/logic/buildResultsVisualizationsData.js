@@ -1,4 +1,5 @@
 import { normalizePlotsGraphic } from "../../../shared/logic/buildFinishedIssueGraphs.js";
+import { buildClassificationPatternProjectionVisualization } from "./buildClassificationRelationshipVisualization.js";
 
 const finite = (value) => typeof value === "number" && Number.isFinite(value);
 const samePoint = (left, right) => left.x === right.x && left.y === right.y;
@@ -142,6 +143,11 @@ const storedExpertCollectiveProjection = (execution) => {
   }
 
   if (standardized) return { projection: standardized, source: "standardized" };
+  if (relationship?.projection && typeof relationship.projection === "object" && normalizePlotsGraphic(relationship.projection)?.isValid) {
+    return { projection: relationship.projection, source: "generic-analysis" };
+  }
+  const categoricalProjection = buildClassificationPatternProjectionVisualization(execution);
+  if (categoricalProjection) return { projection: categoricalProjection, source: "categorical-pattern" };
   if (relationship?.projection && typeof relationship.projection === "object") {
     return { projection: relationship.projection, source: "generic-analysis" };
   }
@@ -184,6 +190,47 @@ export const buildCanonicalAnalyticalProjection = ({
     identicalEvaluationGroups: [],
     collectiveIdenticalExpertIds: [],
   };
+  if (selectedProjection.source === "categorical-pattern") {
+    const expertSeries = selectedProjection.projection.data.series.find((series) => series.key === "experts");
+    const collectiveSeries = selectedProjection.projection.data.series.find((series) => series.key === "collective");
+    const relationshipExperts = execution?.genericAnalysis?.facts?.expertCollectiveClassificationRelationship?.experts;
+    const identitiesByName = new Map();
+    if (Array.isArray(relationshipExperts)) {
+      relationshipExperts.forEach((expert) => {
+        const name = nonEmptyText(expert?.name);
+        const identity = nonEmptyText(expert?.expertId);
+        if (!name || !identity) return;
+        const matches = identitiesByName.get(name) || [];
+        matches.push(identity);
+        identitiesByName.set(name, matches);
+      });
+    }
+    const mappedIdentities = expertSeries.points.map((point) => {
+      const matches = identitiesByName.get(point.label) || [];
+      return matches.length === 1 ? matches[0] : null;
+    });
+    const stableIdsAreUnique = mappedIdentities.every(Boolean) && new Set(mappedIdentities).size === mappedIdentities.length;
+    const expertPoints = expertSeries.points.map((point, index) => ({
+      identity: stableIdsAreUnique ? mappedIdentities[index] : point.label,
+      label: point.label,
+      x: point.x,
+      y: point.y,
+      ...(point.details ? { details: point.details } : {}),
+    }));
+    const collectivePoint = collectiveSeries.points[0];
+    return {
+      ...base,
+      available: true,
+      displayAvailable: true,
+      unavailableReason: null,
+      projectionSemantics: "categorical-pattern",
+      expertPoints,
+      collectivePoint: { x: collectivePoint.x, y: collectivePoint.y, label: collectivePoint.label },
+      hasEvaluationEqualityEvidence: false,
+      identicalEvaluationGroups: [],
+      collectiveIdenticalExpertIds: [],
+    };
+  }
   if (!normalized?.isValid) return base;
 
   const collectivePoint = normalized.collectivePoint;
@@ -560,6 +607,7 @@ const buildSingleScatter = (execution, canonicalProjection) => {
             hasEvaluationEqualityEvidence: canonical.hasEvaluationEqualityEvidence,
             identicalEvaluationGroups: canonical.identicalEvaluationGroups,
             collectiveIdenticalExpertIds: canonical.collectiveIdenticalExpertIds,
+            projectionSemantics: canonical.projectionSemantics,
           },
         }
       : null,

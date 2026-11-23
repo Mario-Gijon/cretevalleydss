@@ -31,11 +31,11 @@ ChartJS.register(
  * @param {Object} props Props del componente.
  * @returns {JSX.Element|null}
  */
-export const AnalyticalScatterChart = ({ data, phase, compact = false, color, variant = "numeric", showConnectors = true }) => {
+export const AnalyticalScatterChart = ({ data, phase, compact = false, color, variant, showConnectors = true }) => {
   const viewModel = buildAnalyticalScatterViewModel({ data, phase });
 
   if (!viewModel) return null;
-  const isCategoricalProjection = variant === "categorical";
+  const isCategoricalProjection = variant === "categorical" || viewModel.projectionSemantics === "categorical-pattern";
 
   const {
     expertPoints,
@@ -45,7 +45,7 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color, va
     xRange,
     yRange,
   } = viewModel;
-  const connectors = isCategoricalProjection || !showConnectors
+  const connectors = !showConnectors
     ? []
     : buildExpertCollectiveConnectors({ expertPoints, collectivePoint });
 
@@ -67,13 +67,13 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color, va
         pointHoverRadius: compact ? 6 : 11,
       },
       {
-        label: isCategoricalProjection ? "Collective result" : "Collective",
+        label: "Collective",
         expertCollectiveRole: "collective",
         data: [collectivePoint],
-        backgroundColor: isCategoricalProjection ? alpha("#f59e0b", 0.14) : alpha(collectiveColorFor(color), 0.98),
-        borderColor: isCategoricalProjection ? "#f59e0b" : alpha(color, 0.95),
-        borderWidth: isCategoricalProjection ? 2.5 : 2,
-        pointRadius: isCategoricalProjection ? (compact ? 6 : 12) : (compact ? 5 : 10),
+        backgroundColor: alpha(collectiveColorFor(color), 0.98),
+        borderColor: alpha(color, 0.95),
+        borderWidth: 2,
+        pointRadius: compact ? 5 : 10,
         pointStyle: "rectRot",
         pointHoverRadius: compact ? 7 : 13,
       },
@@ -111,7 +111,7 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color, va
                   const matchText = Number.isInteger(matches) && Number.isInteger(total)
                     ? ` — ${matches} of ${total} exact category matches to the collective`
                     : "";
-                  return `${name}${disambiguator}${matchText} — pattern projection coordinates (${expert.x}, ${expert.y})`;
+                  return `${name}${disambiguator}${matchText} — categorical-pattern projection coordinates (${expert.x}, ${expert.y})`;
                 }
                 const x = Number.isFinite(expert.x) ? String(expert.x) : "—";
                 const y = Number.isFinite(expert.y) ? String(expert.y) : "—";
@@ -119,7 +119,7 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color, va
               });
             }
             if (isCategoricalProjection) {
-              return `Collective result — categorical-pattern projection coordinates (${raw.x}, ${raw.y})`;
+              return `Collective — categorical-pattern projection coordinates (${raw.x}, ${raw.y})`;
             }
             const x = Number.isFinite(raw.x) ? String(raw.x) : "—";
             const y = Number.isFinite(raw.y) ? String(raw.y) : "—";
@@ -127,7 +127,15 @@ export const AnalyticalScatterChart = ({ data, phase, compact = false, color, va
           },
         },
       },
-      expertCollectiveConnectors: { groups: [{ color, connectors }] },
+      expertCollectiveConnectors: {
+        groups: [{
+          color,
+          connectors,
+          distanceLabel: isCategoricalProjection
+            ? "Geometric distance within categorical-pattern projection"
+            : "Projected distance",
+        }],
+      },
     },
     scales: {
       x: {

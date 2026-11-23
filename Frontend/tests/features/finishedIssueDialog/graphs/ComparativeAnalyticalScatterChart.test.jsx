@@ -100,4 +100,35 @@ describe("ComparativeAnalyticalScatterChart", () => {
     expect(screen.getByTestId("expert-collective-overlap-note").textContent).toContain("Base execution");
     expect(screen.getByTestId("expert-collective-overlap-note").textContent).toContain("numeric matrices used for the projection");
   });
+
+  it("preserves categorical-pattern semantics for comparative tooltips, overlaps, and connectors", () => {
+    render(
+      <ComparativeAnalyticalScatterChart
+        groups={[{
+          groupLabel: "Base",
+          tooltipLabel: "AHPSort demo",
+          color: "#27d5e4",
+          projectionSemantics: "categorical-pattern",
+          representedExecutions: [{ key: "base" }],
+          expertPoints: [
+            { x: 0, y: 0, label: "Ada", identity: "expert-1", details: { exactCategoryMatches: 2, totalAlternatives: 3 } },
+            { x: 0, y: 0, label: "Grace", identity: "expert-2", details: { exactCategoryMatches: 1, totalAlternatives: 3 } },
+            { x: 3, y: 4, label: "Katherine", identity: "expert-3", details: { exactCategoryMatches: 3, totalAlternatives: 3 } },
+          ],
+          collectivePoint: { x: 0, y: 0, label: "Collective result" },
+        }]}
+      />
+    );
+
+    const [experts, collective] = scatterState.data.datasets;
+    const expertTooltip = scatterState.options.plugins.tooltip.callbacks.label({ raw: experts.data[0] }).join(" ");
+    const collectiveTooltip = scatterState.options.plugins.tooltip.callbacks.label({ raw: collective.data[0] });
+    expect(expertTooltip).toContain("2 of 3 exact category matches to the collective");
+    expect(expertTooltip).toContain("categorical-pattern projection coordinates");
+    expect(collectiveTooltip).toContain("categorical-pattern projection coordinates");
+    expect(scatterState.options.plugins.expertCollectiveConnectors.groups[0].distanceLabel)
+      .toBe("Geometric distance within categorical-pattern projection");
+    expect(screen.getByTestId("expert-collective-overlap-note").textContent)
+      .toContain("does not establish identical classification patterns");
+  });
 });

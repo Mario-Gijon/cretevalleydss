@@ -7,6 +7,7 @@ import {
 const pixelConnectors = (chart, groups) => groups.flatMap((group) => group.connectors.map((connector) => ({
   ...connector,
   color: group.color,
+  distanceLabel: group.distanceLabel || "Projected distance",
   from: { x: chart.scales.x.getPixelForValue(connector.from.x), y: chart.scales.y.getPixelForValue(connector.from.y) },
   to: { x: chart.scales.x.getPixelForValue(connector.to.x), y: chart.scales.y.getPixelForValue(connector.to.y) },
 })));
@@ -51,7 +52,7 @@ export const expertCollectiveConnectorPlugin = {
     const connector = chart.$expertCollectiveConnectorHover;
     if (!connector) return;
     const { ctx, chartArea } = chart;
-    const lines = [`Expert: ${connector.expertLabel}`, ...(connector.executionLabel ? [`Execution: ${connector.executionLabel}`] : []), `Projected distance: ${formatProjectedDistance(connector.projectedDistance)}`, ...(connector.isClosest ? ["Closest expert to collective"] : [])];
+    const lines = [`Expert: ${connector.expertLabel}`, ...(connector.executionLabel ? [`Execution: ${connector.executionLabel}`] : []), `${connector.distanceLabel}: ${formatProjectedDistance(connector.projectedDistance)}`, ...(connector.isClosest ? ["Closest expert to collective"] : [])];
     const x = Math.min(chartArea.right - 190, connector.to.x + 12); const y = Math.max(chartArea.top + 10, connector.to.y - 10);
     ctx.save(); ctx.font = "12px sans-serif"; const width = Math.max(...lines.map((line) => ctx.measureText(line).width)) + 18;
     ctx.fillStyle = "rgba(4,12,20,0.94)"; ctx.fillRect(x, y, width, lines.length * 17 + 12); ctx.fillStyle = "rgba(255,255,255,0.92)";

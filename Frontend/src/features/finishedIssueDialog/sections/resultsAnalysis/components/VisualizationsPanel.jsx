@@ -98,23 +98,6 @@ const EXPERT_COLLECTIVE_DISTANCES_GUIDE = "Each bar measures the distance from o
 const RANKING_STABILITY_GUIDE = getVisualizationReadingGuide({ type: "rankingStability" });
 const RANKING_AGREEMENT_GUIDE = getVisualizationReadingGuide({ type: "rankingAgreement" });
 const finitePoint = (point) => Number.isFinite(point?.x) && Number.isFinite(point?.y);
-const buildCategoricalProjectionScatterData = (projection) => {
-  const expertSeries = projection.data.series.find((series) => series.key === "experts");
-  const collectiveSeries = projection.data.series.find((series) => series.key === "collective");
-  return {
-    0: {
-      projectionSemantics: "categorical-pattern",
-      expertPoints: expertSeries.points.map((point) => ({
-        x: point.x,
-        y: point.y,
-        label: point.label,
-        identity: point.label,
-        details: point.details,
-      })),
-      collectivePoint: collectiveSeries.points[0],
-    },
-  };
-};
 
 const renderableDistanceProjections = (projections) =>
   (Array.isArray(projections) ? projections : []).filter(
@@ -653,7 +636,7 @@ const ExpertCollectiveRelationship = ({ visualizations, unavailableReason }) => 
   const classificationEntries = (visualizations.executions || []).flatMap((execution) => {
     const descriptor = buildClassificationRelationshipVisualization(execution);
     const projection = buildClassificationPatternProjectionVisualization(execution);
-    return descriptor || projection ? [{ execution, descriptor, projection }] : [];
+    return descriptor && !projection ? [{ execution, descriptor }] : [];
   });
   // A categorical AHPSort relationship is a valid replacement only when this
   // selection has no numerical projection. Keep TOPSIS MAP/DISTANCES intact,
@@ -662,27 +645,13 @@ const ExpertCollectiveRelationship = ({ visualizations, unavailableReason }) => 
     return <Box sx={cardSx} data-testid="expert-collective-classification-relationship">
       <Header
         title="Expert–collective relationship"
-        subtitle="When available, positions summarize saved category-assignment patterns; they do not represent AHP distances or numeric priorities. Exact-match bars are used only when no valid projection exists."
+        subtitle="Each bar shows exact category matches to the collective assignment. This categorical summary is a safe fallback when no valid stored projection is available."
       />
       <Stack spacing={1.2}>
-        {classificationEntries.map(({ execution, descriptor, projection }) => <Box key={execution.key} sx={{ minWidth: 0 }}>
+        {classificationEntries.map(({ execution, descriptor }) => <Box key={execution.key} sx={{ minWidth: 0 }}>
           {classificationEntries.length > 1 ? <Typography variant="subtitle1" sx={{ mb: 0.6, color: execution.color, fontWeight: 900 }}>{execution.displayLabel}</Typography> : null}
-          <Box data-testid="classification-relationship-visualization" data-representation={projection ? "categorical-projection" : "exact-match-fallback"} sx={{ width: "100%", minWidth: 0 }}>
-            {projection
-              ? <Box sx={{ width: "100%", maxWidth: 1100, mx: "auto", minWidth: 0 }}>
-                <Typography component="h3" variant="h6">{projection.title}</Typography>
-                <VisualizationReadingGuide>{getVisualizationReadingGuide(projection).text}</VisualizationReadingGuide>
-                <Box sx={{ height: expertChartFrameSx.height, minHeight: 0, width: "100%" }}>
-                  <AnalyticalScatterChart
-                    data={buildCategoricalProjectionScatterData(projection)}
-                    phase={0}
-                    color={RESULTS_ANALYSIS_SLOT_COLORS[0]}
-                    variant="categorical"
-                    showConnectors={false}
-                  />
-                </Box>
-              </Box>
-              : <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />}
+          <Box data-testid="classification-relationship-visualization" data-representation="exact-match-fallback" sx={{ width: "100%", minWidth: 0 }}>
+            <AnalyticalGraph visualization={descriptor} chartHeight={{ xs: Math.max(220, descriptor.data.categories.length * 42 + 112), sm: Math.max(240, descriptor.data.categories.length * 42 + 120) }} />
           </Box>
         </Box>)}
       </Stack>

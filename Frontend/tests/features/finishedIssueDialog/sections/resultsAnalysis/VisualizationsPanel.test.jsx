@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/AnalyticalScatterChart", () => ({
-  AnalyticalScatterChart: ({ phase, variant, showConnectors, data }) => <div data-testid="analytical-scatter" data-phase={phase} data-variant={variant || "numeric"} data-show-connectors={showConnectors} data-experts={JSON.stringify(data?.[phase]?.expertPoints?.map((point) => point.label) || [])} data-collective-label={data?.[phase]?.collectivePoint?.label || "Collective"} />,
+  AnalyticalScatterChart: ({ phase, variant, showConnectors, data }) => <div data-testid="analytical-scatter" data-phase={phase} data-variant={variant || "numeric"} data-show-connectors={showConnectors} data-projection-semantics={data?.[phase]?.projectionSemantics || "numeric"} data-experts={JSON.stringify(data?.[phase]?.expertPoints?.map((point) => point.label) || [])} data-collective-label={data?.[phase]?.collectivePoint?.label || "Collective"} />,
 }));
 vi.mock("../../../../../src/features/finishedIssueDialog/graphs/components/ComparativeAnalyticalScatterChart", () => ({
   ComparativeAnalyticalScatterChart: ({ groups }) => <div data-testid="comparative-scatter">{groups.length}</div>,
@@ -21,6 +21,7 @@ vi.mock("../../../../../src/components/analyticalGraphs", () => ({
 
 import VisualizationsPanel from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/VisualizationsPanel.jsx";
 import { buildGeneralVisualizationsLayout } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildGeneralVisualizationsLayout.js";
+import { buildResultsVisualizationsData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsVisualizationsData.js";
 
 describe("VisualizationsPanel", () => {
   const rankingAnalysis = (values = [1, 2]) => ({ visualizations: [{ type: "rankingEvolution", data: { phases: [0, 1], series: [{ alternativeId: "a", label: "Alpha", values }] } }] });
@@ -240,7 +241,7 @@ describe("VisualizationsPanel", () => {
 
     const card = screen.getByTestId("expert-collective-classification-relationship");
     expect(within(card).getByRole("heading", { name: "Expert–collective relationship" })).toBeInTheDocument();
-    expect(within(card).getByText(/do not represent AHP distances or numeric priorities/)).toBeInTheDocument();
+    expect(within(card).getByText(/safe fallback when no valid stored projection is available/)).toBeInTheDocument();
     expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-key", "expert-collective-classification-match");
     expect(within(card).getByTestId("analytical-graph")).toHaveAttribute("data-series-keys", '["exact-category-match"]');
     expect(within(card).getByTestId("classification-relationship-visualization")).toHaveAttribute("data-representation", "exact-match-fallback");
@@ -248,74 +249,73 @@ describe("VisualizationsPanel", () => {
     expect(screen.queryByRole("button", { name: "DISTANCES" })).not.toBeInTheDocument();
   });
 
-  it("uses only the validated full-width categorical projection when available", () => {
-    const { unmount } = render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
-      executions={[{
-        key: "ahp-sort-base",
-        displayLabel: "Base execution",
-        resultStructureKey: "sorting",
-        genericAnalysis: { facts: { expertCollectiveClassificationRelationship: {
+  it("routes a valid AHPSort pattern projection through shared MAP and DISTANCES views", () => {
+    const execution = {
+      key: "ahp-sort-base",
+      name: "AHPSort I demo",
+      displayLabel: "AHPSort I demo",
+      resultStructureKey: "sorting",
+      genericAnalysis: { facts: {
+        expertCollectiveRelationship: { projection: { reason: "missing_analytical_projection" }, unavailableReason: "missing_analytical_projection" },
+        expertCollectiveClassificationRelationship: {
           metric: "exact_category_match_rate",
-          experts: [],
+          experts: [
+            { expertId: "expert-a", name: "Ada", exactCategoryMatches: 2, totalAlternatives: 3, matchRate: 2 / 3 },
+            { expertId: "expert-b", name: "Grace", exactCategoryMatches: 1, totalAlternatives: 3, matchRate: 1 / 3 },
+            { expertId: "expert-c", name: "Katherine", exactCategoryMatches: 3, totalAlternatives: 3, matchRate: 1 },
+          ],
           auxiliaryProjection: {
             type: "auxiliary_categorical_agreement_projection",
             dissimilarity: "normalized_hamming_category_mismatch",
             stress: 0.04,
             maximumStress: 0.15,
             points: [
-              { kind: "expert", name: "Ada", x: -0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
-              { kind: "expert", name: "Grace", x: 0, y: 0.5, exactCategoryMatches: 1, totalAlternatives: 3 },
-              { kind: "expert", name: "Katherine", x: 0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
-              { kind: "collective", name: "Collective result", x: 0, y: -0.5, exactCategoryMatches: 3, totalAlternatives: 3 },
+              { kind: "expert", name: "Ada", x: 0, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
+              { kind: "expert", name: "Grace", x: 3, y: 4, exactCategoryMatches: 1, totalAlternatives: 3 },
+              { kind: "expert", name: "Katherine", x: 0, y: 4, exactCategoryMatches: 3, totalAlternatives: 3 },
+              { kind: "collective", name: "Collective result", x: 0, y: 0, exactCategoryMatches: 3, totalAlternatives: 3 },
             ],
           },
-        } } },
-      }]}
-      visualizations={{ mode: "single", singleScatter: { available: false, unavailableReason: "missing_analytical_projection" }, canonicalProjections: [], consensus: { enabled: false } }}
-    /></ThemeProvider>);
+        },
+      } },
+    };
+    const visualizations = buildResultsVisualizationsData({ payload: { consensus: { enabled: false } }, executions: [execution] });
+    const { unmount } = render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[execution]} visualizations={visualizations} /></ThemeProvider>);
 
-    const card = screen.getByTestId("expert-collective-classification-relationship");
+    const card = screen.getByTestId("expert-collective-relationship");
+    expect(screen.queryByTestId("expert-collective-classification-relationship")).not.toBeInTheDocument();
     expect(within(card).getByRole("heading", { name: "Expert–collective relationship" })).toBeInTheDocument();
-    expect(within(card).getByText(/positions summarize saved category-assignment patterns/)).toBeInTheDocument();
-    expect(within(card).queryByTestId("analytical-graph")).not.toBeInTheDocument();
-    expect(within(card).getAllByTestId("analytical-scatter")).toHaveLength(1);
-    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-variant", "categorical");
-    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-show-connectors", "false");
+    expect(within(card).getByText(/each marker shows an expert or the collective/i)).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "MAP" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-projection-semantics", "categorical-pattern");
     expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-experts", '["Ada","Grace","Katherine"]');
-    expect(within(card).getByTestId("analytical-scatter")).toHaveAttribute("data-collective-label", "Collective result");
-    expect(within(card).getByTestId("classification-relationship-visualization")).toHaveAttribute("data-representation", "categorical-projection");
-    expect(within(card).getAllByTestId("visualization-reading-guide").at(-1)).toHaveTextContent(/not represent AHP distances or numeric priorities/);
+
+    fireEvent.click(within(card).getByRole("button", { name: "DISTANCES" }));
+    expect(within(card).getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "distances");
+    expect(within(card).getByTestId("projected-distance-bars")).toHaveAttribute("data-labels", "Ada|Katherine|Grace");
+    expect(within(card).getByTestId("projected-distance-bars")).toHaveAttribute("data-values", "0|4|5");
+    expect(within(card).getByText(/not direct measures of agreement between experts/)).toBeInTheDocument();
+
+    fireEvent.click(within(card).getByRole("button", { name: "MAP" }));
+    expect(within(card).getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "map");
+    expect(within(card).getByTestId("analytical-scatter")).toBeInTheDocument();
 
     unmount();
-    const execution = (key, displayLabel, xOffset) => ({
-      key,
-      displayLabel,
-      resultStructureKey: "sorting",
-      genericAnalysis: { facts: { expertCollectiveClassificationRelationship: {
-        auxiliaryProjection: {
-          type: "auxiliary_categorical_agreement_projection",
-          dissimilarity: "normalized_hamming_category_mismatch",
-          stress: 0.04,
-          maximumStress: 0.15,
-          points: [
-            { kind: "expert", name: "Ada", x: xOffset - 0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
-            { kind: "expert", name: "Grace", x: xOffset, y: 0.5, exactCategoryMatches: 1, totalAlternatives: 3 },
-            { kind: "expert", name: "Katherine", x: xOffset + 0.5, y: 0, exactCategoryMatches: 2, totalAlternatives: 3 },
-            { kind: "collective", name: "Collective result", x: xOffset, y: -0.5, exactCategoryMatches: 3, totalAlternatives: 3 },
-          ],
+    const fallbackExecution = {
+      ...execution,
+      genericAnalysis: { facts: {
+        expertCollectiveRelationship: { projection: { reason: "invalid_analytical_projection" } },
+        expertCollectiveClassificationRelationship: {
+          ...execution.genericAnalysis.facts.expertCollectiveClassificationRelationship,
+          auxiliaryProjection: { type: "auxiliary_categorical_agreement_projection", stress: 0.4, maximumStress: 0.15, points: [] },
         },
-      } } },
-    });
-    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
-      executions={[execution("base", "Base", 0), execution("scenario", "Scenario", 2)]}
-      visualizations={{ mode: "comparison", canonicalProjections: [], consensus: { enabled: false } }}
-    /></ThemeProvider>);
-
-    const comparisonCard = screen.getByTestId("expert-collective-classification-relationship");
-    expect(within(comparisonCard).getAllByTestId("analytical-scatter")).toHaveLength(2);
-    expect(within(comparisonCard).getAllByTestId("classification-relationship-visualization")).toHaveLength(2);
-    expect(within(comparisonCard).getByText("Base")).toBeInTheDocument();
-    expect(within(comparisonCard).getByText("Scenario")).toBeInTheDocument();
+      } },
+    };
+    const fallbackVisualizations = buildResultsVisualizationsData({ payload: { consensus: { enabled: false } }, executions: [fallbackExecution] });
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[fallbackExecution]} visualizations={fallbackVisualizations} /></ThemeProvider>);
+    const fallbackCard = screen.getByTestId("expert-collective-classification-relationship");
+    expect(within(fallbackCard).getByTestId("analytical-graph")).toHaveAttribute("data-key", "expert-collective-classification-match");
+    expect(screen.queryByRole("button", { name: "MAP" })).not.toBeInTheDocument();
   });
 
   it("renders model-owned TOPSIS descriptors through the shared alternative-evaluation pipeline", () => {

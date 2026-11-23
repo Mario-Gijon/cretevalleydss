@@ -36,6 +36,7 @@ const expertTooltipLabel = ({ raw, groups }) => {
         .filter((point) => expertLabel(point) === label)
         .map((point) => ({ ...point, executionLabel: group.tooltipLabel || group.groupLabel })),
     ).filter((point) => point.executionLabel === raw.executionLabel);
+    const sourceGroup = groups.find((group) => (group.tooltipLabel || group.groupLabel) === raw.executionLabel);
     const duplicateLabel = peers.length > 1;
     const uniqueIdentity = (field, value) =>
       value && value !== label && peers.filter((point) => point[field] === value).length === 1;
@@ -45,7 +46,14 @@ const expertTooltipLabel = ({ raw, groups }) => {
         ? expert.identity
         : null;
     const disambiguator = duplicateLabel && identity ? ` (${identity})` : "";
-    return `${label}${disambiguator} — ${raw.executionLabel} ${coordinates(expert)}`;
+    const matchCount = Number.isInteger(expert.details?.exactCategoryMatches)
+      && Number.isInteger(expert.details?.totalAlternatives)
+      ? ` — ${expert.details.exactCategoryMatches} of ${expert.details.totalAlternatives} exact category matches to the collective`
+      : "";
+    const projectionDescription = sourceGroup?.projectionSemantics === "categorical-pattern"
+      ? " — categorical-pattern projection coordinates"
+      : "";
+    return `${label}${disambiguator}${matchCount} — ${raw.executionLabel} ${coordinates(expert)}${projectionDescription}`;
   });
 };
 
@@ -56,6 +64,7 @@ export const ComparativeAnalyticalScatterChart = ({ groups = [], compact = false
   const overlapGroups = groups.flatMap((group) => buildExpertCollectiveOverlapGroups({
     expertPoints: group.expertPoints,
     collectivePoint: group.collectivePoint,
+    isCategoricalPatternProjection: group.projectionSemantics === "categorical-pattern",
     hasEvaluationEqualityEvidence: group.hasEvaluationEqualityEvidence === true,
     identicalEvaluationGroups: group.identicalEvaluationGroups,
     collectiveIdenticalExpertIds: group.collectiveIdenticalExpertIds,
@@ -63,13 +72,20 @@ export const ComparativeAnalyticalScatterChart = ({ groups = [], compact = false
     ...overlap,
     message: `${group.tooltipLabel || group.groupLabel}: ${overlap.message}`,
   })));
-  const connectorGroups = groups.map((group) => ({ color: group.color, connectors: buildExpertCollectiveConnectors({ expertPoints: group.expertPoints, collectivePoint: group.collectivePoint, executionLabel: group.tooltipLabel || group.groupLabel }) }));
+  const connectorGroups = groups.map((group) => ({ color: group.color, distanceLabel: group.projectionSemantics === "categorical-pattern" ? "Geometric distance within categorical-pattern projection" : "Projected distance", connectors: buildExpertCollectiveConnectors({ expertPoints: group.expertPoints, collectivePoint: group.collectivePoint, executionLabel: group.tooltipLabel || group.groupLabel }) }));
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: true, position: "top", labels: { color: alpha("#fff", 0.85) } },
-      tooltip: { mode: "point", callbacks: { label: (ctx) => ctx.raw.pointType === "collective" ? `Collective — ${ctx.raw.executionLabel} ${coordinates(ctx.raw)}` : expertTooltipLabel({ raw: ctx.raw, groups }) } },
+      tooltip: { mode: "point", callbacks: { label: (ctx) => {
+        if (ctx.raw.pointType !== "collective") return expertTooltipLabel({ raw: ctx.raw, groups });
+        const sourceGroup = groups.find((group) => (group.tooltipLabel || group.groupLabel) === ctx.raw.executionLabel);
+        const projectionDescription = sourceGroup?.projectionSemantics === "categorical-pattern"
+          ? " — categorical-pattern projection coordinates"
+          : "";
+        return `Collective — ${ctx.raw.executionLabel} ${coordinates(ctx.raw)}${projectionDescription}`;
+      } } },
       expertCollectiveConnectors: { groups: connectorGroups },
     },
     scales: {

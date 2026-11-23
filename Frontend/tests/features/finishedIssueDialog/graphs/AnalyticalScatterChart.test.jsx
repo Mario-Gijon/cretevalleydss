@@ -114,12 +114,11 @@ describe("AnalyticalScatterChart", () => {
     expect(screen.getByTestId("expert-collective-overlap-note").textContent).toContain("collective");
   });
 
-  it("renders categorical expert and collective overlaps with shared markers and no numeric connectors", () => {
+  it("renders categorical overlaps with shared marker styling and geometric connectors", () => {
     render(
       <AnalyticalScatterChart
         phase={0}
         color="#27d5e4"
-        variant="categorical"
         data={{
           0: {
             projectionSemantics: "categorical-pattern",
@@ -138,12 +137,14 @@ describe("AnalyticalScatterChart", () => {
     expect(experts.data).toHaveLength(1);
     expect(experts.data[0]).toMatchObject({ x: 0.25, y: -0.5, expertCount: 3 });
     expect(experts.pointStyle).toBe("circle");
-    expect(collective.label).toBe("Collective result");
+    expect(collective.label).toBe("Collective");
     expect(collective.pointStyle).toBe("rectRot");
-    expect(collective.pointRadius).toBeGreaterThan(experts.pointRadius);
-    expect(collective.borderWidth).toBeGreaterThan(2);
-    expect(collective.backgroundColor).not.toBe(experts.backgroundColor);
-    expect(scatterState.options.plugins.expertCollectiveConnectors.groups[0].connectors).toEqual([]);
+    expect(experts.pointRadius).toBe(8);
+    expect(collective.pointRadius).toBe(10);
+    expect(collective.borderWidth).toBe(2);
+    const connectorGroup = scatterState.options.plugins.expertCollectiveConnectors.groups[0];
+    expect(connectorGroup.connectors).toHaveLength(3);
+    expect(connectorGroup.distanceLabel).toBe("Geometric distance within categorical-pattern projection");
 
     const expertTooltip = scatterState.options.plugins.tooltip.callbacks.label({ datasetIndex: 0, raw: experts.data[0] });
     expect(expertTooltip).toHaveLength(3);
@@ -151,7 +152,7 @@ describe("AnalyticalScatterChart", () => {
     expect(expertTooltip.join(" ")).toContain("Boreal Industrial Group");
     expect(expertTooltip.join(" ")).toContain("Cygnus Manufacturing Ltd");
     expect(expertTooltip.join(" ")).toContain("exact category matches to the collective");
-    expect(scatterState.options.plugins.tooltip.callbacks.label({ datasetIndex: 1, raw: collective.data[0] })).toContain("Collective result");
+    expect(scatterState.options.plugins.tooltip.callbacks.label({ datasetIndex: 1, raw: collective.data[0] })).toContain("Collective — categorical-pattern projection coordinates");
 
     const overlapNote = screen.getByTestId("expert-collective-overlap-note").textContent;
     expect(overlapNote).toContain("Aster North Supply");
