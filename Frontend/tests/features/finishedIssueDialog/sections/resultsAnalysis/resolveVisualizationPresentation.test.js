@@ -71,6 +71,24 @@ describe("criterion weight sensitivity presentation", () => {
     expect(getSensitivityAlternativeOptions([visualization]).map(({ id }) => id)).toContain("district-21");
   });
 
+  it("reads AHPSort assigned categories from point details when recommending alternatives", () => {
+    const ahpSeries = {
+      key: "alternative:e1:a",
+      label: "Alternative · A · Expert One",
+      role: "alternative",
+      values: ["Low", "High"].map((category, index) => ({
+        x: [0.4, 0.48][index],
+        y: [0.6, 0.55][index],
+        isConfiguredWeight: index === 0,
+        details: { "Assigned category": category },
+      })),
+    };
+
+    expect(recommendSensitivityAlternativeIds({
+      data: { configuredWeight: 0.4, series: [ahpSeries] },
+    }, 1)).toEqual(["alternative:e1:a"]);
+  });
+
   it("keeps every alternative available and filters only the visual projection while retaining all boundaries", () => {
     const visualization = {
       data: { series: [

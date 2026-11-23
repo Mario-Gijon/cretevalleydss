@@ -90,7 +90,10 @@ export const getSensitivityExpertOptions = (visualizations) => {
 };
 
 const categoryAt = (point) => {
-  const category = point?.details?.Category ?? point?.category;
+  const category =
+    point?.details?.Category ??
+    point?.details?.["Assigned category"] ??
+    point?.category;
   return typeof category === "string" && category.trim() ? category : null;
 };
 

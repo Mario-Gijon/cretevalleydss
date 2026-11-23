@@ -73,6 +73,38 @@ def test_model_analysis_discovery_reloads_existing_module(monkeypatch, tmp_path)
     }
 
 
+def test_model_analysis_discovery_reloads_cached_analysis_submodules(monkeypatch, tmp_path):
+    package_root = tmp_path / "models"
+    analysis_dir = package_root / "submodule_reload" / "analysis"
+    analysis_dir.mkdir(parents=True)
+    (package_root / "submodule_reload" / "__init__.py").write_text("")
+    (analysis_dir / "__init__.py").write_text(
+        "from .visualizations import analyze_issue\n"
+    )
+    visualizations_path = analysis_dir / "visualizations.py"
+    visualizations_path.write_text(
+        "def analyze_issue(context):\n    return {'version': 'first'}\n"
+    )
+
+    models = importlib.import_module("models")
+    monkeypatch.setattr(models, "__path__", [str(package_root)])
+    for module_name in (
+        "models.submodule_reload",
+        "models.submodule_reload.analysis",
+        "models.submodule_reload.analysis.visualizations",
+    ):
+        monkeypatch.delitem(sys.modules, module_name, raising=False)
+
+    first = load_model_analysis_handlers("submodule_reload")
+    assert first["analyze_issue"]({}) == {"version": "first"}
+
+    visualizations_path.write_text(
+        "def analyze_issue(context):\n    return {'version': 'second revision'}\n"
+    )
+    second = load_model_analysis_handlers("submodule_reload")
+    assert second["analyze_issue"]({}) == {"version": "second revision"}
+
+
 def test_model_analysis_discovery_propagates_internal_import_failure(monkeypatch, tmp_path):
     install_model_package(monkeypatch, tmp_path, "broken", "import missing_analysis_dependency\n")
     with pytest.raises(ModuleNotFoundError, match="missing_analysis_dependency"):

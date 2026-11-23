@@ -245,7 +245,6 @@ def _original_classifications(facts: dict[str, Any]) -> dict[str, Any]:
 
 
 def _weight_details(
-    facts: dict[str, Any],
     point: dict[str, Any],
     *,
     category: str | None,
@@ -260,13 +259,6 @@ def _weight_details(
         ),
         "Unavailable reason": unavailable_reason,
     }
-    criterion_names = {item["criterionId"]: item["name"] for item in facts["criteria"]}
-    for weight in point.get("criterionWeights") or []:
-        criterion_id = weight.get("criterionId")
-        if criterion_id in criterion_names:
-            details[f"Effective weight · {criterion_names[criterion_id]}"] = weight.get(
-                "weight"
-            )
     return details
 
 
@@ -289,18 +281,28 @@ def _baseline_match(point: dict[str, Any], *, collective: bool) -> bool | None:
     return all(value is True for value in values) if values else None
 
 
-def _sensitivity_series_details(
+def _add_central_assignment_details(
     facts: dict[str, Any],
     result: dict[str, Any],
     *,
     details: dict[str, Any],
 ) -> None:
-    _add_individual_priority_details(
-        details,
-        facts,
-        result,
-        include_classification=True,
+    if facts["profileMode"] != "central":
+        return
+    classification = result.get("classification") or {}
+    profile_labels = _profile_labels(facts)
+    selected_id = classification.get("selectedCenterProfileId")
+    details["Selected central profile"] = profile_labels.get(selected_id, selected_id)
+    details["Distance to selected central profile"] = classification.get(
+        "distanceToSelectedCenter"
     )
+    details["Central profile tie detected"] = classification.get("tieDetected")
+    tied_ids = classification.get("tiedCenterProfileIds") or []
+    if tied_ids:
+        details["Tied central profiles"] = ", ".join(
+            profile_labels.get(profile_id, profile_id) for profile_id in tied_ids
+        )
+    details["Central profile tie policy"] = classification.get("tiePolicy")
 
 
 def _is_finite_number(value: Any) -> bool:
@@ -357,7 +359,6 @@ def _priority_sensitivity_visualization(
                     and categories.get(category_id) is not None
                 )
                 details = _weight_details(
-                    facts,
                     point,
                     category=categories.get(category_id) if available else None,
                     changed=(result.get("changedFromBaseline") if available else None),
@@ -367,7 +368,8 @@ def _priority_sensitivity_visualization(
                     ),
                 )
                 if result is not None:
-                    _sensitivity_series_details(facts, result, details=details)
+                    details["Alternative priority"] = priority if available else None
+                    _add_central_assignment_details(facts, result, details=details)
                     if point.get("baselineComparison") is not None:
                         details["Original-weight result matches validated baseline"] = (
                             _baseline_match(point, collective=False)
@@ -376,10 +378,6 @@ def _priority_sensitivity_visualization(
                     {
                         "x": point["variedWeight"],
                         "y": priority if available else None,
-                        "label": f"{expert_name} · {alternative['name']}",
-                        "category": categories.get(category_id) if available else None,
-                        "alternativeId": alternative_id,
-                        "expertId": expert_id,
                         "details": details,
                         "isConfiguredWeight": point["variedWeight"]
                         == item.get("configuredWeight"),
@@ -414,7 +412,6 @@ def _priority_sensitivity_visualization(
                         and categories.get(category_id) is not None
                     )
                     details = _weight_details(
-                        facts,
                         point,
                         category=categories.get(category_id) if available else None,
                         changed=(result.get("changedFromBaseline") if available else None),
@@ -425,13 +422,12 @@ def _priority_sensitivity_visualization(
                     )
                     details.update(
                         {
-                            "Alternative": alternative["name"],
-                            "Expert": expert_name,
-                            "Profile": profile_label,
                             "Alternative priority · same matrix": (
-                                (result or {}).get("globalPriority") if result else None
+                                (result or {}).get("globalPriority")
+                                if _is_finite_number((result or {}).get("globalPriority"))
+                                else None
                             ),
-                            "Profile priority · same matrix": (
+                            "Profile priority": (
                                 profile_priority if available else None
                             ),
                         }
@@ -440,11 +436,6 @@ def _priority_sensitivity_visualization(
                         {
                             "x": point["variedWeight"],
                             "y": profile_priority if available else None,
-                            "label": f"{expert_name} · {alternative['name']} · {profile_label}",
-                            "category": categories.get(category_id) if available else None,
-                            "alternativeId": alternative_id,
-                            "expertId": expert_id,
-                            "profileId": profile_id,
                             "details": details,
                             "isConfiguredWeight": point["variedWeight"]
                             == item.get("configuredWeight"),
@@ -547,7 +538,6 @@ def _collective_category_sensitivity_visualization(
             available = category_id in category_order
             aggregate = (collective.get("resultsByAlternativeId") or {}).get(alternative_id, {})
             details = _weight_details(
-                facts,
                 point,
                 category=category_labels.get(category_id) if available else None,
                 changed=(
@@ -587,9 +577,6 @@ def _collective_category_sensitivity_visualization(
                 {
                     "x": point["variedWeight"],
                     "y": category_order[category_id] if available else None,
-                    "label": f"Collective · {alternative['name']}",
-                    "category": category_labels.get(category_id) if available else None,
-                    "alternativeId": alternative_id,
                     "details": details,
                     "isConfiguredWeight": point["variedWeight"] == item.get("configuredWeight"),
                 }

@@ -113,9 +113,12 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     assert alternative_series["expertId"] == profile_series["expertId"]
     assert alternative_series["alternativeId"] == profile_series["alternativeId"]
     assert configured_sample["y"] == configured_sample["details"][
-        "Alternative priority · this expert and alternative matrix"
+        "Alternative priority"
     ]
-    assert profile_series["values"][0]["details"]["Profile"] == profile_series["profileName"]
+    assert profile_series["profileName"] in profile_series["label"]
+    assert profile_series["values"][0]["y"] == profile_series["values"][0]["details"][
+        "Profile priority"
+    ]
     assert "selected alternative–expert matrix" in weight_sensitivity["yAxis"]["label"]
     assert weight_sensitivity["presentation"]["profileLegendTitle"] == "LIMITING PROFILES"
 
@@ -155,7 +158,7 @@ def test_central_sensitivity_keeps_central_categories_and_tie_evidence():
     assert evidence.profile_mode == "central"
     assert point["details"]["Central profile tie detected"] is True
     assert point["details"]["Distance to selected central profile"] is not None
-    assert configured["category"] in {
+    assert configured["details"]["Assigned category"] in {
         category["label"] for category in evidence.categories
     }
     assert "Selected central profile" in configured["details"]

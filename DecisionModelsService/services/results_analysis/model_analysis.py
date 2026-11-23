@@ -9,11 +9,26 @@ def load_model_analysis_handlers(api_model_key: str):
     model_package_path = f"models.{api_model_key}"
 
     try:
-        module = (
-            reload(sys.modules[module_path])
-            if module_path in sys.modules
-            else import_module(module_path)
-        )
+        if module_path in sys.modules:
+            submodule_prefix = f"{module_path}."
+            cached_submodules = sorted(
+                (
+                    name
+                    for name in sys.modules
+                    if name.startswith(submodule_prefix)
+                ),
+                key=lambda name: name.count("."),
+                reverse=True,
+            )
+            for name in cached_submodules:
+                sys.modules.pop(name, None)
+                parent_name, _, child_name = name.rpartition(".")
+                parent = sys.modules.get(parent_name)
+                if parent is not None:
+                    vars(parent).pop(child_name, None)
+            module = reload(sys.modules[module_path])
+        else:
+            module = import_module(module_path)
     except ModuleNotFoundError as error:
         if error.name in {module_path, model_package_path}:
             return None
