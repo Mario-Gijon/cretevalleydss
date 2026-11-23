@@ -35,6 +35,7 @@ import { buildGeneralVisualizationsLayout } from "../logic/buildGeneralVisualiza
 import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
 import { buildClassificationPatternProjectionVisualization, buildClassificationRelationshipVisualization } from "../logic/buildClassificationRelationshipVisualization.js";
 import { finishedIssueScrollbarSx } from "../resultsAnalysis.styles.js";
+import { evaluationsToggleSx } from "../../evaluations/evaluations.styles.js";
 import ProjectedExpertDistances from "./ProjectedExpertDistances.jsx";
 import VisualizationUnavailableState from "./VisualizationUnavailableState.jsx";
 import VisualizationReadingGuide from "./VisualizationReadingGuide.jsx";
@@ -755,6 +756,15 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
     : [];
   const alternativeOptions = alternativeSelector ? getSensitivityAlternativeOptions(scopedVisualizations) : [];
   const expertOptions = expertSelector ? getSensitivityExpertOptions(scopedVisualizations) : [];
+  const hasCollectiveSensitivityResults = scopedVisualizations.some((visualization) =>
+    Array.isArray(visualization?.data?.series)
+      && visualization.data.series.some((series) => series?.resultType === "collective"),
+  );
+  const canToggleCollective = scopedVisualizations.some((visualization) =>
+    typeof visualization?.key === "string"
+      && visualization.key.startsWith("ahp-sort-i-criterion-weight-sensitivity-"),
+  ) && resultOptions.some((option) => option.value === "collective")
+    && hasCollectiveSensitivityResults;
   const firstScopedVisualization = scopedEntries.flatMap((entry) => entry.visualizations)[0] || null;
   const recommendedAlternativeIds = recommendSensitivityAlternativeIds(firstScopedVisualization, alternativeSelector?.recommendedCount ?? 3);
   const [selectedAlternativeIds, setSelectedAlternativeIds] = useState(null);
@@ -855,13 +865,13 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
               </MenuItem>)}
             </Select>
           </FormControl>
-          {!singleAlternativeSelection ? <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" alignItems="center">
+          {!singleAlternativeSelection && !canToggleCollective ? <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" alignItems="center">
               <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
               <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
             </Stack> : null}
         </Stack>
       ) : null}
-      {resultOptions.length > 1 ? (
+      {resultOptions.length > 1 && !canToggleCollective ? (
         <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 150 } }}>
           <InputLabel color="secondary" id={`${section.id}-result-label`}>Result</InputLabel>
           <Select size="small" color="secondary" labelId={`${section.id}-result-label`} label="Result" value={effectiveSelectedResultType || ""} onChange={(event) => setSelectedResultType(event.target.value)}>
@@ -876,6 +886,26 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
             {expertOptions.map((option) => <MenuItem key={option.id} value={option.id}>{option.label}</MenuItem>)}
           </Select>
         </FormControl>
+      ) : null}
+      {canToggleCollective ? (
+        <ToggleButton
+          value="collective"
+          variant="outlined"
+          selected={effectiveSelectedResultType === "collective"}
+          onChange={() => setSelectedResultType(effectiveSelectedResultType === "collective" ? "individual" : "collective")}
+          size="small"
+          color="secondary"
+          sx={evaluationsToggleSx}
+          aria-label="Show collective values"
+        >
+          {effectiveSelectedResultType === "collective" ? "Collective shown" : "Show collective"}
+        </ToggleButton>
+      ) : null}
+      {canToggleCollective && alternativeSelector && !singleAlternativeSelection ? (
+        <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" alignItems="center">
+          <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
+          <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
+        </Stack>
       ) : null}
     </Stack>
   ) : null;

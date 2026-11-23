@@ -493,7 +493,7 @@ describe("VisualizationsPanel", () => {
     });
   });
 
-  it("renders one categorical chart and switches its selected alternative and result series", () => {
+  it("renders one categorical chart and toggles collective results without losing the selected expert", () => {
     const alternatives = [
       { id: "a", name: "Alpha" },
       { id: "b", name: "Beta" },
@@ -589,8 +589,20 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByRole("combobox", { name: "Expert" })).toHaveTextContent("Expert One");
     expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
     expect(screen.queryByTestId("ahp-sort-i-sensitivity-card")).not.toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Result" })).toHaveTextContent("Individual");
+    const collectiveButton = screen.getByRole("button", { name: "Show collective values" });
+    expect(collectiveButton).toHaveTextContent("Show collective");
     const graph = screen.getByTestId("analytical-graph");
+    const criterionSelect = screen.getByRole("combobox", { name: "Criterion" });
+    const alternativesSelect = screen.getByRole("combobox", { name: "Alternatives" });
+    const expertSelect = screen.getByRole("combobox", { name: "Expert" });
+    const showAllButton = screen.getByRole("button", { name: "Show all" });
+    const resetButton = screen.getByRole("button", { name: "Reset" });
+    const follows = (first, second) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(criterionSelect, alternativesSelect)).toBe(true);
+    expect(follows(alternativesSelect, expertSelect)).toBe(true);
+    expect(follows(expertSelect, collectiveButton)).toBe(true);
+    expect(follows(collectiveButton, showAllButton)).toBe(true);
+    expect(follows(showAllButton, resetButton)).toBe(true);
     expect(graph.dataset.yAxisLabel).toBe("Assigned category · configured order");
     let seriesKeys = JSON.parse(graph.dataset.seriesKeys);
     expect(seriesKeys).toHaveLength(3);
@@ -619,16 +631,16 @@ describe("VisualizationsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     expect(screen.getByRole("combobox", { name: "Alternatives" })).toHaveTextContent("3 of 4 selected");
 
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Result" }));
-    fireEvent.click(screen.getByRole("option", { name: "Collective" }));
+    fireEvent.click(collectiveButton);
+    expect(collectiveButton).toHaveTextContent("Collective shown");
     expect(screen.queryByRole("combobox", { name: "Expert" })).not.toBeInTheDocument();
     seriesKeys = JSON.parse(screen.getByTestId("analytical-graph").dataset.seriesKeys);
     expect(seriesKeys).toHaveLength(3);
     expect(seriesKeys.every((key) => key.startsWith("collective:"))).toBe(true);
     expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
 
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Result" }));
-    fireEvent.click(screen.getByRole("option", { name: "Individual" }));
+    fireEvent.click(collectiveButton);
+    expect(collectiveButton).toHaveTextContent("Show collective");
     expect(screen.getByRole("combobox", { name: "Expert" })).toHaveTextContent("Expert Two");
 
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Criterion" }));
@@ -637,6 +649,47 @@ describe("VisualizationsPanel", () => {
     expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
     expect(screen.getByTestId("analytical-graph").dataset.key).toBe("ahp-sort-i-criterion-weight-sensitivity-safety");
     expect(JSON.parse(screen.getByTestId("analytical-graph").dataset.seriesKeys).every((key) => key.startsWith("individual:e2:"))).toBe(true);
+  });
+
+  it("does not show the collective toggle when no collective series is available", () => {
+    const experts = [{ id: "e1", name: "Expert One" }, { id: "e2", name: "Expert Two" }];
+    const visualization = {
+      key: "ahp-sort-i-criterion-weight-sensitivity-quality",
+      type: "line",
+      scope: { dimension: "criterion", id: "quality", label: "Quality" },
+      presentation: {
+        alternativeSelector: { recommendedCount: 3 },
+        expertSelector: { selectionMode: "single" },
+        resultSelector: {
+          defaultValue: "individual",
+          options: [{ value: "individual", label: "Individual" }, { value: "collective", label: "Collective" }],
+        },
+      },
+      data: {
+        series: experts.map((expert) => ({
+          key: `individual:${expert.id}:a`,
+          label: "Alpha",
+          resultType: "individual",
+          alternativeId: "a",
+          alternativeName: "Alpha",
+          expertId: expert.id,
+          expertName: expert.name,
+          values: [{ x: 0.5, y: 1 }],
+        })),
+      },
+    };
+
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", alternativeEvaluationAnalysis: { analysis: { sections: [{
+        id: "ahp-sort-i-sensitivity", title: "Weight sensitivity", order: 0,
+        presentation: { layout: "stacked", scopeSelector: "criterion" },
+        visualizations: [visualization],
+      }] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.queryByRole("button", { name: "Show collective values" })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Expert" })).toBeInTheDocument();
   });
 
   it("recommends up to three alternatives, supports selection actions, preserves boundaries, and hides Base for one run", async () => {
