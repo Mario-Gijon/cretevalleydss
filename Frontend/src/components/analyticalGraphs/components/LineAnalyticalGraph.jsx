@@ -72,15 +72,17 @@ const buildSeriesDisplayLabels = (series) => {
 
 const SensitivityLegend = ({ series, presentation, displayLabels }) => {
   if (!presentation.compactLegend) return null;
+  const profileLegendTitle = presentation.profileLegendTitle || "CATEGORY BOUNDARIES";
+  const profileLegendItemTitle = presentation.profileLegendItemTitle || "Boundary";
   const alternatives = series.filter((item) => seriesRole(item) === "alternative");
   const collectives = series.filter((item) => seriesRole(item) === "collective");
   const boundaries = series.filter((item) => seriesRole(item) === "boundary");
-  const renderEntries = (items, role) => items.length ? <Box component="ul" aria-label={role === "alternative" ? "Visible alternatives" : role === "collective" ? "Visible collective results" : "Visible category boundaries"} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.8, rowGap: 0.8, width: "100%", listStyle: "none", p: 0, m: 0 }}>
+  const renderEntries = (items, role) => items.length ? <Box component="ul" aria-label={role === "alternative" ? "Visible alternatives" : role === "collective" ? "Visible collective results" : `Visible ${profileLegendTitle.toLowerCase()}`} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.8, rowGap: 0.8, width: "100%", listStyle: "none", p: 0, m: 0 }}>
     {items.map((item) => {
       const color = seriesColor(item, series.indexOf(item), presentation);
       const label = displayLabels.get(String(item.key)) || item.label || item.key;
       const dashed = role === "boundary" || item.style?.borderDash?.length;
-      const legendRole = role === "alternative" ? "Individual result" : role === "collective" ? "Collective result" : "Boundary";
+      const legendRole = role === "alternative" ? "Individual result" : role === "collective" ? "Collective result" : profileLegendItemTitle;
       return <Box component="li" key={item.key} aria-label={`${legendRole}: ${label}`} sx={{ display: "flex", alignItems: "center", gap: 0.65, flex: "0 1 auto", minWidth: 0, maxWidth: "100%" }}>
         <Box aria-hidden="true" sx={{ width: 22, flex: "0 0 22px", borderTop: `${role === "alternative" ? 3 : 1.5}px ${dashed ? "dashed" : "solid"} ${color}`, opacity: role === "boundary" ? 0.78 : 1 }} />
         <Tooltip title={item.label || item.key} placement="top" arrow>
@@ -93,7 +95,7 @@ const SensitivityLegend = ({ series, presentation, displayLabels }) => {
   return <Stack spacing={1} sx={{ width: "100%", minWidth: 0, mb: 0.8 }}>
     {alternatives.length ? <Box component="section" aria-label="Alternatives legend" sx={{ width: "100%", minWidth: 0 }}><Typography variant="overline" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2, mb: 0.4 }}>ALTERNATIVES</Typography>{renderEntries(alternatives, "alternative")}</Box> : null}
     {collectives.length ? <Box component="section" aria-label="Collective results legend" sx={{ width: "100%", minWidth: 0 }}><Typography variant="overline" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2, mb: 0.4 }}>COLLECTIVE RESULTS</Typography>{renderEntries(collectives, "collective")}</Box> : null}
-    {boundaries.length ? <Box component="section" aria-label="Category boundaries legend" sx={{ width: "100%", minWidth: 0 }}><Typography variant="overline" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2, mb: 0.4 }}>CATEGORY BOUNDARIES</Typography>{renderEntries(boundaries, "boundary")}</Box> : null}
+    {boundaries.length ? <Box component="section" aria-label={`${profileLegendTitle.toLowerCase()} legend`} sx={{ width: "100%", minWidth: 0 }}><Typography variant="overline" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2, mb: 0.4 }}>{profileLegendTitle}</Typography>{renderEntries(boundaries, "boundary")}</Box> : null}
   </Stack>;
 };
 

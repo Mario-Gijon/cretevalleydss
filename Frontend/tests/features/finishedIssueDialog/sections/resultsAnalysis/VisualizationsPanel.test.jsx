@@ -493,6 +493,67 @@ describe("VisualizationsPanel", () => {
     });
   });
 
+  it("selects one alternative and expert and keeps collective categories in their own chart", () => {
+    const numeric = {
+      key: "ahp-sort-i-criterion-priority-sensitivity-quality",
+      type: "line",
+      title: "AHP priorities · Quality",
+      scope: { dimension: "criterion", id: "quality", label: "Quality" },
+      presentation: {
+        alternativeSelector: { recommendedCount: 1, selectionMode: "single" },
+        expertSelector: { selectionMode: "single" },
+      },
+      data: { series: [
+        { key: "alternative:e1:a", role: "alternative", resultType: "individual", alternativeId: "a", alternativeName: "Alpha", expertId: "e1", expertName: "Expert One", values: [{ x: 0.2, y: 0.4, category: "Low" }] },
+        { key: "profile:e1:a:p1", role: "boundary", resultType: "individual-profile", alternativeId: "a", expertId: "e1", values: [{ x: 0.2, y: 0.35 }] },
+        { key: "alternative:e2:a", role: "alternative", resultType: "individual", alternativeId: "a", alternativeName: "Alpha", expertId: "e2", expertName: "Expert Two", values: [{ x: 0.2, y: 0.45, category: "Low" }] },
+        { key: "profile:e2:a:p1", role: "boundary", resultType: "individual-profile", alternativeId: "a", expertId: "e2", values: [{ x: 0.2, y: 0.3 }] },
+        { key: "alternative:e1:b", role: "alternative", resultType: "individual", alternativeId: "b", alternativeName: "Beta", expertId: "e1", expertName: "Expert One", values: [{ x: 0.2, y: 0.5, category: "High" }] },
+        { key: "profile:e1:b:p1", role: "boundary", resultType: "individual-profile", alternativeId: "b", expertId: "e1", values: [{ x: 0.2, y: 0.6 }] },
+        { key: "alternative:e2:b", role: "alternative", resultType: "individual", alternativeId: "b", alternativeName: "Beta", expertId: "e2", expertName: "Expert Two", values: [{ x: 0.2, y: 0.55, category: "High" }] },
+        { key: "profile:e2:b:p1", role: "boundary", resultType: "individual-profile", alternativeId: "b", expertId: "e2", values: [{ x: 0.2, y: 0.65 }] },
+      ] },
+    };
+    const collective = {
+      key: "ahp-sort-i-criterion-collective-sensitivity-quality",
+      type: "line",
+      title: "Collective category changes · Quality",
+      scope: numeric.scope,
+      presentation: { alternativeSelector: { recommendedCount: 1, selectionMode: "single" } },
+      data: { series: [
+        { key: "collective:a", role: "collective", resultType: "collective", alternativeId: "a", alternativeName: "Alpha", values: [{ x: 0.2, y: 0 }] },
+        { key: "collective:b", role: "collective", resultType: "collective", alternativeId: "b", alternativeName: "Beta", values: [{ x: 0.2, y: 1 }] },
+      ] },
+    };
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{ key: "base", displayLabel: "Base", alternativeEvaluationAnalysis: { analysis: { sections: [{
+        id: "ahp-sort-i-sensitivity", title: "Weight sensitivity", order: 0,
+        presentation: { layout: "stacked" }, visualizations: [numeric, collective],
+      }] } } }]}
+      visualizations={{ mode: "single", consensus: { enabled: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.getByRole("combobox", { name: "Alternative" })).toHaveTextContent("Alpha");
+    expect(screen.getByRole("combobox", { name: "Expert" })).toHaveTextContent("Expert One");
+    expect(JSON.parse(screen.getAllByTestId("analytical-graph")[0].dataset.seriesKeys)).toEqual([
+      "alternative:e1:a", "profile:e1:a:p1",
+    ]);
+    expect(JSON.parse(screen.getAllByTestId("analytical-graph")[1].dataset.seriesKeys)).toEqual(["collective:a"]);
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Expert" }));
+    fireEvent.click(screen.getByRole("option", { name: "Expert Two" }));
+    expect(JSON.parse(screen.getAllByTestId("analytical-graph")[0].dataset.seriesKeys)).toEqual([
+      "alternative:e2:a", "profile:e2:a:p1",
+    ]);
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Alternative" }));
+    fireEvent.click(screen.getByRole("option", { name: "Beta" }));
+    expect(JSON.parse(screen.getAllByTestId("analytical-graph")[0].dataset.seriesKeys)).toEqual([
+      "alternative:e2:b", "profile:e2:b:p1",
+    ]);
+    expect(JSON.parse(screen.getAllByTestId("analytical-graph")[1].dataset.seriesKeys)).toEqual(["collective:b"]);
+  });
+
   it("recommends up to three alternatives, supports selection actions, preserves boundaries, and hides Base for one run", async () => {
     const weightSamples = [0, 0.15, 0.2, 0.8];
     const alt = (key, label, categories) => ({

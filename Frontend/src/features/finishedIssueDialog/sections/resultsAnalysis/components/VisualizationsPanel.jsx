@@ -29,7 +29,7 @@ import { buildGenericRankingMovement } from "../logic/buildGenericRankingMovemen
 import { RANKING_ALTERNATIVE_COLORS } from "../logic/rankingAlternativeColors.js";
 import { buildVisualizationLayout } from "../logic/modelVisualizationLayout.js";
 import { buildModelAnalysisSections, scopedEntities, visualizationsForScope } from "../logic/modelAnalysisSections.js";
-import { filterSensitivityVisualization, getSensitivityAlternativeOptions, recommendSensitivityAlternativeIds, resolveVisualizationPresentation } from "../logic/resolveVisualizationPresentation.js";
+import { filterSensitivityVisualization, filterSensitivityVisualizationByExpert, getSensitivityAlternativeOptions, getSensitivityExpertOptions, recommendSensitivityAlternativeIds, resolveVisualizationPresentation } from "../logic/resolveVisualizationPresentation.js";
 import { getVisualizationReadingGuide } from "../logic/visualizationReadingGuides.js";
 import { buildGeneralVisualizationsLayout } from "../logic/buildGeneralVisualizationsLayout.js";
 import { buildProjectedExpertDistances } from "../logic/buildProjectedExpertDistances.js";
@@ -737,7 +737,11 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const alternativeSelector = scopedVisualizations
     .map((visualization) => resolveVisualizationPresentation(visualization).alternativeSelector)
     .find((config) => config && typeof config === "object");
+  const expertSelector = scopedVisualizations
+    .map((visualization) => resolveVisualizationPresentation(visualization).expertSelector)
+    .find((config) => config && typeof config === "object");
   const alternativeOptions = alternativeSelector ? getSensitivityAlternativeOptions(scopedVisualizations) : [];
+  const expertOptions = expertSelector ? getSensitivityExpertOptions(scopedVisualizations) : [];
   const firstScopedVisualization = scopedEntries.flatMap((entry) => entry.visualizations)[0] || null;
   const recommendedAlternativeIds = recommendSensitivityAlternativeIds(firstScopedVisualization, alternativeSelector?.recommendedCount ?? 3);
   const [selectedAlternativeIds, setSelectedAlternativeIds] = useState(null);
@@ -753,11 +757,20 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const effectiveSelectedAlternativeIds = usesRecommendedSelection || shouldUseScopeRecommendation
     ? recommendedAlternativeIds
     : applicableSelectedAlternativeIds || [];
+  const [selectedExpertId, setSelectedExpertId] = useState(null);
+  const effectiveSelectedExpertId = expertOptions.some((option) => option.id === selectedExpertId)
+    ? selectedExpertId
+    : expertOptions[0]?.id || null;
   const visibleEntries = scopedEntries.map((entry) => ({
     ...entry,
-    visualizations: alternativeSelector
-      ? entry.visualizations.map((visualization) => filterSensitivityVisualization(visualization, effectiveSelectedAlternativeIds))
-      : entry.visualizations,
+    visualizations: entry.visualizations.map((visualization) => {
+      const filteredAlternatives = alternativeSelector
+        ? filterSensitivityVisualization(visualization, effectiveSelectedAlternativeIds)
+        : visualization;
+      return expertSelector
+        ? filterSensitivityVisualizationByExpert(filteredAlternatives, effectiveSelectedExpertId)
+        : filteredAlternatives;
+    }),
   }));
   const isSingleton = visibleEntries.length === 1 && visibleEntries[0].visualizations.length === 1;
   const stacked = section.presentation?.layout === "stacked";
@@ -767,12 +780,14 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
   const updateAlternativeSelection = (event) => {
     const value = event.target.value;
     setUsesRecommendedSelection(false);
-    setSelectedAlternativeIds(Array.isArray(value) ? value : String(value).split(",").filter(Boolean));
+    setSelectedAlternativeIds(Array.isArray(value) ? value : [String(value)].filter(Boolean));
   };
+  const singleAlternativeSelection = alternativeSelector?.selectionMode === "single";
+  const alternativeLabel = singleAlternativeSelection ? "Alternative" : "Alternatives";
   const scopeLabel = selectedEntity?.dimension
     ? `${selectedEntity.dimension[0].toUpperCase()}${selectedEntity.dimension.slice(1)}`
     : "Entity";
-  const visualizationControls = selectable || alternativeSelector ? (
+  const visualizationControls = selectable || alternativeSelector || (expertSelector && expertOptions.length > 1) ? (
     <Stack
       direction={{ xs: "column", sm: "row" }}
       spacing={1}
@@ -799,29 +814,39 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
           sx={{ minWidth: 0 }}
         >
           <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: 270 }, maxWidth: { xs: "100%", sm: 320 } }}>
-            <InputLabel color="secondary" id={`${section.id}-alternatives-label`}>Alternatives</InputLabel>
+            <InputLabel color="secondary" id={`${section.id}-alternatives-label`}>{alternativeLabel}</InputLabel>
             <Select
               size="small"
-              multiple
+              multiple={!singleAlternativeSelection}
               color="secondary"
               labelId={`${section.id}-alternatives-label`}
-              label="Alternatives"
-              value={effectiveSelectedAlternativeIds}
+              label={alternativeLabel}
+              value={singleAlternativeSelection ? (effectiveSelectedAlternativeIds[0] || "") : effectiveSelectedAlternativeIds}
               onChange={updateAlternativeSelection}
-              renderValue={(selected) => `Alternatives · ${selected.length} of ${alternativeOptions.length} selected`}
+              renderValue={(selected) => singleAlternativeSelection
+                ? (alternativeOptions.find((option) => option.id === selected)?.displayLabel || "")
+                : `Alternatives · ${selected.length} of ${alternativeOptions.length} selected`}
               MenuProps={{ PaperProps: { sx: { maxHeight: 360, maxWidth: 360 } } }}
             >
               {alternativeOptions.map((option) => <MenuItem key={option.id} value={option.id} title={option.label} aria-label={option.displayLabel}>
-                <Checkbox color="secondary" checked={effectiveSelectedAlternativeIds.includes(option.id)} size="small" />
+                {!singleAlternativeSelection ? <Checkbox color="secondary" checked={effectiveSelectedAlternativeIds.includes(option.id)} size="small" /> : null}
                 <ListItemText primary={<Tooltip title={option.label} placement="right"><Typography component="span" variant="body2" sx={{ overflowWrap: "anywhere" }}>{option.displayLabel}</Typography></Tooltip>} />
               </MenuItem>)}
             </Select>
           </FormControl>
-          <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" alignItems="center">
-            <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
-            <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
-          </Stack>
+          {!singleAlternativeSelection ? <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" alignItems="center">
+              <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(false); setSelectedAlternativeIds(alternativeOptions.map((option) => option.id)); }}>Show all</Button>
+              <Button variant="outlined" color="secondary" size="small" onClick={() => { setUsesRecommendedSelection(true); setSelectedAlternativeIds(null); }}>Reset</Button>
+            </Stack> : null}
         </Stack>
+      ) : null}
+      {expertSelector && expertOptions.length > 1 ? (
+        <FormControl size="small" color="secondary" sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 190 } }}>
+          <InputLabel color="secondary" id={`${section.id}-expert-label`}>Expert</InputLabel>
+          <Select size="small" color="secondary" labelId={`${section.id}-expert-label`} label="Expert" value={effectiveSelectedExpertId || ""} onChange={(event) => setSelectedExpertId(event.target.value)}>
+            {expertOptions.map((option) => <MenuItem key={option.id} value={option.id}>{option.label}</MenuItem>)}
+          </Select>
+        </FormControl>
       ) : null}
     </Stack>
   ) : null;
@@ -833,7 +858,7 @@ const SemanticSection = ({ section, showExecutionLabels = false }) => {
           {section.presentation.summaryMessage.trim()}
         </Typography>
       : null}
-    {alternativeSelector && effectiveSelectedAlternativeIds.length === 0 ? <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: 0.8 }}>No alternatives selected. The category boundaries remain visible.</Typography> : null}
+    {alternativeSelector && effectiveSelectedAlternativeIds.length === 0 ? <Typography role="status" variant="body2" color="text.secondary" sx={{ mb: 0.8 }}>No alternatives selected.</Typography> : null}
     <Box sx={{ ...finishedIssueScrollbarSx, overflowX: visibleEntries.length > 2 ? "auto" : "visible", overflowY: "hidden" }}>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: visibleEntries.length > 1 ? scenarioColumns : "minmax(0, 1fr)" }, columnGap: { xs: 0, md: 1.4 }, rowGap: 1.4, minWidth: visibleEntries.length > 2 ? `${visibleEntries.length * 360}px` : 0 }}>
         {visibleEntries.flatMap((entry, index) => [

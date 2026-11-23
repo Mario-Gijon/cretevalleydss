@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   filterSensitivityVisualization,
+  filterSensitivityVisualizationByExpert,
   getSensitivityAlternativeOptions,
+  getSensitivityExpertOptions,
   recommendSensitivityAlternativeIds,
   resolveVisualizationPresentation,
 } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/resolveVisualizationPresentation.js";
@@ -83,6 +85,31 @@ describe("criterion weight sensitivity presentation", () => {
     const filtered = filterSensitivityVisualization(visualization, ["alternative-b"]);
     expect(filtered.data.series.map(({ key }) => key)).toEqual(["alternative-b", "profile-p1", "profile-p2"]);
     expect(visualization.data.series).toHaveLength(4);
+  });
+
+  it("filters matrix-specific profiles with their alternative and expert while keeping collective category series separate", () => {
+    const visualization = { data: { series: [
+      { key: "alternative:e1:a", role: "alternative", resultType: "individual", alternativeId: "a", expertId: "e1", expertName: "Expert One", values: [] },
+      { key: "profile:e1:a:p1", role: "boundary", resultType: "individual-profile", alternativeId: "a", expertId: "e1", values: [] },
+      { key: "alternative:e2:a", role: "alternative", resultType: "individual", alternativeId: "a", expertId: "e2", expertName: "Expert Two", values: [] },
+      { key: "profile:e2:a:p1", role: "boundary", resultType: "individual-profile", alternativeId: "a", expertId: "e2", values: [] },
+      { key: "profile-global", role: "boundary", values: [] },
+      { key: "collective:a", role: "collective", resultType: "collective", alternativeId: "a", values: [] },
+    ] } };
+
+    expect(getSensitivityAlternativeOptions([visualization]).map(({ id }) => id)).toEqual(["a"]);
+    expect(getSensitivityExpertOptions([visualization])).toEqual([
+      { id: "e1", label: "Expert One" },
+      { id: "e2", label: "Expert Two" },
+    ]);
+    const byAlternative = filterSensitivityVisualization(visualization, ["a"]);
+    const byExpert = filterSensitivityVisualizationByExpert(byAlternative, "e2");
+    expect(byExpert.data.series.map(({ key }) => key)).toEqual([
+      "alternative:e2:a",
+      "profile:e2:a:p1",
+      "profile-global",
+      "collective:a",
+    ]);
   });
 
   it("uses short stable disambiguators for duplicate names without exposing internal IDs", () => {

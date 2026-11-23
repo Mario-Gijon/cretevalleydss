@@ -70,6 +70,25 @@ export const getSensitivityAlternativeOptions = (visualizations) => {
   });
 };
 
+export const getSensitivityExpertOptions = (visualizations) => {
+  const optionsById = new Map();
+  (Array.isArray(visualizations) ? visualizations : []).forEach((visualization) => {
+    (Array.isArray(visualization?.data?.series) ? visualization.data.series : []).forEach((series) => {
+      if (series?.resultType !== "individual" || typeof series?.expertId !== "string" || !series.expertId.trim()) return;
+      if (!optionsById.has(series.expertId)) {
+        optionsById.set(series.expertId, {
+          id: series.expertId,
+          label: typeof series.expertName === "string" && series.expertName.trim()
+            ? series.expertName.trim()
+            : series.expertId,
+        });
+      }
+    });
+  });
+  return [...optionsById.values()].sort((left, right) =>
+    left.label.localeCompare(right.label, "en") || left.id.localeCompare(right.id, "en"));
+};
+
 const categoryAt = (point) => {
   const category = point?.details?.Category ?? point?.category;
   return typeof category === "string" && category.trim() ? category : null;
@@ -134,11 +153,26 @@ export const filterSensitivityVisualization = (visualization, selectedIds) => {
     data: {
       ...visualization.data,
       series: visualization.data.series.filter((series) =>
-        !isAlternativeSensitivitySeries(series) || selected.has(
+        (!isAlternativeSensitivitySeries(series) && !(series?.role === "boundary" && series?.alternativeId)) || selected.has(
           typeof series?.alternativeId === "string" && series.alternativeId.trim()
             ? series.alternativeId.trim()
             : seriesId(series),
         )),
+    },
+  };
+};
+
+export const filterSensitivityVisualizationByExpert = (visualization, selectedExpertId) => {
+  if (typeof selectedExpertId !== "string" || !Array.isArray(visualization?.data?.series)) return visualization;
+  return {
+    ...visualization,
+    data: {
+      ...visualization.data,
+      series: visualization.data.series.filter((series) => {
+        const isIndividualMatrixSeries = series?.resultType === "individual"
+          || (series?.role === "boundary" && series?.alternativeId && series?.expertId);
+        return !isIndividualMatrixSeries || series.expertId === selectedExpertId;
+      }),
     },
   };
 };
