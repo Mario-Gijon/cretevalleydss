@@ -49,30 +49,6 @@ import {
 
 const descriptors = {
   bar: { key: "bar", type: "bar", title: "Bar", data: { categories: ["Alt 1", "Alt 2"], series: [{ key: "c1", label: "C1", values: [0.2, 0.5] }] } },
-  categoricalBands: {
-    key: "ahp-sort-i-criterion-weight-sensitivity-quality",
-    type: "categoricalBands",
-    title: "Categorical weight sensitivity",
-    xAxis: { label: "Varied criterion weight", min: 0, max: 1 },
-    yAxis: { categories: [{ value: 0, label: "Bad" }, { value: 1, label: "Good" }] },
-    data: {
-      x: [0, 0.5, 1],
-      configuredWeight: 0.5,
-      alternativeOrder: ["a", "b"],
-      series: [
-        { key: "individual:e1:a", label: "Alpha", resultType: "individual", alternativeId: "a", alternativeName: "Alpha", values: [
-          { x: 0, y: 0, details: { "Assigned category": "Bad", "Changed from original": "No" } },
-          { x: 0.5, y: null, details: { "Unavailable reason": "invalid_profile_order" } },
-          { x: 1, y: 1, details: { "Assigned category": "Good", "Changed from original": "Yes" } },
-        ] },
-        { key: "individual:e1:b", label: "Beta", resultType: "individual", alternativeId: "b", alternativeName: "Beta", values: [
-          { x: 0, y: 1, details: { "Assigned category": "Good" } },
-          { x: 0.5, y: 0, details: { "Assigned category": "Bad" } },
-          { x: 1, y: 0, details: { "Assigned category": "Bad" } },
-        ] },
-      ],
-    },
-  },
   line: { key: "line", type: "line", title: "Line", data: { x: [0, 1], series: [{ key: "alt", label: "Alt", values: [0.2, 0.5] }] }, xAxis: { label: "Weight" }, yAxis: { label: "Score" } },
   scatter: { key: "scatter", type: "scatter", title: "Scatter", data: { series: [{ key: "alts", label: "Alternatives", points: [{ id: "a", label: "Alt 1", x: 0.9, y: 0.575, details: { Rank: 2 } }] }] } },
   pie: { key: "pie", type: "pie", title: "Pie", donut: true, data: { items: [{ key: "exact", label: "Exact", value: 6 }] } },
@@ -136,35 +112,12 @@ const twoTupleHeatmap = (key, columnCount) => {
 
 describe("AnalyticalGraph", () => {
   it("registers and resolves every supported graph type", () => {
-    expect(Object.keys(analyticalGraphRegistry).sort()).toEqual(["bar", "categoricalBands", "heatmap", "image", "line", "pie", "radar", "scatter"]);
+    expect(Object.keys(analyticalGraphRegistry).sort()).toEqual(["bar", "heatmap", "image", "line", "pie", "radar", "scatter"]);
     Object.values(descriptors).forEach((visualization) => {
       const { unmount } = render(<AnalyticalGraph visualization={visualization} />);
       expect(screen.getByTestId(`analytical-graph-${visualization.type}`)).toBeInTheDocument();
       unmount();
     });
-  });
-
-  it("renders discrete category bands, stable alternative blocks, the exact original-weight marker, and unavailable gaps", () => {
-    render(<AnalyticalGraph visualization={descriptors.categoricalBands} />);
-
-    const graph = screen.getByTestId("categorical-bands-analytical-graph");
-    const svg = within(graph).getByTestId("categorical-bands-svg");
-    const blocks = within(svg).getAllByTestId("category-interval-block");
-    expect(svg).toHaveAttribute("data-alternative-count", "2");
-    expect(within(svg).getAllByTestId("category-band").map((band) => band.getAttribute("data-category"))).toEqual(["Bad", "Good"]);
-    expect(blocks).toHaveLength(3);
-    expect(blocks.map((block) => block.getAttribute("data-alternative-id"))).toEqual(["a", "b", "b"]);
-    expect(blocks[0].querySelector("title")).toHaveTextContent("Alpha");
-    expect(blocks[0].querySelector("title")).toHaveTextContent("Sample interval: 0.00–0.50");
-    expect(blocks[0].querySelector("title")).toHaveTextContent("Assigned category: Bad");
-    expect(within(svg).getAllByTestId("category-sample-marker").map((marker) => marker.getAttribute("data-category"))).toEqual(["Good", "Bad"]);
-    expect(within(svg).getByTestId("original-weight-marker").querySelector("line")).toHaveAttribute("x1", "568");
-    expect(within(svg).getAllByTestId("unavailable-sample-marker")).toHaveLength(1);
-
-    const [alpha, beta] = within(graph).getAllByRole("listitem").slice(0, 2);
-    expect(alpha).toHaveAttribute("aria-label", "Alternative: Alpha");
-    expect(beta).toHaveAttribute("aria-label", "Alternative: Beta");
-    expect(blocks[0].getAttribute("fill")).not.toBe(blocks[1].getAttribute("fill"));
   });
 
   it("renders optional visualization controls after the title and reading guide, before the chart", () => {
@@ -474,7 +427,7 @@ describe("AnalyticalGraph", () => {
     expect(screen.getByText("ALTERNATIVES").compareDocumentPosition(screen.getByText("CATEGORY BOUNDARIES")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("renders AHPSort ordinal categories, sampled gaps, and grouped expert/collective selectors", () => {
+  it("renders AHPSort category sensitivity as horizontal-only segments with stable colors and real gaps", () => {
     const scatter = {
       key: "ahp-sort-i-original-classifications",
       type: "scatter",
@@ -508,32 +461,42 @@ describe("AnalyticalGraph", () => {
         stableSeriesColors: true,
         compactLegend: true,
         originalWeightMarker: true,
+        originalWeightMarkerMode: "axis-tick",
         originalWeightLabel: "Original criterion weight",
         originalWeightAriaLabel: "Original criterion weight",
         colorByAlternativeId: true,
+        categoryLineSegments: true,
+        categoryOffsetRange: 0.12,
+        hideVerticalGridLines: true,
       },
       xAxis: { label: "Varied weight", min: 0, max: 1, scaleType: "linear" },
       yAxis: {
         label: "Category",
         min: -0.5,
-        max: 1.5,
+        max: 2.5,
         scaleType: "linear",
-        categories: [{ value: 0, label: "Low" }, { value: 1, label: "High" }],
+        categories: [{ value: 0, label: "Bad" }, { value: 1, label: "Moderate" }, { value: 2, label: "Good" }],
       },
       data: {
         xScaleType: "linear",
-        x: [0, 0.5, 1],
+        x: [0, 0.25, 0.5, 0.75, 1],
         configuredWeight: 0.5,
+        alternativeOrder: ["alpha", "beta"],
         series: [
-          { key: "individual:expert-a:alpha", label: "Individual · A · Alpha", role: "alternative", resultType: "individual", alternativeId: "alpha", alternativeName: "Alpha", values: [
-            { x: 0, y: 0, category: "Low" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: null, category: null },
-          ], style: { stepped: "after" } },
-          { key: "collective:alpha", label: "Alpha", role: "collective", resultType: "collective", alternativeId: "alpha", alternativeName: "Alpha", values: [
-            { x: 0, y: 0, category: "Low" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: null, category: null },
-          ], style: { stepped: "after" } },
-          { key: "individual:expert-a:beta", label: "Individual · A · Beta", role: "alternative", resultType: "individual", alternativeId: "beta", alternativeName: "Beta", values: [
-            { x: 0, y: 1, category: "High" }, { x: 0.5, y: 1, category: "High", isConfiguredWeight: true }, { x: 1, y: 0, category: "Low" },
-          ], style: { stepped: "after" } },
+          { key: "individual:expert-a:alpha", label: "Alpha", role: "alternative", resultType: "individual", expertId: "expert-a", alternativeId: "alpha", alternativeName: "Alpha", values: [
+            { x: 0, y: 0, details: { "Varied weight": 0, "Assigned category": "Bad" } },
+            { x: 0.25, y: 0, details: { "Varied weight": 0.25, "Assigned category": "Bad" } },
+            { x: 0.5, y: 1, isConfiguredWeight: true, details: { "Varied weight": 0.5, "Assigned category": "Moderate" } },
+            { x: 0.75, y: null, details: { "Varied weight": 0.75, "Unavailable reason": "invalid_profile_order" } },
+            { x: 1, y: 1, details: { "Varied weight": 1, "Assigned category": "Moderate" } },
+          ] },
+          { key: "individual:expert-a:beta", label: "Beta", role: "alternative", resultType: "individual", expertId: "expert-a", alternativeId: "beta", alternativeName: "Beta", values: [
+            { x: 0, y: 1, details: { "Varied weight": 0, "Assigned category": "Moderate" } },
+            { x: 0.25, y: 1, details: { "Varied weight": 0.25, "Assigned category": "Moderate" } },
+            { x: 0.5, y: 1, isConfiguredWeight: true, details: { "Varied weight": 0.5, "Assigned category": "Moderate" } },
+            { x: 0.75, y: 2, details: { "Varied weight": 0.75, "Assigned category": "Good" } },
+            { x: 1, y: 2, details: { "Varied weight": 1, "Assigned category": "Good" } },
+          ] },
         ],
       },
     };
@@ -545,21 +508,32 @@ describe("AnalyticalGraph", () => {
     expect(recommendSensitivityAlternativeIds(sensitivity, 3)).toContain("alpha");
     expect(filterSensitivityVisualization(sensitivity, ["alpha"]).data.series.map((series) => series.key)).toEqual([
       "individual:expert-a:alpha",
-      "collective:alpha",
     ]);
 
     render(<AnalyticalGraph visualization={sensitivity} />);
     const yScale = lineState.options.scales.y;
     const categoryLineTicks = { ticks: [] };
     yScale.afterBuildTicks(categoryLineTicks);
-    expect(categoryLineTicks.ticks).toEqual([{ value: 0 }, { value: 1 }]);
-    expect(lineState.data.datasets[0].stepped).toBe("after");
-    expect(lineState.data.datasets[0].spanGaps).toBe(false);
-    expect(lineState.data.datasets[0].data[2].y).toBeNull();
-    expect(lineState.data.datasets[0].borderColor).toBe(stableChartColor("alternative:alpha"));
-    expect(lineState.data.datasets[1].borderColor).toBe(stableChartColor("alternative:alpha"));
-    expect(lineState.data.datasets[1].borderDash).toBeUndefined();
-    expect(screen.getByText("COLLECTIVE RESULTS")).toBeInTheDocument();
+    expect(categoryLineTicks.ticks).toEqual([{ value: 0 }, { value: 1 }, { value: 2 }]);
+    const alphaSegments = lineState.data.datasets.filter((dataset) => dataset.alternativeId === "alpha");
+    const betaSegments = lineState.data.datasets.filter((dataset) => dataset.alternativeId === "beta");
+    expect(alphaSegments).toHaveLength(3);
+    expect(betaSegments).toHaveLength(2);
+    expect(alphaSegments.map((dataset) => dataset.showLine)).toEqual([true, false, false]);
+    expect(betaSegments.map((dataset) => dataset.showLine)).toEqual([true, true]);
+    expect(alphaSegments.slice(1).every((dataset) => dataset.pointStyle === "circle")).toBe(true);
+    expect(lineState.data.datasets.every((dataset) => new Set(dataset.data.map((point) => point.y)).size === 1)).toBe(true);
+    expect(alphaSegments.map((dataset) => dataset.data.map((point) => point.x))).toEqual([[0, 0.25], [0.5], [1]]);
+    expect(alphaSegments[0].data[0].details["Assigned category"]).toBe("Bad");
+    expect(alphaSegments[1].data[0].y).toBeCloseTo(0.88);
+    expect(alphaSegments[1].data[0].details["Assigned category"]).toBe("Moderate");
+    expect(alphaSegments[1].borderColor).toBe("#56B4E9");
+    expect(betaSegments[0].borderColor).toBe("#E69F00");
+    expect(alphaSegments[1].borderColor).not.toBe(betaSegments[0].borderColor);
+    expect(lineState.options.scales.x.grid.display).toBe(false);
+    expect(lineState.options.scales.y.grid.display).toBe(true);
+    expect(lineState.options.plugins.originalWeightMarker).toMatchObject({ value: 0.5, mode: "axis-tick" });
+    expect(screen.getByText("ALTERNATIVES")).toBeInTheDocument();
     expect(screen.getByLabelText("Original criterion weight 0.5")).toBeInTheDocument();
   });
 

@@ -493,7 +493,7 @@ describe("VisualizationsPanel", () => {
     });
   });
 
-  it("renders one categorical chart and toggles collective results without losing the selected expert", () => {
+  it("renders one AHPSort line chart and toggles collective results without losing the selected expert", () => {
     const alternatives = [
       { id: "a", name: "Alpha" },
       { id: "b", name: "Beta" },
@@ -508,7 +508,7 @@ describe("VisualizationsPanel", () => {
       const scope = { dimension: "criterion", id: criterionId, label: criterionLabel };
       return {
         key: `ahp-sort-i-criterion-weight-sensitivity-${criterionId}`,
-        type: "categoricalBands",
+        type: "line",
         title: `Criterion weight sensitivity · ${criterionLabel}`,
         scope,
         presentation: {
@@ -523,6 +523,9 @@ describe("VisualizationsPanel", () => {
           },
           stableSeriesColors: true,
           colorByAlternativeId: true,
+          categoryLineSegments: true,
+          categoryOffsetRange: 0.12,
+          hideVerticalGridLines: true,
         },
         xAxis: { label: "Varied criterion weight", min: 0, max: 1, scaleType: "linear" },
         yAxis: {
@@ -533,12 +536,8 @@ describe("VisualizationsPanel", () => {
           xScaleType: "linear",
           x: [0.2, 0.8],
           configuredWeight: 0.2,
-          categoryDisplayOffsets: Object.fromEntries(alternatives.map((alternative, index) => [
-            alternative.id,
-            0.24 * (index / (alternatives.length - 1) - 0.5),
-          ])),
           series: [
-            ...experts.flatMap((expert) => alternatives.map((alternative, index) => ({
+            ...experts.flatMap((expert) => alternatives.map((alternative) => ({
               key: `individual:${expert.id}:${alternative.id}`,
               label: alternative.name,
               role: "alternative",
@@ -551,12 +550,12 @@ describe("VisualizationsPanel", () => {
                 x: [0.2, 0.8][sample],
                 y: alternative.id === "a" && expert.id === "e1" && sample === 1
                   ? null
-                  : categoryIndex + 0.24 * (index / (alternatives.length - 1) - 0.5),
+                  : categoryIndex,
                 isConfiguredWeight: sample === 0,
                 details: { "Assigned category": sample === 0 ? "Moderate" : "Good", Expert: expert.name },
               })),
             }))),
-            ...alternatives.map((alternative, index) => ({
+            ...alternatives.map((alternative) => ({
               key: `collective:${alternative.id}`,
               label: alternative.name,
               role: "collective",
@@ -565,11 +564,10 @@ describe("VisualizationsPanel", () => {
               alternativeName: alternative.name,
               values: [1, 2].map((categoryIndex, sample) => ({
                 x: [0.2, 0.8][sample],
-                y: categoryIndex + 0.24 * (index / (alternatives.length - 1) - 0.5),
+                y: categoryIndex,
                 isConfiguredWeight: sample === 0,
                 details: { "Assigned category": sample === 0 ? "Moderate" : "Good", "Votes · Good": 2 },
               })),
-              style: { stepped: "after" },
             })),
           ],
         },
@@ -588,7 +586,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByRole("combobox", { name: "Criterion" })).toHaveTextContent("Quality");
     expect(screen.getByRole("combobox", { name: "Expert" })).toHaveTextContent("Expert One");
     expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
-    expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-type", "categoricalBands");
+    expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-type", "line");
     expect(screen.queryByTestId("ahp-sort-i-sensitivity-card")).not.toBeInTheDocument();
     const collectiveButton = screen.getByRole("button", { name: "Show collective values" });
     expect(collectiveButton).toHaveTextContent("Show collective");
@@ -656,7 +654,7 @@ describe("VisualizationsPanel", () => {
     const experts = [{ id: "e1", name: "Expert One" }, { id: "e2", name: "Expert Two" }];
     const visualization = {
       key: "ahp-sort-i-criterion-weight-sensitivity-quality",
-      type: "categoricalBands",
+      type: "line",
       scope: { dimension: "criterion", id: "quality", label: "Quality" },
       presentation: {
         alternativeSelector: { recommendedCount: 3 },

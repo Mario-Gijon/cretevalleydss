@@ -459,6 +459,17 @@ def _category_sensitivity_visualization(
     )
     presentation: dict[str, Any] = {
         "alternativeSelector": {"recommendedCount": 3},
+        "stableSeriesColors": True,
+        "compactLegend": True,
+        "colorByAlternativeId": True,
+        "categoryLineSegments": True,
+        "categoryOffsetRange": 0.12,
+        "hideVerticalGridLines": True,
+        "originalWeightMarker": True,
+        "originalWeightMarkerMode": "axis-tick",
+        "originalWeightLabel": "Original criterion weight",
+        "originalWeightAriaLabel": "Original criterion weight",
+        "chartHeight": {"xs": 420, "sm": 500, "md": 580},
     }
     if multi_expert:
         presentation["resultSelector"] = {
@@ -471,15 +482,16 @@ def _category_sensitivity_visualization(
         presentation["expertSelector"] = {"selectionMode": "single"}
     return {
         "key": f"ahp-sort-i-criterion-weight-sensitivity-{item['criterionId']}",
-        "type": "categoricalBands",
+        "type": "line",
         "title": f"Criterion weight sensitivity · {item['criterionName']}",
         "description": (
-            "Rounded blocks show each alternative's assigned category within ordered category bands. "
-            "Block colors identify alternatives; category bands identify the assigned category."
+            "Each alternative is shown as horizontal segments at its assigned ordered category. "
+            "Stable colors identify alternatives."
         ),
         "insight": (
-            "Each interval is labeled with the category calculated at its left-hand sample; "
-            "intervals do not estimate exact switching weights. Missing samples remain gaps. "
+            "Horizontal segments connect only consecutive available samples with the same category. "
+            "Category changes are left unconnected, and missing samples remain gaps; no exact switching "
+            "thresholds are inferred. "
             "Individual and collective results are selected separately; collective assignments use plurality votes."
         ),
         "scope": {
@@ -549,7 +561,12 @@ def build_visualization_sections(
         for item in descriptors
         if item["key"] == "ahp-sort-i-original-classifications"
     ]
-    sensitivity = [item for item in descriptors if item["type"] == "categoricalBands"]
+    sensitivity = [
+        item
+        for item in descriptors
+        if item["type"] == "line"
+        and item["key"].startswith("ahp-sort-i-criterion-weight-sensitivity-")
+    ]
     sections = []
     if original:
         sections.append(

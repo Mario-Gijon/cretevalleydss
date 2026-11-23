@@ -152,14 +152,12 @@ describe("getVisualizationLayout", () => {
       type: "line",
       data: { xScaleType: "linear", x: Array.from({ length: 21 }, (_, index) => index / 20) },
     })).toEqual({ span: 1, chartHeight: { xs: 300, sm: 320 } });
-  });
-
-  it("sizes categorical sensitivity bands for ordered categories and visible alternatives", () => {
     expect(getVisualizationLayout({
-      type: "categoricalBands",
-      yAxis: { categories: [{ value: 0 }, { value: 1 }, { value: 2 }] },
-      data: { series: [{ alternativeId: "a" }, { alternativeId: "b" }, { alternativeId: "c" }] },
-    })).toEqual({ span: 1, chartHeight: { xs: 344, sm: 344 } });
+      key: "ahp-sort-i-criterion-weight-sensitivity-quality",
+      type: "line",
+      presentation: { chartHeight: { xs: 420, sm: 500, md: 580 } },
+      data: { xScaleType: "linear", x: Array.from({ length: 21 }, (_, index) => index / 20) },
+    })).toEqual({ span: 1, chartHeight: { xs: 420, sm: 500, md: 580 } });
   });
 
   it("preserves dense categorical line spacing for existing models", () => {

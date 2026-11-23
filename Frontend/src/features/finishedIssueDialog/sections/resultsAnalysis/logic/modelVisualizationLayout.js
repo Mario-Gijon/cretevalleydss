@@ -65,17 +65,6 @@ const categoricalScatterHeight = (itemCount) => {
 
   return { xs: height, sm: height };
 };
-const categoricalBandsHeight = (visualization) => {
-  const categoryCount = collectionLength(visualization?.yAxis?.categories);
-  const alternatives = new Set(
-    (Array.isArray(visualization?.data?.series) ? visualization.data.series : [])
-      .map((series) => series?.alternativeId)
-      .filter(Boolean)
-  ).size;
-  const bandHeight = Math.max(76, 26 + alternatives * 15);
-  const height = Math.max(260, 116 + categoryCount * bandHeight);
-  return { xs: height, sm: height };
-};
 export const getVisualizationLayout = (visualization) => {
   const normalizedVisualization = normalizeModelVisualization(visualization);
   const data = normalizedVisualization?.data || {};
@@ -102,9 +91,6 @@ export const getVisualizationLayout = (visualization) => {
     const chartMinWidth = presentation.chartMinWidth
       ?? (data.xScaleType === "linear" ? undefined : categoricalChartWidth(collectionLength(data.x), 68, 8));
     return { span: 1, chartHeight: preferredChartHeight || chartHeight(), ...(chartMinWidth ? { chartMinWidth } : {}) };
-  }
-  if (normalizedVisualization?.type === "categoricalBands") {
-    return { span: 1, chartHeight: preferredChartHeight || categoricalBandsHeight(normalizedVisualization) };
   }
   if (normalizedVisualization?.type === "scatter" && Array.isArray(normalizedVisualization.yAxis?.categories)) {
     return {

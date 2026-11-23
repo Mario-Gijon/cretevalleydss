@@ -107,8 +107,8 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     assert "Alternative priority · this expert and alternative matrix" in point["details"]
     assert "Profile priority ·" in " ".join(point["details"])
     assert alternative_series["resultType"] == "individual"
-    assert weight_sensitivity["type"] == "categoricalBands"
-    assert "intervals do not estimate exact switching weights" in weight_sensitivity["insight"]
+    assert weight_sensitivity["type"] == "line"
+    assert "Category changes are left unconnected" in weight_sensitivity["insight"]
     assert not any(series["role"] == "boundary" for series in weight_sensitivity["data"]["series"])
     category_index = next(
         index for index, category in enumerate(weight_sensitivity["yAxis"]["categories"])
@@ -120,11 +120,14 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
         alternative["alternativeId"] for alternative in evidence.alternatives
     ]
     assert weight_sensitivity["presentation"]["alternativeSelector"] == {"recommendedCount": 3}
+    assert weight_sensitivity["presentation"]["categoryLineSegments"] is True
+    assert weight_sensitivity["presentation"]["hideVerticalGridLines"] is True
+    assert weight_sensitivity["presentation"]["originalWeightMarkerMode"] == "axis-tick"
     assert "resultSelector" not in weight_sensitivity["presentation"]
     assert not any("priority" in key.lower() for key in configured_sample["details"])
     assert len([
         item for item in visualizations
-        if item["type"] == "categoricalBands" and item["scope"]["id"] == "quality"
+        if item["type"] == "line" and item["scope"]["id"] == "quality"
     ]) == 1
 
     sections = build_visualization_sections(facts)
@@ -204,14 +207,14 @@ def test_collective_visualizations_separate_experts_and_plurality_without_priori
     assert not any("priority" in key.lower() for key in collective_details)
     assert len([
         item for item in visualizations
-        if item["type"] == "categoricalBands" and item["scope"]["id"] == "quality"
+        if item["type"] == "line" and item["scope"]["id"] == "quality"
     ]) == 1
     assert sensitivity["presentation"]["resultSelector"]["defaultValue"] == "individual"
     assert sensitivity["presentation"]["resultSelector"]["options"] == [
         {"value": "individual", "label": "Individual"},
         {"value": "collective", "label": "Collective"},
     ]
-    assert sensitivity["type"] == "categoricalBands"
+    assert sensitivity["type"] == "line"
     assert any("Votes ·" in key for key in sensitivity_collective["values"][0]["details"])
     assert any("Individual vote ·" in key for key in sensitivity_collective["values"][0]["details"])
     assert not any("priority" in key.lower() for key in sensitivity_collective["values"][0]["details"])

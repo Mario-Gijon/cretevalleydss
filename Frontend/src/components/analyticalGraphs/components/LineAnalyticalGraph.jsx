@@ -21,14 +21,30 @@ const originalWeightMarkerPlugin = {
     ctx.save();
     ctx.strokeStyle = "rgba(245, 173, 92, 0.78)";
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([3, 4]);
     ctx.beginPath();
-    ctx.moveTo(x, chartArea.top);
-    ctx.lineTo(x, chartArea.bottom);
+    if (marker.mode === "axis-tick") {
+      ctx.moveTo(x, chartArea.bottom - 6);
+      ctx.lineTo(x, chartArea.bottom + 2);
+    } else {
+      ctx.setLineDash([3, 4]);
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+    }
     ctx.stroke();
     ctx.restore();
   },
 };
+
+const CATEGORICAL_SENSITIVITY_COLORS = [
+  "#56B4E9",
+  "#E69F00",
+  "#CC79A7",
+  "#009E73",
+  "#8F7CDB",
+  "#D55E00",
+  "#F0E442",
+  "#63B85D",
+];
 
 const withOpacity = (color, opacity) => {
   const match = /^#([\da-f]{6})$/i.exec(color || "");
@@ -43,12 +59,75 @@ const withOpacity = (color, opacity) => {
 const seriesRole = (series) => series?.resultType === "collective"
   ? "collective"
   : isAlternativeSensitivitySeries(series) ? "alternative" : "boundary";
-const seriesColor = (series, index, presentation) => series.style?.color
+const seriesColor = (series, index, presentation, alternativeColors) => series.style?.color
+  || alternativeColors?.get(series.alternativeId)
   || (presentation.stableSeriesColors
     ? stableChartColor(presentation.colorByAlternativeId && series.alternativeId
       ? `alternative:${series.alternativeId}`
       : series.key)
     : chartColor(index));
+
+const buildAlternativeColors = (data, series, presentation) => {
+  if (!presentation.categoryLineSegments) return null;
+  const declaredOrder = Array.isArray(data.alternativeOrder) ? data.alternativeOrder : [];
+  const seriesIds = series.map((item) => item.alternativeId).filter(Boolean);
+  const order = declaredOrder.length
+    ? [...declaredOrder, ...seriesIds.filter((id) => !declaredOrder.includes(id))]
+    : [...new Set(seriesIds)].sort((left, right) => String(left).localeCompare(String(right), "en"));
+  return new Map(order.map((id, index) => [
+    id,
+    CATEGORICAL_SENSITIVITY_COLORS[index % CATEGORICAL_SENSITIVITY_COLORS.length],
+  ]));
+};
+
+const categoryOffset = (series, data, presentation) => {
+  const range = Number.isFinite(presentation.categoryOffsetRange)
+    ? Math.max(0, Math.min(0.2, presentation.categoryOffsetRange))
+    : 0;
+  if (!range || !series.alternativeId) return 0;
+  const order = Array.isArray(data.alternativeOrder) ? data.alternativeOrder : [];
+  const alternativeIds = order.length
+    ? order
+    : [...new Set((data.series || []).map((item) => item.alternativeId).filter(Boolean))]
+      .sort((left, right) => String(left).localeCompare(String(right), "en"));
+  const index = alternativeIds.indexOf(series.alternativeId);
+  if (index < 0 || alternativeIds.length < 2) return 0;
+  return ((index / (alternativeIds.length - 1)) * 2 - 1) * range;
+};
+
+const splitCategoryLineSegments = (series, data, presentation, displayLabels) => series.flatMap((item) => {
+  const values = Array.isArray(item.values) ? item.values : [];
+  const runs = [];
+  let currentRun = [];
+  const saveRun = () => {
+    if (currentRun.length) runs.push(currentRun);
+    currentRun = [];
+  };
+
+  values.forEach((value) => {
+    if (!value || typeof value !== "object" || !Number.isFinite(value.x) || !Number.isFinite(value.y)) {
+      saveRun();
+      return;
+    }
+    if (currentRun.length && value.y !== currentRun[currentRun.length - 1].y) saveRun();
+    currentRun.push(value);
+  });
+  saveRun();
+
+  const offset = categoryOffset(item, data, presentation);
+  const displayLabel = displayLabels.get(String(item.key)) || item.label || item.key;
+  return runs.map((points, segmentIndex) => ({
+    source: item,
+    segmentIndex,
+    showLine: points.length > 1,
+    pointRadius: points.length > 1 ? 0 : 3.25,
+    values: points.map((point) => ({
+      ...point,
+      y: point.y + offset,
+      label: displayLabel,
+    })),
+  }));
+});
 
 const buildSeriesDisplayLabels = (series) => {
   const counts = new Map();
@@ -74,7 +153,7 @@ const buildSeriesDisplayLabels = (series) => {
   }));
 };
 
-const SensitivityLegend = ({ series, presentation, displayLabels }) => {
+const SensitivityLegend = ({ series, presentation, displayLabels, alternativeColors }) => {
   if (!presentation.compactLegend) return null;
   const profileLegendTitle = presentation.profileLegendTitle || "CATEGORY BOUNDARIES";
   const profileLegendItemTitle = presentation.profileLegendItemTitle || "Boundary";
@@ -83,7 +162,7 @@ const SensitivityLegend = ({ series, presentation, displayLabels }) => {
   const boundaries = series.filter((item) => seriesRole(item) === "boundary");
   const renderEntries = (items, role) => items.length ? <Box component="ul" aria-label={role === "alternative" ? "Visible alternatives" : role === "collective" ? "Visible collective results" : `Visible ${profileLegendTitle.toLowerCase()}`} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.8, rowGap: 0.8, width: "100%", listStyle: "none", p: 0, m: 0 }}>
     {items.map((item) => {
-      const color = seriesColor(item, series.indexOf(item), presentation);
+      const color = seriesColor(item, series.indexOf(item), presentation, alternativeColors);
       const label = displayLabels.get(String(item.key)) || item.label || item.key;
       const dashed = role === "boundary" || item.style?.borderDash?.length;
       const legendRole = role === "alternative" ? "Individual result" : role === "collective" ? "Collective result" : profileLegendItemTitle;
@@ -115,6 +194,10 @@ const LineAnalyticalGraph = ({ visualization }) => {
   const numericX = data.xScaleType === "linear";
   const isStyledSensitivity = Boolean(presentation.stableSeriesColors || presentation.compactLegend);
   const configuredWeight = Number.isFinite(data.configuredWeight) ? data.configuredWeight : null;
+  const alternativeColors = buildAlternativeColors(data, series, presentation);
+  const categoryLineSegments = presentation.categoryLineSegments
+    ? splitCategoryLineSegments(series, data, presentation, displayLabels)
+    : null;
   const showOriginalWeight = presentation.originalWeightMarker && configuredWeight !== null;
   const originalWeightLabel = presentation.originalWeightLabel
     || "Collective effective weight calculated by MCC";
@@ -132,7 +215,13 @@ const LineAnalyticalGraph = ({ visualization }) => {
             ...baseOptions.plugins.legend,
             labels: { ...baseOptions.plugins.legend.labels, usePointStyle: false },
           },
-      ...(presentation.originalWeightMarker ? { originalWeightMarker: { enabled: showOriginalWeight, value: configuredWeight } } : {}),
+      ...(presentation.originalWeightMarker ? {
+        originalWeightMarker: {
+          enabled: showOriginalWeight,
+          value: configuredWeight,
+          mode: presentation.originalWeightMarkerMode,
+        },
+      } : {}),
       tooltip: {
         ...baseOptions.plugins.tooltip,
         callbacks: {
@@ -160,7 +249,7 @@ const LineAnalyticalGraph = ({ visualization }) => {
         min: visualization.xAxis?.min,
         max: visualization.xAxis?.max,
         category: false,
-        grid: { display: true, color: "rgba(255,255,255,0.10)" },
+        grid: { display: !presentation.hideVerticalGridLines, color: "rgba(255,255,255,0.10)" },
       },
       y: {
         ...baseOptions.scales.y,
@@ -195,9 +284,10 @@ const LineAnalyticalGraph = ({ visualization }) => {
     plugins={presentation.originalWeightMarker ? [originalWeightMarkerPlugin] : []}
     data={{
       ...(numericX ? {} : { labels: data.x }),
-      datasets: series.map((item, index) => {
+      datasets: (categoryLineSegments || series.map((item) => ({ source: item, values: item.values }))).map((renderItem, index) => {
+        const item = renderItem.source;
         const role = seriesRole(item);
-        const color = seriesColor(item, index, presentation);
+        const color = seriesColor(item, index, presentation, alternativeColors);
         const opacity = item.style?.opacity ?? (isStyledSensitivity && role === "boundary" ? 0.68 : 1);
         const configuredPointRadius = item.style?.pointRadius ?? (numericX ? 2.5 : ANALYTICAL_LINE_STYLE.pointRadius);
         const backgroundColor = isStyledSensitivity
@@ -205,7 +295,11 @@ const LineAnalyticalGraph = ({ visualization }) => {
           : `${color}36`;
         return {
           label: displayLabels.get(String(item.key)) || item.label || item.key,
-          data: numericX ? item.values.map((value, valueIndex) => (
+          alternativeId: item.alternativeId,
+          expertId: item.expertId,
+          resultType: item.resultType,
+          categorySegmentIndex: renderItem.segmentIndex,
+          data: numericX ? renderItem.values.map((value, valueIndex) => (
             value && typeof value === "object"
               ? { ...value, label: displayLabels.get(String(item.key)) || value.label }
               : { x: data.x[valueIndex], y: value, label: displayLabels.get(String(item.key)) || item.label || item.key }
@@ -214,15 +308,17 @@ const LineAnalyticalGraph = ({ visualization }) => {
           backgroundColor,
           ...ANALYTICAL_LINE_STYLE,
           ...(numericX ? {
-            showLine: true,
+            showLine: categoryLineSegments ? renderItem.showLine : true,
             spanGaps: false,
             borderDash: item.style?.borderDash,
             borderWidth: item.style?.borderWidth ?? (isStyledSensitivity ? (role === "boundary" ? 1.5 : 3) : ANALYTICAL_LINE_STYLE.borderWidth),
-            stepped: item.style?.stepped,
-            pointRadius: isStyledSensitivity ? 0 : (context) => {
+            stepped: categoryLineSegments ? false : item.style?.stepped,
+            pointRadius: categoryLineSegments ? renderItem.pointRadius : isStyledSensitivity ? 0 : (context) => {
               if (context.raw?.isConfiguredWeight) return Math.max(3.5, item.style?.pointRadius ?? 2.5);
               return configuredPointRadius;
             },
+            pointStyle: categoryLineSegments ? "circle" : undefined,
+            rotation: 0,
             pointHoverRadius: item.style?.pointHoverRadius ?? (isStyledSensitivity ? 4 : 5),
             pointHitRadius: item.style?.pointHitRadius ?? (isStyledSensitivity ? (role === "boundary" ? 8 : 12) : undefined),
             tension: 0,
@@ -236,7 +332,7 @@ const LineAnalyticalGraph = ({ visualization }) => {
   if (!isStyledSensitivity) return chart;
 
   return <Box sx={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}>
-    <SensitivityLegend series={series} presentation={presentation} displayLabels={displayLabels} />
+    <SensitivityLegend series={series} presentation={presentation} displayLabels={displayLabels} alternativeColors={alternativeColors} />
     {showOriginalWeight ? <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ minHeight: 28, mb: 0.25 }}>
       <Tooltip title={`${originalWeightLabel} (full precision): ${String(configuredWeight)}`} arrow>
         <Typography component="span" tabIndex={0} aria-label={`${originalWeightAriaLabel} ${String(configuredWeight)}`} variant="caption" sx={{ color: "rgba(255,255,255,0.82)", borderBottom: "1px dotted rgba(245,173,92,0.8)" }}>
