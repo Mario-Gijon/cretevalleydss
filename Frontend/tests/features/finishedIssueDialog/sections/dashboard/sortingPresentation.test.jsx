@@ -44,7 +44,7 @@ const sortingExecution = (overrides = {}) => ({
   ...overrides,
 });
 
-const topsisExecution = ({ assignments, diagnostics, categories } = {}) => {
+const topsisExecution = ({ assignments, diagnostics, categories, numericMetrics } = {}) => {
   const base = sortingExecution();
   const baseOutput = { ...base.standardizedOutput };
   delete baseOutput.diagnostics;
@@ -74,6 +74,7 @@ const topsisExecution = ({ assignments, diagnostics, categories } = {}) => {
         { alternativeId: "mongo-c", categoryId: "cat-low" },
       ],
       ...(diagnostics === undefined ? {} : { diagnostics }),
+      ...(numericMetrics === undefined ? {} : { numericMetrics }),
     },
   };
 };
@@ -161,24 +162,124 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByTestId("EmojiEventsRoundedIcon")).not.toBeInTheDocument();
   });
 
-  it("renders a synthetic sorting@1 model with the shared view and compatible optional metric", () => {
-    const execution = topsisExecution({ diagnostics: topsisDiagnostics() });
-    execution.model = {
-      name: "Synthetic classifier",
-      technical: { apiModelKey: "future_sorting_model" },
-      capabilities: { sortingHasNumericValues: true },
-    };
-    execution.modelSpecificOutput = { apiModelKey: "future_sorting_model" };
-    renderTopsisDashboard(execution);
+  it("renders a synthetic sorting@1 model with the shared view and a generic declared metric", () => {
+    const execution = sortingExecution({
+      model: {
+        name: "Synthetic classifier",
+        technical: { apiModelKey: "future_sorting_model" },
+        capabilities: { sortingHasNumericValues: true },
+      },
+      modelSpecificOutput: { apiModelKey: "future_sorting_model" },
+      standardizedOutput: {
+        categoryOrderSemantics: "lower-order-is-less-preferred",
+        categories: [
+          { categoryId: "cat-low", label: "Low", order: 0 },
+          { categoryId: "cat-high", label: "High", order: 1 },
+        ],
+        assignments: [
+          { alternativeId: "mongo-a", categoryId: "cat-high" },
+          { alternativeId: "mongo-b", categoryId: "cat-low" },
+          { alternativeId: "mongo-c", categoryId: "cat-high" },
+        ],
+        numericMetrics: [{
+          metricId: "synthetic_score",
+          name: "Synthetic score",
+          domain: { min: 0, max: 1 },
+          comparability: "acrossAlternatives",
+          valuesByAlternativeId: { "mongo-a": 0.72, "mongo-b": 0.31, "mongo-c": 0.91 },
+        }],
+      },
+    });
+    const data = renderDashboard(execution);
 
     expect(screen.getByRole("heading", { name: "Final result" })).toBeInTheDocument();
     expect(screen.getByTestId("sorting-final-result")).toBeInTheDocument();
-    expect(screen.getAllByTestId("sorting-final-category")).toHaveLength(3);
-    expect(screen.getByText("0.7100")).toBeInTheDocument();
-    expect(screen.getAllByTestId("sorting-metric-point")[0]).toHaveAttribute("data-metric-value", "0.71");
+    expect(screen.getAllByTestId("sorting-final-category")).toHaveLength(2);
+    expect(screen.getByText("0.7200")).toBeInTheDocument();
+    expect(screen.getAllByTestId("sorting-metric-value").map((element) => element.textContent))
+      .toEqual(["0.7200", "0.9100", "0.3100"]);
+    expect(data.result.metric).toMatchObject({
+      key: "synthetic_score",
+      label: "Synthetic score",
+      comparableAcrossAlternatives: true,
+      visualization: "bounded-position",
+      ordering: "preserve",
+    });
+    const high = screen.getByRole("listitem", { name: "High: 2 alternatives" });
+    expect([...high.querySelector("ul").children].map((row) => row.querySelector("p")?.textContent))
+      .toEqual(["Alternative A", "Alternative C"]);
     expect(screen.getByText("Sorting summary")).toBeInTheDocument();
     expect(screen.queryByTestId("topsis-sort-category-list")).not.toBeInTheDocument();
     expect(screen.queryByText(/ranking|winner/i)).not.toBeInTheDocument();
+  });
+
+  it("uses generic TOPSIS relative-closeness metrics and retains validated profile boundaries", () => {
+    const diagnostics = topsisDiagnostics();
+    const execution = topsisExecution({
+      diagnostics,
+      numericMetrics: [{
+        metricId: "relative_closeness",
+        name: "Relative closeness",
+        domain: { min: 0, max: 1 },
+        comparability: "acrossAlternatives",
+        valuesByAlternativeId: diagnostics.closeness_by_alternative_id,
+      }],
+    });
+    const data = renderTopsisDashboard(execution);
+
+    expect(data.result.metric).toMatchObject({
+      key: "relative_closeness",
+      label: "Relative closeness",
+      minimum: 0,
+      maximum: 1,
+      comparableAcrossAlternatives: true,
+      visualization: "bounded-position",
+      ordering: "descending-within-category",
+    });
+    expect(screen.getByText("0.7100")).toBeInTheDocument();
+    expect(data.result.categories.find(({ id }) => id === "cat-medium").metricRange)
+      .toEqual({ lower: 0.5, upper: 0.7 });
+    expect(screen.getAllByTestId("sorting-metric-reference")).toHaveLength(4);
+  });
+
+  it("does not fall back to legacy diagnostics when declared numeric metrics are invalid or ambiguous", () => {
+    const diagnostics = topsisDiagnostics();
+    const invalidExecution = topsisExecution({
+      diagnostics,
+      numericMetrics: [{
+        metricId: "relative_closeness",
+        name: "Relative closeness",
+        domain: { min: 0, max: 1 },
+        comparability: "acrossAlternatives",
+        valuesByAlternativeId: { "mongo-a": 0.71 },
+      }],
+    });
+    const invalidData = buildDashboardData({
+      payload: { alternatives: topsisAlternatives },
+      selectedExecution: invalidExecution,
+    });
+    expect(invalidData.result.metric).toBe(null);
+    expect(invalidData.result.categories.flatMap((category) => category.alternatives)
+      .every((alternative) => alternative.metricValue === null)).toBe(true);
+
+    const values = diagnostics.closeness_by_alternative_id;
+    const ambiguousExecution = topsisExecution({
+      diagnostics,
+      numericMetrics: ["first", "second"].map((metricId) => ({
+        metricId,
+        name: metricId,
+        domain: { min: 0, max: 1 },
+        comparability: "acrossAlternatives",
+        valuesByAlternativeId: values,
+      })),
+    });
+    const ambiguousData = buildDashboardData({
+      payload: { alternatives: topsisAlternatives },
+      selectedExecution: ambiguousExecution,
+    });
+    expect(ambiguousData.result.metric).toBe(null);
+    expect(ambiguousData.result.categories.flatMap((category) => category.alternatives)
+      .every((alternative) => alternative.metricValue === null)).toBe(true);
   });
 
   it("omits an optional metric when the plugin allows values but this execution has none valid", () => {

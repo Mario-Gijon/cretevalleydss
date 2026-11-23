@@ -23,6 +23,10 @@ const metricPrecisionFor = (metric) => Number.isInteger(metric?.precision) && me
   ? metric.precision
   : 4;
 
+const metricScopeDescription = (metric) => metric?.scope?.kind && (metric.scope.label || metric.scope.id)
+  ? `${metric.scope.kind}: ${metric.scope.label || metric.scope.id}`
+  : null;
+
 const sharedDecisionThresholdFor = (metric) => metric?.referenceScope === "shared-decision-threshold" &&
   metric.visualization === "bounded-position" &&
   metric.comparableAcrossAlternatives === true &&
@@ -49,6 +53,8 @@ const MetricScale = ({ value, metric, references, theme }) => (
     data-metric-value={value}
     data-domain-minimum={metric.minimum}
     data-domain-maximum={metric.maximum}
+    data-metric-scope-kind={metric.scope?.kind}
+    data-metric-scope-id={metric.scope?.id}
     role={metric.visualization === "contextual-reference" || sharedDecisionThresholdFor(metric) !== null ? "img" : undefined}
     aria-label={metric.visualization === "contextual-reference"
       ? `${metric.label} ${value.toFixed(metricPrecisionFor(metric))} on a ${metric.minimum} to ${metric.maximum} scale; reference profiles: ${references.map(({ label, value: referenceValue }) => `${label} ${referenceValue.toFixed(metricPrecisionFor(metric))}`).join(", ")}`
@@ -168,7 +174,7 @@ const SortingAlternativeRow = ({ alternative, range, theme, metric }) => {
   const precision = metricPrecisionFor(metric);
   const metricLabel = metricValue === null ? null : metricValue.toFixed(precision);
   const accessibleLabel = metricLabel
-    ? `${alternative.name}, ${metric.label} ${metricLabel}`
+    ? `${alternative.name}, ${metric.label} ${metricLabel}${metricScopeDescription(metric) ? `, ${metricScopeDescription(metric)}` : ""}`
     : alternative.name;
   const contextualReferences = metric?.visualization === "contextual-reference" && Array.isArray(alternative.metricReferences)
     ? alternative.metricReferences.filter((reference) => isNonEmptyMetricReference(reference, metric))
@@ -208,11 +214,15 @@ const SortingAlternativeRow = ({ alternative, range, theme, metric }) => {
           <Typography
             variant="body2"
             color="text.secondary"
-            aria-label={`${metric.label} ${metricLabel}`}
-            title={`${metric.label}: ${metricLabel}`}
+            aria-label={`${metric.label} ${metricLabel}${metricScopeDescription(metric) ? `, ${metricScopeDescription(metric)}` : ""}`}
             data-testid="sorting-metric-value"
             data-metric-key={metric.key}
             data-metric-value={metricValue}
+            data-metric-scope-kind={metric.scope?.kind}
+            data-metric-scope-id={metric.scope?.id}
+            title={metricScopeDescription(metric)
+              ? `${metric.label}: ${metricLabel} · ${metricScopeDescription(metric)}`
+              : `${metric.label}: ${metricLabel}`}
             sx={{ flex: "0 0 auto", fontSize: "0.8rem", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}
           >
             {metricLabel}
@@ -235,6 +245,7 @@ const SortingDashboardResult = ({ result }) => {
   const theme = useTheme();
   const metric = isValidMetricDefinition(result.metric) ? result.metric : null;
   const sortWithinCategory = metric?.ordering === "descending-within-category" && metric.comparableAcrossAlternatives === true;
+  const metricScope = metricScopeDescription(metric);
 
   return (
     <Box sx={sortingFinalResultSx}>
@@ -246,15 +257,17 @@ const SortingDashboardResult = ({ result }) => {
               variant="caption"
               color="text.secondary"
               data-testid="sorting-metric-label"
+              data-metric-scope-kind={metric.scope?.kind}
+              data-metric-scope-id={metric.scope?.id}
               aria-label={metric.comparableAcrossAlternatives === false
-                ? `${metric.label}; values use alternative-specific reference profiles`
-                : metric.label}
+                ? `${metric.label}; values use alternative-specific reference profiles${metricScope ? `; ${metricScope}` : ""}`
+                : metricScope ? `${metric.label}; ${metricScope}` : metric.label}
               title={metric.comparableAcrossAlternatives === false
-                ? "Values are calculated relative to each alternative's own reference profiles."
-                : metric.label}
+                ? `Values are calculated relative to each alternative's own reference profiles.${metricScope ? ` ${metricScope}.` : ""}`
+                : metricScope ? `${metric.label} · ${metricScope}` : metric.label}
               sx={{ alignSelf: "flex-end", pr: 0.9, pb: 0.15, lineHeight: 1.2 }}
             >
-              {metric.label}
+              {metricScope ? `${metric.label} · ${metricScope}` : metric.label}
             </Typography>
           )
       )}

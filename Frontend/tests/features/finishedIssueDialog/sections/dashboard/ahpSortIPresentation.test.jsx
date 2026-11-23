@@ -551,6 +551,81 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(overlappingData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
   });
 
+  it("consumes an individual AHPSort numeric metric with its own alternative profile references", () => {
+    const execution = limitingExecution();
+    const historicalData = buildDashboardData({
+      payload: { alternatives, criteria },
+      selectedExecution: execution,
+    });
+    expect(historicalData.result.metric).toMatchObject({
+      key: "globalPriority",
+      visualization: "contextual-reference",
+      comparableAcrossAlternatives: false,
+    });
+    expect(historicalData.result.categories.flatMap((category) => category.alternatives)
+      .find((alternative) => alternative.id === "alt-a").metricValue).toBe(0.71);
+
+    execution.expertRoster = [{ id: "expert-1", name: "Expert One" }];
+    execution.standardizedOutput.numericMetrics = [{
+      metricId: "ahp_global_priority",
+      name: "Global AHP priority",
+      domain: { min: 0, max: 1 },
+      comparability: "alternativeSpecific",
+      scope: { kind: "expert", id: "expert-1" },
+      valuesByAlternativeId: { "alt-a": 0.71 },
+      referencesByAlternativeId: {
+        "alt-a": [
+          { referenceId: "boundary-lm", name: "Low / Medium boundary", value: 0.3 },
+          { referenceId: "boundary-mh", name: "Medium / High boundary", value: 0.6 },
+        ],
+      },
+    }];
+
+    const { data } = renderSelected(execution);
+
+    expect(data.result.metric).toMatchObject({
+      key: "ahp_global_priority",
+      label: "Global AHP priority",
+      minimum: 0,
+      maximum: 1,
+      comparableAcrossAlternatives: false,
+      visualization: "contextual-reference",
+      referenceScope: "alternative",
+      ordering: "preserve",
+      scope: { kind: "expert", id: "expert-1", label: "Expert One" },
+    });
+    expect(screen.getByTestId("sorting-metric-value")).toHaveTextContent("0.7100");
+    expect(screen.getByTestId("sorting-metric-label")).toHaveAttribute("data-metric-scope-id", "expert-1");
+    expect(screen.getByTestId("sorting-metric-label")).toHaveAttribute("title", "Values are calculated relative to each alternative's own reference profiles. expert: Expert One.");
+    expect(screen.getAllByTestId("sorting-metric-reference").map((reference) => reference.getAttribute("data-reference-value")))
+      .toEqual(["0.3", "0.6"]);
+  });
+
+  it("keeps plural-vote AHPSort results categorical when only expert-scoped metrics exist", () => {
+    const execution = centralGroupExecution({
+      profileTiePolicy: "optimistic",
+      groupTiePolicy: "optimistic",
+    });
+    execution.standardizedOutput.numericMetrics = ["expert-a", "expert-b"].map((expertId, index) => ({
+      metricId: "ahp_global_priority",
+      name: "Global AHP priority",
+      domain: { min: 0, max: 1 },
+      comparability: "alternativeSpecific",
+      scope: { kind: "expert", id: expertId },
+      valuesByAlternativeId: { "alt-a": index === 0 ? 0.8 : 0.2 },
+      referencesByAlternativeId: {
+        "alt-a": [{ referenceId: "center-low", value: 0.5 }],
+      },
+    }));
+
+    const { data } = renderSelected(execution);
+
+    expect(data.result.metric).toBe(null);
+    expect(screen.getByRole("listitem", { name: /High: 1 alternative|Low: 1 alternative/ })).toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sorting-metric-label")).not.toBeInTheDocument();
+  });
+
   it("shows the shared 0.5 line and descending AHP priority order for validated binary limiting results", () => {
     const suppliers = [
       ["supplier-a", "Supplier A", 0.9],
