@@ -107,21 +107,24 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     assert "Alternative priority · this expert and alternative matrix" in point["details"]
     assert "Profile priority ·" in " ".join(point["details"])
     assert alternative_series["resultType"] == "individual"
-    assert alternative_series["style"]["stepped"] == "after"
+    assert weight_sensitivity["type"] == "categoricalBands"
+    assert "intervals do not estimate exact switching weights" in weight_sensitivity["insight"]
     assert not any(series["role"] == "boundary" for series in weight_sensitivity["data"]["series"])
     category_index = next(
         index for index, category in enumerate(weight_sensitivity["yAxis"]["categories"])
         if category["label"] == configured_sample["details"]["Assigned category"]
     )
-    offset = weight_sensitivity["data"]["categoryDisplayOffsets"][alternative_series["alternativeId"]]
-    assert configured_sample["y"] == category_index + offset
-    assert abs(offset) <= 0.12
+    assert configured_sample["y"] == category_index
+    assert "categoryDisplayOffsets" not in weight_sensitivity["data"]
+    assert weight_sensitivity["data"]["alternativeOrder"] == [
+        alternative["alternativeId"] for alternative in evidence.alternatives
+    ]
     assert weight_sensitivity["presentation"]["alternativeSelector"] == {"recommendedCount": 3}
     assert "resultSelector" not in weight_sensitivity["presentation"]
     assert not any("priority" in key.lower() for key in configured_sample["details"])
     assert len([
         item for item in visualizations
-        if item["type"] == "line" and item["scope"]["id"] == "quality"
+        if item["type"] == "categoricalBands" and item["scope"]["id"] == "quality"
     ]) == 1
 
     sections = build_visualization_sections(facts)
@@ -165,7 +168,12 @@ def test_central_sensitivity_keeps_central_categories_and_tie_evidence():
     }
     assert "Selected central profile" in point["details"]
     assert sensitivity["yAxis"]["categories"]
-    assert all(series["style"]["stepped"] == "after" for series in sensitivity["data"]["series"])
+    assert all(
+        isinstance(value["y"], int)
+        for series in sensitivity["data"]["series"]
+        for value in series["values"]
+        if value["y"] is not None
+    )
 
 
 def test_collective_visualizations_separate_experts_and_plurality_without_priority():
@@ -196,14 +204,14 @@ def test_collective_visualizations_separate_experts_and_plurality_without_priori
     assert not any("priority" in key.lower() for key in collective_details)
     assert len([
         item for item in visualizations
-        if item["type"] == "line" and item["scope"]["id"] == "quality"
+        if item["type"] == "categoricalBands" and item["scope"]["id"] == "quality"
     ]) == 1
     assert sensitivity["presentation"]["resultSelector"]["defaultValue"] == "individual"
     assert sensitivity["presentation"]["resultSelector"]["options"] == [
         {"value": "individual", "label": "Individual"},
         {"value": "collective", "label": "Collective"},
     ]
-    assert sensitivity_collective["style"]["stepped"] == "after"
+    assert sensitivity["type"] == "categoricalBands"
     assert any("Votes ·" in key for key in sensitivity_collective["values"][0]["details"])
     assert any("Individual vote ·" in key for key in sensitivity_collective["values"][0]["details"])
     assert not any("priority" in key.lower() for key in sensitivity_collective["values"][0]["details"])
@@ -226,11 +234,6 @@ def test_unavailable_weight_samples_are_gaps_and_report_the_reason():
     assert unavailable["y"] is None
     assert unavailable["details"]["Unavailable reason"] == (
         "proportional_redistribution_impossible_zero_complement"
-    )
-    assert any(
-        sample["weight"] == 0.95
-        and sample["reason"] == "proportional_redistribution_impossible_zero_complement"
-        for sample in sensitivity["data"]["unavailableSamples"]
     )
     assert baseline["y"] is not None
     assert all(item["resultType"] == "individual" for item in sensitivity["data"]["series"])

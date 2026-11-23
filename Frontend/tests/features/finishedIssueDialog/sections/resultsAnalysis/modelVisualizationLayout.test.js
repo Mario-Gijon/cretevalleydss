@@ -154,6 +154,14 @@ describe("getVisualizationLayout", () => {
     })).toEqual({ span: 1, chartHeight: { xs: 300, sm: 320 } });
   });
 
+  it("sizes categorical sensitivity bands for ordered categories and visible alternatives", () => {
+    expect(getVisualizationLayout({
+      type: "categoricalBands",
+      yAxis: { categories: [{ value: 0 }, { value: 1 }, { value: 2 }] },
+      data: { series: [{ alternativeId: "a" }, { alternativeId: "b" }, { alternativeId: "c" }] },
+    })).toEqual({ span: 1, chartHeight: { xs: 344, sm: 344 } });
+  });
+
   it("preserves dense categorical line spacing for existing models", () => {
     expect(getVisualizationLayout({
       type: "line",

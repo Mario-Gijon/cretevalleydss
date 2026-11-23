@@ -15,7 +15,7 @@ vi.mock("@mui/x-charts/BarChart", () => ({
   BarChart: ({ height, xAxis, series }) => <div data-testid="projected-distance-bars" data-height={height} data-labels={xAxis[0].data.join("|")} data-values={series[0].data.join("|")} />,
 }));
 vi.mock("../../../../../src/components/analyticalGraphs", () => ({
-  AnalyticalGraph: ({ visualization, titleVariant, controls }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-title-variant={titleVariant} data-y-axis-label={visualization?.yAxis?.label} data-series-keys={JSON.stringify(visualization?.data?.series?.map((series) => series.key) || [])} data-series-values={JSON.stringify(visualization?.data?.series?.map((series) => series.values) || [])}>{controls ? <><h3>{visualization?.title || visualization?.key || "Visualization"}</h3><p data-testid="mock-visualization-description">{visualization?.description || "Visualization description"}</p><div data-testid="analytical-graph-controls">{controls}</div><div data-testid="mock-visualization-legend">Legend</div><div data-testid="mock-visualization-chart">Chart</div></> : null}{visualization?.key}</div>,
+  AnalyticalGraph: ({ visualization, titleVariant, controls }) => <div data-testid="analytical-graph" data-key={visualization?.key} data-type={visualization?.type} data-title-variant={titleVariant} data-y-axis-label={visualization?.yAxis?.label} data-series-keys={JSON.stringify(visualization?.data?.series?.map((series) => series.key) || [])} data-series-values={JSON.stringify(visualization?.data?.series?.map((series) => series.values) || [])}>{controls ? <><h3>{visualization?.title || visualization?.key || "Visualization"}</h3><p data-testid="mock-visualization-description">{visualization?.description || "Visualization description"}</p><div data-testid="analytical-graph-controls">{controls}</div><div data-testid="mock-visualization-legend">Legend</div><div data-testid="mock-visualization-chart">Chart</div></> : null}{visualization?.key}</div>,
   HeatmapAnalyticalGraph: ({ visualization }) => <div data-testid="alternative-relationships-heatmap" data-phase={visualization?.phase} data-values={JSON.stringify(visualization?.data?.values)} data-labels={JSON.stringify(visualization?.data?.rows?.map((row) => row.label))}>{visualization?.data?.rows?.map((row) => row.label).join("|")}</div>,
 }));
 
@@ -508,7 +508,7 @@ describe("VisualizationsPanel", () => {
       const scope = { dimension: "criterion", id: criterionId, label: criterionLabel };
       return {
         key: `ahp-sort-i-criterion-weight-sensitivity-${criterionId}`,
-        type: "line",
+        type: "categoricalBands",
         title: `Criterion weight sensitivity · ${criterionLabel}`,
         scope,
         presentation: {
@@ -588,6 +588,7 @@ describe("VisualizationsPanel", () => {
     expect(screen.getByRole("combobox", { name: "Criterion" })).toHaveTextContent("Quality");
     expect(screen.getByRole("combobox", { name: "Expert" })).toHaveTextContent("Expert One");
     expect(screen.getAllByTestId("analytical-graph")).toHaveLength(1);
+    expect(screen.getByTestId("analytical-graph")).toHaveAttribute("data-type", "categoricalBands");
     expect(screen.queryByTestId("ahp-sort-i-sensitivity-card")).not.toBeInTheDocument();
     const collectiveButton = screen.getByRole("button", { name: "Show collective values" });
     expect(collectiveButton).toHaveTextContent("Show collective");
@@ -655,7 +656,7 @@ describe("VisualizationsPanel", () => {
     const experts = [{ id: "e1", name: "Expert One" }, { id: "e2", name: "Expert Two" }];
     const visualization = {
       key: "ahp-sort-i-criterion-weight-sensitivity-quality",
-      type: "line",
+      type: "categoricalBands",
       scope: { dimension: "criterion", id: "quality", label: "Quality" },
       presentation: {
         alternativeSelector: { recommendedCount: 3 },

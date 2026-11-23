@@ -307,15 +307,6 @@ def _category_sensitivity_visualization(
     categories = sorted(facts["categories"], key=lambda category: category["order"])
     category_order = {category["categoryId"]: index for index, category in enumerate(categories)}
     category_labels = {category["categoryId"]: category["label"] for category in categories}
-    offset_spread = 0.24
-    alternative_offsets = {
-        alternative["alternativeId"]: (
-            offset_spread * (index / (len(alternatives) - 1) - 0.5)
-            if len(alternatives) > 1
-            else 0.0
-        )
-        for index, alternative in enumerate(alternatives)
-    }
     series = []
 
     for expert in experts:
@@ -350,7 +341,7 @@ def _category_sensitivity_visualization(
                     {
                         "x": point["variedWeight"],
                         "y": (
-                            category_order[category_id] + alternative_offsets[alternative_id]
+                            category_order[category_id]
                             if available
                             else None
                         ),
@@ -370,7 +361,6 @@ def _category_sensitivity_visualization(
                     "expertId": expert_id,
                     "expertName": expert_name,
                     "values": values,
-                    "style": {"stepped": "after", "borderWidth": 3, "pointRadius": 0},
                 }
             )
 
@@ -440,7 +430,7 @@ def _category_sensitivity_visualization(
                     {
                         "x": point["variedWeight"],
                         "y": (
-                            category_order[category_id] + alternative_offsets[alternative_id]
+                            category_order[category_id]
                             if available
                             else None
                         ),
@@ -458,7 +448,6 @@ def _category_sensitivity_visualization(
                     "alternativeId": alternative_id,
                     "alternativeName": alternative["name"],
                     "values": values,
-                    "style": {"stepped": "after", "borderWidth": 3, "pointRadius": 0},
                 }
             )
 
@@ -469,14 +458,7 @@ def _category_sensitivity_visualization(
         None,
     )
     presentation: dict[str, Any] = {
-        "chartHeight": {"xs": 420, "sm": 500, "md": 580},
-        "stableSeriesColors": True,
-        "compactLegend": True,
-        "originalWeightMarker": True,
-        "originalWeightLabel": "Original criterion weight",
-        "originalWeightAriaLabel": "Original criterion weight",
         "alternativeSelector": {"recommendedCount": 3},
-        "colorByAlternativeId": True,
     }
     if multi_expert:
         presentation["resultSelector"] = {
@@ -489,15 +471,15 @@ def _category_sensitivity_visualization(
         presentation["expertSelector"] = {"selectionMode": "single"}
     return {
         "key": f"ahp-sort-i-criterion-weight-sensitivity-{item['criterionId']}",
-        "type": "line",
+        "type": "categoricalBands",
         "title": f"Criterion weight sensitivity · {item['criterionName']}",
         "description": (
-            "Lines show the assigned category at each sampled criterion weight. "
-            "Each alternative has a stable visual offset within its category band; "
-            "the real assigned category is shown in the tooltip."
+            "Rounded blocks show each alternative's assigned category within ordered category bands. "
+            "Block colors identify alternatives; category bands identify the assigned category."
         ),
         "insight": (
-            "Stepped segments connect sampled categories and do not estimate exact switching weights. "
+            "Each interval is labeled with the category calculated at its left-hand sample; "
+            "intervals do not estimate exact switching weights. Missing samples remain gaps. "
             "Individual and collective results are selected separately; collective assignments use plurality votes."
         ),
         "scope": {
@@ -524,11 +506,7 @@ def _category_sensitivity_visualization(
             "originalWeightBaselineComparison": (
                 configured_point.get("baselineComparison") if configured_point else None
             ),
-            "categoryDisplayOffsets": alternative_offsets,
-            "unavailableSamples": [
-                {"weight": point.get("variedWeight"), "reason": point.get("reason")}
-                for point in points if point.get("available") is not True
-            ],
+            "alternativeOrder": [alternative["alternativeId"] for alternative in alternatives],
             "series": series,
         },
         "presentation": presentation,
@@ -571,7 +549,7 @@ def build_visualization_sections(
         for item in descriptors
         if item["key"] == "ahp-sort-i-original-classifications"
     ]
-    sensitivity = [item for item in descriptors if item["type"] == "line"]
+    sensitivity = [item for item in descriptors if item["type"] == "categoricalBands"]
     sections = []
     if original:
         sections.append(

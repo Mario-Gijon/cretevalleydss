@@ -49,6 +49,30 @@ import {
 
 const descriptors = {
   bar: { key: "bar", type: "bar", title: "Bar", data: { categories: ["Alt 1", "Alt 2"], series: [{ key: "c1", label: "C1", values: [0.2, 0.5] }] } },
+  categoricalBands: {
+    key: "ahp-sort-i-criterion-weight-sensitivity-quality",
+    type: "categoricalBands",
+    title: "Categorical weight sensitivity",
+    xAxis: { label: "Varied criterion weight", min: 0, max: 1 },
+    yAxis: { categories: [{ value: 0, label: "Bad" }, { value: 1, label: "Good" }] },
+    data: {
+      x: [0, 0.5, 1],
+      configuredWeight: 0.5,
+      alternativeOrder: ["a", "b"],
+      series: [
+        { key: "individual:e1:a", label: "Alpha", resultType: "individual", alternativeId: "a", alternativeName: "Alpha", values: [
+          { x: 0, y: 0, details: { "Assigned category": "Bad", "Changed from original": "No" } },
+          { x: 0.5, y: null, details: { "Unavailable reason": "invalid_profile_order" } },
+          { x: 1, y: 1, details: { "Assigned category": "Good", "Changed from original": "Yes" } },
+        ] },
+        { key: "individual:e1:b", label: "Beta", resultType: "individual", alternativeId: "b", alternativeName: "Beta", values: [
+          { x: 0, y: 1, details: { "Assigned category": "Good" } },
+          { x: 0.5, y: 0, details: { "Assigned category": "Bad" } },
+          { x: 1, y: 0, details: { "Assigned category": "Bad" } },
+        ] },
+      ],
+    },
+  },
   line: { key: "line", type: "line", title: "Line", data: { x: [0, 1], series: [{ key: "alt", label: "Alt", values: [0.2, 0.5] }] }, xAxis: { label: "Weight" }, yAxis: { label: "Score" } },
   scatter: { key: "scatter", type: "scatter", title: "Scatter", data: { series: [{ key: "alts", label: "Alternatives", points: [{ id: "a", label: "Alt 1", x: 0.9, y: 0.575, details: { Rank: 2 } }] }] } },
   pie: { key: "pie", type: "pie", title: "Pie", donut: true, data: { items: [{ key: "exact", label: "Exact", value: 6 }] } },
@@ -112,12 +136,35 @@ const twoTupleHeatmap = (key, columnCount) => {
 
 describe("AnalyticalGraph", () => {
   it("registers and resolves every supported graph type", () => {
-    expect(Object.keys(analyticalGraphRegistry).sort()).toEqual(["bar", "heatmap", "image", "line", "pie", "radar", "scatter"]);
+    expect(Object.keys(analyticalGraphRegistry).sort()).toEqual(["bar", "categoricalBands", "heatmap", "image", "line", "pie", "radar", "scatter"]);
     Object.values(descriptors).forEach((visualization) => {
       const { unmount } = render(<AnalyticalGraph visualization={visualization} />);
       expect(screen.getByTestId(`analytical-graph-${visualization.type}`)).toBeInTheDocument();
       unmount();
     });
+  });
+
+  it("renders discrete category bands, stable alternative blocks, the exact original-weight marker, and unavailable gaps", () => {
+    render(<AnalyticalGraph visualization={descriptors.categoricalBands} />);
+
+    const graph = screen.getByTestId("categorical-bands-analytical-graph");
+    const svg = within(graph).getByTestId("categorical-bands-svg");
+    const blocks = within(svg).getAllByTestId("category-interval-block");
+    expect(svg).toHaveAttribute("data-alternative-count", "2");
+    expect(within(svg).getAllByTestId("category-band").map((band) => band.getAttribute("data-category"))).toEqual(["Bad", "Good"]);
+    expect(blocks).toHaveLength(3);
+    expect(blocks.map((block) => block.getAttribute("data-alternative-id"))).toEqual(["a", "b", "b"]);
+    expect(blocks[0].querySelector("title")).toHaveTextContent("Alpha");
+    expect(blocks[0].querySelector("title")).toHaveTextContent("Sample interval: 0.00–0.50");
+    expect(blocks[0].querySelector("title")).toHaveTextContent("Assigned category: Bad");
+    expect(within(svg).getAllByTestId("category-sample-marker").map((marker) => marker.getAttribute("data-category"))).toEqual(["Good", "Bad"]);
+    expect(within(svg).getByTestId("original-weight-marker").querySelector("line")).toHaveAttribute("x1", "568");
+    expect(within(svg).getAllByTestId("unavailable-sample-marker")).toHaveLength(1);
+
+    const [alpha, beta] = within(graph).getAllByRole("listitem").slice(0, 2);
+    expect(alpha).toHaveAttribute("aria-label", "Alternative: Alpha");
+    expect(beta).toHaveAttribute("aria-label", "Alternative: Beta");
+    expect(blocks[0].getAttribute("fill")).not.toBe(blocks[1].getAttribute("fill"));
   });
 
   it("renders optional visualization controls after the title and reading guide, before the chart", () => {

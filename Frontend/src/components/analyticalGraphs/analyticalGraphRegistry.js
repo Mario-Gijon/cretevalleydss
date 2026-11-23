@@ -1,4 +1,5 @@
 import BarAnalyticalGraph from "./components/BarAnalyticalGraph.jsx";
+import CategoricalBandsAnalyticalGraph from "./components/CategoricalBandsAnalyticalGraph.jsx";
 import HeatmapAnalyticalGraph from "./components/HeatmapAnalyticalGraph.jsx";
 import ImageAnalyticalGraph from "./components/ImageAnalyticalGraph.jsx";
 import LineAnalyticalGraph from "./components/LineAnalyticalGraph.jsx";
@@ -8,6 +9,7 @@ import ScatterAnalyticalGraph from "./components/ScatterAnalyticalGraph.jsx";
 
 export const analyticalGraphRegistry = {
   bar: BarAnalyticalGraph,
+  categoricalBands: CategoricalBandsAnalyticalGraph,
   line: LineAnalyticalGraph,
   scatter: ScatterAnalyticalGraph,
   pie: PieAnalyticalGraph,
