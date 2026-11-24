@@ -44,6 +44,10 @@ def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
     leaves = _fixture_leaves(data)
     participants = data.get("participants", {})
     experts = participants.get("criteriaWeightingExperts", [])
+    if any(child.get("type") not in {"benefit", "cost"} for child in leaves):
+        raise ScenarioLabError(
+            "every two-tuple Greece video leaf criterion must declare benefit or cost"
+        )
     leaf_keys = [child.get("key") for child in leaves]
     if (
         len(leaves) != 18
@@ -97,7 +101,7 @@ def _validate_main_model(model: dict[str, Any]) -> None:
         "publicUsable": model.get("publicUsable") is True,
         "evaluationStructureKey": model.get("evaluationStructureKey") == "alternativeCriteriaMatrix",
         "requiresHomogeneousExpressionDomains": model.get("requiresHomogeneousExpressionDomains") is True,
-        "usesCriterionTypes": model.get("usesCriterionTypes") is False,
+        "usesCriterionTypes": model.get("usesCriterionTypes") is True,
         "usesCriteriaWeights": model.get("usesCriteriaWeights") is True,
         "usesExpertWeights": model.get("usesExpertWeights") is True,
     }
@@ -124,7 +128,7 @@ def _domain(domains: Any) -> dict[str, Any]:
 
 
 def _leaf_node(child: dict[str, Any]) -> dict[str, Any]:
-    node = {"id": f"criterion-{child['key']}", "name": child["name"], "type": "benefit", "children": []}
+    node = {"id": f"criterion-{child['key']}", "name": child["name"], "type": child["type"], "children": []}
     if child.get("description") is not None:
         node["description"] = child["description"]
     return node

@@ -21,3 +21,22 @@ def test_video_issue_payload_receives_generated_name() -> None:
 
     assert payload["issueName"] == issue_name
     assert payload["issueName"] != data["issue"]["name"]
+
+
+def test_video_payload_declares_leaf_types_for_current_two_tuple_contract() -> None:
+    data = load_fixture()
+    payload = _payload(
+        data,
+        name="[AUTO:typed-video] Greece renewable-energy sites video",
+        model_id="model-id",
+        domain_id="domain-id",
+        emails=[f"expert_{letter}@example.test" for letter in "abcde"],
+    )
+    leaves = [
+        child
+        for parent in payload["criteria"]
+        for child in parent["children"]
+    ]
+
+    assert len(leaves) == 18
+    assert {criterion["type"] for criterion in leaves} == {"benefit"}
