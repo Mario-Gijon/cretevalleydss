@@ -2,6 +2,7 @@ from copy import deepcopy
 import json
 
 from models.ahp_sort_i.analysis import analyze_issue
+from models.ahp_sort_i.analysis.interpretation import _criterion_sensitivity
 from models.ahp_sort_i.examples import AHPSORT_I_REQUEST_EXAMPLES
 from models.ahp_sort_i.executor import execute_ahp_sort_i
 from schemas.model_requests import GenericModelExecutionRequest
@@ -148,15 +149,104 @@ def test_sensitivity_interpretation_uses_observed_changes_and_reports_invalid_sa
 
     assert "Criterion weight sensitivity" in interpretation
     assert "redistributing the remaining weight proportionally" in interpretation
-    assert "category changes were observed" in interpretation
-    assert "Low** → **Middle" in interpretation
-    assert "20 percentage points away" in interpretation
-    assert "% percentage points away" not in interpretation
-    assert "another category" not in interpretation
-    assert "not an exact switching threshold" in interpretation
-    assert "invalid ordering of limiting profiles" in interpretation
+    assert "Sampled variations in **Criterion A** changed individual classifications" in interpretation
+    assert "**Alternative**" in interpretation
+    assert "not exact switching thresholds" in interpretation
+    assert interpretation.count("Evidence is incomplete:") == 1
     assert "matches the validated original execution" in interpretation
     assert "collective plurality votes" not in interpretation
+
+
+def _sensitivity_interpretation_from_summaries(summaries: list[dict]) -> list[str]:
+    facts = analyze_issue(_context(_central_request(add_second_criterion=True)))["facts"]
+    criteria = facts["criteria"]
+    items = []
+    for criterion, summary in zip(criteria, summaries, strict=True):
+        points = []
+        if summary["validSampleCount"]:
+            points.append({
+                "variedWeight": criterion["weight"],
+                "available": True,
+                "baselineComparison": {"individualAssignmentsMatch": True},
+            })
+        items.append({
+            "criterionId": criterion["criterionId"],
+            "criterionName": criterion["name"],
+            "configuredWeight": criterion["weight"],
+            "available": summary["validSampleCount"] > 0,
+            "points": points,
+            "summary": summary,
+        })
+    facts["sensitivity"] = {
+        "availability": {"available": True, "reason": None},
+        "method": {"step": 0.05, "minimumWeight": 0, "maximumWeight": 1},
+        "items": items,
+    }
+    return _criterion_sensitivity(facts)
+
+
+def _sensitivity_summary(*, valid: int, invalid: int = 0, no_changes: bool | None = True, individual=None, collective=None) -> dict:
+    return {
+        "sampleCount": valid + invalid,
+        "validSampleCount": valid,
+        "invalidSampleCount": invalid,
+        "noChangesObserved": no_changes,
+        "alternativesWithObservedIndividualChanges": individual or [],
+        "alternativesWithObservedCollectiveChanges": collective or [],
+        "unavailableReasons": {"profile_order_invalid": invalid} if invalid else {},
+    }
+
+
+def test_sensitivity_no_changes_are_summarized_once_and_limit_invalid_coverage():
+    lines = _sensitivity_interpretation_from_summaries([
+        _sensitivity_summary(valid=20, invalid=1),
+        _sensitivity_summary(valid=21),
+    ])
+    text = "\n".join(lines)
+
+    assert text.count("No category changes were observed") == 1
+    assert "among the valid tested criterion weight variations" in text
+    assert "Some sampled weights were unavailable (1 of 42)" in text
+    assert "Criterion A" not in text and "Safety" not in text
+
+
+def test_sensitivity_changes_name_only_affected_criteria_and_group_insufficient_evidence():
+    facts = analyze_issue(_context(_central_request(add_second_criterion=True)))["facts"]
+    alternative = facts["alternatives"][0]
+    changed = _sensitivity_summary(
+        valid=20,
+        invalid=1,
+        no_changes=False,
+        individual=[{
+            "alternativeId": alternative["alternativeId"],
+            "alternativeName": alternative["name"],
+            "expertId": facts["experts"][0]["expertId"],
+            "observedSampleCount": 2,
+        }],
+    )
+    insufficient = _sensitivity_summary(valid=1, invalid=20, no_changes=None)
+    lines = _sensitivity_interpretation_from_summaries([changed, insufficient])
+    text = "\n".join(lines)
+
+    assert "Sampled variations in **Quality** changed individual classifications" in text
+    assert f"**{alternative['name']}**" in text
+    assert "Safety" not in text
+    assert "not exact switching thresholds" in text
+    assert text.count("Evidence is incomplete:") == 1
+    assert "some criteria had too few valid samples" in text
+    assert "21 of 42 sampled weights were unavailable" in text
+
+
+def test_sensitivity_with_only_insufficient_samples_does_not_claim_stability():
+    text = "\n".join(_sensitivity_interpretation_from_summaries([
+        _sensitivity_summary(valid=1, invalid=20, no_changes=True),
+        _sensitivity_summary(valid=1, invalid=20, no_changes=None),
+    ]))
+
+    assert "There is not enough valid evidence to assess category changes across all criteria" in text
+    assert "No category changes were observed" not in text
+    assert "40 of 42 sampled weights were unavailable" in text
+    assert "exact switching thresholds" not in text
 
 
 def test_collective_interpretation_separates_experts_and_plurality_without_score():

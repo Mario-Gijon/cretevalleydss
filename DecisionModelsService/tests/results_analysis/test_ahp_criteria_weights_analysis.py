@@ -132,6 +132,8 @@ def test_single_expert_analysis_uses_frozen_weights_and_reports_persisted_consis
     assert "Life expectancy" in result["interpretation"]
     assert "CR was **0.000**" in result["interpretation"]
     assert result["sections"][0]["visualizations"] == result["visualizations"]
+    assert all(section["id"] != "ahp-consensus-adjustments" for section in result["sections"])
+    assert "### MCC adjustments" not in result["interpretation"]
 
 
 def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
@@ -142,6 +144,7 @@ def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
     assert facts["status"] == "available"
     assert facts["source"]["nExperts"] == 2
     assert facts["mcc"]["available"] is True
+    assert facts["mcc"]["materialAdjustments"] is True
     assert keys == [
         "ahp-derived-priority-distribution",
         "ahp-collective-criterion-importance",
@@ -193,6 +196,7 @@ def test_multi_expert_analysis_uses_mcc_and_shows_three_applicable_visuals():
     assert [item["key"] for item in result["sections"][0]["visualizations"]] == keys[:2]
     assert result["sections"][1]["presentation"] == {"layout": "lead-full-width", "stackAt": "lg"}
     assert [item["key"] for item in result["sections"][1]["visualizations"]] == keys[2:]
+    assert result["sections"][1]["id"] == "ahp-consensus-adjustments"
     assert result["visualizations"][3]["xAxis"]["label"].endswith("(percentage points)")
     assert result["visualizations"][3]["data"]["series"][0]["values"] == pytest.approx([
         item["effort"] * 100 for item in sorted(facts["mcc"]["effortByExpert"], key=lambda item: (-item["effort"], item["name"].casefold(), item["expertKey"]))
@@ -214,10 +218,9 @@ def test_mcc_with_no_material_adjustments_has_no_adjustment_heatmap():
         "ahp-derived-priority-distribution",
         "ahp-collective-criterion-importance",
     ]
-    assert len(result["sections"]) == 2
-    assert result["sections"][1]["visualizations"] == []
-    assert result["sections"][1]["presentation"]["summaryMessage"] == "No material MCC weight adjustments were needed."
-    assert "no material numerical adjustments" in result["interpretation"]
+    assert len(result["sections"]) == 1
+    assert all(section["id"] != "ahp-consensus-adjustments" for section in result["sections"])
+    assert "### MCC adjustments" not in result["interpretation"]
     distribution = result["visualizations"][0]
     first, second = distribution["data"]["series"]
     assert first["points"][0]["x"] == second["points"][0]["x"]

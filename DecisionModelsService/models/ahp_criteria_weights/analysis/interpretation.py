@@ -94,14 +94,9 @@ def _expert_perspectives(facts: dict[str, Any]) -> str | None:
 
 def _mcc_adjustments(facts: dict[str, Any]) -> str | None:
     mcc = facts.get("mcc") or {}
-    if not mcc.get("available"):
+    if not mcc.get("available") or not mcc.get("materialAdjustments"):
         return None
     total = float(mcc["totalAbsoluteAdjustment"])
-    if not mcc.get("materialAdjustments"):
-        return (
-            "### MCC adjustments\n\n"
-            "MCC made no material numerical adjustments to the original AHP weights; the stored expert vectors already met the calculation's agreement constraint within the analysis tolerance."
-        )
     paragraphs = [
         f"MCC made {_percentage_points(total)} of total absolute weight adjustments across expert-criterion cells."
     ]

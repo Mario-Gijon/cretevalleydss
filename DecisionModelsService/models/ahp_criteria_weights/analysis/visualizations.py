@@ -261,22 +261,19 @@ def build_visualization_sections(facts: dict[str, Any]) -> list[dict[str, Any]]:
         })
 
     mcc = facts.get("mcc") or {}
-    if mcc.get("available") is True:
+    if mcc.get("available") is True and mcc.get("materialAdjustments") is True:
         mcc_keys = (
             "ahp-mcc-adjustment-map",
             "ahp-mcc-adjustment-effort-by-expert",
             "ahp-mcc-adjustment-effort-by-criterion",
         )
         mcc_visualizations = [descriptors[key] for key in mcc_keys if key in descriptors]
-        presentation = {"layout": "lead-full-width", "stackAt": "lg"}
-        if not mcc.get("materialAdjustments"):
-            presentation["summaryMessage"] = "No material MCC weight adjustments were needed."
         sections.append({
             "id": "ahp-consensus-adjustments",
             "title": "Consensus adjustments",
             "description": "Saved changes from individual AHP weights to their MCC-adjusted values.",
             "order": 1,
-            "presentation": presentation,
+            "presentation": {"layout": "lead-full-width", "stackAt": "lg"},
             "visualizations": mcc_visualizations,
         })
 

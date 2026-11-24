@@ -33,13 +33,6 @@ def _percent(value: Any) -> str | None:
     return f"{number * 100:.2f}".rstrip("0").rstrip(".") + "%"
 
 
-def _percentage_points(value: Any) -> str | None:
-    number = _number(value)
-    if number is None:
-        return None
-    return f"{number * 100:.2f}".rstrip("0").rstrip(".")
-
-
 def _number_text(value: Any) -> str | None:
     number = _number(value)
     return f"{number:.4f}" if number is not None else None
@@ -397,78 +390,6 @@ def _reason_text(reason: Any) -> str:
     return str(reason or "the reason was not recorded").replace("_", " ")
 
 
-def _change_description(
-    change: dict[str, Any],
-    category_labels: dict[str, str],
-    alternatives: dict[str, str],
-    expert_names: dict[str, str],
-) -> str:
-    name = alternatives.get(
-        str(change.get("alternativeId")),
-        str(change.get("alternativeName") or "an alternative"),
-    )
-    source_id = change.get("fromCategoryId")
-    target_id = change.get("toCategoryId")
-    if source_id is not None or target_id is not None:
-        source = category_labels.get(
-            str(source_id), str(change.get("fromCategory") or "another category")
-        )
-        target = category_labels.get(
-            str(target_id), str(change.get("toCategory") or "another category")
-        )
-        transitions = [f"{_bold(source)} → {_bold(target)}"]
-    else:
-        transitions = []
-        seen = set()
-        for sample in change.get("samples") or []:
-            if not isinstance(sample, dict):
-                continue
-            source_id = sample.get("fromCategoryId")
-            target_id = sample.get("toCategoryId")
-            if source_id is None or target_id is None:
-                continue
-            source = category_labels.get(str(source_id), str(source_id))
-            target = category_labels.get(str(target_id), str(target_id))
-            transition = (source, target)
-            if transition in seen:
-                continue
-            seen.add(transition)
-            transitions.append(f"{_bold(source)} → {_bold(target)}")
-            if len(transitions) == 3:
-                break
-        if not transitions:
-            transitions = ["another category → another category"]
-    detail = f"{_bold(name)}: " + "; ".join(transitions)
-    expert_id = change.get("expertId")
-    if expert_id is not None:
-        detail += f" for {_bold(expert_names.get(str(expert_id), expert_id))}"
-    return detail
-
-
-def _point_change_details(
-    points: Any,
-    category_labels: dict[str, str],
-    alternatives: dict[str, str],
-    expert_names: dict[str, str],
-) -> str:
-    details = []
-    if not isinstance(points, list):
-        return ""
-    for point in points:
-        if not isinstance(point, dict):
-            continue
-        weight = _percent(point.get("variedWeight"))
-        for key in ("individualChanges", "collectiveChanges"):
-            for change in point.get(key) or []:
-                if isinstance(change, dict):
-                    scope = "collective" if key == "collectiveChanges" else "individual"
-                    details.append(
-                        f"{scope} at {weight or 'an unreported weight'}: "
-                        + _change_description(change, category_labels, alternatives, expert_names)
-                    )
-    return "; ".join(details[:4])
-
-
 def _baseline_sample(item: dict[str, Any]) -> dict[str, Any] | None:
     configured = _number(item.get("configuredWeight"))
     if configured is None:
@@ -508,18 +429,13 @@ def _criterion_sensitivity(facts: dict[str, Any]) -> list[str]:
             "redistributing the remaining weight proportionally so the other criteria keep "
             "their original ratios. The exact configured weight is included."
         )
-    categories = _indexed(facts.get("categories"), "categoryId", "label")
     alternatives = _alternative_names(facts)
     experts = [item for item in facts.get("experts", []) if isinstance(item, dict)]
-    expert_names = {str(item.get("expertId")): _expert_name(item) for item in experts}
-    collective_analyzed = len(experts) > 1
-    observed_alternatives: Counter[str] = Counter()
-    any_changes = False
-    valid_samples = 0
-    globally_no_changes = bool(items) and all(
-        (item.get("summary") or {}).get("noChangesObserved") is True
-        for item in items
-    )
+    changed_items = []
+    stable_items = 0
+    insufficient_items = 0
+    invalid_samples = 0
+    total_samples = 0
     baseline_matches = []
     baseline_unconfirmed = []
 
@@ -528,68 +444,19 @@ def _criterion_sensitivity(facts: dict[str, Any]) -> list[str]:
         summary = item.get("summary") or {}
         valid = int(summary.get("validSampleCount") or 0)
         invalid = int(summary.get("invalidSampleCount") or 0)
-        valid_samples += valid
+        sample_count = int(summary.get("sampleCount") or valid + invalid)
+        invalid_samples += invalid
+        total_samples += sample_count
         individual_changes = summary.get("alternativesWithObservedIndividualChanges") or []
         collective_changes = summary.get("alternativesWithObservedCollectiveChanges") or []
         if individual_changes or collective_changes:
-            any_changes = True
-            for change in individual_changes:
-                if isinstance(change, dict):
-                    key = str(change.get("alternativeId") or change.get("alternativeName"))
-                    observed_alternatives[key] += int(change.get("observedSampleCount") or 0)
-            effects = []
-            if individual_changes:
-                examples = "; ".join(
-                    _change_description(change, categories, alternatives, expert_names)
-                    for change in individual_changes[:3]
-                    if isinstance(change, dict)
-                )
-                effects.append(f"individual classifications changed ({examples})")
-            if collective_changes:
-                examples = "; ".join(
-                    _change_description(change, categories, alternatives, expert_names)
-                    for change in collective_changes[:3]
-                    if isinstance(change, dict)
-                )
-                effects.append(f"collective classifications changed ({examples})")
-            elif individual_changes and collective_analyzed:
-                effects.append("no collective category change was observed")
-            lines.append(
-                f"Of {valid} valid samples for {name}, category changes were observed: "
-                + "; ".join(effects)
-                + "."
-            )
-            nearest = summary.get("nearestObservedChange")
-            if isinstance(nearest, dict):
-                nearest_details = _point_change_details(
-                    nearest.get("points"), categories, alternatives, expert_names
-                )
-                points = nearest.get("points") or []
-                weights = sorted(
-                    {
-                        _percent(point.get("variedWeight"))
-                        for point in points
-                        if isinstance(point, dict) and _percent(point.get("variedWeight"))
-                    }
-                )
-                delta = _percentage_points(nearest.get("absoluteWeightDifference"))
-                if weights:
-                    lines.append(
-                        f"The nearest observed change to the original {name} weight "
-                        f"occurred at {', '.join(weights)}"
-                        + (f" ({delta} percentage points away)" if delta else "")
-                        + (f": {nearest_details}." if nearest_details else ".")
-                        + " This is a sampled observation, not an exact switching threshold."
-                    )
-        elif summary.get("noChangesObserved") is True and not globally_no_changes:
-            lines.append(
-                f"No category changes were observed for {name} in its valid tested samples; "
-                "this does not guarantee stability outside the sampled weights."
-            )
-        elif valid:
-            lines.append(
-                f"No category change conclusion is available for {name} from the valid samples."
-            )
+            changed_items.append((name, individual_changes, collective_changes))
+            if valid < 2 or summary.get("noChangesObserved") is None:
+                insufficient_items += 1
+        elif valid >= 2 and summary.get("noChangesObserved") is True:
+            stable_items += 1
+        else:
+            insufficient_items += 1
 
         baseline = _baseline_sample(item)
         comparison = baseline.get("baselineComparison") if baseline else None
@@ -602,36 +469,72 @@ def _criterion_sensitivity(facts: dict[str, Any]) -> list[str]:
         else:
             baseline_unconfirmed.append(str(item.get("criterionName") or item.get("criterionId")))
 
-        if invalid:
-            reasons = summary.get("unavailableReasons") or {}
-            reason_text = ", ".join(
-                f"{count} ({_reason_text(reason)})" for reason, count in sorted(reasons.items())
+    def changed_names(changes: list[Any]) -> str:
+        names = []
+        for change in changes:
+            if not isinstance(change, dict):
+                continue
+            alternative_id = str(change.get("alternativeId") or "")
+            name = (
+                alternatives.get(alternative_id)
+                or change.get("alternativeName")
+                or alternative_id
             )
-            lines.append(
-                f"{invalid} of {int(summary.get('sampleCount') or valid + invalid)} "
-                f"samples for {name} were unavailable"
-                + (f": {reason_text}." if reason_text else ".")
+            if name and str(name) not in names:
+                names.append(str(name))
+        if len(names) > 4:
+            return (
+                ", ".join(_bold(name) for name in names[:4])
+                + f", and {len(names) - 4} others"
             )
+        return ", ".join(_bold(name) for name in names)
 
-    if observed_alternatives:
-        most_observed = max(observed_alternatives.values())
-        names = [
-            alternatives.get(key, key)
-            for key, count in observed_alternatives.items()
-            if count == most_observed
-        ]
-        if names:
-            lines.append(
-                "The alternatives with the most repeated individual category changes "
-                f"were {', '.join(_bold(name) for name in names[:3])} "
-                f"({most_observed} observed samples each)."
+    for name, individual_changes, collective_changes in changed_items:
+        effects = []
+        if individual_changes:
+            effects.append(
+                f"individual classifications for {changed_names(individual_changes)}"
             )
-    if not any_changes and valid_samples and all(
-        (item.get("summary") or {}).get("noChangesObserved") is True for item in items
-    ):
+        if collective_changes:
+            effects.append(f"collective classifications for {changed_names(collective_changes)}")
         lines.append(
-            "No changes were observed in the valid tested samples. This describes only "
-            "the sampled grid and is not a guarantee of absolute stability."
+            f"Sampled variations in {name} changed " + " and ".join(effects) + "."
+        )
+    if changed_items:
+        lines.append("These are observed sampled changes, not exact switching thresholds.")
+    elif stable_items == len(items) and insufficient_items == 0:
+        lines.append(
+            "No category changes were observed among the valid tested criterion weight variations. "
+            "This describes the sampled weights only."
+        )
+        if invalid_samples:
+            lines.append(
+                f"Some sampled weights were unavailable ({invalid_samples} of {total_samples}); "
+                "the conclusion covers valid samples only."
+            )
+    elif stable_items:
+        message = (
+            "No changes were observed for criteria with sufficient valid samples, but "
+            "there is not enough evidence to assess every criterion"
+        )
+        if invalid_samples:
+            message += f" ({invalid_samples} of {total_samples} sampled weights were unavailable)"
+        lines.append(message + ".")
+    else:
+        message = "There is not enough valid evidence to assess category changes across all criteria"
+        if invalid_samples:
+            message += f" ({invalid_samples} of {total_samples} sampled weights were unavailable)"
+        lines.append(message + ".")
+
+    if changed_items and (insufficient_items or invalid_samples):
+        limitation = []
+        if insufficient_items:
+            limitation.append("some criteria had too few valid samples")
+        if invalid_samples:
+            limitation.append(f"{invalid_samples} of {total_samples} sampled weights were unavailable")
+        lines.append(
+            "Evidence is incomplete: " + " and ".join(limitation)
+            + "; conclusions cover valid sampled weights only."
         )
     if baseline_matches and len(baseline_matches) == len(items) and not baseline_unconfirmed:
         reproduced_evidence = [
@@ -656,7 +559,7 @@ def _criterion_sensitivity(facts: dict[str, Any]) -> list[str]:
             + ", ".join(_bold(name) for name in baseline_matches)
             + "."
         )
-    if baseline_unconfirmed:
+    if baseline_unconfirmed and insufficient_items == 0:
         lines.append(
             "The exact configured-weight comparison could not be confirmed for: "
             + ", ".join(_bold(name) for name in baseline_unconfirmed)
