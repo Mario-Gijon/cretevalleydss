@@ -145,7 +145,12 @@ describe("AddModelDialog", () => {
       expect.objectContaining({
         parameter: expect.objectContaining({ key: "alpha" }),
         value: 0.5,
-        parameterContext: { marker: "parameter-context" },
+        parameterContext: expect.objectContaining({
+          parameterValues: { alpha: 0.5 },
+          parameterValuesByStructureKey: {
+            numberGlobal: [{ key: "alpha", value: 0.5 }],
+          },
+        }),
         disabled: false,
       })
     );

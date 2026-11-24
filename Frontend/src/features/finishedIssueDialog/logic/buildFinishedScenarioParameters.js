@@ -154,6 +154,7 @@ export const buildParamsResolved = ({
   leafCount,
   leafCriteria = [],
   baseIssueWeights = {},
+  baseModelParameters = {},
 }) => {
   const out = {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
@@ -166,6 +167,11 @@ export const buildParamsResolved = ({
   for (const parameter of getScenarioParameterDefinitions(model)) {
     const key = normalizeNonEmptyString(parameter?.key);
     if (!key) continue;
+
+    if (hasOwnKey(baseModelParameters, key)) {
+      out[key] = normalizeModelParameterValue(parameter, baseModelParameters[key]);
+      continue;
+    }
 
     if (isCriteriaWeightsParameter(parameter)) {
       out[key] = defaultWeights;

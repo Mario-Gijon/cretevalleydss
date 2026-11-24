@@ -42,13 +42,21 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   }, [payload, selectedExecutionKey]);
   useEffect(() => {
     if (!addOpen || !selectedModel) return;
+    const selectedExecutionModel = selectedExecution?.model;
+    const sameModel = Boolean(
+      selectedExecutionModel?.id && selectedExecutionModel.id === selectedModel.id
+    ) || Boolean(
+      selectedExecutionModel?.apiModelKey &&
+      selectedExecutionModel.apiModelKey === selectedModel.apiModelKey
+    );
     setScenarioParamValues(buildParamsResolved({
       model: selectedModel,
       leafCount: leafCriteria.length,
       leafCriteria,
       baseIssueWeights: payload?.criteria?.finalWeights?.byCriterionId || {},
+      baseModelParameters: sameModel ? selectedExecution?.modelParameters || {} : {},
     }));
-  }, [addOpen, payload?.criteria?.finalWeights?.byCriterionId, selectedModel, leafCriteria]);
+  }, [addOpen, payload?.criteria?.finalWeights?.byCriterionId, selectedExecution, selectedModel, leafCriteria]);
   const closeAddDialog = () => {
     setAddOpen(false);
     setScenarioName("");

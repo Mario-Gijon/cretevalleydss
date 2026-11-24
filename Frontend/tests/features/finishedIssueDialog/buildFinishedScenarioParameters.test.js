@@ -66,6 +66,31 @@ describe("finished scenario parameter drafts", () => {
     expect(resolved.metadata).not.toBe(model.parameterDefinitions[3].default);
   });
 
+  it("retains the selected model's parameter identity when preparing a same-model scenario", () => {
+    const baseParameters = {
+      orderedCategories: [
+        { categoryId: "bad", label: "Bad", order: 0 },
+        { categoryId: "good", label: "Good", order: 1 },
+      ],
+      ahpSortProfiles: {
+        mode: "limiting",
+        profiles: [{ profileId: "boundary-1", lowerCategoryId: "bad", upperCategoryId: "good" }],
+      },
+    };
+    const modelWithClassificationParameters = {
+      parameterDefinitions: [
+        { key: "orderedCategories", parameterStructureKey: "orderedCategories", required: true },
+        { key: "ahpSortProfiles", parameterStructureKey: "ahpSortProfiles", required: true },
+      ],
+    };
+
+    expect(buildParamsResolved({
+      model: modelWithClassificationParameters,
+      leafCount: 0,
+      baseModelParameters: baseParameters,
+    })).toEqual(baseParameters);
+  });
+
   it("forwards owned raw overrides unchanged", () => {
     const values = {
       zero: 0,

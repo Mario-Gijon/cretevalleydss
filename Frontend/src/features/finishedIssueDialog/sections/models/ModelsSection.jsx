@@ -1,5 +1,6 @@
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 import { buildParameterContext } from "../../../modelParameters/context";
+import { getScenarioParameterDefinitions } from "../../logic/buildFinishedScenarioParameters.js";
 import { buildModelsParameterContextData } from "./logic/buildModelsData.js";
 import { buildModelsCardsData } from "./logic/buildModelsCardsData.js";
 import ModelsView from "./components/ModelsView.jsx";
@@ -20,14 +21,18 @@ const ModelsSection = () => {
       },
     })
   );
+  const addModel = models.addDialog.selectedModel;
   const addParameterContext = buildParameterContext({
     ...buildModelsParameterContextData({
       payload: dialog.payload,
       selectedExecution: {
-        model: models.addDialog.selectedModel,
+        model: addModel,
       },
     }),
-    model: models.addDialog.selectedModel,
+    model: addModel,
+    parameterDefinitions: getScenarioParameterDefinitions(addModel),
+    parameterValues: models.addDialog.scenarioParamValues,
+    selectedExpertCount: runs.selectedExecution?.expertRoster?.length || 0,
   });
 
   return (
