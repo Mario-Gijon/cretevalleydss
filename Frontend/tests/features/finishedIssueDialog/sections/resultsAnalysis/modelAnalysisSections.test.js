@@ -82,4 +82,50 @@ describe("model analysis semantic sections", () => {
     ]);
     expect(new Set(sections.map((section) => section.id)).size).toBe(2);
   });
+
+  it("hides only the retired AHPSort I classifications descriptor in stored analyses", () => {
+    const sections = buildModelAnalysisSections([
+      execution("historical-ahp", [
+        {
+          id: "ahp-sort-i-original-classifications",
+          title: "AHPSort I classifications",
+          visualizations: [{ key: "ahp-sort-i-original-classifications", type: "scatter" }],
+        },
+        {
+          id: "ahp-sort-i-criterion-weight-sensitivity",
+          title: "Criterion weight sensitivity",
+          visualizations: [{ key: "ahp-sort-i-criterion-weight-sensitivity-quality", type: "line" }],
+        },
+        {
+          id: "expert-collective-relationship",
+          title: "Expert–collective relationship",
+          visualizations: [{ key: "ahp-sort-i-classification-pattern-projection", type: "scatter" }],
+        },
+      ]),
+      {
+        key: "legacy-analysis",
+        alternativeEvaluationAnalysis: {
+          analysis: {
+            visualizations: [
+              { key: "ahp-sort-i-original-classifications", type: "scatter" },
+              { key: "topsis-sort-expert-map", type: "scatter" },
+            ],
+          },
+        },
+      },
+    ]);
+
+    expect(sections.map((section) => section.title)).toEqual([
+      "Criterion weight sensitivity",
+      "Model analysis",
+      "Expert–collective relationship",
+    ]);
+    expect(sections.flatMap((section) => section.executions.flatMap((entry) => entry.visualizations))
+      .map((visualization) => visualization.key)).not.toContain("ahp-sort-i-original-classifications");
+    expect(sections.find((section) => section.title === "Criterion weight sensitivity")).toBeTruthy();
+    expect(sections.find((section) => section.title === "Expert–collective relationship")).toBeTruthy();
+    expect(sections.find((section) => section.title === "Model analysis").executions
+      .find((entry) => entry.execution.key === "legacy-analysis").visualizations)
+      .toEqual([{ key: "topsis-sort-expert-map", type: "scatter" }]);
+  });
 });

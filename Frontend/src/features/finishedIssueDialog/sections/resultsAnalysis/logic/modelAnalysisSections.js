@@ -1,5 +1,8 @@
 const asArray = (value) => Array.isArray(value) ? value : [];
 const text = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
+const HIDDEN_VISUALIZATION_KEYS = new Set(["ahp-sort-i-original-classifications"]);
+const visibleVisualizations = (visualizations) => asArray(visualizations)
+  .filter((visualization) => !HIDDEN_VISUALIZATION_KEYS.has(visualization?.key));
 
 const stageAnalysisFor = (execution, stage) => execution?.stageAnalyses?.[stage] ?? (stage === "alternativeEvaluation" ? execution?.alternativeEvaluationAnalysis : null);
 
@@ -7,9 +10,11 @@ export const sectionsForExecution = (execution, stage = "alternativeEvaluation")
   const analysis = stageAnalysisFor(execution, stage)?.analysis;
   const sections = asArray(analysis?.sections)
     .filter((section) => text(section?.id) && Array.isArray(section.visualizations))
-    .map((section, index) => ({ id: text(section.id), title: text(section.title) || "Model analysis", description: text(section.description), order: Number.isFinite(section.order) ? section.order : index, presentation: section.presentation && typeof section.presentation === "object" ? section.presentation : {}, visualizations: section.visualizations }));
+    .filter((section) => visibleVisualizations(section.visualizations).length
+      || !asArray(section.visualizations).some((visualization) => HIDDEN_VISUALIZATION_KEYS.has(visualization?.key)))
+    .map((section, index) => ({ id: text(section.id), title: text(section.title) || "Model analysis", description: text(section.description), order: Number.isFinite(section.order) ? section.order : index, presentation: section.presentation && typeof section.presentation === "object" ? section.presentation : {}, visualizations: visibleVisualizations(section.visualizations) }));
   if (sections.length) return sections.sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
-  const visualizations = asArray(analysis?.visualizations);
+  const visualizations = visibleVisualizations(analysis?.visualizations);
   return visualizations.length ? [{ id: "legacy-model-analysis", title: "Model analysis", description: null, order: 0, visualizations }] : [];
 };
 

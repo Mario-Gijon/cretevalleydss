@@ -10,239 +10,6 @@ def _name(item: dict[str, Any], key: str, fallback: str) -> str:
     return value.strip() if isinstance(value, str) and value.strip() else fallback
 
 
-def _profile_labels(facts: dict[str, Any]) -> dict[str, str]:
-    categories = {item["categoryId"]: item["label"] for item in facts["categories"]}
-    labels = {}
-    for index, profile in enumerate(facts["profiles"], start=1):
-        profile_id = profile.get("profileId", f"profile-{index}")
-        if facts["profileMode"] == "limiting":
-            lower = categories.get(profile.get("lowerCategoryId"))
-            upper = categories.get(profile.get("upperCategoryId"))
-            label = f"{lower or 'Unknown'} / {upper or 'Unknown'} boundary"
-        else:
-            category = categories.get(profile.get("categoryId"))
-            label = f"{category or 'Unknown'} central profile"
-        labels[profile_id] = label
-    return labels
-
-
-def _individual_diagnostics(facts: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    return facts.get("individualResultsByExpertId") or {}
-
-
-def _add_individual_priority_details(
-    details: dict[str, Any],
-    facts: dict[str, Any],
-    result: dict[str, Any],
-    *,
-    include_classification: bool,
-) -> None:
-    """Add numeric values that belong to this one alternative/expert matrix."""
-    details["Priority scope"] = (
-        "These priorities belong only to this alternative and this expert's AHP matrix"
-    )
-    details["Alternative priority · this expert and alternative matrix"] = result.get(
-        "globalPriority"
-    )
-    profile_labels = _profile_labels(facts)
-    profile_priorities = (
-        result.get("profileGlobalPrioritiesById")
-        or result.get("profilePrioritiesById")
-        or {}
-    )
-    for profile_id, priority in profile_priorities.items():
-        details[f"Profile priority · {profile_labels.get(profile_id, profile_id)}"] = priority
-
-    criteria = {item["criterionId"]: item["name"] for item in facts["criteria"]}
-    for criterion_id, local in (result.get("localPrioritiesByCriterion") or {}).items():
-        criterion_name = criteria.get(criterion_id, criterion_id)
-        details[f"Local alternative priority · {criterion_name}"] = local.get("alternative")
-        local_profiles = local.get("profilesById") or local.get("centralProfilesById") or {}
-        for profile_id, priority in local_profiles.items():
-            details[
-                f"Local profile priority · {criterion_name} · "
-                f"{profile_labels.get(profile_id, profile_id)}"
-            ] = priority
-
-    if include_classification and facts["profileMode"] == "central":
-        classification = result.get("classification") or {}
-        selected_id = classification.get("selectedCenterProfileId")
-        details["Selected central profile"] = profile_labels.get(selected_id, selected_id)
-        details["Distance to selected central profile"] = classification.get(
-            "distanceToSelectedCenter"
-        )
-        details["Central profile tie detected"] = classification.get("tieDetected")
-        tied_ids = classification.get("tiedCenterProfileIds") or []
-        if tied_ids:
-            details["Tied central profiles"] = ", ".join(
-                profile_labels.get(profile_id, profile_id) for profile_id in tied_ids
-            )
-        details["Central profile tie policy"] = classification.get("tiePolicy")
-
-
-def _original_classifications(facts: dict[str, Any]) -> dict[str, Any]:
-    categories = sorted(facts["categories"], key=lambda item: item["order"])
-    alternatives = facts["alternatives"]
-    category_order = {
-        item["categoryId"]: index for index, item in enumerate(categories)
-    }
-    category_labels = {
-        item["categoryId"]: item["label"] for item in categories
-    }
-    individual = _individual_diagnostics(facts)
-    multi_expert = len(facts["experts"]) > 1
-    series = []
-    lane_width = min(0.36, 0.72 / max(1, len(facts["experts"]) + int(multi_expert)))
-    visible_series_count = len(facts["experts"]) + int(multi_expert)
-    lane_offsets = [
-        (index - (visible_series_count - 1) / 2) * lane_width
-        for index in range(visible_series_count)
-    ]
-
-    for expert_index, expert in enumerate(facts["experts"]):
-        expert_id = expert["expertId"]
-        expert_name = _name(expert, "name", expert_id)
-        results = (individual.get(expert_id) or {}).get("resultsByAlternativeId", {})
-        points = []
-        for alternative_index, alternative in enumerate(alternatives):
-            alternative_id = alternative["alternativeId"]
-            result = results.get(alternative_id)
-            if not isinstance(result, dict):
-                continue
-            category_id = result.get("categoryId")
-            if category_id not in category_order:
-                continue
-            details: dict[str, Any] = {
-                "Classification": category_labels[category_id],
-                "Expert": expert_name,
-                "Alternative": alternative["name"],
-            }
-            _add_individual_priority_details(
-                details,
-                facts,
-                result,
-                include_classification=True,
-            )
-            points.append(
-                {
-                    "id": f"{expert_id}:{alternative_id}",
-                    "label": f"{expert_name} · {alternative['name']}",
-                    "x": category_order[category_id],
-                    "y": alternative_index + lane_offsets[expert_index],
-                    "categoryId": category_id,
-                    "alternativeId": alternative_id,
-                    "details": details,
-                }
-            )
-        series.append(
-            {
-                "key": f"individual-{expert_id}",
-                "label": f"Individual · {expert_name}",
-                "role": "individual",
-                "points": points,
-            }
-        )
-
-    if multi_expert:
-        collective_results = facts.get("collectiveResultsByAlternativeId") or {}
-        points = []
-        collective_index = len(facts["experts"])
-        for alternative_index, alternative in enumerate(alternatives):
-            alternative_id = alternative["alternativeId"]
-            result = collective_results.get(alternative_id)
-            if not isinstance(result, dict):
-                continue
-            category_id = result.get("categoryId") or result.get("selectedCategoryId")
-            if category_id not in category_order:
-                continue
-            votes = result.get("votesByCategoryId") or {}
-            classifications = result.get("classificationsByExpertId") or {}
-            details = {
-                "Classification": category_labels[category_id],
-                "Result type": "Collective plurality vote",
-                "Alternative": alternative["name"],
-                "Aggregation": facts.get("aggregationMethod"),
-                "Vote outcome": result.get("aggregationStatus"),
-                "Tie detected": result.get("tieDetected"),
-                "Tie policy": result.get("tiePolicy"),
-            }
-            for vote_category_id, count in votes.items():
-                if vote_category_id in category_labels:
-                    details[f"Votes · {category_labels[vote_category_id]}"] = count
-            expert_names = {
-                item["expertId"]: _name(item, "name", item["expertId"])
-                for item in facts["experts"]
-            }
-            for expert_id, expert_category_id in classifications.items():
-                details[f"Individual · {expert_names.get(expert_id, expert_id)}"] = (
-                    category_labels.get(expert_category_id, expert_category_id)
-                )
-            points.append(
-                {
-                    "id": f"collective:{alternative_id}",
-                    "label": f"Collective · {alternative['name']}",
-                    "x": category_order[category_id],
-                    "y": alternative_index + lane_offsets[collective_index],
-                    "categoryId": category_id,
-                    "alternativeId": alternative_id,
-                    "details": details,
-                }
-            )
-        series.append(
-            {
-                "key": "collective-classifications",
-                "label": "Collective · plurality vote",
-                "role": "collective",
-                "pointStyle": "rectRot",
-                "points": points,
-            }
-        )
-
-    if not series:
-        return {}
-    return {
-        "key": "ahp-sort-i-original-classifications",
-        "type": "scatter",
-        "title": "AHPSort I classifications",
-        "description": (
-            "Each marker shows an alternative's assigned category. Individual results "
-            "are separated by expert; collective results show only the plurality-vote "
-            "category. Small vertical offsets separate markers and carry no model meaning."
-        ),
-        "insight": (
-            "Hover individual markers for priorities from that alternative and expert's "
-            "own AHP matrix. Collective markers show category votes and tie handling; "
-            "AHPSort I does not calculate a collective numeric priority."
-        ),
-        "presentation": {
-            "stableSeriesColors": True,
-            "tooltip": {"variant": "point-details"},
-            "pointStyleLegend": True,
-        },
-        "xAxis": {
-            "label": "Assigned category · lower to higher preference",
-            "min": -0.5,
-            "max": max(0.5, len(categories) - 0.5),
-            "scaleType": "linear",
-            "categories": [
-                {"value": index, "label": item["label"]}
-                for index, item in enumerate(categories)
-            ],
-        },
-        "yAxis": {
-            "label": "Alternative",
-            "min": -0.5,
-            "max": max(0.5, len(alternatives) - 0.5),
-            "scaleType": "linear",
-            "categories": [
-                {"value": index, "label": item["name"]}
-                for index, item in enumerate(alternatives)
-            ],
-        },
-        "data": {"series": series},
-    }
-
-
 def _weight_details(
     point: dict[str, Any],
     *,
@@ -545,23 +312,15 @@ def _sensitivity_lines(
 def build_visualizations(
     facts: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """Build original-result and weight-sensitivity graph descriptors."""
-    original = _original_classifications(facts)
-    return ([original] if original else []) + _sensitivity_lines(
-        facts, facts.get("sensitivity") or {}
-    )
+    """Build weight-sensitivity graph descriptors for the validated result."""
+    return _sensitivity_lines(facts, facts.get("sensitivity") or {})
 
 
 def build_visualization_sections(
     facts: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """Group AHPSort I visualizations under the existing alternative section."""
+    """Group AHPSort I sensitivity under the existing alternative section."""
     descriptors = build_visualizations(facts)
-    original = [
-        item
-        for item in descriptors
-        if item["key"] == "ahp-sort-i-original-classifications"
-    ]
     sensitivity = [
         item
         for item in descriptors
@@ -569,20 +328,6 @@ def build_visualization_sections(
         and item["key"].startswith("ahp-sort-i-criterion-weight-sensitivity-")
     ]
     sections = []
-    if original:
-        sections.append(
-            {
-                "id": "ahp-sort-i-original-classifications",
-                "title": "AHPSort I classifications",
-                "description": "Categories assigned in the validated original execution.",
-                "order": 0,
-                "presentation": {
-                    "layout": "stacked",
-                    "comparisonKey": facts["comparisonKey"],
-                },
-                "visualizations": original,
-            }
-        )
     sensitivity_facts = facts.get("sensitivity") or {}
     if sensitivity or sensitivity_facts.get("items"):
         presentation: dict[str, Any] = {
@@ -612,7 +357,7 @@ def build_visualization_sections(
                     "Sampled AHPSort I reclassifications using the validated "
                     "frozen execution and its original comparison judgments."
                 ),
-                "order": 1,
+                "order": 0,
                 "presentation": presentation,
                 "visualizations": sensitivity,
             }

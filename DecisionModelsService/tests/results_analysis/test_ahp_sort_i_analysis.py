@@ -184,10 +184,9 @@ def test_issue_analysis_contract_is_discovered_and_feeds_existing_visualization_
     assert normalized["facts"]["sensitivity"]["availability"]["available"] is True
     assert len(normalized["visualizations"]) >= 1
     assert [section["title"] for section in normalized["sections"]] == [
-        "AHPSort I classifications",
         "Criterion weight sensitivity",
     ]
-    assert normalized["sections"][1]["presentation"]["scopeSelector"] == "criterion"
+    assert normalized["sections"][0]["presentation"]["scopeSelector"] == "criterion"
 
 
 def test_missing_invalid_and_single_criterion_evidence_are_explicit():

@@ -70,21 +70,12 @@ def _visualizations(evidence):
     return facts, build_visualizations(facts)
 
 
-def test_limiting_original_and_sections_use_ordered_categories_and_contract():
+def test_limiting_sensitivity_is_the_only_visualization_section():
     evidence = _evidence(_limiting_request())
     facts, visualizations = _visualizations(evidence)
-    original = next(
-        item for item in visualizations if item["key"] == "ahp-sort-i-original-classifications"
+    assert not any(
+        item["key"] == "ahp-sort-i-original-classifications" for item in visualizations
     )
-    expert = original["data"]["series"][0]
-    point = expert["points"][0]
-
-    assert [item["label"] for item in original["xAxis"]["categories"]] == [
-        item["label"] for item in sorted(evidence.categories, key=lambda category: category["order"])
-    ]
-    assert point["details"]["Classification"] in {
-        category["label"] for category in evidence.categories
-    }
     weight_sensitivity = next(
         item for item in visualizations
         if item["key"] == "ahp-sort-i-criterion-weight-sensitivity-quality"
@@ -104,8 +95,6 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     assert configured_sample["details"][
         "Original-weight result matches validated baseline"
     ] is True
-    assert "Alternative priority · this expert and alternative matrix" in point["details"]
-    assert "Profile priority ·" in " ".join(point["details"])
     assert alternative_series["resultType"] == "individual"
     assert weight_sensitivity["type"] == "line"
     assert "Category changes are left unconnected" in weight_sensitivity["insight"]
@@ -124,7 +113,6 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
     assert weight_sensitivity["presentation"]["hideVerticalGridLines"] is True
     assert weight_sensitivity["presentation"]["originalWeightMarkerMode"] == "axis-tick"
     assert "resultSelector" not in weight_sensitivity["presentation"]
-    assert not any("priority" in key.lower() for key in configured_sample["details"])
     assert len([
         item for item in visualizations
         if item["type"] == "line" and item["scope"]["id"] == "quality"
@@ -132,24 +120,21 @@ def test_limiting_original_and_sections_use_ordered_categories_and_contract():
 
     sections = build_visualization_sections(facts)
     assert [section["id"] for section in sections] == [
-        "ahp-sort-i-original-classifications",
         "ahp-sort-i-criterion-weight-sensitivity",
     ]
-    assert sections[0]["presentation"]["comparisonKey"] == evidence.comparison_key
-    assert sections[1]["presentation"]["scopeSelector"] == "criterion"
+    assert sections[0]["presentation"]["scopeSelector"] == "criterion"
     assert all(
         visualization["scope"]["dimension"] == "criterion"
-        for visualization in sections[1]["visualizations"]
+        for visualization in sections[0]["visualizations"]
     )
 
 
 def test_central_sensitivity_keeps_central_categories_and_tie_evidence():
     evidence = _evidence(_central_request())
     _facts, visualizations = _visualizations(evidence)
-    original = next(
-        item for item in visualizations if item["key"] == "ahp-sort-i-original-classifications"
+    assert not any(
+        item["key"] == "ahp-sort-i-original-classifications" for item in visualizations
     )
-    point = original["data"]["series"][0]["points"][0]
     sensitivity = next(
         item for item in visualizations
         if item["key"] == "ahp-sort-i-criterion-weight-sensitivity-quality"
@@ -164,12 +149,9 @@ def test_central_sensitivity_keeps_central_categories_and_tie_evidence():
     )
 
     assert evidence.profile_mode == "central"
-    assert point["details"]["Central profile tie detected"] is True
-    assert point["details"]["Distance to selected central profile"] is not None
     assert configured["details"]["Assigned category"] in {
         category["label"] for category in evidence.categories
     }
-    assert "Selected central profile" in point["details"]
     assert sensitivity["yAxis"]["categories"]
     assert all(
         isinstance(value["y"], int)
@@ -182,12 +164,9 @@ def test_central_sensitivity_keeps_central_categories_and_tie_evidence():
 def test_collective_visualizations_separate_experts_and_plurality_without_priority():
     evidence = _evidence(_collective_request())
     _facts, visualizations = _visualizations(evidence)
-    original = next(
-        item for item in visualizations if item["key"] == "ahp-sort-i-original-classifications"
+    assert not any(
+        item["key"] == "ahp-sort-i-original-classifications" for item in visualizations
     )
-    collective = next(series for series in original["data"]["series"] if series["role"] == "collective")
-    individual = [series for series in original["data"]["series"] if series["role"] == "individual"]
-    collective_details = collective["points"][0]["details"]
     sensitivity = next(
         item for item in visualizations
         if item["key"] == "ahp-sort-i-criterion-weight-sensitivity-quality"
@@ -197,14 +176,6 @@ def test_collective_visualizations_separate_experts_and_plurality_without_priori
         if series["resultType"] == "collective"
     )
 
-    assert len(individual) == 2
-    assert {series["label"] for series in individual} == {
-        "Individual · Expert One",
-        "Individual · Expert Two",
-    }
-    assert collective_details["Result type"] == "Collective plurality vote"
-    assert "Votes · Low" in collective_details
-    assert not any("priority" in key.lower() for key in collective_details)
     assert len([
         item for item in visualizations
         if item["type"] == "line" and item["scope"]["id"] == "quality"

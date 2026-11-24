@@ -93,6 +93,25 @@ def test_extracts_and_reproduces_individual_and_collective_evidence(
         assert evidence.group_tie_policy is None
 
 
+def test_legacy_result_without_numeric_metrics_still_builds_alternative_visualizations() -> None:
+    context = _analysis_context("limiting_profiles", collective=True)
+    stored = context["rounds"][0]["execution"]["result"]["standardResult"]
+    del stored["numericMetrics"]
+
+    from models.ahp_sort_i.analysis import analyze_issue
+
+    analysis = analyze_issue(context)
+
+    assert analysis["facts"]["status"] == "available"
+    assert [section["title"] for section in analysis["sections"]] == [
+        "Criterion weight sensitivity",
+    ]
+    assert any(
+        descriptor["type"] == "line"
+        for descriptor in analysis["visualizations"]
+    )
+
+
 def test_uses_the_latest_execution_and_effective_normalized_weights() -> None:
     context = _analysis_context()
     context["rounds"][0]["phase"] = 1
