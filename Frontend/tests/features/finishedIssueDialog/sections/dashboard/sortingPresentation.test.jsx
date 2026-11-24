@@ -48,15 +48,6 @@ const topsisExecution = ({ assignments, diagnostics, categories, numericMetrics 
   const base = sortingExecution();
   const baseOutput = { ...base.standardizedOutput };
   delete baseOutput.diagnostics;
-  const currentMetrics = numericMetrics === undefined && diagnostics?.closeness_by_alternative_id
-    ? [{
-        metricId: "relative_closeness",
-        name: "Relative closeness",
-        domain: { min: 0, max: 1 },
-        comparability: "acrossAlternatives",
-        valuesByAlternativeId: diagnostics.closeness_by_alternative_id,
-      }]
-    : numericMetrics;
   return {
     ...base,
     model: {
@@ -83,7 +74,7 @@ const topsisExecution = ({ assignments, diagnostics, categories, numericMetrics 
         { alternativeId: "mongo-c", categoryId: "cat-low" },
       ],
       ...(diagnostics === undefined ? {} : { diagnostics }),
-      ...(currentMetrics === undefined ? {} : { numericMetrics: currentMetrics }),
+      ...(numericMetrics === undefined ? {} : { numericMetrics }),
     },
   };
 };
@@ -99,6 +90,14 @@ const topsisDiagnostics = (overrides = {}) => ({
     "profile-high": 0.7,
   },
   ...overrides,
+});
+
+const relativeClosenessMetric = (values = topsisDiagnostics().closeness_by_alternative_id) => ({
+  metricId: "relative_closeness",
+  name: "Relative closeness",
+  domain: { min: 0, max: 1 },
+  comparability: "acrossAlternatives",
+  valuesByAlternativeId: values,
 });
 
 const topsisScenarioForCounts = (counts, labels) => {
@@ -119,7 +118,10 @@ const topsisScenarioForCounts = (counts, labels) => {
 };
 
 const renderTopsisDashboard = (
-  execution = topsisExecution({ diagnostics: topsisDiagnostics() }),
+  execution = topsisExecution({
+    diagnostics: topsisDiagnostics(),
+    numericMetrics: [relativeClosenessMetric()],
+  }),
   evaluatedAlternatives = topsisAlternatives,
 ) => {
   const data = buildDashboardData({ payload: { alternatives: evaluatedAlternatives }, selectedExecution: execution });
@@ -696,10 +698,12 @@ describe("sorting@1 Finished Issue presentation", () => {
   });
 
   it("shows position scales on a common 0-to-1 range without technical interval labels", () => {
+    const diagnostics = topsisDiagnostics({
+      closeness_by_alternative_id: { "mongo-a": 0.51, "mongo-b": 0.6, "mongo-c": 0.69 },
+    });
     const execution = topsisExecution({
-      diagnostics: topsisDiagnostics({
-        closeness_by_alternative_id: { "mongo-a": 0.51, "mongo-b": 0.6, "mongo-c": 0.69 },
-      }),
+      diagnostics,
+      numericMetrics: [relativeClosenessMetric(diagnostics.closeness_by_alternative_id)],
       assignments: topsisAlternatives.map(({ id }) => ({ alternativeId: id, categoryId: "cat-medium" })),
     });
     const data = renderTopsisDashboard(execution);
@@ -740,11 +744,13 @@ describe("sorting@1 Finished Issue presentation", () => {
   });
 
   it("keeps full-precision boundary evidence and positions markers without showing interval labels", () => {
+    const diagnostics = topsisDiagnostics({
+      closeness_by_alternative_id: { "mongo-a": 0.71, "mongo-b": 0.60006, "mongo-c": 0.22 },
+      closeness_by_profile_id: { "profile-medium": 0.50006, "profile-high": 0.70006 },
+    });
     const execution = topsisExecution({
-      diagnostics: topsisDiagnostics({
-        closeness_by_alternative_id: { "mongo-a": 0.71, "mongo-b": 0.60006, "mongo-c": 0.22 },
-        closeness_by_profile_id: { "profile-medium": 0.50006, "profile-high": 0.70006 },
-      }),
+      diagnostics,
+      numericMetrics: [relativeClosenessMetric(diagnostics.closeness_by_alternative_id)],
     });
     const data = renderTopsisDashboard(execution);
     const category = screen.getByRole("listitem", { name: "Medium: 1 alternative", exact: true });
@@ -766,15 +772,17 @@ describe("sorting@1 Finished Issue presentation", () => {
       ...topsisAlternatives,
       { id: "mongo-d", name: "Top category option" },
     ];
+    const diagnostics = topsisDiagnostics({
+      closeness_by_alternative_id: {
+        "mongo-a": 0.1,
+        "mongo-b": 0.35,
+        "mongo-c": 0.71,
+        "mongo-d": 0.95,
+      },
+    });
     renderTopsisDashboard(topsisExecution({
-      diagnostics: topsisDiagnostics({
-        closeness_by_alternative_id: {
-          "mongo-a": 0.1,
-          "mongo-b": 0.35,
-          "mongo-c": 0.71,
-          "mongo-d": 0.95,
-        },
-      }),
+      diagnostics,
+      numericMetrics: [relativeClosenessMetric(diagnostics.closeness_by_alternative_id)],
       assignments: [
         { alternativeId: "mongo-a", categoryId: "cat-low" },
         { alternativeId: "mongo-b", categoryId: "cat-low" },
@@ -903,8 +911,10 @@ describe("sorting@1 Finished Issue presentation", () => {
   });
 
   it("keeps closeness points and hides unsupported boundaries when boundary evidence is unavailable", () => {
+    const diagnostics = topsisDiagnostics({ closeness_by_profile_id: { "profile-medium": 0.7, "profile-high": 0.5 } });
     const data = renderTopsisDashboard(topsisExecution({
-      diagnostics: topsisDiagnostics({ closeness_by_profile_id: { "profile-medium": 0.7, "profile-high": 0.5 } }),
+      diagnostics,
+      numericMetrics: [relativeClosenessMetric(diagnostics.closeness_by_alternative_id)],
       assignments: topsisAlternatives.map(({ id }) => ({ alternativeId: id, categoryId: "cat-medium" })),
     }));
     const category = screen.getByRole("listitem", { name: "Medium: 3 alternatives", exact: true });
@@ -1035,7 +1045,10 @@ describe("sorting@1 Finished Issue presentation", () => {
   });
 
   it("uses persisted model identity for base Issues and scenario executions", () => {
-    const output = topsisExecution({ diagnostics: topsisDiagnostics() }).standardizedOutput;
+    const output = topsisExecution({
+      diagnostics: topsisDiagnostics(),
+      numericMetrics: [relativeClosenessMetric()],
+    }).standardizedOutput;
     const modelParameters = topsisExecution().modelParameters;
     const basePayload = {
       alternatives: topsisAlternatives,
