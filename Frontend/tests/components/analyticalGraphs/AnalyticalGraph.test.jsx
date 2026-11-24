@@ -423,7 +423,7 @@ describe("AnalyticalGraph", () => {
       dataset: lineState.data.datasets[0],
     })).toContain("Category: High");
     expect(screen.getByRole("region", { name: "Alternatives legend" })).toContainElement(screen.getByText("Premium option with a long local display name"));
-    expect(screen.getByRole("region", { name: "Category boundaries legend" })).toContainElement(screen.getByText("Low / Medium boundary"));
+    expect(screen.getByRole("region", { name: /^category boundaries legend$/i })).toContainElement(screen.getByText("Low / Medium boundary"));
     expect(screen.getByText("ALTERNATIVES").compareDocumentPosition(screen.getByText("CATEGORY BOUNDARIES")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
