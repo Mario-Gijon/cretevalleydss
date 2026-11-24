@@ -18,7 +18,7 @@ const execution = ({ key, points, collective = [0, 0], labels = ["a@example.test
   displayLabel,
   modelName: "Model",
   color,
-  standardizedOutput: { plotsGraphic: { expert_points: points, collective_point: collective, expert_labels: labels } },
+  standardizedOutput: { plotsGraphic: { expert_points: points, collective_point: collective, expert_labels: labels, projection_space: "criterion_domain_minmax" } },
   rawOutput,
   modelSpecificOutput,
 });
@@ -45,6 +45,7 @@ const topsisSortingExecution = ({
     expert_emails: ["ada@example.test", "grace@example.test"],
     identical_evaluation_groups: [[...ids]],
     collective_identical_expert_ids: [],
+    projection_space: "criterion_domain_minmax",
     ...reconstructedProjection,
   };
   return {
@@ -65,6 +66,7 @@ const topsisSortingExecution = ({
         expert_emails: ["ada@example.test", "grace@example.test"],
         identical_evaluation_groups: [[...ids]],
         collective_identical_expert_ids: [],
+        projection_space: "criterion_domain_minmax",
       },
     },
     genericAnalysis: {
@@ -195,6 +197,7 @@ describe("Results Analysis analytical projection comparison", () => {
           expert_labels: ["Adrian Popescu", "Alicia Moreno"],
           identical_evaluation_groups: [["expert-1", "expert-2"]],
           collective_identical_expert_ids: ["expert-1", "expert-2"],
+          projection_space: "criterion_domain_minmax",
         },
       },
     };
@@ -440,7 +443,7 @@ describe("Results Analysis analytical projection comparison", () => {
   it("uses stored expert names while preferring ids for stable matching", () => {
     const result = buildCanonicalAnalyticalProjection({ execution: {
       key: "base", name: "base", displayLabel: "base", color: colors[0],
-      standardizedOutput: { plotsGraphic: { expert_points: [[0, 0], [1, 1]], collective_point: [0, 0], expert_ids: ["expert-2", "expert-1"], expert_emails: ["second@example.test", "first@example.test"], expert_labels: ["Test 1", "Admin"] } },
+      standardizedOutput: { plotsGraphic: { expert_points: [[0, 0], [1, 1]], collective_point: [0, 0], expert_ids: ["expert-2", "expert-1"], expert_emails: ["second@example.test", "first@example.test"], expert_labels: ["Test 1", "Admin"], projection_space: "criterion_domain_minmax" } },
     } });
     expect(result.expertPoints.map((point) => point.identity)).toEqual(["expert-1", "expert-2"]);
     expect(result.expertPoints.map((point) => point.email)).toEqual(["first@example.test", "second@example.test"]);
@@ -487,6 +490,59 @@ describe("Results Analysis analytical projection comparison", () => {
     expect(areAnalyticalProjectionsEquivalent(first, reordered)).toBe(true);
     expect(areAnalyticalProjectionsEquivalent(first, changedCollective)).toBe(false);
     expect(areAnalyticalProjectionsEquivalent(first, nearbyCollective)).toBe(false);
+  });
+
+  it("keeps projections with incompatible or unspecified semantics separate", () => {
+    const makeNumeric = (key, projectionSpace) => buildCanonicalAnalyticalProjection({
+      execution: {
+        key,
+        name: key,
+        displayLabel: key,
+        color: colors[0],
+        standardizedOutput: { plotsGraphic: {
+          expert_points: [[0, 0], [1, 0]],
+          collective_point: [0.5, 0.5],
+          expert_ids: ["expert-1", "expert-2"],
+          expert_labels: ["Ada", "Grace"],
+          ...(projectionSpace ? { projection_space: projectionSpace } : {}),
+        } },
+      },
+    });
+    const reference = makeNumeric("base", "criterion_domain_minmax");
+    const incompatible = makeNumeric("scenario-a", "categorical_patterns");
+    const unspecified = makeNumeric("scenario-b", null);
+
+    expect(areAnalyticalProjectionsEquivalent(reference, incompatible)).toBe(false);
+    expect(alignProjectionToReference({ reference, candidate: incompatible })).toMatchObject({
+      available: false,
+      unavailableReason: "projection_semantics_incompatible",
+    });
+    expect(alignProjectionToReference({ reference, candidate: unspecified })).toMatchObject({
+      available: false,
+      unavailableReason: "projection_semantics_incompatible",
+    });
+  });
+
+  it("uses separate comparison views for numeric and categorical projections", () => {
+    const labels = ["Ada", "Grace", "Katherine"];
+    const numeric = {
+      ...execution({ key: "base", points: [[0, 0], [1, 0], [0, 1]], labels }),
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      standardizedOutput: { plotsGraphic: {
+        expert_points: [[0, 0], [1, 0], [0, 1]],
+        collective_point: [0.5, 0.5],
+        expert_ids: ["expert-1", "expert-2", "expert-3"],
+        expert_labels: labels,
+        projection_space: "criterion_domain_minmax",
+      } },
+    };
+    const categorical = categoricalPatternExecution({ key: "scenario-a", names: labels });
+    const result = buildResultsVisualizationsData({ payload, executions: [numeric, categorical] });
+
+    expect(result.expertCollectiveComparison.presentation).toBe("separate");
+    expect(result.expertCollectiveComparison.alignedExecutions).toEqual([]);
+    expect(result.expertCollectiveComparison.separateExecutions).toHaveLength(2);
   });
 
   it("aligns translation, rotation, reflection and scale without mutating source points", () => {

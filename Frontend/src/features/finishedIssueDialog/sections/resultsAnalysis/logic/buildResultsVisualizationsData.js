@@ -186,6 +186,7 @@ export const buildCanonicalAnalyticalProjection = ({
     unavailableReason: unavailableReason(normalized),
     expertPoints: [],
     collectivePoint: null,
+    projectionSemantics: null,
     hasEvaluationEqualityEvidence: false,
     identicalEvaluationGroups: [],
     collectiveIdenticalExpertIds: [],
@@ -282,6 +283,9 @@ export const buildCanonicalAnalyticalProjection = ({
     available: true,
     displayAvailable: true,
     unavailableReason: null,
+    projectionSemantics: nonEmptyText(normalized.raw?.projection_space)
+      ? `numeric:${normalized.raw.projection_space.trim()}`
+      : null,
     expertPoints,
     collectivePoint: pointCopy(collectivePoint),
     ...evaluationEvidence,
@@ -294,13 +298,19 @@ const sameIdentitySet = (left, right) =>
     (point, index) => point.identity === right.expertPoints[index]?.identity,
   );
 
+const sameProjectionSemantics = (left, right) =>
+  typeof left?.projectionSemantics === "string" &&
+  Boolean(left.projectionSemantics.trim()) &&
+  left.projectionSemantics === right?.projectionSemantics;
+
 export const areAnalyticalProjectionsEquivalent = (left, right) => {
   if (
     !left?.available ||
     !right?.available ||
     !left.collectivePoint ||
     !right.collectivePoint ||
-    !sameIdentitySet(left, right)
+    !sameIdentitySet(left, right) ||
+    !sameProjectionSemantics(left, right)
   )
     return false;
   return (
@@ -329,6 +339,12 @@ export const alignProjectionToReference = ({ reference, candidate }) => {
     return {
       available: false,
       unavailableReason: "expert_identities_do_not_match",
+    };
+  }
+  if (!sameProjectionSemantics(reference, candidate)) {
+    return {
+      available: false,
+      unavailableReason: "projection_semantics_incompatible",
     };
   }
   if (reference.expertPoints.length < 2)
