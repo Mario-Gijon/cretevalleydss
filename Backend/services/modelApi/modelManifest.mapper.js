@@ -314,8 +314,9 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof requiresHomogeneousExpressionDomains !== "boolean") {
     missingFields.push("requiresHomogeneousExpressionDomains");
   }
+  let resultStructureMetadata = null;
   try {
-    resolveManifestResultStructureMetadata(manifestModel);
+    resultStructureMetadata = resolveManifestResultStructureMetadata(manifestModel);
   } catch (error) {
     missingFields.push(`result structure metadata: ${error.message}`);
   }
@@ -353,11 +354,22 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof manifestModel?.usesCriterionTypes !== "boolean") {
     missingFields.push("usesCriterionTypes");
   }
-  if (
-    manifestModel?.sortingHasComparableValues !== undefined &&
-    typeof manifestModel.sortingHasComparableValues !== "boolean"
-  ) {
-    missingFields.push("sortingHasComparableValues (must be boolean when provided)");
+  if (typeof manifestModel?.sortingHasNumericValues !== "boolean") {
+    missingFields.push("sortingHasNumericValues (must be boolean)");
+  }
+  if (typeof manifestModel?.sortingHasComparableValues !== "boolean") {
+    missingFields.push("sortingHasComparableValues (must be boolean)");
+  }
+  const hasSortingValues = manifestModel?.sortingHasNumericValues === true ||
+    manifestModel?.sortingHasComparableValues === true;
+  if (hasSortingValues && (modelKind !== "issue" ||
+    resultStructureMetadata?.resultStructureKey !== "sorting" ||
+    resultStructureMetadata?.resultStructureVersion !== 1)) {
+    missingFields.push("sorting numeric capabilities (only supported with sorting@1)");
+  }
+  if (manifestModel?.sortingHasComparableValues === true &&
+    manifestModel?.sortingHasNumericValues !== true) {
+    missingFields.push("sortingHasComparableValues requires sortingHasNumericValues");
   }
   if (typeof manifestModel?.supportsConsensusSimulation !== "boolean") {
     missingFields.push("supportsConsensusSimulation");
@@ -425,6 +437,7 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
     sortingHasNumericValues: manifestModel?.sortingHasNumericValues === true,
+    sortingHasComparableValues: manifestModel?.sortingHasComparableValues === true,
     supportedExpressionDomains: normalizeSupportedExpressionDomains(
       manifestModel?.supportedExpressionDomains
     ),
@@ -432,10 +445,6 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     request: normalizeDynamicObject(manifestModel?.request),
     response: normalizeDynamicObject(manifestModel?.response),
   };
-
-  if (typeof manifestModel?.sortingHasComparableValues === "boolean") {
-    projection.sortingHasComparableValues = manifestModel.sortingHasComparableValues;
-  }
 
   if (modelKind === "issue") {
     projection.issueExecutionAuthorized =

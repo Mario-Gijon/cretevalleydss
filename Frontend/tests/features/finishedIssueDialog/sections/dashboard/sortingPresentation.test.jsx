@@ -48,6 +48,15 @@ const topsisExecution = ({ assignments, diagnostics, categories, numericMetrics 
   const base = sortingExecution();
   const baseOutput = { ...base.standardizedOutput };
   delete baseOutput.diagnostics;
+  const currentMetrics = numericMetrics === undefined && diagnostics?.closeness_by_alternative_id
+    ? [{
+        metricId: "relative_closeness",
+        name: "Relative closeness",
+        domain: { min: 0, max: 1 },
+        comparability: "acrossAlternatives",
+        valuesByAlternativeId: diagnostics.closeness_by_alternative_id,
+      }]
+    : numericMetrics;
   return {
     ...base,
     model: {
@@ -74,7 +83,7 @@ const topsisExecution = ({ assignments, diagnostics, categories, numericMetrics 
         { alternativeId: "mongo-c", categoryId: "cat-low" },
       ],
       ...(diagnostics === undefined ? {} : { diagnostics }),
-      ...(numericMetrics === undefined ? {} : { numericMetrics }),
+      ...(currentMetrics === undefined ? {} : { numericMetrics: currentMetrics }),
     },
   };
 };
@@ -284,7 +293,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.getAllByTestId("sorting-metric-reference")).toHaveLength(4);
   });
 
-  it("preserves a historical comparable metric when an older snapshot lacks the comparable capability", () => {
+  it("does not present numeric metrics unless both current sorting capabilities are declared", () => {
     const diagnostics = topsisDiagnostics();
     const execution = topsisExecution({
       diagnostics,
@@ -300,11 +309,8 @@ describe("sorting@1 Finished Issue presentation", () => {
 
     const data = renderTopsisDashboard(execution);
 
-    expect(data.result.metric).toMatchObject({
-      key: "relative_closeness",
-      comparableAcrossAlternatives: true,
-    });
-    expect(screen.getAllByTestId("sorting-metric-value")).toHaveLength(3);
+    expect(data.result.metric).toBe(null);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
   });
 
   it("does not fall back to legacy diagnostics when declared numeric metrics are invalid or ambiguous", () => {
@@ -701,7 +707,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     const rows = within(category).getAllByRole("listitem");
 
     expect(data.result.metric).toMatchObject({
-      key: "relativeCloseness",
+      key: "relative_closeness",
       label: "Relative closeness",
       minimum: 0,
       maximum: 1,
@@ -793,7 +799,7 @@ describe("sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByText(/Closer to|Centered in this category|Position within category/)).not.toBeInTheDocument();
   });
 
-  it("renders invalid or missing closeness as name-only rows and keeps tie order stable", () => {
+  it("omits an invalid declared metric and preserves category assignment order", () => {
     const alternativesWithInvalidData = [...topsisAlternatives, { id: "mongo-d", name: "Out-of-range alternative" }];
     renderTopsisDashboard(topsisExecution({
       diagnostics: topsisDiagnostics({
@@ -810,12 +816,12 @@ describe("sorting@1 Finished Issue presentation", () => {
     const rows = within(category).getAllByRole("listitem");
 
     expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
-      "Balanced option, Relative closeness 0.6000",
-      "Premium option, Relative closeness 0.6000",
+      "Balanced option",
+      "Premium option",
       "Budget option",
       "Out-of-range alternative",
     ]);
-    expect(within(category).getAllByTestId("sorting-metric-point")).toHaveLength(2);
+    expect(within(category).queryAllByTestId("sorting-metric-point")).toHaveLength(0);
     expect(within(category).getByText("Budget option")).toBeInTheDocument();
     expect(within(category).queryByText("0.9000")).not.toBeInTheDocument();
   });
@@ -1056,6 +1062,10 @@ describe("sorting@1 Finished Issue presentation", () => {
         closeness_by_alternative_id: { "mongo-a": 0.8, "mongo-b": 0.6, "mongo-c": 0.49 },
         closeness_by_profile_id: { "profile-medium": 0.48, "profile-high": 0.75 },
       },
+      numericMetrics: [{
+        ...output.numericMetrics[0],
+        valuesByAlternativeId: { "mongo-a": 0.8, "mongo-b": 0.6, "mongo-c": 0.49 },
+      }],
     };
 
     const scenarioPayload = {

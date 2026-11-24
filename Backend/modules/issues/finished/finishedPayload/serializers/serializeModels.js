@@ -21,9 +21,7 @@ const serializeCapabilities = (model) => ({
   usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
   usesCriterionTypes: model.usesCriterionTypes === true,
   sortingHasNumericValues: model.sortingHasNumericValues === true,
-  ...(typeof model.sortingHasComparableValues === "boolean"
-    ? { sortingHasComparableValues: model.sortingHasComparableValues }
-    : {}),
+  sortingHasComparableValues: model.sortingHasComparableValues === true,
   isMultiCriteria: model.isMultiCriteria === true,
   supportedExpressionDomains: cloneSerializable(model.supportedExpressionDomains, []),
 });

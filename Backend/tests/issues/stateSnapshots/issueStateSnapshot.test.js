@@ -61,7 +61,10 @@ describe("IssueStateSnapshot", () => {
       resultStructureKey: "ranking",
       resultStructureVersion: 1,
     });
-    expect(creation.state.model).not.toHaveProperty("sortingHasComparableValues");
+    expect(creation.state.model).toMatchObject({
+      sortingHasNumericValues: false,
+      sortingHasComparableValues: false,
+    });
     await expect(write(issue, "creation")).rejects.toMatchObject({ code: 11000 });
     await write(issue, "consensusPhaseStart", 0);
     await write(issue, "consensusPhaseStart", 1);
@@ -69,7 +72,7 @@ describe("IssueStateSnapshot", () => {
     expect(await IssueStateSnapshot.countDocuments({ issue: issue._id })).toBe(3);
   });
 
-  it("copies the comparable sorting capability into new snapshots while keeping older omissions absent", async () => {
+  it("copies both sorting value capabilities into new snapshots", async () => {
     const issue = await createIssue();
     await IssueModel.updateOne(
       { _id: issue.model },
@@ -77,14 +80,19 @@ describe("IssueStateSnapshot", () => {
     );
 
     const currentSnapshot = await buildIssueStateSnapshot({ issue, snapshotType: "creation" });
-    expect(currentSnapshot.state.model.sortingHasComparableValues).toBe(false);
-
-    await IssueModel.updateOne(
-      { _id: issue.model },
-      { $unset: { sortingHasComparableValues: 1 } },
-    );
-    const historicalShape = await buildIssueStateSnapshot({ issue, snapshotType: "creation" });
-    expect(historicalShape.state.model).not.toHaveProperty("sortingHasComparableValues");
+    expect(currentSnapshot.model).toMatchObject({
+      sortingHasNumericValues: false,
+      sortingHasComparableValues: false,
+    });
+    await IssueModel.updateOne({ _id: issue.model }, { $set: {
+      sortingHasNumericValues: true,
+      sortingHasComparableValues: true,
+    } });
+    const capableSnapshot = await buildIssueStateSnapshot({ issue, snapshotType: "creation" });
+    expect(capableSnapshot.model).toMatchObject({
+      sortingHasNumericValues: true,
+      sortingHasComparableValues: true,
+    });
   });
 
   it("preserves AHPSort I profile parameters and evaluation payloads in Issue snapshots", async () => {

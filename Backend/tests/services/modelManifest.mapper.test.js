@@ -105,17 +105,20 @@ describe("model manifest parameter mapping", () => {
     });
   });
 
-  it("projects comparable-values metadata and preserves legacy absence", () => {
+  it("projects both current numeric-value capabilities and defaults them to false", () => {
     expect(buildManifestTechnicalProjection(buildManifest([]))).toMatchObject({
       sortingHasComparableValues: false,
     });
     expect(buildManifestTechnicalProjection(buildManifest([], { sortingHasComparableValues: true }))).toMatchObject({
       sortingHasComparableValues: true,
     });
-    const historicalManifest = buildManifest([]);
-    delete historicalManifest.sortingHasComparableValues;
-    expect(buildManifestTechnicalProjection(historicalManifest))
-      .not.toHaveProperty("sortingHasComparableValues");
+    expect(buildManifestTechnicalProjection(buildManifest([], {
+      sortingHasNumericValues: true,
+      sortingHasComparableValues: true,
+    }))).toMatchObject({
+      sortingHasNumericValues: true,
+      sortingHasComparableValues: true,
+    });
   });
 
   it("preserves every canonical numberGlobal metadata field", () => {
@@ -227,6 +230,17 @@ describe("model manifest parameter mapping", () => {
 });
 
 describe("model manifest result structure metadata", () => {
+  it.each([
+    [{ sortingHasNumericValues: "true" }, "sortingHasNumericValues (must be boolean)"],
+    [{ sortingHasComparableValues: "true" }, "sortingHasComparableValues (must be boolean)"],
+    [{ sortingHasNumericValues: true }, "sorting numeric capabilities (only supported with sorting@1)"],
+    [{ sortingHasComparableValues: true }, "sorting numeric capabilities (only supported with sorting@1)"],
+    [{ sortingHasComparableValues: true, sortingHasNumericValues: false, resultStructureKey: "sorting" }, "requires sortingHasNumericValues"],
+  ])("rejects incoherent sorting capabilities %o", (overrides, expectedError) => {
+    expect(validateSyncableManifestModel(buildManifest([], overrides)))
+      .toEqual(expect.arrayContaining([expect.stringContaining(expectedError)]));
+  });
+
   it("accepts and projects ranking version 1", () => {
     const manifestModel = buildManifest([]);
 

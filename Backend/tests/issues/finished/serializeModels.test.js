@@ -77,19 +77,17 @@ describe("Finished Issue model compatibility serialization", () => {
     expect(payload.base.capabilities).toMatchObject({ sortingHasNumericValues: false });
   });
 
-  it("omits sortingHasComparableValues from historical model metadata when it was absent", () => {
-    const historicalModel = model({
-      _id: "model-historical-sort",
+  it("serializes both sorting capabilities with false defaults", () => {
+    const sortingModel = model({
+      _id: "model-sorting-defaults",
       resultStructureKey: "sorting",
-      sortingHasNumericValues: true,
     });
-    delete historicalModel.sortingHasComparableValues;
     const payload = serializeModels({
       issue: {
-        model: historicalModel,
+        model: sortingModel,
         modelParameters: {},
         criteriaWeightingModel: null,
-        apiModelKey: "historical-sort",
+        apiModelKey: "sorting-defaults",
         apiEndpoint: { path: "/sorting" },
         resultStructureKey: "sorting",
         resultStructureVersion: 1,
@@ -101,6 +99,9 @@ describe("Finished Issue model compatibility serialization", () => {
       criteria: { nodes: [{ isLeaf: true }] },
     });
 
-    expect(payload.base.capabilities).not.toHaveProperty("sortingHasComparableValues");
+    expect(payload.base.capabilities).toMatchObject({
+      sortingHasNumericValues: false,
+      sortingHasComparableValues: false,
+    });
   });
 });

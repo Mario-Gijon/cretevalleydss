@@ -240,6 +240,7 @@ const issueModelSchema = new Schema({
   // No default preserves absence on historical model docs and snapshots.
   sortingHasComparableValues: {
     type: Boolean,
+    default: false,
   },
   supportedExpressionDomains: {
     type: [

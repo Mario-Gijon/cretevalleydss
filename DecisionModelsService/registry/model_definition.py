@@ -186,14 +186,22 @@ class ModelDefinition:
                 "sorting_has_comparable_values."
             )
 
-        if self.sorting_has_comparable_values and (
+        declares_sorting_values = (
+            self.sorting_has_numeric_values or self.sorting_has_comparable_values
+        )
+        if declares_sorting_values and (
             self.model_kind != "issue"
             or self.result_structure_key != "sorting"
             or self.result_structure_version != 1
         ):
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' may declare "
-                "sorting_has_comparable_values only with sorting@1."
+                "sorting numeric capabilities only with sorting@1."
+            )
+        if self.sorting_has_comparable_values and not self.sorting_has_numeric_values:
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires "
+                "sorting_has_numeric_values when sorting_has_comparable_values is true."
             )
 
         if not isinstance(self.issue_execution_authorized, bool):

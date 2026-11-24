@@ -42,7 +42,15 @@ def test_valid_issue_model_definition():
 
 
 def test_model_definition_accepts_declared_sorting_numeric_values_capability():
-    assert _build_definition(sorting_has_numeric_values=True).sorting_has_numeric_values is True
+    definition = _build_definition(
+        result_structure_key="sorting",
+        result_structure_version=1,
+        sorting_has_numeric_values=True,
+    )
+    assert definition.sorting_has_numeric_values is True
+
+    with pytest.raises(ValueError, match="sorting numeric capabilities only with sorting@1"):
+        _build_definition(sorting_has_numeric_values=True)
 
 
 def test_model_definition_rejects_non_boolean_sorting_numeric_values_capability():
@@ -54,12 +62,16 @@ def test_model_definition_accepts_comparable_values_only_for_sorting_structure()
     definition = _build_definition(
         result_structure_key="sorting",
         result_structure_version=1,
+        sorting_has_numeric_values=True,
         sorting_has_comparable_values=True,
     )
     assert definition.sorting_has_comparable_values is True
 
-    with pytest.raises(ValueError, match="sorting_has_comparable_values only with sorting@1"):
-        _build_definition(sorting_has_comparable_values=True)
+    with pytest.raises(ValueError, match="sorting numeric capabilities only with sorting@1"):
+        _build_definition(sorting_has_comparable_values=True, sorting_has_numeric_values=True)
+
+    with pytest.raises(ValueError, match="sorting_has_numeric_values when sorting_has_comparable_values"):
+        _build_definition(result_structure_key="sorting", result_structure_version=1, sorting_has_comparable_values=True)
 
 
 def test_model_definition_rejects_non_boolean_sorting_comparable_values_capability():

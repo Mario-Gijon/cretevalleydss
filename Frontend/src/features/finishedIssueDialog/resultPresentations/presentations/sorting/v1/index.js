@@ -202,17 +202,14 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
   const hasCategoricalVoteAggregation = output.diagnostics?.aggregationMethod === "unweighted_plurality_vote";
   const capabilities = execution?.model?.capabilities;
   const hasComparableCapability = capabilities?.sortingHasComparableValues === true;
-  const comparableCapabilityIsAbsent = isRecord(capabilities) &&
-    !Object.hasOwn(capabilities, "sortingHasComparableValues");
   const canPresentNumericValues = capabilities?.sortingHasNumericValues === true &&
-    (hasComparableCapability || comparableCapabilityIsAbsent);
-  const hasDeclaredNumericMetrics = Object.hasOwn(output, "numericMetrics");
+    hasComparableCapability;
   let metric = null;
   let metricValuesByAlternativeId = {};
   let metricReferencesByAlternativeId = {};
   let categoryIntervals = null;
 
-  if (canPresentNumericValues && hasDeclaredNumericMetrics) {
+  if (canPresentNumericValues && Object.hasOwn(output, "numericMetrics")) {
     const metrics = Array.isArray(output.numericMetrics)
       ? output.numericMetrics.map((candidate) => normalizeDeclaredNumericMetric({
         metric: candidate,
@@ -229,36 +226,6 @@ const normalizeSortingDashboardResult = ({ execution, alternatives, criteria }) 
       metricValuesByAlternativeId = metric.valuesByAlternativeId;
       metricReferencesByAlternativeId = metric.referencesByAlternativeId || {};
       if (hasMatchingRelativeClosenessDiagnostics(metric, output, alternativeIds)) {
-        categoryIntervals = buildTopsisSortCategoryIntervals(
-          { categories, assignmentCount: assignedIds.size },
-          execution,
-        );
-      }
-    }
-  } else if (canPresentNumericValues && !hasDeclaredNumericMetrics) {
-    // Historical TOPSIS-Sort records can predate numericMetrics. Keep this
-    // isolated compatibility adapter; the generic contract above never
-    // branches on a model name.
-    if (isTopsisSort2016Execution(execution)) {
-      const legacyClosenessByAlternativeId = output.diagnostics?.closeness_by_alternative_id;
-      for (const alternativeId of alternativeIds) {
-        const value = legacyClosenessByAlternativeId?.[alternativeId];
-        metricValuesByAlternativeId[alternativeId] = typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1
-          ? value
-          : null;
-      }
-      const hasRelativeCloseness = Object.values(metricValuesByAlternativeId).some((value) => value !== null);
-      if (hasRelativeCloseness) {
-        metric = {
-          key: "relativeCloseness",
-          label: "Relative closeness",
-          minimum: 0,
-          maximum: 1,
-          precision: 4,
-          comparableAcrossAlternatives: true,
-          visualization: "bounded-position",
-          ordering: "descending-within-category",
-        };
         categoryIntervals = buildTopsisSortCategoryIntervals(
           { categories, assignmentCount: assignedIds.size },
           execution,

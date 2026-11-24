@@ -161,6 +161,8 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
         api_endpoint_path="/alpha",
         display_name="Alpha",
         model_kind="issue",
+        result_structure_key="sorting",
+        result_structure_version=1,
         evaluation_structure_key="alternativeCriteriaMatrix",
         implementation_status="ready",
         supports_consensus=True,
@@ -196,7 +198,7 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
     }
     assert manifest_entry["modelKind"] == "issue"
     assert manifest_entry["evaluationStructureKey"] == "alternativeCriteriaMatrix"
-    assert manifest_entry["resultStructureKey"] == "ranking"
+    assert manifest_entry["resultStructureKey"] == "sorting"
     assert manifest_entry["resultStructureVersion"] == 1
     assert manifest_entry["apiEndpoint"] == {"method": "POST", "path": "/alpha"}
     assert manifest_entry["implementationStatus"] == "ready"
