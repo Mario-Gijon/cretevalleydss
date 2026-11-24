@@ -24,56 +24,67 @@ def _result_structure(analysis_context: dict, execution: dict) -> dict:
     return {"key": key.strip(), "version": version}
 
 
-def _ahp_sort_classification_relationship(
+def _sorting_classification_relationship(
     analysis_context: dict,
     execution: dict,
     standard_result: dict,
     categories: list[dict],
     assignments: list[dict],
 ) -> dict | None:
-    """Project saved AHPSort I individual/group categories to a safe summary."""
-    diagnostics = standard_result.get("diagnostics")
-    if not isinstance(diagnostics, dict) or diagnostics.get("modelKey") != "ahp_sort_i":
-        return None
-    individual = diagnostics.get("individualResultsByExpertId")
-    request_evaluations = (execution.get("input") or {}).get("evaluations")
-    if not isinstance(individual, dict) or len(individual) < 2 or not isinstance(request_evaluations, list):
+    """Project standardized individual and collective sorting assignments."""
+    individual = standard_result.get("individualAssignmentsByExpertId")
+    if not isinstance(individual, dict) or len(individual) < 2:
         return None
 
-    expert_names: dict[str, str] = {}
     directory = (analysis_context.get("semanticDirectory") or {}).get("expertsById") or {}
     if not isinstance(directory, dict):
         return None
+    input_names = {}
+    request_evaluations = (execution.get("input") or {}).get("evaluations")
+    if not isinstance(request_evaluations, list):
+        request_evaluations = []
     for evaluation in request_evaluations:
         expert = evaluation.get("expert") if isinstance(evaluation, dict) else None
         expert_id = expert.get("id") if isinstance(expert, dict) else None
-        if not isinstance(expert_id, str) or not expert_id.strip() or expert_id in expert_names:
+        if not isinstance(expert_id, str) or not expert_id.strip():
+            continue
+        input_names[expert_id] = expert.get("name")
+
+    expert_names = {}
+    for expert_id in individual:
+        if not isinstance(expert_id, str) or not expert_id.strip():
             return None
         saved = directory.get(expert_id)
         name = saved.get("name") if isinstance(saved, dict) else None
         if not isinstance(name, str) or not name.strip():
-            name = expert.get("name") if isinstance(expert, dict) else None
-        if not isinstance(name, str) or not name.strip():
-            return None
-        expert_names[expert_id] = name.strip()
-
-    if set(individual) != set(expert_names):
-        return None
+            name = input_names.get(expert_id)
+        expert_names[expert_id] = name.strip() if isinstance(name, str) and name.strip() else expert_id
     categories_by_id = {item["categoryId"]: item for item in categories}
     collective_by_alternative = {item["alternativeId"]: item for item in assignments}
     alternative_names = (analysis_context.get("semanticDirectory") or {}).get("alternativesById") or {}
     experts = []
+    individual_categories_by_expert = {}
     duplicate_names = {name for name in expert_names.values() if list(expert_names.values()).count(name) > 1}
     for expert_id in sorted(expert_names, key=lambda key: (key.casefold(), key)):
-        result = individual.get(expert_id)
-        by_alternative = result.get("resultsByAlternativeId") if isinstance(result, dict) else None
-        if not isinstance(by_alternative, dict) or set(by_alternative) != set(collective_by_alternative):
+        expert_assignments = individual.get(expert_id)
+        if not isinstance(expert_assignments, list):
             return None
+        by_alternative = {}
+        for item in expert_assignments:
+            if not isinstance(item, dict):
+                return None
+            alternative_id = item.get("alternativeId")
+            category_id = item.get("categoryId")
+            if alternative_id in by_alternative or category_id not in categories_by_id:
+                return None
+            by_alternative[alternative_id] = category_id
+        if set(by_alternative) != set(collective_by_alternative):
+            return None
+        individual_categories_by_expert[expert_id] = by_alternative
         matches = 0
         disagreements = []
         for alternative_id, collective in collective_by_alternative.items():
-            individual_assignment = by_alternative.get(alternative_id)
-            category_id = individual_assignment.get("categoryId") if isinstance(individual_assignment, dict) else None
+            category_id = by_alternative.get(alternative_id)
             if category_id not in categories_by_id:
                 return None
             if category_id == collective["categoryId"]:
@@ -113,7 +124,7 @@ def _ahp_sort_classification_relationship(
                 else expert_names[expert_id]
             ),
             "categoryIds": [
-                (individual[expert_id]["resultsByAlternativeId"][alternative_id] or {}).get("categoryId")
+                individual_categories_by_expert[expert_id][alternative_id]
                 for alternative_id in alternative_ids
             ],
         }
@@ -212,7 +223,7 @@ def _sorting_result_context(analysis_context: dict, standard_result: dict, execu
         "categoryOrderSemantics": _SORTING_ORDER_SEMANTICS,
         "assignments": normalized_assignments,
     }
-    classification_relationship = _ahp_sort_classification_relationship(
+    classification_relationship = _sorting_classification_relationship(
         analysis_context,
         execution,
         standard_result,

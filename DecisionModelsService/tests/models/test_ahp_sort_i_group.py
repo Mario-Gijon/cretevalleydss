@@ -105,6 +105,7 @@ def test_limiting_group_vote_patterns_and_tie_policies(
         "categories",
         "categoryOrderSemantics",
         "assignments",
+        "individualAssignmentsByExpertId",
         "diagnostics",
         "numericMetrics",
     }
@@ -256,6 +257,26 @@ def test_group_keeps_individual_multi_criterion_weights_and_consistency_diagnost
             "consistencyRatio" in criterion["consistency"]
             for criterion in alternative["localPrioritiesByCriterion"].values()
         )
+
+
+def test_group_emits_standardized_individual_category_assignments_alongside_collective_result():
+    response = _execute_group(["low", "high"])
+
+    assert response["success"] is True
+    individual_assignments = response["data"]["individualAssignmentsByExpertId"]
+    assert set(individual_assignments) == {"expert-1", "expert-2"}
+    assert all(
+        {item["alternativeId"] for item in assignments}
+        == {entry["alternativeId"] for entry in response["data"]["assignments"]}
+        for assignments in individual_assignments.values()
+    )
+    assert all(
+        {item["categoryId"] for item in assignments}
+        <= {category["categoryId"] for category in response["data"]["categories"]}
+        for assignments in individual_assignments.values()
+    )
+    assert "numericMetrics" in response["data"]
+    assert not any(metric.get("scope", {}).get("kind") == "collective" for metric in response["data"]["numericMetrics"])
 
 
 def test_group_result_is_invariant_to_expert_and_comparison_record_order():

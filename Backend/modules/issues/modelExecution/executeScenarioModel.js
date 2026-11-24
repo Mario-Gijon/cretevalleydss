@@ -70,6 +70,9 @@ export const executeScenarioModel = async ({
           authorizedAlternativeIds: requestPayload.context?.alternatives?.map(
             (alternative) => alternative.id
           ),
+          authorizedExpertIds: requestPayload.evaluations?.map(
+            (evaluation) => evaluation.expert.id
+          ),
         },
         options: {
           requireResultObject: false,

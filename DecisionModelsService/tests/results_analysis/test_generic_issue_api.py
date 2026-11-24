@@ -145,7 +145,7 @@ def test_generic_issue_endpoint_analyzes_sorting_assignments_without_ranking_or_
     assert "### Consensus" not in result["interpretation"]
 
 
-def test_ahp_sort_expert_collective_classification_relationship_uses_saved_assignments_only():
+def test_generic_sorting_contract_builds_expert_collective_relationship_without_model_diagnostics():
     context = sorting_analysis_context()
     context["semanticDirectory"]["expertsById"] = {
         "expert-a": {"name": "Expert A"},
@@ -157,22 +157,20 @@ def test_ahp_sort_expert_collective_classification_relationship_uses_saved_assig
         {"expert": {"id": "expert-b", "name": "Expert B"}},
     ]
     standard = execution["result"]["standardResult"]
-    standard["diagnostics"] = {
-        "modelKey": "ahp_sort_i",
-        "aggregationMethod": "unweighted_plurality_vote",
-        "individualResultsByExpertId": {
-            "expert-a": {"resultsByAlternativeId": {
-                "a": {"categoryId": "high"},
-                "b": {"categoryId": "low"},
-                "c": {"categoryId": "low"},
-            }},
-            "expert-b": {"resultsByAlternativeId": {
-                "a": {"categoryId": "high"},
-                "b": {"categoryId": "high"},
-                "c": {"categoryId": "high"},
-            }},
-        },
+    standard.pop("diagnostics", None)
+    standard["individualAssignmentsByExpertId"] = {
+        "expert-a": [
+            {"alternativeId": "a", "categoryId": "high"},
+            {"alternativeId": "b", "categoryId": "low"},
+            {"alternativeId": "c", "categoryId": "low"},
+        ],
+        "expert-b": [
+            {"alternativeId": "a", "categoryId": "high"},
+            {"alternativeId": "b", "categoryId": "high"},
+            {"alternativeId": "c", "categoryId": "high"},
+        ],
     }
+    execution["modelContext"] = {"apiModelKey": "future_categorical_sorting_plugin"}
 
     result = asyncio.run(analyze_generic_issue(context))["data"]
     relationship = result["facts"]["expertCollectiveClassificationRelationship"]
@@ -209,7 +207,7 @@ def test_ahp_sort_expert_collective_classification_relationship_uses_saved_assig
     assert "diagnostics" not in str(result)
 
 
-def test_ahp_sort_adds_only_a_categorical_projection_when_saved_patterns_support_it():
+def test_generic_sorting_contract_adds_categorical_projection_when_patterns_support_it():
     context = sorting_analysis_context()
     context["semanticDirectory"]["expertsById"] = {
         "expert-a": {"name": "Expert A"},
@@ -221,14 +219,13 @@ def test_ahp_sort_adds_only_a_categorical_projection_when_saved_patterns_support
         {"expert": {"id": expert_id, "name": f"Expert {expert_id[-1].upper()}"}}
         for expert_id in ("expert-a", "expert-b", "expert-c")
     ]
-    execution["result"]["standardResult"]["diagnostics"] = {
-        "modelKey": "ahp_sort_i",
-        "individualResultsByExpertId": {
-            "expert-a": {"resultsByAlternativeId": {"a": {"categoryId": "high"}, "b": {"categoryId": "high"}, "c": {"categoryId": "low"}}},
-            "expert-b": {"resultsByAlternativeId": {"a": {"categoryId": "low"}, "b": {"categoryId": "low"}, "c": {"categoryId": "low"}}},
-            "expert-c": {"resultsByAlternativeId": {"a": {"categoryId": "high"}, "b": {"categoryId": "high"}, "c": {"categoryId": "high"}}},
-        },
+    execution["result"]["standardResult"].pop("diagnostics", None)
+    execution["result"]["standardResult"]["individualAssignmentsByExpertId"] = {
+        "expert-a": [{"alternativeId": "a", "categoryId": "high"}, {"alternativeId": "b", "categoryId": "high"}, {"alternativeId": "c", "categoryId": "low"}],
+        "expert-b": [{"alternativeId": "a", "categoryId": "low"}, {"alternativeId": "b", "categoryId": "low"}, {"alternativeId": "c", "categoryId": "low"}],
+        "expert-c": [{"alternativeId": "a", "categoryId": "high"}, {"alternativeId": "b", "categoryId": "high"}, {"alternativeId": "c", "categoryId": "high"}],
     }
+    execution["modelContext"] = {"apiModelKey": "another_sorting_plugin"}
 
     relationship = asyncio.run(analyze_generic_issue(context))["data"]["facts"]["expertCollectiveClassificationRelationship"]
     projection = relationship["auxiliaryProjection"]

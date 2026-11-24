@@ -10,6 +10,12 @@ The normalized result has:
   `lower-order-is-less-preferred`.
 - `assignments`: exactly one `{ alternativeId, categoryId }` assignment for
   every alternative authorized by the Backend execution context.
+- Optional `individualAssignmentsByExpertId`: for a collective result that
+  also provides individual classifications, an object keyed by Backend-
+  authorized expert IDs. Each value contains exactly one
+  `{ alternativeId, categoryId }` assignment for every authorized alternative.
+  The Backend validates both identity sets and category references before this
+  evidence is persisted or used by generic Results Analysis.
 - Optional `diagnostics`: an opaque object for model-specific diagnostic data.
 - Optional `numericMetrics`: a non-empty list of validated numeric measures.
   Each measure has a stable `metricId`, display `name`, finite `{ min, max }`

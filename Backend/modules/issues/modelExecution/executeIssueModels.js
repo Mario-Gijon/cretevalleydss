@@ -139,6 +139,9 @@ export const executeAlternativeEvaluationModel = async ({
         authorizedAlternativeIds: requestPayload.context.alternatives.map(
           (alternative) => alternative.id
         ),
+        authorizedExpertIds: requestPayload.evaluations.map(
+          (evaluation) => evaluation.expert.id
+        ),
       },
     }),
   });

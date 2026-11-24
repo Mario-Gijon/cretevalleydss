@@ -520,6 +520,10 @@ describe("result structure selection in model execution", () => {
           categories,
           categoryOrderSemantics: "lower-order-is-less-preferred",
           assignments: [{ alternativeId: "alternative-1", categoryId: "low" }],
+          individualAssignmentsByExpertId: {
+            "expert-1": [{ alternativeId: "alternative-1", categoryId: "low" }],
+            "expert-2": [{ alternativeId: "alternative-1", categoryId: "high" }],
+          },
           diagnostics: {
             aggregationMethod: "unweighted_plurality_vote",
             groupTiePolicy: "pessimistic",
@@ -548,6 +552,10 @@ describe("result structure selection in model execution", () => {
     expect(result.standardResult.diagnostics).toEqual({
       aggregationMethod: "unweighted_plurality_vote",
       groupTiePolicy: "pessimistic",
+    });
+    expect(result.standardResult.individualAssignmentsByExpertId).toEqual({
+      "expert-1": [{ alternativeId: "alternative-1", categoryId: "low" }],
+      "expert-2": [{ alternativeId: "alternative-1", categoryId: "high" }],
     });
   });
 

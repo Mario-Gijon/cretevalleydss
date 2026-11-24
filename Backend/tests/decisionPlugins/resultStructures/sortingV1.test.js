@@ -139,6 +139,51 @@ describe("sorting@1 result contract", () => {
     }] }))).toThrow("within its declared domain");
   });
 
+  it("validates and projects standardized individual sorting assignments for authorized experts", () => {
+    const individualAssignmentsByExpertId = {
+      "expert-a": [
+        { alternativeId: authorizedAlternativeIds[1], categoryId: "acceptable" },
+        { alternativeId: authorizedAlternativeIds[0], categoryId: "excellent" },
+      ],
+      "expert-b": [
+        { alternativeId: authorizedAlternativeIds[0], categoryId: "excluded" },
+        { alternativeId: authorizedAlternativeIds[1], categoryId: "acceptable" },
+      ],
+    };
+    const normalized = normalize(
+      validResult({ individualAssignmentsByExpertId }),
+      { authorizedAlternativeIds, authorizedCategories: defaultAuthorizedCategories, authorizedExpertIds: ["expert-b", "expert-a"] },
+    );
+    expect(normalized.individualAssignmentsByExpertId).toEqual({
+      "expert-b": [
+        { alternativeId: authorizedAlternativeIds[0], categoryId: "excluded" },
+        { alternativeId: authorizedAlternativeIds[1], categoryId: "acceptable" },
+      ],
+      "expert-a": [
+        { alternativeId: authorizedAlternativeIds[0], categoryId: "excellent" },
+        { alternativeId: authorizedAlternativeIds[1], categoryId: "acceptable" },
+      ],
+    });
+    for (const target of ["stagePersistence", "stateSnapshot", "activeIssueResponse"]) {
+      expect(projectNormalizedResultOrThrow({
+        resultStructureKey: "sorting",
+        resultStructureVersion: 1,
+        result: normalized,
+        target,
+      }).individualAssignmentsByExpertId).toEqual(normalized.individualAssignmentsByExpertId);
+    }
+    expect(projectNormalizedResultOrThrow({
+      resultStructureKey: "sorting",
+      resultStructureVersion: 1,
+      result: normalized,
+      target: "finishedIssuePhaseResult",
+    }).standardizedOutput.individualAssignmentsByExpertId).toEqual(normalized.individualAssignmentsByExpertId);
+    expect(() => normalize(
+      validResult({ individualAssignmentsByExpertId: { ...individualAssignmentsByExpertId, "untrusted-expert": individualAssignmentsByExpertId["expert-a"] } }),
+      { authorizedAlternativeIds, authorizedCategories: defaultAuthorizedCategories, authorizedExpertIds: ["expert-a", "expert-b"] },
+    )).toThrow("Backend-authorized expert");
+  });
+
   it.each([1, 2, 5])("accepts a variable category count of %i", (count) => {
     const categories = Array.from({ length: count }, (_, order) => ({
       categoryId: `category-${order}`,
@@ -331,6 +376,7 @@ describe("sorting@1 result contract", () => {
       context: {
         authorizedAlternativeIds,
         authorizedCategories: defaultAuthorizedCategories,
+        authorizedExpertIds: ["expert-a"],
       },
       structureKey: "alternativeCriteriaMatrix",
     });

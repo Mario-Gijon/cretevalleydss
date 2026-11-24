@@ -320,6 +320,95 @@ const resolveAuthorizedAlternativeIds = (context) => {
   return ids;
 };
 
+const resolveAuthorizedExpertIds = (context) => {
+  if (!Array.isArray(context?.authorizedExpertIds)) {
+    throwInvalid(
+      "Sorting individual assignments require Backend-authorized expert IDs",
+      "context.authorizedExpertIds"
+    );
+  }
+  const ids = context.authorizedExpertIds.map((value, index) =>
+    normalizeRequiredId(
+      value,
+      "Each authorized expert ID must be a non-empty string",
+      `context.authorizedExpertIds[${index}]`
+    )
+  );
+  if (!ids.length || new Set(ids).size !== ids.length) {
+    throwInvalid(
+      "Backend-authorized expert IDs must be non-empty and unique",
+      "context.authorizedExpertIds"
+    );
+  }
+  return ids;
+};
+
+const normalizeIndividualAssignments = ({
+  value,
+  authorizedExpertIds,
+  authorizedAlternativeIds,
+  categoryIds,
+}) => {
+  if (!isPlainObject(value)) {
+    throwInvalid(
+      "Sorting individualAssignmentsByExpertId must be an object keyed by expert ID",
+      "result.individualAssignmentsByExpertId"
+    );
+  }
+  const expertIds = resolveAuthorizedExpertIds({ authorizedExpertIds });
+  const returnedExpertIds = Object.keys(value);
+  if (returnedExpertIds.length !== expertIds.length || expertIds.some((id) => !Object.hasOwn(value, id))) {
+    throwInvalid(
+      "Sorting individual assignments must cover every Backend-authorized expert exactly once",
+      "result.individualAssignmentsByExpertId"
+    );
+  }
+  return Object.fromEntries(expertIds.map((expertId) => {
+    const assignments = value[expertId];
+    const field = `result.individualAssignmentsByExpertId.${expertId}`;
+    if (!Array.isArray(assignments)) {
+      throwInvalid("Each expert's sorting assignments must be an array", field);
+    }
+    const assigned = new Map();
+    assignments.forEach((assignment, index) => {
+      const itemField = `${field}[${index}]`;
+      if (!isPlainObject(assignment)) {
+        throwInvalid("Each individual sorting assignment must be an object", itemField);
+      }
+      if (Object.keys(assignment).some((key) => !["alternativeId", "categoryId"].includes(key))) {
+        throwInvalid("Individual sorting assignments contain unsupported fields", itemField);
+      }
+      const alternativeId = normalizeRequiredId(
+        assignment.alternativeId,
+        "Each individual sorting assignment requires an alternativeId",
+        `${itemField}.alternativeId`
+      );
+      const categoryId = normalizeRequiredId(
+        assignment.categoryId,
+        "Each individual sorting assignment requires a categoryId",
+        `${itemField}.categoryId`
+      );
+      if (!authorizedAlternativeIds.includes(alternativeId)) {
+        throwInvalid("Individual sorting assignment references an unauthorized alternative", `${itemField}.alternativeId`);
+      }
+      if (!categoryIds.has(categoryId)) {
+        throwInvalid("Individual sorting assignment references an unknown category", `${itemField}.categoryId`);
+      }
+      if (assigned.has(alternativeId)) {
+        throwInvalid("Each expert may assign an alternative only once", `${itemField}.alternativeId`);
+      }
+      assigned.set(alternativeId, categoryId);
+    });
+    if (assigned.size !== authorizedAlternativeIds.length || authorizedAlternativeIds.some((id) => !assigned.has(id))) {
+      throwInvalid("Each expert's sorting assignments must cover every authorized alternative exactly once", field);
+    }
+    return [expertId, authorizedAlternativeIds.map((alternativeId) => ({
+      alternativeId,
+      categoryId: assigned.get(alternativeId),
+    }))];
+  }));
+};
+
 const resolveAuthorizedCategories = (context) => {
   if (!Array.isArray(context?.authorizedCategories)) {
     throwInvalid(
@@ -478,6 +567,14 @@ export const normalizeSortingResult = ({ result, context }) => {
   const numericMetrics = Object.hasOwn(result, "numericMetrics")
     ? normalizeNumericMetrics(result.numericMetrics, authorizedAlternativeIds)
     : undefined;
+  const individualAssignmentsByExpertId = Object.hasOwn(result, "individualAssignmentsByExpertId")
+    ? normalizeIndividualAssignments({
+        value: result.individualAssignmentsByExpertId,
+        authorizedExpertIds: context?.authorizedExpertIds,
+        authorizedAlternativeIds,
+        categoryIds,
+      })
+    : undefined;
 
   return {
     categories,
@@ -488,5 +585,8 @@ export const normalizeSortingResult = ({ result, context }) => {
       : {}),
     ...(plotsGraphic !== undefined ? { plotsGraphic } : {}),
     ...(numericMetrics !== undefined ? { numericMetrics } : {}),
+    ...(individualAssignmentsByExpertId !== undefined
+      ? { individualAssignmentsByExpertId }
+      : {}),
   };
 };

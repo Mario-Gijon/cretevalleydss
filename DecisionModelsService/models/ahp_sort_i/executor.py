@@ -414,6 +414,16 @@ def execute_ahp_sort_i(
                 "categories": execution_input["resultCategories"],
                 "categoryOrderSemantics": CATEGORY_ORDER_SEMANTICS,
                 "assignments": assignments,
+                "individualAssignmentsByExpertId": {
+                    expert_id: [
+                        {
+                            "alternativeId": assignment["alternativeId"],
+                            "categoryId": assignment["categoryId"],
+                        }
+                        for assignment in expert_results[expert_id]["assignments"]
+                    ]
+                    for expert_id in sorted(expert_results)
+                },
                 "diagnostics": diagnostics,
                 # Plurality assigns categories only. Keep expert-specific AHP
                 # metrics scoped to their source expert; do not synthesize a
