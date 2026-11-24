@@ -307,22 +307,24 @@ python -m ruff check .
 the checked supplier transcription in
 `DecisionModelsService/tests/models/test_ahp_sort_i.py` and the already-tested
 three-expert synthetic comparison fixture in `Frontend/e2e/ahpSortIDemo.spec.js`.
-It creates two named Issues through the ordinary development Backend routes:
-the one-expert 2012 supplier case uses creator-side AHP pairwise judgments; the
-sustainable-development case uses three individual AHP matrices, Backend MCC
-aggregation, individual AHPSort I classifications, and an unweighted
-GAHPSort vote with optimistic tie-breaking. The 2021 preferences and
-classifications are disclosed as synthetic in the Issue description.
+It creates four named Issues through the ordinary development Backend routes:
+the one-expert supplier case and three-expert sustainable-development case
+retain their limiting-profile inputs. Two synthetic companions exercise central
+profiles on the same categories: one supplier execution and one three-expert
+GAHPSort execution. The group cases use three individual AHP matrices, Backend
+MCC aggregation, individual AHPSort I classifications, and unweighted plurality
+with optimistic tie-breaking. The central judgments are generated on the Saaty
+scale and disclosed as synthetic in each Issue description.
 
 The command uses the configured `owner`, `expert_a`, `expert_b`, and
 `expert_c` local test aliases. It requires exactly one authorized AHPSort I
 model, one AHP weighting model, and exactly one global `AHP Saaty Scale`
 domain. It never creates expression domains, writes MongoDB directly, modifies
-model configuration, deletes Issues, or reuses the previous versions: the
-versioned Issue names distinguish these new generations. An unfinished Issue
-with either new name stops the run untouched. Both finished Issues are
-recorded in the normal Scenario Lab manifest for later inspection or explicit
-cleanup.
+model configuration, or deletes Issues. Finished Issues with an exact matching
+name are validated and reused; distinct names identify the limiting and
+central-profile variants. An unfinished Issue with one of those names stops
+the run untouched. All four finished Issues are recorded in the normal Scenario
+Lab manifest for later inspection or explicit cleanup.
 
 Run from this directory with the ordinary development stack available:
 

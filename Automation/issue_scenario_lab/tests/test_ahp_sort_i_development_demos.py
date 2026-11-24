@@ -131,6 +131,52 @@ def test_supplier_alternative_payload_contains_exactly_sixty_original_judgments(
     assert j_flexibility["alternativeToProfile"] == 1 / 9
 
 
+def test_central_supplier_fixture_submits_complete_per_category_profile_comparisons() -> None:
+    fixture = scenario._central_supplier_fixture(FIXTURE["supplierPrequalification"])
+    assert fixture["profileMode"] == "central"
+    assert [item["categoryId"] for item in fixture["profiles"]] == ["rejected", "accepted"]
+    payload = scenario._alternative_evaluation_payload(
+        context={"modelParameters": {"ahpSortProfiles": scenario._profile_configuration(fixture)}},
+        alternatives=[{"id": f"alternative-{name}", "name": name} for name in fixture["alternatives"]],
+        criteria=[{"id": f"criterion-{item['key']}", "name": item["name"]} for item in fixture["criteria"]],
+        fixture=fixture,
+        expert_alias=None,
+        group=False,
+    )
+    assert len(payload["alternativeProfileComparisons"]) == 12 * 5 * 2
+    assert len(payload["profileComparisons"]) == 5
+    assert all(item["firstToSecond"] == 1 / 9 for item in payload["profileComparisons"])
+    assert scenario._issue_payload(
+        fixture=fixture,
+        model_id="ahpsort-id",
+        weighting_model_id="weighting-id",
+        expert_emails=["expert@example.test"],
+        domain_id="saaty-domain",
+        group=False,
+    )["paramValues"]["ahpSortProfiles"]["tiePolicy"] == "optimistic"
+
+
+def test_central_collective_fixture_preserves_each_experts_profile_judgments() -> None:
+    fixture = scenario._central_sustainable_fixture(FIXTURE["sustainableDevelopment"])
+    assert fixture["profileMode"] == "central"
+    alternatives = [{"id": f"alternative-{name}", "name": name} for name in fixture["alternatives"]]
+    criteria = [{"id": f"criterion-{item['key']}", "name": item["name"]} for item in fixture["criteria"]]
+    payloads = [
+        scenario._alternative_evaluation_payload(
+            context={"modelParameters": {"ahpSortProfiles": scenario._profile_configuration(fixture)}},
+            alternatives=alternatives,
+            criteria=criteria,
+            fixture=fixture,
+            expert_alias=alias,
+            group=True,
+        )
+        for alias in ("expert_a", "expert_b", "expert_c")
+    ]
+    assert all(len(payload["alternativeProfileComparisons"]) == 5 * 6 * 3 for payload in payloads)
+    assert all(len(payload["profileComparisons"]) == 6 * 3 for payload in payloads)
+    assert len({tuple(row["alternativeToProfile"] for row in payload["alternativeProfileComparisons"]) for payload in payloads}) == 3
+
+
 def test_manifest_recording_is_idempotent_for_the_same_finished_issue(tmp_path) -> None:
     store = ManifestStore(tmp_path / "manifest.json")
     first = scenario._ensure_manifest_entry(

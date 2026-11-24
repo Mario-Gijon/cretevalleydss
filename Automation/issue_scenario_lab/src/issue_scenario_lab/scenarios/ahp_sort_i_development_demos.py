@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import copy
 import json
 import math
 import secrets
@@ -31,6 +32,8 @@ ALTERNATIVE_STAGE = "alternativeEvaluation"
 FIXTURE_PATH = Path(__file__).parents[3] / "data" / "ahp_sort_i_development_demos.json"
 SUPPLIER_ISSUE_NAME = "DEMO — AHPSort I — Supplier Pre-qualification (2012) — AHP Saaty Scale"
 SUSTAINABLE_ISSUE_NAME = "DEMO — GAHPSort — Sustainable Development (2021) — AHP Saaty Scale"
+CENTRAL_SUPPLIER_ISSUE_NAME = "DEMO — AHPSort I — Supplier Pre-qualification — Central profiles"
+CENTRAL_SUSTAINABLE_ISSUE_NAME = "DEMO — GAHPSort — Sustainable Development — Central profiles"
 
 
 @dataclass(frozen=True)
@@ -51,7 +54,86 @@ class DemonstrationIssueResult:
 class DemonstrationsResult:
     supplier: DemonstrationIssueResult
     sustainable: DemonstrationIssueResult
+    central_supplier: DemonstrationIssueResult
+    central_sustainable: DemonstrationIssueResult
     manifest_path: str
+
+
+def _profile_configuration(fixture: dict[str, Any]) -> dict[str, Any]:
+    mode = fixture.get("profileMode", "limiting")
+    configuration = {"mode": mode, "profiles": fixture["profiles"]}
+    if mode == "central":
+        configuration["tiePolicy"] = fixture.get("centralTiePolicy", "optimistic")
+    return configuration
+
+
+def _central_supplier_fixture(source: dict[str, Any]) -> dict[str, Any]:
+    fixture = copy.deepcopy(source)
+    fixture.update({
+        "issueName": CENTRAL_SUPPLIER_ISSUE_NAME,
+        "description": (
+            "Synthetic central-profile companion to the validated supplier example; "
+            "judgments are generated on the Saaty scale for demonstration only."
+        ),
+        "profileMode": "central",
+        "centralTiePolicy": "optimistic",
+        "profiles": [
+            {"profileId": "rejected-center", "categoryId": "rejected"},
+            {"profileId": "accepted-center", "categoryId": "accepted"},
+        ],
+        "profileComparisonsByCriterion": {item["key"]: 1 / 9 for item in source["criteria"]},
+    })
+    fixture["alternativeToProfileByAlternative"] = {
+        alternative: [{
+            "rejected-center": 9 if source["expectedAssignments"][alternative] == "Accepted" else 1,
+            "accepted-center": 1 if source["expectedAssignments"][alternative] == "Accepted" else 1 / 9,
+        } for _criterion in source["criteria"]]
+        for alternative in source["alternatives"]
+    }
+    return fixture
+
+
+def _central_sustainable_fixture(source: dict[str, Any]) -> dict[str, Any]:
+    fixture = copy.deepcopy(source)
+    fixture.update({
+        "issueName": CENTRAL_SUSTAINABLE_ISSUE_NAME,
+        "description": (
+            "Synthetic central-profile companion to the sustainable-development demonstration; "
+            "all judgments are generated for this demo and are not empirical."
+        ),
+        "profileMode": "central",
+        "centralTiePolicy": "optimistic",
+        "profiles": [
+            {"profileId": f"{item['categoryId']}-center", "categoryId": item["categoryId"]}
+            for item in source["categories"]
+        ],
+    })
+    score = {"Bad": 1, "Moderate": 3, "Good": 9}
+    fixture["profileComparisonsByCriterion"] = {
+        criterion["key"]: {
+            f"{first['profileId']}|{second['profileId']}": score[category["label"]] / score[other["label"]]
+            for index, (category, first) in enumerate(zip(source["categories"], fixture["profiles"], strict=True))
+            for other, second in zip(source["categories"][index + 1 :], fixture["profiles"][index + 1 :], strict=True)
+        }
+        for criterion in source["criteria"]
+    }
+    fixture["alternativeToProfileByExpert"] = {
+        alias: {
+            alternative: {
+                criterion["key"]: {
+                    profile["profileId"]: score[vote] / score[
+                        next(category["label"] for category in source["categories"] if category["categoryId"] == profile["categoryId"])
+                    ]
+                    for profile in fixture["profiles"]
+                }
+                for criterion in source["criteria"]
+            }
+            for alternative, votes in source["categoryVotesByAlternative"].items()
+            for vote in [votes[("expert_a", "expert_b", "expert_c").index(alias)]]
+        }
+        for alias in ("expert_a", "expert_b", "expert_c")
+    }
+    return fixture
 
 
 def load_fixture(path: Path = FIXTURE_PATH) -> dict[str, Any]:
@@ -276,7 +358,7 @@ def _issue_payload(
     criterion_ids = {item["key"]: f"criterion-{item['key']}" for item in fixture["criteria"]}
     parameters: dict[str, Any] = {
         "orderedCategories": fixture["categories"],
-        "ahpSortProfiles": {"mode": "limiting", "profiles": fixture["profiles"]},
+        "ahpSortProfiles": _profile_configuration(fixture),
     }
     if group:
         parameters["ahpSortGroup"] = {"tiePolicy": "optimistic"}
@@ -318,7 +400,7 @@ def _validate_active_identity(active: dict[str, Any], fixture: dict[str, Any], *
         or active.get("resultStructureVersion") != RESULT_STRUCTURE_VERSION
         or not isinstance(params, dict)
         or params.get("orderedCategories") != fixture["categories"]
-        or params.get("ahpSortProfiles") != {"mode": "limiting", "profiles": fixture["profiles"]}
+        or params.get("ahpSortProfiles") != _profile_configuration(fixture)
         or (params.get("ahpSortGroup") if group else None) != expected_group
     ):
         raise ScenarioLabError(f"active issue named '{fixture['issueName']}' does not match this demonstration; it was left untouched")
@@ -361,8 +443,10 @@ def _alternative_ids_by_name(alternatives: list[dict[str, Any]], fixture: dict[s
 def _resolve_profiles(context: dict[str, Any], fixture: dict[str, Any]) -> list[dict[str, Any]]:
     params = context.get("modelParameters")
     profile_config = params.get("ahpSortProfiles") if isinstance(params, dict) else None
-    if not isinstance(profile_config, dict) or profile_config.get("mode") != "limiting":
-        raise ScenarioLabError("evaluation context does not use AHPSort I limiting profiles")
+    expected_config = _profile_configuration(fixture)
+    mode = expected_config["mode"]
+    if not isinstance(profile_config, dict) or profile_config.get("mode") != mode:
+        raise ScenarioLabError(f"evaluation context does not use AHPSort I {mode} profiles")
     profiles = profile_config.get("profiles")
     if not isinstance(profiles, list) or len(profiles) != len(fixture["profiles"]):
         raise ScenarioLabError("evaluation context has an unexpected limiting profile count")
@@ -373,8 +457,9 @@ def _resolve_profiles(context: dict[str, Any], fixture: dict[str, Any]) -> list[
     ordered = []
     for profile in fixture["profiles"]:
         actual = by_id[profile["profileId"]]
-        if any(actual.get(key) != profile[key] for key in ("lowerCategoryId", "upperCategoryId")):
-            raise ScenarioLabError("evaluation context profile category boundaries differ from the fixture")
+        category_fields = ("lowerCategoryId", "upperCategoryId") if mode == "limiting" else ("categoryId",)
+        if any(actual.get(key) != profile[key] for key in category_fields):
+            raise ScenarioLabError("evaluation context profile category mapping differs from the fixture")
         ordered.append(actual)
     return ordered
 
@@ -416,11 +501,13 @@ def _alternative_evaluation_payload(
         if not group and len(values) != len(criteria):
             raise ScenarioLabError(f"alternative judgments for {alternative_name} are incomplete")
         for criterion_index, criterion in enumerate(fixture["criteria"]):
-            explicit_profile_values = (
-                values.get(criterion["key"])
-                if group and isinstance(fixture.get("alternativeToProfileByExpert"), dict)
-                else None
-            )
+            explicit_profile_values = None
+            if group and isinstance(fixture.get("alternativeToProfileByExpert"), dict):
+                explicit_profile_values = values.get(criterion["key"])
+            elif fixture.get("profileMode") == "central":
+                candidate = values[criterion_index]
+                if isinstance(candidate, dict):
+                    explicit_profile_values = candidate
             if explicit_profile_values is not None:
                 if not isinstance(explicit_profile_values, dict) or set(explicit_profile_values) != {
                     profile["profileId"] for profile in profiles
@@ -449,11 +536,18 @@ def _alternative_evaluation_payload(
     for criterion in fixture["criteria"]:
         for first_index, first in enumerate(profiles):
             for second in profiles[first_index + 1:]:
+                configured = fixture.get("profileComparisonsByCriterion", {}).get(criterion["key"])
+                if isinstance(configured, dict):
+                    first_to_second = configured[f"{first['profileId']}|{second['profileId']}"]
+                elif isinstance(configured, (int, float)):
+                    first_to_second = configured
+                else:
+                    first_to_second = 1 / 3
                 profile_rows.append({
                     "criterionId": criterion_ids[criterion["key"]],
                     "firstProfileId": first["profileId"],
                     "secondProfileId": second["profileId"],
-                    "firstToSecond": fixture.get("profileComparisonsByCriterion", {}).get(criterion["key"], 1 / 3),
+                    "firstToSecond": first_to_second,
                 })
     return {"alternativeProfileComparisons": alternative_rows, "profileComparisons": profile_rows}
 
@@ -762,7 +856,7 @@ def _validate_finished(
         # The same builder is used for submissions and the persisted-evidence check;
         # fixture validation and the DMS result comparison independently pin the outcome.
         expected_raw_by_alias[alias] = _alternative_evaluation_payload(
-            context={"modelParameters": {"ahpSortProfiles": {"mode": "limiting", "profiles": fixture["profiles"]}}},
+            context={"modelParameters": {"ahpSortProfiles": _profile_configuration(fixture)}},
             alternatives=alternatives,
             criteria=leaf_nodes,
             fixture=fixture,
@@ -1154,6 +1248,8 @@ def generate(
     fixture = load_fixture()
     supplier = fixture["supplierPrequalification"]
     sustainable = fixture["sustainableDevelopment"]
+    central_supplier = _central_supplier_fixture(supplier)
+    central_sustainable = _central_sustainable_fixture(sustainable)
     aliases = (owner_alias, supplier_expert_alias, *group_expert_aliases)
     if any(alias not in sessions.users for alias in aliases):
         missing = sorted(set(alias for alias in aliases if alias not in sessions.users))
@@ -1183,7 +1279,9 @@ def generate(
 
     supplier_active, supplier_finished = _find_exact_issues(owner_api, supplier["issueName"])
     sustainable_active, sustainable_finished = _find_exact_issues(owner_api, sustainable["issueName"])
-    del supplier_active, sustainable_active
+    central_supplier_active, central_supplier_finished = _find_exact_issues(owner_api, central_supplier["issueName"])
+    central_sustainable_active, central_sustainable_finished = _find_exact_issues(owner_api, central_sustainable["issueName"])
+    del supplier_active, sustainable_active, central_supplier_active, central_sustainable_active
     # Validate both existing results before creating either missing Issue.
     if supplier_finished:
         _validate_finished(
@@ -1200,6 +1298,26 @@ def generate(
             owner_api.finished_issue(_id(sustainable_finished[0]) or ""),
             issue_id=_id(sustainable_finished[0]) or "",
             fixture=sustainable,
+            group=True,
+            expert_aliases=group_expert_aliases,
+            expert_emails_by_alias=emails_by_alias,
+            expert_ids_by_email=expert_ids_by_email,
+        )
+    if central_supplier_finished:
+        _validate_finished(
+            owner_api.finished_issue(_id(central_supplier_finished[0]) or ""),
+            issue_id=_id(central_supplier_finished[0]) or "",
+            fixture=central_supplier,
+            group=False,
+            expert_aliases=(supplier_expert_alias,),
+            expert_emails_by_alias=emails_by_alias,
+            expert_ids_by_email=expert_ids_by_email,
+        )
+    if central_sustainable_finished:
+        _validate_finished(
+            owner_api.finished_issue(_id(central_sustainable_finished[0]) or ""),
+            issue_id=_id(central_sustainable_finished[0]) or "",
+            fixture=central_sustainable,
             group=True,
             expert_aliases=group_expert_aliases,
             expert_emails_by_alias=emails_by_alias,
@@ -1231,11 +1349,35 @@ def generate(
             expert_emails_by_alias=emails_by_alias,
             expert_ids_by_email=expert_ids_by_email,
         )
+        central_supplier_result = _run_supplier(
+            sessions=sessions,
+            store=store,
+            fixture=central_supplier,
+            model=model,
+            weighting=weighting,
+            domain=domain,
+            existing_finished=central_supplier_finished[0] if central_supplier_finished else None,
+            expert_alias=supplier_expert_alias,
+            expert_emails_by_alias=emails_by_alias,
+            expert_ids_by_email=expert_ids_by_email,
+        )
+        central_sustainable_result = _run_sustainable(
+            sessions=sessions,
+            store=store,
+            fixture=central_sustainable,
+            model=model,
+            weighting=weighting,
+            domain=domain,
+            existing_finished=central_sustainable_finished[0] if central_sustainable_finished else None,
+            expert_aliases=group_expert_aliases,
+            expert_emails_by_alias=emails_by_alias,
+            expert_ids_by_email=expert_ids_by_email,
+        )
     except ScenarioLabError:
         raise
     except Exception as error:
         raise ScenarioLabError(f"{SCENARIO_ID} failed: {error}") from error
-    return DemonstrationsResult(supplier_result, sustainable_result, str(store.path))
+    return DemonstrationsResult(supplier_result, sustainable_result, central_supplier_result, central_sustainable_result, str(store.path))
 
 
 __all__ = ["FIXTURE_PATH", "SCENARIO_ID", "load_fixture", "validate_fixture", "generate"]
