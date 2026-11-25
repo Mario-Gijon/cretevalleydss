@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import DashboardView from "../../../../../src/features/finishedIssueDialog/sections/dashboard/components/DashboardView.jsx";
@@ -250,7 +250,7 @@ const centralExecution = ({ policy = "optimistic", tied = true, assignedCategory
   };
 };
 
-const groupExecution = ({ classifications, tiePolicy = "optimistic", includeRoster = true } = {}) => {
+const groupExecution = ({ classifications, secondClassifications = null, tiePolicy = "optimistic", includeRoster = true } = {}) => {
   const base = limitingExecution();
   const categoryDefinitions = [
     { categoryId: "low-id", label: "Low", order: 0 },
@@ -263,33 +263,63 @@ const groupExecution = ({ classifications, tiePolicy = "optimistic", includeRost
     "high-id": { "boundary-lm": 0.3, "boundary-mh": 0.6 },
   };
   const expertIds = Object.keys(classifications).sort();
+  const classificationSets = [
+    { alternativeId: "alt-a", classifications },
+    ...(secondClassifications ? [{ alternativeId: "alt-b", classifications: secondClassifications }] : []),
+  ];
   const individualResultsByExpertId = Object.fromEntries(expertIds.map((expertId) => {
-    const individual = structuredClone(base.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"]);
-    individual.categoryId = classifications[expertId];
-    individual.profileGlobalPrioritiesById = profilePrioritiesByCategory[classifications[expertId]];
+    const resultsByAlternativeId = Object.fromEntries(classificationSets.map(({ alternativeId, classifications: alternativeClassifications }) => {
+      const categoryId = alternativeClassifications[expertId];
+      const individual = structuredClone(base.standardizedOutput.diagnostics.resultsByAlternativeId["alt-a"]);
+      individual.categoryId = categoryId;
+      individual.profileGlobalPrioritiesById = profilePrioritiesByCategory[categoryId];
+      for (const criterion of Object.values(individual.localPrioritiesByCriterion)) {
+        criterion.entityOrder[0].alternativeId = alternativeId;
+      }
+      return [alternativeId, individual];
+    }));
     return [expertId, {
       modelKey: "ahp_sort_i",
       profileMode: "limiting",
-      resultsByAlternativeId: { "alt-a": individual },
+      resultsByAlternativeId,
     }];
   }));
-  const votesByCategoryId = Object.fromEntries(categoryDefinitions.map(({ categoryId }) => [
-    categoryId,
-    Object.values(classifications).filter((id) => id === categoryId).length,
+  const aggregateVotes = (alternativeClassifications) => {
+    const votesByCategoryId = Object.fromEntries(categoryDefinitions.map(({ categoryId }) => [
+      categoryId,
+      Object.values(alternativeClassifications).filter((id) => id === categoryId).length,
+    ]));
+    const maxVotes = Math.max(...Object.values(votesByCategoryId));
+    const tiedCategoryIds = categoryDefinitions
+      .filter(({ categoryId }) => votesByCategoryId[categoryId] === maxVotes)
+      .map(({ categoryId }) => categoryId);
+    const selectedCategoryId = tiedCategoryIds.length > 1
+      ? tiedCategoryIds[tiePolicy === "optimistic" ? tiedCategoryIds.length - 1 : 0]
+      : tiedCategoryIds[0];
+    const tieDetected = tiedCategoryIds.length > 1;
+    const aggregationStatus = maxVotes === expertIds.length
+      ? "unanimous"
+      : tieDetected
+        ? "tied_plurality"
+        : "unique_plurality";
+    return {
+      categoryId: selectedCategoryId,
+      selectedCategoryId,
+      votesByCategoryId,
+      classificationsByExpertId: alternativeClassifications,
+      aggregationStatus,
+      isUnanimous: aggregationStatus === "unanimous",
+      isUniquePlurality: !tieDetected,
+      tieDetected,
+      tiedCategoryIds: tieDetected ? tiedCategoryIds : [],
+      tiePolicy: tieDetected ? tiePolicy : null,
+    };
+  };
+  const resultsByAlternativeId = Object.fromEntries(classificationSets.map(({ alternativeId, classifications: alternativeClassifications }) => [
+    alternativeId,
+    aggregateVotes(alternativeClassifications),
   ]));
-  const maxVotes = Math.max(...Object.values(votesByCategoryId));
-  const tiedCategoryIds = categoryDefinitions
-    .filter(({ categoryId }) => votesByCategoryId[categoryId] === maxVotes)
-    .map(({ categoryId }) => categoryId);
-  const selectedCategoryId = tiedCategoryIds.length > 1
-    ? tiedCategoryIds[tiePolicy === "optimistic" ? tiedCategoryIds.length - 1 : 0]
-    : tiedCategoryIds[0];
-  const tieDetected = tiedCategoryIds.length > 1;
-  const aggregationStatus = maxVotes === expertIds.length
-    ? "unanimous"
-    : tieDetected
-      ? "tied_plurality"
-      : "unique_plurality";
+  const assignments = Object.entries(resultsByAlternativeId).map(([alternativeId, result]) => ({ alternativeId, categoryId: result.categoryId }));
 
   return {
     ...base,
@@ -301,27 +331,14 @@ const groupExecution = ({ classifications, tiePolicy = "optimistic", includeRost
     standardizedOutput: {
       ...base.standardizedOutput,
       categories: categoryDefinitions,
-      assignments: [{ alternativeId: "alt-a", categoryId: selectedCategoryId }],
+      assignments,
       diagnostics: {
         modelKey: "ahp_sort_i",
         profileMode: "limiting",
         aggregationMethod: "unweighted_plurality_vote",
         groupTiePolicy: tiePolicy,
         individualResultsByExpertId,
-        resultsByAlternativeId: {
-          "alt-a": {
-            categoryId: selectedCategoryId,
-            selectedCategoryId,
-            votesByCategoryId,
-            classificationsByExpertId: classifications,
-            aggregationStatus,
-            isUnanimous: aggregationStatus === "unanimous",
-            isUniquePlurality: !tieDetected,
-            tieDetected,
-            tiedCategoryIds: tieDetected ? tiedCategoryIds : [],
-            tiePolicy: tieDetected ? tiePolicy : null,
-          },
-        },
+        resultsByAlternativeId,
       },
     },
   };
@@ -509,7 +526,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(evidence.alternativesById["alt-a"].status).toBe("available");
     expect(evidence.alternativesById["alt-a"].explanation).toContain("within the 1e-12 comparison tolerance");
     expect(evidence.alternativesById["alt-a"].explanation).toContain("ties go to the more preferred category");
-    expect(equalData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
+    expect(equalData.findings.find((finding) => finding.title === "Classification overview").items.join(" ")).not.toMatch(/tie was resolved/);
 
     const overlapping = limitingExecution({
       priority: 0.50000000000075,
@@ -522,7 +539,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(overlappingEvidence.category.id).toBe("high-id");
     expect(overlappingEvidence.explanation).toContain("Medium / High limiting profile");
     expect(overlappingEvidence.explanation).not.toContain("Low / Medium limiting profile");
-    expect(overlappingData.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(false);
+    expect(overlappingData.findings.find((finding) => finding.title === "Classification overview").items.join(" ")).not.toMatch(/tie was resolved/);
   });
 
   it("keeps individual AHPSort I priorities and profile references out of Final Result", () => {
@@ -555,6 +572,40 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
     expect(screen.queryByTestId("sorting-metric-reference")).not.toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toHaveTextContent("Supplier A");
+  });
+
+  it.each([
+    ["limiting", limitingExecution()],
+    ["central", centralExecution({ tied: false })],
+  ])("provides shared classification findings for individual %s profiles", (_mode, execution) => {
+    const data = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: execution });
+    expect(data.findings.map(({ title }) => title)).toEqual([
+      "Most favorable classification",
+      "Classification overview",
+    ]);
+    expect(data.findings[0]).toMatchObject({
+      kind: "most_favorable_classification",
+      headline: "High",
+    });
+    expect(data.findings[1].items[0]).toMatch(/One alternative was classified as High/);
+  });
+
+  it("adds the shared lowest-category finding when individual classifications span categories", () => {
+    const execution = binaryLimitingExecution([
+      { id: "alt-high", priority: 0.8 },
+      { id: "alt-low", priority: 0.2 },
+    ]);
+    const data = buildDashboardData({
+      payload: { alternatives: [{ id: "alt-high", name: "Supplier High" }, { id: "alt-low", name: "Supplier Low" }], criteria },
+      selectedExecution: execution,
+    });
+
+    expect(data.findings.map(({ title }) => title)).toEqual([
+      "Most favorable classification",
+      "Classification overview",
+      "Lowest assigned category",
+    ]);
+    expect(data.findings.at(-1)).toMatchObject({ headline: "Rejected" });
   });
 
   it("keeps plural-vote AHPSort results categorical when only expert-scoped metrics exist", () => {
@@ -693,7 +744,7 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
   it("explains the closest central profile and optimistic/pessimistic tie decisions", () => {
     const optimistic = renderSelected(centralExecution());
     expect(screen.queryByTestId("ahp-sort-i-assignment-explanation")).not.toBeInTheDocument();
-    expect(optimistic.data.findings.some((finding) => finding.kind === "ahp_profile_tie")).toBe(true);
+    expect(optimistic.data.findings.find((finding) => finding.title === "Classification overview").items.join(" ")).toMatch(/central-profile tie was resolved/);
 
     const pessimisticExecution = centralExecution({ policy: "pessimistic" });
     const result = optimistic.data.result;
@@ -746,11 +797,10 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
         },
       },
     });
-    renderAnalysis(inconsistent);
-    const dashboardData = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: inconsistent });
-    expect(screen.getByTestId("ahp-sort-i-consistency-warning")).toHaveTextContent(/CR above 0.10/);
+    const { data: dashboardData } = renderSelected(inconsistent);
+    expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toBeInTheDocument();
     expect(screen.getAllByText("Supplier A").length).toBeGreaterThan(0);
-    expect(dashboardData.findings.some((finding) => finding.kind === "ahp_consistency")).toBe(true);
+    expect(dashboardData.findings.find((finding) => finding.title === "Classification overview").items.join(" ")).toMatch(/local AHP matrix exceeded/);
 
     const twoByTwo = limitingExecution({
       assignedCategoryId: "high-id",
@@ -802,8 +852,9 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: "High: 1 alternative" })).toBeInTheDocument();
     cleanup();
-    renderAnalysis(conflict);
-    expect(screen.getByTestId("ahp-sort-i-analysis-integrity_warning")).toHaveTextContent(/do not agree with the stored classifications/);
+    const conflictFindings = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: conflict });
+    expect(conflictFindings.findings.find((finding) => finding.title === "Classification overview").items.join(" "))
+      .toMatch(/saved AHP evidence could not be validated/);
 
     cleanup();
     const invalidPriority = limitingExecution({ priority: 1.01 });
@@ -996,11 +1047,36 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
     expect(screen.queryByTestId("ahpsort-i-group-votes")).not.toBeInTheDocument();
     expect(screen.queryByText(/High received the most votes \(plurality\): 2 of 4/)).not.toBeInTheDocument();
     expect(screen.queryByText(/consensus|probability|ranking/i)).not.toBeInTheDocument();
-    expect(rendered.data.findings.map(({ title }) => title)).toContain("Unique plurality");
-    expect(rendered.data.findings.map(({ title }) => title)).toContain("Different expert classifications");
+    expect(rendered.data.findings.map(({ title }) => title)).toEqual([
+      "Most favorable classification",
+      "Classification agreement",
+    ]);
+    expect(rendered.data.findings[1].items.join(" ")).toMatch(/unique plurality/);
+    expect(rendered.data.findings[1].items.join(" ")).toMatch(/different categories/);
 
     expect(screen.queryByTestId("ahpsort-i-individual-classifications")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/expert-[1-4]|low-id|medium-id|high-id|alt-a/);
+  });
+
+  it("uses collective assignments for the shared three-card classification summary", () => {
+    const execution = groupExecution({
+      classifications: { "expert-1": "high-id", "expert-2": "high-id", "expert-3": "high-id" },
+      secondClassifications: { "expert-1": "low-id", "expert-2": "low-id", "expert-3": "high-id" },
+    });
+    const { data } = renderSelected(execution, {
+      payload: { alternatives: [...alternatives, { id: "alt-b", name: "Supplier B" }] },
+    });
+
+    expect(data.findings.map(({ title }) => title)).toEqual([
+      "Most favorable classification",
+      "Classification agreement",
+      "Lowest assigned category",
+    ]);
+    expect(data.findings[0].headline).toBe("High");
+    expect(data.findings.at(-1).headline).toBe("Low");
+    expect(data.findings[1].items.join(" ")).toMatch(/unanimously/);
+    expect(data.findings[1].items.join(" ")).toMatch(/absolute majority/);
+    expect(screen.queryByTestId("sorting-metric-value")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -1049,16 +1125,18 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
   });
 
   it.each([
-    ["Unanimous classifications", { "expert-1": "high-id", "expert-2": "high-id" }],
-    ["Absolute majority", { "expert-1": "high-id", "expert-2": "high-id", "expert-3": "high-id", "expert-4": "low-id" }],
-    ["Unique plurality", { "expert-1": "high-id", "expert-2": "high-id", "expert-3": "medium-id", "expert-4": "low-id" }],
-    ["Group vote tie-break", { "expert-1": "high-id", "expert-2": "high-id", "expert-3": "low-id", "expert-4": "low-id" }],
-  ])("reports the group finding '%s' with vote terminology", (expectedTitle, classifications) => {
+    ["unanimity", /unanimously/, { "expert-1": "high-id", "expert-2": "high-id" }],
+    ["absolute majority", /absolute majority/, { "expert-1": "high-id", "expert-2": "high-id", "expert-3": "high-id", "expert-4": "low-id" }],
+    ["unique plurality", /unique plurality/, { "expert-1": "high-id", "expert-2": "high-id", "expert-3": "medium-id", "expert-4": "low-id" }],
+    ["vote tie-break", /tied maximum vote/, { "expert-1": "high-id", "expert-2": "high-id", "expert-3": "low-id", "expert-4": "low-id" }],
+  ])("summarizes collective %s in the shared agreement finding", (_label, phrase, classifications) => {
     const data = buildDashboardData({
       payload: { alternatives, criteria },
       selectedExecution: groupExecution({ classifications }),
     });
-    expect(data.findings.map(({ title }) => title)).toContain(expectedTitle);
+    const agreement = data.findings.find(({ title }) => title === "Classification agreement");
+    expect(agreement).toBeDefined();
+    expect(agreement.items.join(" ")).toMatch(phrase);
     expect(data.findings.map(({ text }) => text).join(" ")).not.toMatch(/consensus|probability/i);
   });
 

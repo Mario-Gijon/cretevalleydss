@@ -1,3 +1,5 @@
+import { buildSortingClassificationFindings } from "./sorting_classification.js";
+
 const PROFILE_TOLERANCE = 1e-12;
 const CONSISTENCY_REVIEW_THRESHOLD = 0.1;
 const AHP_SORT_I_API_MODEL_KEY = "ahp_sort_i";
@@ -738,71 +740,97 @@ export const buildAHPSortIGroupEvidence = ({ result, execution, criteria } = {})
   };
 };
 
-export const buildAHPSortIFindings = (result) => {
-  if (!result?.available) return [];
-  const findings = [];
-  const groupEvidence = result.ahpSortIGroup;
-  if (groupEvidence) {
-    const groupAlternatives = Object.values(groupEvidence.alternativesById || {});
-    const headlineFor = (entries) => {
-      const names = entries.map((entry) => entry.alternativeName).filter(Boolean);
-      return names.length > 3
-        ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} others`
-        : names.join(", ");
-    };
-    const unanimousCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "unanimous").length;
-    const majorityCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "unique_plurality" && entry.isAbsoluteMajority).length;
-    const pluralityCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "unique_plurality" && !entry.isAbsoluteMajority).length;
-    const tieCount = groupAlternatives.filter((entry) => entry?.voteValid && entry.aggregationStatus === "tied_plurality").length;
-    const differingCount = groupAlternatives.filter((entry) => entry?.individualClassifications?.map((item) => item.category?.id).filter(Boolean).filter((id, index, ids) => ids.indexOf(id) === index).length > 1).length;
-    const namesBy = (predicate) => groupAlternatives.filter((entry) => entry?.voteValid && predicate(entry));
-    if (unanimousCount) findings.push({ kind: "ahpsort_group_unanimous", title: "Unanimous classifications", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "unanimous")), text: "Every participating expert assigned these alternatives to the same category." });
-    if (majorityCount) findings.push({ kind: "ahpsort_group_majority", title: "Absolute majority", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "unique_plurality" && entry.isAbsoluteMajority)), text: "The selected category received more than half of the expert votes." });
-    if (pluralityCount) findings.push({ kind: "ahpsort_group_plurality", title: "Unique plurality", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "unique_plurality" && !entry.isAbsoluteMajority)), text: "The selected category received more votes than any other category, without an absolute majority." });
-    if (tieCount) findings.push({ kind: "ahpsort_group_tie", title: "Group vote tie-break", headline: headlineFor(namesBy((entry) => entry.aggregationStatus === "tied_plurality")), text: `The saved ${groupEvidence.groupTiePolicy} preference resolved ties between categories with the same maximum vote count.` });
-    if (differingCount) findings.push({ kind: "ahpsort_group_differences", title: "Different expert classifications", headline: headlineFor(groupAlternatives.filter((entry) => entry?.individualClassifications?.map((item) => item.category?.id).filter(Boolean).filter((id, index, ids) => ids.indexOf(id) === index).length > 1)), text: "Experts assigned these alternatives to different categories." });
+const formatAlternativeNames = (entries) => {
+  const names = entries.map((entry) => entry?.alternativeName || entry?.alternative?.name).filter(Boolean);
+  if (names.length > 3) {
+    const otherCount = names.length - 3;
+    return `${names.slice(0, 3).join(", ")} and ${otherCount} other ${otherCount === 1 ? "alternative" : "alternatives"}`;
+  }
+  if (names.length < 2) return names[0] || "these alternatives";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+};
 
-    const individualEntries = Object.values(groupEvidence.individualEvidenceByExpertId || {});
-    const individualAlternatives = individualEntries.flatMap((entry) => Object.values(entry?.evidence?.alternativesById || {}));
-    const individualTies = individualAlternatives.filter((entry) => entry.status === "available" && entry.profileMode === "central" && entry.tieDetected);
-    if (individualTies.length) findings.push({
-      kind: "ahp_profile_tie",
-      title: "Central-profile tie",
-      headline: `${individualTies.length} individual ${individualTies.length === 1 ? "classification" : "classifications"}`,
-      text: "The saved equal-distance preference was used for these individual classifications.",
-    });
-    const consistencyWarningCount = individualEntries.reduce((sum, entry) => sum + asArray(entry?.evidence?.consistencyWarnings).length, 0);
-    if (consistencyWarningCount) findings.push({
-      kind: "ahp_consistency",
-      title: "AHP consistency review",
-      headline: `${consistencyWarningCount} individual ${consistencyWarningCount === 1 ? "matrix" : "matrices"} above CR 0.10`,
-      text: "Reviewing the related judgments may be useful. This warning does not mean a classification is incorrect.",
-    });
-    return findings;
+const classificationOverview = (result, evidence) => {
+  const items = [];
+  const occupied = result.categories.filter((category) => category.alternatives.length > 0);
+  if (result.assignmentCount === 1) {
+    items.push(`One alternative was classified as ${occupied[0]?.label || "configured"}; a single alternative does not establish category differences.`);
+  } else if (occupied.length === 1) {
+    items.push(`All ${result.assignmentCount} alternatives were assigned to ${occupied[0].label}; no category differences were observed.`);
+  } else if (occupied.length > 1) {
+    items.push(`${result.assignmentCount} alternatives were distributed across ${occupied.length} occupied categories: ${occupied.map((category) => `${category.label} (${category.alternatives.length})`).join(", ")}.`);
   }
 
-  const evidence = result.ahpSortI;
   const ties = Object.values(evidence?.alternativesById || {}).filter((entry) =>
-    entry.status === "available" && entry.profileMode === "central" && entry.tieDetected,
+    entry?.status === "available" && entry.profileMode === "central" && entry.tieDetected,
   );
   if (ties.length) {
-    const names = ties.slice(0, 3).map((entry) => entry.alternative.name);
-    if (ties.length > 3) names.push("others");
-    findings.push({
-      kind: "ahp_profile_tie",
-      title: "Central-profile tie",
-      headline: names.join(", "),
-      text: "The saved tie policy was used to choose the assigned category for these alternatives.",
-    });
+    const policy = ties[0].tiePolicy;
+    items.push(`${ties.length} central-profile ${ties.length === 1 ? "tie was" : "ties were"} resolved using the saved ${policy} preference (${formatAlternativeNames(ties)}).`);
   }
   const warningCount = asArray(evidence?.consistencyWarnings).length;
   if (warningCount) {
-    findings.push({
-      kind: "ahp_consistency",
-      title: "AHP consistency review",
-      headline: `${warningCount} local ${warningCount === 1 ? "matrix" : "matrices"} above CR 0.10`,
-      text: "Reviewing the related judgments may be useful. This warning does not mean the classification is incorrect.",
-    });
+    items.push(`${warningCount} local AHP ${warningCount === 1 ? "matrix exceeded" : "matrices exceeded"} the 0.10 consistency review threshold.`);
   }
-  return findings;
+  if (!warningCount && evidence?.status === "integrity_warning" && evidence.unavailableReason) {
+    items.push(`Some saved AHP evidence could not be validated: ${evidence.unavailableReason}`);
+  }
+  return items.length ? { kind: "overview", title: "Classification overview", items } : null;
+};
+
+const groupAgreementOverview = (result, groupEvidence) => {
+  const alternatives = Object.values(groupEvidence?.alternativesById || {});
+  const validVotes = alternatives.filter((entry) => entry?.voteValid);
+  const items = [];
+  if (validVotes.length) {
+    const unanimous = validVotes.filter((entry) => entry.aggregationStatus === "unanimous");
+    const majority = validVotes.filter((entry) => entry.aggregationStatus === "unique_plurality" && entry.isAbsoluteMajority);
+    const plurality = validVotes.filter((entry) => entry.aggregationStatus === "unique_plurality" && !entry.isAbsoluteMajority);
+    const ties = validVotes.filter((entry) => entry.aggregationStatus === "tied_plurality");
+    const disagreements = validVotes.filter((entry) => new Set(asArray(entry.individualClassifications).map((item) => item?.category?.id).filter(Boolean)).size > 1);
+
+    if (unanimous.length) items.push(`Experts agreed unanimously on ${unanimous.length} ${unanimous.length === 1 ? "alternative" : "alternatives"} (${formatAlternativeNames(unanimous)}).`);
+    if (majority.length || plurality.length) {
+      const parts = [];
+      if (majority.length) parts.push(`${majority.length} absolute ${majority.length === 1 ? "majority" : "majorities"}`);
+      if (plurality.length) parts.push(`${plurality.length} unique ${plurality.length === 1 ? "plurality" : "pluralities"} without an absolute majority`);
+      items.push(`${parts.join(" and ")} determined the collective category for ${formatAlternativeNames([...majority, ...plurality])}.`);
+    }
+    if (!unanimous.length) items.push("No unanimous expert classifications were observed in the validated vote evidence.");
+    if (disagreements.length) items.push(`Experts assigned different categories to ${disagreements.length} ${disagreements.length === 1 ? "alternative" : "alternatives"} (${formatAlternativeNames(disagreements)}).`);
+    if (ties.length) items.push(`${ties.length} ${ties.length === 1 ? "alternative had" : "alternatives had"} a tied maximum vote; the saved ${groupEvidence.groupTiePolicy} preference resolved ${ties.length === 1 ? "it" : "them"} (${formatAlternativeNames(ties)}).`);
+    if (alternatives.length > validVotes.length) {
+      items.push(`Vote evidence was validated for ${validVotes.length} of ${alternatives.length} alternatives; the remaining vote records are incomplete or inconsistent.`);
+    }
+  } else if (groupEvidence?.unavailableReason) {
+    items.push(`Collective vote details could not be validated: ${groupEvidence.unavailableReason}`);
+  }
+
+  const individualEntries = Object.values(groupEvidence?.individualEvidenceByExpertId || {});
+  const individualAlternatives = individualEntries.flatMap((entry) => Object.values(entry?.evidence?.alternativesById || {}));
+  const individualTies = individualAlternatives.filter((entry) => entry?.status === "available" && entry.profileMode === "central" && entry.tieDetected);
+  if (individualTies.length) items.push(`${individualTies.length} individual central-profile ${individualTies.length === 1 ? "tie was" : "ties were"} resolved using the saved preference.`);
+  const consistencyWarningCount = individualEntries.reduce((sum, entry) => sum + asArray(entry?.evidence?.consistencyWarnings).length, 0);
+  if (consistencyWarningCount) items.push(`${consistencyWarningCount} individual AHP ${consistencyWarningCount === 1 ? "matrix exceeded" : "matrices exceeded"} the 0.10 consistency review threshold.`);
+  if (groupEvidence?.status === "integrity_warning" && groupEvidence.unavailableReason) {
+    items.push(`Some collective evidence could not be validated: ${groupEvidence.unavailableReason}`);
+  }
+
+  if (!items.length && result.assignmentCount > 0) {
+    items.push("Collective classifications are available, but the saved vote evidence is insufficient for an agreement summary.");
+  }
+  return items.length ? { kind: "overview", title: "Classification agreement", items } : null;
+};
+
+export const buildAHPSortIFindings = (result) => {
+  if (!result?.available) return [];
+  const classificationFindings = buildSortingClassificationFindings(result);
+  if (!classificationFindings.length) return [];
+
+  const groupEvidence = result.ahpSortIGroup;
+  const overview = groupEvidence
+    ? groupAgreementOverview(result, groupEvidence)
+    : classificationOverview(result, result.ahpSortI);
+  return [classificationFindings[0], ...(overview ? [overview] : []), ...classificationFindings.slice(1)];
 };
