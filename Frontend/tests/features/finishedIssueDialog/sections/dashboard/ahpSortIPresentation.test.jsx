@@ -668,23 +668,26 @@ describe("AHPSort I sorting@1 Finished Issue presentation", () => {
       .map((row) => row.querySelector("p")?.textContent)).toEqual(["Configured first", "Configured second"]);
   });
 
-  it("places saved AHP priorities, local consistency, assignment explanation, and matrices in Model Analysis", () => {
-    const { workspace } = renderAnalysis(limitingExecution());
-    const disclosure = screen.getByTestId("ahp-sort-i-mathematical-details");
-    expect(disclosure).not.toHaveAttribute("open");
-    expect(screen.getByRole("heading", { name: "AHPSort I classification evidence" })).toBeInTheDocument();
-    expect(screen.getByText(/Supplier A was assigned to High because its AHP priority/)).toBeInTheDocument();
-    fireEvent.click(within(disclosure).getByText("View AHP evidence"));
-    expect(within(disclosure).getByText("Alternative global priority:")).toBeInTheDocument();
-    expect(within(disclosure).getByText("Quality")).toBeInTheDocument();
-    expect(within(disclosure).getByText("Weighted contribution")).toBeInTheDocument();
-    expect(within(disclosure).getAllByText(/λmax .* CI .* RI .* CR/)).toHaveLength(2);
-    fireEvent.click(within(disclosure).getByText("Pairwise matrix for Quality"));
-    expect(within(disclosure).getByRole("table", { name: "Pairwise matrix for Quality" })).toBeInTheDocument();
-    expect(workspace.selected[0].ahpSortIAnalysisEvidence.evidence.alternativesById["alt-a"].criteria).toHaveLength(2);
-    expect(document.body.textContent).not.toContain("quality-id");
-    expect(document.body.textContent).not.toContain("boundary-lm");
-    expect(document.body.textContent).not.toContain("alt-a");
+  it("omits the dedicated Results Analysis evidence panel while preserving limiting and central AHP evidence", () => {
+    const limiting = limitingExecution();
+    const { workspace } = renderAnalysis(limiting);
+    expect(screen.queryByRole("heading", { name: "AHPSort I classification evidence" })).not.toBeInTheDocument();
+    expect(workspace.selected[0]).not.toHaveProperty("ahpSortIAnalysisEvidence");
+
+    const limitingDashboard = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: limiting });
+    expect(limitingDashboard.result.ahpSortI.alternativesById["alt-a"].status).toBe("available");
+    expect(limitingDashboard.result.ahpSortI.alternativesById["alt-a"].criteria).toHaveLength(2);
+    expect(limitingDashboard.result.ahpSortI.alternativesById["alt-a"].globalPriority).toBe(0.71);
+
+    cleanup();
+    const central = centralExecution();
+    const centralAnalysis = renderAnalysis(central);
+    expect(screen.queryByRole("heading", { name: "AHPSort I classification evidence" })).not.toBeInTheDocument();
+    expect(centralAnalysis.workspace.selected[0]).not.toHaveProperty("ahpSortIAnalysisEvidence");
+    const centralDashboard = buildDashboardData({ payload: { alternatives, criteria }, selectedExecution: central });
+    expect(centralDashboard.result.ahpSortI.alternativesById["alt-a"].status).toBe("available");
+    expect(centralDashboard.result.ahpSortI.alternativesById["alt-a"].profileMode).toBe("central");
+    expect(centralDashboard.result.ahpSortI.alternativesById["alt-a"].profilePriorities).toHaveLength(2);
   });
 
   it("explains the closest central profile and optimistic/pessimistic tie decisions", () => {
