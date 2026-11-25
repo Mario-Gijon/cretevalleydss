@@ -73,7 +73,7 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
   const columnTemplate = topsisProfile
     ? `240px repeat(${data.columns.length}, 150px)`
     : alternativeRelationships
-      ? `240px repeat(${data.columns.length}, 112px)`
+      ? `240px repeat(${data.columns.length}, minmax(112px, 1fr))`
       : `${labelColumn} repeat(${data.columns.length}, minmax(${criterionColumnMinWidth}px, 1fr))`;
   const precision = valuePrecision(visualization?.scale?.valuePrecision);
   const valueSuffix = legacyAHPAdjustmentUnits
@@ -81,7 +81,7 @@ const HeatmapAnalyticalGraph = ({ visualization }) => {
     : typeof visualization?.scale?.valueSuffix === "string" ? visualization.scale.valueSuffix : "";
   const center = Number.isFinite(visualization?.scale?.center) ? visualization.scale.center : 0;
   const magnitude = finiteValues.reduce((maximumDeviation, value) => Math.max(maximumDeviation, Math.abs(value - center)), 0);
-  const rows = <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", width: topsisProfile || alternativeRelationships ? "fit-content" : truncateLabels || mccAdjustmentMap || twoTupleHeatmap ? "100%" : undefined, mx: alternativeRelationships ? "auto" : undefined, gridTemplateColumns: columnTemplate, gap: adjustmentHeatmap ? 1 : 0.5 }}>
+  const rows = <Box data-testid="heatmap-analytical-graph" sx={{ display: "grid", width: alternativeRelationships || truncateLabels || mccAdjustmentMap || twoTupleHeatmap ? "100%" : topsisProfile ? "fit-content" : undefined, minWidth: alternativeRelationships ? 240 + data.columns.length * 116 : undefined, gridTemplateColumns: columnTemplate, gap: adjustmentHeatmap ? 1 : 0.5 }}>
     <Box />
     {data.columns.map((column) => topsisProfile ? <Box key={column.key} data-testid="topsis-criterion-header" data-direction={column.direction} title={column.label || column.key} sx={{ minWidth: 0, textAlign: "center" }}>
       <Typography variant="overline" color={column.direction === "max" ? "success.light" : column.direction === "min" ? "warning.light" : "text.secondary"} sx={{ display: "block", fontSize: 10, lineHeight: 1.1, fontWeight: 800 }}>{column.direction === "max" ? "Benefit" : column.direction === "min" ? "Cost" : "Direction unavailable"}</Typography>

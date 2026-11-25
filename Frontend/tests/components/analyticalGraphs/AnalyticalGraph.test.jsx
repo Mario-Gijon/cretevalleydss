@@ -1027,16 +1027,15 @@ describe("AnalyticalGraph", () => {
     const { rerender } = render(<div data-testid="matrix-viewport" style={{ width: "320px", overflowX: "auto" }}><HeatmapAnalyticalGraph visualization={buildMatrix(3)} /></div>);
     const viewport = screen.getByTestId("matrix-viewport");
     const grid = screen.getByTestId("heatmap-analytical-graph");
-    expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("112px");
-    expect(window.getComputedStyle(grid).gridTemplateColumns).not.toContain("1fr");
-    expect(grid).toHaveStyle({ marginLeft: "auto", marginRight: "auto" });
+    expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("minmax(112px, 1fr)");
+    expect(grid).toHaveStyle({ width: "100%", minWidth: "588px" });
     expect(window.getComputedStyle(viewport).overflowX).toBe("auto");
     expect(screen.getAllByTestId("heatmap-analytical-graph")[0].querySelectorAll("[data-color-scale]")).toHaveLength(9);
 
     rerender(<div data-testid="matrix-viewport" style={{ width: "320px", overflowX: "auto" }}><HeatmapAnalyticalGraph visualization={buildMatrix(15)} /></div>);
     const largeGrid = screen.getByTestId("heatmap-analytical-graph");
-    expect(window.getComputedStyle(largeGrid).gridTemplateColumns).toContain("112px");
-    expect(largeGrid).toHaveStyle({ marginLeft: "auto", marginRight: "auto" });
+    expect(window.getComputedStyle(largeGrid).gridTemplateColumns).toContain("minmax(112px, 1fr)");
+    expect(largeGrid).toHaveStyle({ width: "100%", minWidth: "1980px" });
     expect(screen.getAllByTestId("heatmap-analytical-graph")[0].querySelectorAll("[data-color-scale]")).toHaveLength(225);
   });
 
