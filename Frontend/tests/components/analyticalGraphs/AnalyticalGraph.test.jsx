@@ -1029,11 +1029,14 @@ describe("AnalyticalGraph", () => {
     const grid = screen.getByTestId("heatmap-analytical-graph");
     expect(window.getComputedStyle(grid).gridTemplateColumns).toContain("112px");
     expect(window.getComputedStyle(grid).gridTemplateColumns).not.toContain("1fr");
+    expect(grid).toHaveStyle({ marginLeft: "auto", marginRight: "auto" });
     expect(window.getComputedStyle(viewport).overflowX).toBe("auto");
     expect(screen.getAllByTestId("heatmap-analytical-graph")[0].querySelectorAll("[data-color-scale]")).toHaveLength(9);
 
     rerender(<div data-testid="matrix-viewport" style={{ width: "320px", overflowX: "auto" }}><HeatmapAnalyticalGraph visualization={buildMatrix(15)} /></div>);
-    expect(window.getComputedStyle(screen.getByTestId("heatmap-analytical-graph")).gridTemplateColumns).toContain("112px");
+    const largeGrid = screen.getByTestId("heatmap-analytical-graph");
+    expect(window.getComputedStyle(largeGrid).gridTemplateColumns).toContain("112px");
+    expect(largeGrid).toHaveStyle({ marginLeft: "auto", marginRight: "auto" });
     expect(screen.getAllByTestId("heatmap-analytical-graph")[0].querySelectorAll("[data-color-scale]")).toHaveLength(225);
   });
 
