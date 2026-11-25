@@ -386,7 +386,7 @@ const RankingEvolution = ({ executions }) => (
         return (
           <>
             <ExecutionLabel execution={execution} visible={executions.length > 1} />
-            {visualization ? (
+            {visualization && buildGenericRankingMovement(visualization).available ? (
               <RankingMovementChart
                 movement={buildGenericRankingMovement(visualization)}
                 embedded
@@ -414,8 +414,20 @@ const visualizationFor = (execution, type) =>
   execution.genericAnalysis?.visualizations?.find(
     (entry) => entry?.type === type,
   );
-const executionWithVisualization = (executions, type) =>
-  executions.some((execution) => visualizationFor(execution, type));
+const hasRankingEvolutionContent = (execution) => {
+  const visualization = visualizationFor(execution, "rankingEvolution");
+  return visualization ? buildGenericRankingMovement(visualization).available : false;
+};
+const hasRankingStabilityContent = (execution) => {
+  const visualization = visualizationFor(execution, "rankingStability");
+  return Array.isArray(visualization?.alternatives) && visualization.alternatives.length > 0;
+};
+const hasRankingAgreementContent = (execution) => {
+  const visualization = visualizationFor(execution, "rankingAgreement");
+  return (Array.isArray(visualization?.transitions) && visualization.transitions.some(
+    (entry) => typeof entry?.coefficient === "number" && Number.isFinite(entry.coefficient),
+  )) || Number.isFinite(visualization?.stabilizationPhase);
+};
 
 const RankingStabilityChart = ({ visualization }) => {
   const alternatives = Array.isArray(visualization?.alternatives)
@@ -494,7 +506,7 @@ const RankingStabilityContent = ({ execution, executions, showHeading = false })
   return <Box data-testid="ranking-stability" sx={{ minWidth: 0 }}>
     {showHeading ? <Box sx={{ mb: 1 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{RANKING_STABILITY_GUIDE.title}</Typography><VisualizationReadingGuide>{RANKING_STABILITY_GUIDE.text}</VisualizationReadingGuide></Box> : null}
     <ExecutionLabel execution={execution} visible={executions.length > 1} />
-    {visualization ? <RankingStabilityChart visualization={visualization} /> : <VisualizationUnavailableState minHeight={130} />}
+    {hasRankingStabilityContent(execution) ? <RankingStabilityChart visualization={visualization} /> : <VisualizationUnavailableState minHeight={130} />}
   </Box>;
 };
 
@@ -591,13 +603,13 @@ const RankingAgreementContent = ({ execution, executions, showHeading = false })
   return <Box data-testid="ranking-agreement" sx={{ minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
     {showHeading ? <Box sx={{ mb: 1 }}><Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{RANKING_AGREEMENT_GUIDE.title}</Typography><VisualizationReadingGuide>{RANKING_AGREEMENT_GUIDE.text}</VisualizationReadingGuide></Box> : null}
     <ExecutionLabel execution={execution} visible={executions.length > 1} />
-    {visualization ? <RankingAgreementChart visualization={visualization} color={execution.color || "#27d5e4"} /> : <VisualizationUnavailableState minHeight={130} />}
+    {hasRankingAgreementContent(execution) ? <RankingAgreementChart visualization={visualization} color={execution.color || "#27d5e4"} /> : <VisualizationUnavailableState minHeight={130} />}
   </Box>;
 };
 
 const RankingTemporalSection = ({ executions }) => {
-  const hasStability = executionWithVisualization(executions, "rankingStability");
-  const hasAgreement = executionWithVisualization(executions, "rankingAgreement");
+  const hasStability = executions.some(hasRankingStabilityContent);
+  const hasAgreement = executions.some(hasRankingAgreementContent);
   if (!hasStability && !hasAgreement) return null;
   const both = hasStability && hasAgreement;
   const groups = executions;
@@ -943,10 +955,7 @@ const StageVisualizations = ({ executions, stage }) => {
 };
 
 const VisualizationsPanel = ({ visualizations = {}, executions = [], categoricalComparisons = [] }) => {
-  const hasRankingEvolution = executionWithVisualization(
-    executions,
-    "rankingEvolution",
-  );
+  const hasRankingEvolution = executions.some(hasRankingEvolutionContent);
   const sortingProjectionUnavailableReason = executions.find(
     (execution) => execution?.resultStructureKey === "sorting" &&
       execution?.genericAnalysis?.facts?.expertCollectiveRelationship?.unavailableReason &&
@@ -974,6 +983,12 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
     alternativeRelationshipsAvailable,
     categoryChangesAvailable,
   });
+  const hasGeneralVisualizations = hasRankingEvolution ||
+    generalLayout.primaryRow.length > 0 ||
+    generalLayout.alternativeRelationshipsBelow ||
+    generalLayout.categoryChangesBelow ||
+    executions.some(hasRankingStabilityContent) ||
+    executions.some(hasRankingAgreementContent);
 
   const renderGeneralVisualization = (type) => {
     if (type === "expertCollective") {
@@ -993,7 +1008,7 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
 
   return (
     <Stack spacing={2}>
-      <Box>
+      {hasGeneralVisualizations ? <Box data-testid="general-visualizations-section">
         <Typography
           variant="h5"
           component="h2"
@@ -1035,10 +1050,8 @@ const VisualizationsPanel = ({ visualizations = {}, executions = [], categorical
             {renderGeneralVisualization("categoryChanges")}
           </Box>
         ) : null}
-        <Box sx={{ mt: 1.4 }}>
-          <RankingTemporalSection executions={executions} />
-        </Box>
-      </Box>
+        <RankingTemporalSection executions={executions} />
+      </Box> : null}
       {MODEL_ANALYSIS_STAGES.map((stage) => <StageVisualizations key={stage.key} executions={executions} stage={stage} />)}
     </Stack>
   );

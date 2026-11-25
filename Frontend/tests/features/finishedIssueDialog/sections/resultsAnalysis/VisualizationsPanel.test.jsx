@@ -123,19 +123,20 @@ describe("VisualizationsPanel", () => {
     );
 
     expect(screen.getByTestId("analytical-scatter")).toBeInTheDocument();
+    expect(screen.getByTestId("general-visualizations-section")).toBeInTheDocument();
     expect(screen.queryByTestId("projected-distance-bars")).not.toBeInTheDocument();
     expect(screen.getByTestId("expert-collective-selected-view")).toHaveAttribute("data-view", "map");
     expect(screen.getByTestId("expert-collective-selected-view")).toHaveStyle({ width: "100%", minWidth: "0" });
     expect(screen.queryByRole("group", { name: "Expert collective representation" })).not.toBeInTheDocument();
   });
 
-  it("renders one execution's model-specific descriptors in stored order after General visualizations", () => {
+  it("hides the empty general section when only model-specific descriptors exist", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
       executions={[{ key: "base", displayLabel: "Base", modelName: "TOPSIS 2-tuple", alternativeEvaluationAnalysis: { analysis: { visualizations: [{ key: "model-bar", type: "bar" }, { key: "model-heatmap", type: "heatmap" }] } } }]}
       visualizations={{ mode: "single", consensus: { enabled: false } }}
     /></ThemeProvider>);
 
-    expect(screen.getByText("General visualizations")).toBeInTheDocument();
+    expect(screen.queryByText("General visualizations")).not.toBeInTheDocument();
     expect(screen.getByText("Alternative evaluation visualizations")).toBeInTheDocument();
     expect(screen.queryByText("TOPSIS 2-tuple")).not.toBeInTheDocument();
     expect(screen.getAllByTestId("analytical-graph").map((graph) => graph.dataset.key)).toEqual(["model-bar", "model-heatmap"]);
@@ -209,7 +210,7 @@ describe("VisualizationsPanel", () => {
     /></ThemeProvider>);
 
     expect(screen.queryByTestId("expert-collective-relationship")).not.toBeInTheDocument();
-    expect(screen.getByText("General visualizations")).toBeInTheDocument();
+    expect(screen.queryByText("General visualizations")).not.toBeInTheDocument();
   });
 
   it("keeps a concrete unavailable reason visible for a sorting projection integrity failure", () => {
@@ -1447,11 +1448,29 @@ describe("VisualizationsPanel", () => {
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis: rankingAnalysis() }, { key: "test-1", displayLabel: "Test 1", genericAnalysis: rankingAnalysis([2, 1]) }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
 
     expect(screen.getAllByText("Ranking evolution")).toHaveLength(1);
+    expect(screen.getByTestId("general-visualizations-section")).toBeInTheDocument();
     expect(screen.getByText(/Each colored line follows one alternative across phases/)).toBeInTheDocument();
     expect(screen.getAllByText("Base")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Test 1")[0]).toBeInTheDocument();
     expect(screen.getAllByTestId("ranking-evolution-divider")).toHaveLength(1);
     expect(screen.getByTestId("ranking-evolution-comparison")).toHaveStyle({ overflowX: "hidden", overflowY: "hidden" });
+  });
+
+  it("hides General visualizations when all general descriptors are empty or unavailable", () => {
+    render(<ThemeProvider theme={createTheme()}><VisualizationsPanel
+      executions={[{
+        key: "base",
+        genericAnalysis: { visualizations: [
+          { type: "rankingEvolution", data: { phases: [], series: [] } },
+          { type: "rankingStability", alternatives: [] },
+          { type: "rankingAgreement", transitions: [] },
+        ] },
+      }]}
+      visualizations={{ mode: "single", singleScatter: { available: false, unavailableReason: "missing_analytical_projection" }, consensus: { enabled: false, issueEnabled: false, available: false } }}
+    /></ThemeProvider>);
+
+    expect(screen.queryByTestId("general-visualizations-section")).not.toBeInTheDocument();
+    expect(screen.queryByText("General visualizations")).not.toBeInTheDocument();
   });
 
   it("adds one divider between each adjacent execution without changing order", () => {
@@ -1627,7 +1646,7 @@ describe("VisualizationsPanel", () => {
   });
 
   it("places both secondary visualizations side by side for one execution", () => {
-    const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
+    const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [{ alternativeId: "a", name: "Alpha", initialRank: 1, finalRank: 2, bestRank: 1, worstRank: 2, totalMovement: 1 }] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
     expect(screen.getByTestId("secondary-visualizations-single-layout")).toBeInTheDocument();
     expect(screen.getByText(/Best and Worst show the smallest and largest rank numbers/)).toBeInTheDocument();
@@ -1635,7 +1654,7 @@ describe("VisualizationsPanel", () => {
   });
 
   it("keeps secondary visualizations as separate rows for multiple executions", () => {
-    const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
+    const genericAnalysis = { visualizations: [{ type: "rankingStability", alternatives: [{ alternativeId: "a", name: "Alpha", initialRank: 1, finalRank: 2, bestRank: 1, worstRank: 2, totalMovement: 1 }] }, { type: "rankingAgreement", transitions: [{ fromPhase: 0, toPhase: 1, coefficient: 0 }] }] };
     render(<ThemeProvider theme={createTheme()}><VisualizationsPanel executions={[{ key: "base", displayLabel: "Base", genericAnalysis }, { key: "test", displayLabel: "Test", genericAnalysis }]} visualizations={{ mode: "single", consensus: { enabled: false } }} /></ThemeProvider>);
     expect(screen.queryByTestId("secondary-visualizations-single-layout")).not.toBeInTheDocument();
     expect(screen.getByTestId("ranking-temporal-card")).toBeInTheDocument();
